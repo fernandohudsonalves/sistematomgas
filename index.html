@@ -148,7 +148,6 @@ table td:last-child{min-width:180px;}
 .cat-checklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 16px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;}
 .checkbox-item{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;width:100%;}
 .checkbox-item input{width:auto;}
-#btn-sino-comunicados:hover{opacity:.8;}
 .comunicado-banner{background:linear-gradient(135deg,var(--royal) 0%,var(--royal-dark) 100%);color:#fff;border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;position:relative;overflow:hidden;}
 .comunicado-banner img{width:100%;max-height:220px;object-fit:cover;border-radius:8px;margin-top:10px;}
 .comunicado-banner h3{margin:0 0 4px;font-size:15px;color:#fff;}
@@ -246,7 +245,6 @@ const AUTH_APP_HTML = `
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <div id="logo-box"></div>
-      <button id="btn-sino-comunicados" title="Comunicados" style="background:none;border:none;color:#fff;font-size:19px;cursor:pointer;padding:0;position:relative;">🔔<span id="sino-badge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 4px;line-height:1.2;"></span></button>
       <button id="btn-logout" class="link-btn" style="color:#fff;">Sair</button>
     </div>
     <input type="file" id="logo-file-input" accept="image/*" style="display:none;">
@@ -335,7 +333,7 @@ let editEmpresaId = null, editAgendamentoId = null, pendingEditVendaId = null;
 let clienteExtrato = null, clienteRegistrandoPagamento = null, editFiadoPagamentoId = null;
 let agendamentoParaConcluir = null, prefillVenda = null;
 let editProdutoId = null, clienteCredito = null, editCreditoId = null, editEstoqueMovId = null;
-let editComunicadoId = null, telaAnteriorComunicados = 'dashboard';
+let editComunicadoId = null, telaAnteriorComunicados = 'config';
 let editCategoriaProdutoNome = null, editCategoriaDespesaNome = null;
 let editProdutoFixoId = null;
 let dashCharts = {};
@@ -343,7 +341,6 @@ let usuarioAtualNome = 'Usuário';
 
 const TABS = [
   {id:'dashboard', label:'Painel'},
-  {id:'metas', label:'Meta'},
   {id:'vendas', label:'Vendas'},
   {id:'despesas', label:'Despesas'},
   {id:'cadastros', label:'Cadastros'},
@@ -412,17 +409,17 @@ function iconGota(cheio, cor, tamanho){
   return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24"><path d="M12 2.3C12 2.3 5 11.2 5 16a7 7 0 0 0 14 0c0-4.8-7-13.7-7-13.7z" fill="none" stroke="'+c+'" stroke-width="1.4"/></svg>';
 }
 function iconEntrega(tipo, cor, tamanho){
-  const c = cor || '#1E3A8A';
   const s = tamanho || 18;
-  const attrs = 'width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
-  const icons = {
-    'Retirada': '<svg '+attrs+'><path d="M3 10l9-6 9 6"/><path d="M4.5 10.5v8a1 1 0 0 0 1 1h4.5v-6h4v6H19a1 1 0 0 0 1-1v-8"/></svg>',
-    'Entrega a pé': '<svg '+attrs+'><circle cx="13.5" cy="4.5" r="2"/><path d="M13 7l-1.5 5 3 2.5 1 6"/><path d="M11.5 12l-3.5 2 1 5.5"/><path d="M14.5 14.5l3 1 1.5 5"/></svg>',
-    'Entrega de carro': '<svg '+attrs+'><path d="M3.5 13l1.3-4.5A2 2 0 0 1 6.7 7h10.6a2 2 0 0 1 1.9 1.5L20.5 13"/><rect x="2.5" y="13" width="19" height="4.5" rx="1.4"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17" cy="18.5" r="1.6"/></svg>',
-    'Entrega de moto': '<svg '+attrs+'><circle cx="5.5" cy="17.5" r="2.4"/><circle cx="18" cy="17.5" r="2.4"/><path d="M5.5 17.5h5.5l2.5-6.5h4"/><path d="M12 11h3.5l2.2 3.2"/><path d="M15.5 8h3"/></svg>',
-    'Entrega de Strada': '<svg '+attrs+'><path d="M2.5 14h2.5V9.8H9l2 4.2"/><rect x="9" y="9.8" width="12.5" height="4.2" rx="1"/><path d="M2.5 14v2.7h1.8"/><path d="M21.5 14v2.7H20"/><circle cx="6.3" cy="17" r="2"/><circle cx="17.5" cy="17" r="2"/></svg>',
+  const imgs = {
+    'Retirada': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAABDklEQVQokZ3Suy6EURQF4G/GpZHQKBRmJB5Ao6KRSOgUvIFGIvEElAoiUYln8ADiATRKCqJEJ2Eq9+uQE3uS35xJzFjJyT75s9ba+6z9l6qTWwJl7GAOyzjQBsoFSk+IK5htR5zQNVCZadw/8YI6NlDL2C1QnGAMq5jALnpzeo6iQRXDGMQ0NjN2CxQN3gv3GyxiJZf8RjdG0BengVpsZA1D2MuUP3hMazzBKNI+11GKIG9xHQ2a8/iKep4mmI/u1RA3CEu4jO2UWhikc58MruJjf9RDTEU+p9nQTSiGWI+6HeMvZOwWKBq84QNn2Md4pwbprU+4i/Be/2OQJniIf+K5U4PU+SiecoHjP9X4BvStN1F8z/edAAAAAElFTkSuQmCC',
+    'Entrega a pé': 'iVBORw0KGgoAAAANSUhEUgAAAAkAAAAPCAYAAAA2yOUNAAAA6ElEQVQokXXRvyvHcRDH8YcfkxmLotiUwiCZKSUhk8nKYiCFgUEkxWK12UkGf4RBNiWxKRY/V3S6T95945brfe9nd/d6XV370K6MDpygHlO4qz4a/cYA+vI1+B90ijN84ryo/7SuYgzdaMbzX9AyjtGFfszXQrHwDq6zFl3WsVdCc3hJMOILB1jEZrX4DA5xn1ATtvGGzgqawC3a8ISWhNbKcVd4xyxecYHVNLahVNeDFTxgBEeYxHgJ7WdeSBGRQ+VGMAFNYzgVXRY2xLsXo3HgGBGyw+3S6da83010imWXak+BR2zh4xsZazPjfoJSkQAAAABJRU5ErkJggg==',
+    'Entrega de carro': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA3UlEQVQYlXXRrUvDcRAG8I/zBQw6DLKk3WAXg00Em2UMRcsEBZP/hMEiJl9gZYio3WITk2VYVg06sawYxCDCODhh/Nge+Ia7+z7P3XM3Mr98LLGOXfxhAZ/o4gvneFFAKcMjNHCJGh5xhW1cIzpUi+TR8tzqGi5wiltMYwkVtPCBtxQr4xudIMfY9znyD35TdCKEMyetzPQ1bWJ/DIuZmMzXj/HiqIkdvIfnqUxs4WDI539EfTODjei8h5Pc5ixe8TSAuIJ2XiA8Hwb5Ls9xk95C+XkAOZZ4lruo46EHc4Qr2Wtma6YAAAAASUVORK5CYII=',
+    'Entrega de moto': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABUElEQVQokZXSMUiVYRTG8Z8aoQ5p6mBBhYK4iYM5XA0c2gprEzEuCYng4KSDS2A6NTjp4iKOJmgUoqBYGYFItEcQFLWUIiIKQaK8t4Mp18AOfHzf+3De/3nOw1dwPfPUP+oSpnEZXfh+VtuFPOVvleF+nBr/F1CELNYxj9d5HVGFecqfuofRmJwAe6G3nAeQXA3F9w5eog8PsBS5nAKU4Aau4UoE1oT3aMA39OImvsQ7exJQiw18xcewv48KdOIxpvAL9dg8EW7Obh0+YRAjaMYKDjCGt3GxOrSf0XvsoBSTuBOBXUQ7isP+IapiyBO04lnASxPgFYaxhQmsBXw30v8dTldjSDneoQ3jCXAXBZF0N24FoAafcTvOP2KFhwHvQUcip50qcTXcJLsJmJ6kP48c0tT+cLiAR9hOgEW8wBzeIBMrzZ7xzyxjBh9yzhk4AgxjR80D8QofAAAAAElFTkSuQmCC',
+    'Entrega de Strada': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAHCAYAAADXhRcnAAAAxElEQVQYlW3QIU+CYRQF4AfFTTcsjOaG3cEYxQAzaGZkk0ESP8GOhWywWdgIJIgkOhSDREfF5MZEgwp7t5ft2zdOurs7595zTqZY60rhDmV8ooQ5luhjlaQepJU4xBMeMUMH73hAIUnMood84tAZ7vGNc1zHuYIGRhhiGmyvcbLHwT784Bj/aIXPGbxhEOcbXKWUX3jGH07RDnGCOJQwxiJeDrsqjhLiCT6CVdTxust8iRya2MRML7G4HcKDW1zE5hv43QKS8CeKzldLEQAAAABJRU5ErkJggg==',
   };
-  return icons[tipo] || '<svg '+attrs+'><circle cx="12" cy="12" r="8.5"/></svg>';
+  const b64 = imgs[tipo];
+  if(!b64) return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+(cor||'#1E3A8A')+'" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/></svg>';
+  return '<img src="data:image/png;base64,'+b64+'" width="'+s+'" style="vertical-align:middle;image-rendering:-webkit-optimize-contrast;" alt="'+tipo+'">';
 }
 function entregaLabel(tipo, hora){
   if(!tipo) return '—';
@@ -949,8 +946,8 @@ function metaCardDashboardHtml(){
   const vendidoHoje = p13VendidosNoDia(hoje);
   const vendidoMes = p13VendidosNoMes(mk);
   return '<div class="meta-card"><h2>🎯 Meta de cargas de P13 — '+nomeMes(mk)+'</h2>'+
-    barraMetaHtml(vendidoHoje, metaDiaria, 'Meta de hoje')+
-    barraMetaHtml(vendidoMes, metaMensal, 'Meta do mês')+
+    barraMetaHtml(vendidoHoje, metaDiaria, 'Meta de hoje ('+fmtDate(hoje)+')')+
+    barraMetaHtml(vendidoMes, metaMensal, 'Meta do mês ('+nomeMes(mk)+')')+
     '</div>';
 }
 function viewMetas(){
@@ -967,7 +964,8 @@ function viewMetas(){
   }).join('');
   const tabela = meses.length===0 ? '<div class="empty">Nenhuma meta configurada ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Mês</th><th>Meta mensal</th><th>Meta diária</th><th>Vendido no mês</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
-  return '<div class="card"><h2>Meta de cargas de P13</h2>'+
+  return '<button type="button" class="link-btn" id="btn-voltar-metas" style="margin-bottom:10px;">← voltar</button>'+
+    '<div class="card"><h2>Meta de cargas de P13</h2>'+
     '<div class="hint">Defina quantas cargas de P13 vocês querem vender por mês. O sistema divide automaticamente pelo número de dias do mês (todo mês tem dias diferentes) pra calcular a meta diária, e mostra a evolução na página Painel.</div>'+
     '<form id="form-meta" style="margin-top:12px;">'+
     '<div class="form-row" style="max-width:420px;">'+
@@ -979,8 +977,8 @@ function viewMetas(){
     (metaMensalAtual>0 ? '<div class="hint" style="margin-top:10px;">Meta de '+nomeMes(mk)+': <strong>'+arred1(metaMensalAtual)+' cargas</strong> em '+dias+' dias = <strong>'+arred1(metaMensalAtual/dias)+' cargas por dia</strong>.</div>' : '')+
     '</div>'+
     '<div class="card"><h2>Meta atual</h2>'+
-    barraMetaHtml(p13VendidosNoDia(todayStr()), metaDiariaP13(mk), 'Meta de hoje')+
-    barraMetaHtml(p13VendidosNoMes(mk), metaMensalAtual, 'Meta do mês')+
+    barraMetaHtml(p13VendidosNoDia(todayStr()), metaDiariaP13(mk), 'Meta de hoje ('+fmtDate(todayStr())+')')+
+    barraMetaHtml(p13VendidosNoMes(mk), metaMensalAtual, 'Meta do mês ('+nomeMes(mk)+')')+
     '</div>'+
     '<div class="card"><h2>Histórico de metas</h2>'+tabela+'</div>';
 }
@@ -1339,7 +1337,7 @@ function viewGerenciarCategorias(){
       '<td><button class="act-link" data-edit-cat-produto="'+cat+'">✎ editar</button><button class="del-link" data-del-cat-produto="'+cat+'">🗑 excluir</button></td></tr>';
   }).join('');
   const linhasControladas = CATEGORIAS_CONTROLADAS.map(function(cat){
-    return '<tr><td>'+cat+'</td><td colspan="2"><span class="hint">categoria fixa de gás/água — edite o preço na aba Produtos</span></td></tr>';
+    return '<tr><td>'+cat+'</td><td colspan="2"><span class="hint">categoria fixa de gás/água — edite o preço na aba Categorias Fixas</span></td></tr>';
   }).join('');
   const tabelaProd = catsProd.length===0 && CATEGORIAS_CONTROLADAS.length===0 ? '<div class="empty">Nenhuma categoria de produto cadastrada ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Produtos</th><th></th></tr></thead><tbody>'+linhasProd+linhasControladas+'</tbody></table></div>';
@@ -1358,7 +1356,7 @@ function viewGerenciarCategorias(){
     '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Despesas</th><th></th></tr></thead><tbody>'+linhasDesp+'</tbody></table></div>';
 
   return '<div class="card"><h2>Categorias de produtos</h2>'+
-    '<div class="hint">Editar o nome atualiza automaticamente os produtos, vendas e agendamentos que já usam essa categoria. As categorias fixas de gás e água têm nome fixo e não podem ser excluídas — pra mudar o preço delas, vá na aba Produtos.</div>'+
+    '<div class="hint">Editar o nome atualiza automaticamente os produtos, vendas e agendamentos que já usam essa categoria. As categorias fixas de gás e água têm nome fixo e não podem ser excluídas — pra mudar o preço delas, vá na aba Categorias Fixas.</div>'+
     tabelaProd+
     '<h3 style="margin-top:16px;">Adicionar categoria de produto</h3>'+
     '<div class="inline-add"><input type="text" id="nova-cat-produto-config-input" placeholder="Nome da nova categoria">'+
@@ -1377,8 +1375,7 @@ function viewProdutos(){
   const cats = categoriasNaoControladas();
   const busca = '<input type="text" id="busca-produto" class="searchbar" placeholder="Buscar produto por nome...">';
   const catalogoHtml = '<div id="catalogo-produtos-wrap">'+catalogoProdutosHtml(cats)+'</div>';
-  return catalogoControladosHtml()+
-    '<div class="card"><h2>Catálogo de produtos <span class="pill">'+state.produtos.filter(p=>!p.fixo).length+'</span></h2>'+
+  return '<div class="card"><h2>Catálogo de produtos <span class="pill">'+state.produtos.filter(p=>!p.fixo).length+'</span></h2>'+
     '<div class="hint">Produtos organizados por categoria, com preço padrão. Na hora da venda, o preço já vem preenchido, mas você pode mudar se quiser.</div>'+
     busca + catalogoHtml + '</div>'+
     '<div class="card"><h2>Novo produto</h2><form id="form-produto">'+
@@ -1392,7 +1389,7 @@ function viewProdutos(){
     '<div class="hint">Exporte o catálogo de produtos do Bling em CSV e importe aqui — nome, preço e categoria já vêm preenchidos automaticamente. Produtos já cadastrados (mesmo nome na mesma categoria) não são duplicados.</div>'+
     '<input type="file" id="csv-prod-input" accept=".csv,.txt,.tsv,.xlsx,.xls" style="margin-top:10px;"><div id="csv-prod-mapping"></div></div>';
 }
-function catalogoControladosHtml(){
+function viewCategoriasFixas(){
   const fixos = CATEGORIAS_CONTROLADAS.map(cat=>state.produtos.find(p=>p.categoria===cat && p.fixo)).filter(Boolean);
   const linhas = fixos.map(function(p){
     if(editProdutoFixoId===p.id){
@@ -1402,8 +1399,8 @@ function catalogoControladosHtml(){
     return '<tr><td>'+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td>'+
       '<td><button class="act-link" data-edit-preco-fixo="'+p.id+'">✎ editar preço</button></td></tr>';
   }).join('');
-  return '<div class="card"><h2>Gás e água <span class="pill">'+fixos.length+'</span></h2>'+
-    '<div class="hint">Cargas e vasilhames de gás e água, ligados direto ao controle de estoque. Você pode alterar o preço de cada um à vontade — nome e categoria são fixos e não podem ser excluídos, porque mexem na estrutura do depósito.</div>'+
+  return '<div class="card"><h2>Categorias fixas <span class="pill">'+fixos.length+'</span></h2>'+
+    '<div class="hint">Cargas e vasilhames de gás (P5, P13, P20, P45), Gás do Povo, e cargas e vasilhames de água (D\'Fonte e Safira) — ligados direto ao controle de estoque. Você pode alterar o preço de qualquer um deles à vontade — nome e categoria são fixos e <strong>não podem ser excluídos</strong>, porque mexem na estrutura do depósito. Ao importar do Bling, esses itens são sempre ignorados automaticamente, pra nunca duplicar.</div>'+
     '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Item</th><th>Preço</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>'+
     '</div>';
 }
@@ -1575,12 +1572,14 @@ function viewCadastros(){
     {id:'empresas', label:'Empresas'},
     {id:'produtos', label:'Produtos'},
     {id:'categorias', label:'Categorias'},
+    {id:'categoriasfixas', label:'Categorias Fixas'},
   ];
   let content = '';
   if(cadastroSub==='clientes') content = viewClientes();
   else if(cadastroSub==='empresas') content = viewEmpresas();
   else if(cadastroSub==='produtos') content = viewProdutos();
-  else content = viewGerenciarCategorias();
+  else if(cadastroSub==='categorias') content = viewGerenciarCategorias();
+  else content = viewCategoriasFixas();
   return '<div class="subtabs">'+subtabs.map(s=>'<button data-cadastro-sub="'+s.id+'" class="'+(cadastroSub===s.id?'active':'')+'">'+s.label+'</button>').join('')+'</div>'+content;
 }
 function viewClientes(){
@@ -1853,7 +1852,18 @@ function viewConfig(){
   const statusTxt = permissao==='granted' ? '<span class="badge pago">ativadas</span>' :
     permissao==='denied' ? '<span class="badge fiado">bloqueadas pelo navegador</span>' :
     '<span class="badge nota">não ativadas</span>';
-  return '<div class="card"><h2>App no celular e notificações</h2>'+
+  const mkAtual = monthKey(todayStr());
+  const metaMensalAtualCfg = metaMensalP13(mkAtual);
+  const comunicadosAtivos = state.comunicados.filter(c=>c.ativo!==false).length;
+  return '<div class="card"><h2>🎯 Meta de vendas</h2>'+
+    '<div class="hint">'+(metaMensalAtualCfg>0 ? 'Meta de '+nomeMes(mkAtual)+': '+arred1(metaMensalAtualCfg)+' cargas de P13.' : 'Nenhuma meta configurada para '+nomeMes(mkAtual)+' ainda.')+'</div>'+
+    '<button type="button" class="btn small ghost" id="btn-abrir-metas" style="margin-top:10px;">Abrir Meta</button>'+
+    '</div>'+
+    '<div class="card"><h2>🔔 Comunicados internos</h2>'+
+    '<div class="hint">'+comunicadosAtivos+' comunicado(s) ativo(s), aparecendo no banner da página inicial pra equipe.</div>'+
+    '<button type="button" class="btn small ghost" id="btn-abrir-comunicados" style="margin-top:10px;">Abrir Comunicados</button>'+
+    '</div>'+
+    '<div class="card"><h2>App no celular e notificações</h2>'+
     '<div class="hint">Instale o sistema como app na tela inicial e receba avisos de novos agendamentos.</div>'+
     '<details style="margin-top:8px;"><summary>Como instalar na tela inicial</summary>'+
     '<div class="hint" style="margin-top:6px;">Chrome (Android): menu → "Adicionar à tela inicial". Safari (iPhone): Compartilhar → "Adicionar à Tela de Início". Atualiza sozinho, sem precisar reinstalar.</div></details>'+
@@ -2388,6 +2398,7 @@ function attachHandlers(){
     const val = inp.value.trim();
     if(!val) return;
     if(state.categoriasProdutos.includes(val)){ alert('Já existe uma categoria de produto com esse nome.'); return; }
+    if(categoriaControladaEquivalente(val)){ alert('Isso parece um item de gás ou água, que já é controlado automaticamente pelo estoque — não crie uma categoria separada pra ele. Se o preço estiver errado, edite direto na seção "Gás e água" da aba Produtos.'); return; }
     state.categoriasProdutos.push(val);
     await save('categoriasProdutos');
     renderAll();
@@ -3481,6 +3492,16 @@ function attachHandlers(){
     editComunicadoId = null;
     renderAll();
   };
+  const btnAbrirMetas = document.getElementById('btn-abrir-metas');
+  if(btnAbrirMetas) btnAbrirMetas.onclick = ()=>{ currentTab = 'metas'; renderAll(); };
+  const btnVoltarMetas = document.getElementById('btn-voltar-metas');
+  if(btnVoltarMetas) btnVoltarMetas.onclick = ()=>{ currentTab = 'config'; renderAll(); };
+  const btnAbrirComunicados = document.getElementById('btn-abrir-comunicados');
+  if(btnAbrirComunicados) btnAbrirComunicados.onclick = ()=>{
+    telaAnteriorComunicados = 'config';
+    currentTab = 'comunicados';
+    renderAll();
+  };
   const btnCancelarComunicado = document.getElementById('btn-cancelar-comunicado');
   if(btnCancelarComunicado) btnCancelarComunicado.onclick = ()=>{ editComunicadoId = null; renderAll(); };
   document.querySelectorAll('[data-edit-comunicado]').forEach(btn=>btn.onclick=()=>{
@@ -3644,6 +3665,16 @@ function normalizarDataImportada(txt, fallback){
   }
   return fallback;
 }
+function categoriaControladaEquivalente(texto){
+  const chave = chaveNormalizada(texto||'');
+  if(!chave) return false;
+  const encontrada = CATEGORIAS_CONTROLADAS.find(c=>chaveNormalizada(c)===chave);
+  if(encontrada) return true;
+  if(/gas do povo/.test(chave)) return true;
+  if(/(carga|vasilhame).*g[aá]s|g[aá]s.*(carga|vasilhame)|glp|botij[aã]o/.test(chave)) return true;
+  if(/(carga|vasilhame).*[aá]gua|[aá]gua.*(carga|vasilhame)|safira|d ?fonte|dfonte/.test(chave)) return true;
+  return false;
+}
 function renderCsvProdMapping(){
   const wrap = document.getElementById('csv-prod-mapping');
   const opts = csvProdHeaders.map(h=>'<option value="'+h+'">'+h+'</option>').join('');
@@ -3671,12 +3702,13 @@ function renderCsvProdMapping(){
     const vistos = new Set();
     const novos = [];
     const categoriasNovas = new Set();
-    let duplicados = 0, ignoradosInativos = 0;
+    let duplicados = 0, ignoradosInativos = 0, ignoradosControlados = 0;
     csvProdRows.filter(r=>r[colNome]).forEach(r=>{
       if(somenteAtivos && colSituacao && r[colSituacao] && r[colSituacao].trim().toLowerCase()!=='ativo'){ ignoradosInativos++; return; }
       const nome = r[colNome].trim();
       let categoria = colCategoria ? (r[colCategoria]||'').trim() : '';
       if(!categoria) categoria = 'Mercearia';
+      if(categoriaControladaEquivalente(categoria) || categoriaControladaEquivalente(nome)){ ignoradosControlados++; return; }
       const precoTxt = colPreco ? (r[colPreco]||'0') : '0';
       const preco = Number(precoTxt.replace(/\./g,'').replace(',','.')) || 0;
       const chave = (categoria+'|'+nome).toLowerCase();
@@ -3693,7 +3725,8 @@ function renderCsvProdMapping(){
     renderAll();
     alert(novos.length+' produtos importados com sucesso.'+
       (duplicados>0 ? ' '+duplicados+' já existiam e foram ignorados.' : '')+
-      (ignoradosInativos>0 ? ' '+ignoradosInativos+' estavam inativos e não foram importados.' : ''));
+      (ignoradosInativos>0 ? ' '+ignoradosInativos+' estavam inativos e não foram importados.' : '')+
+      (ignoradosControlados>0 ? ' '+ignoradosControlados+' eram itens de gás/água (já controlados pelo estoque) e foram ignorados de propósito, pra não duplicar.' : ''));
   };
 }
 function renderCsvFiadoMapping(){
