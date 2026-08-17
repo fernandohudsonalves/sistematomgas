@@ -256,7 +256,7 @@ table td:last-child{min-width:180px;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "17/08/2026 23:40";
+const APP_BUILD_HORARIO = "17/08/2026 23:55";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -2475,9 +2475,11 @@ function renderEvolucaoMensalChart(){
   }
   const cores = seriesCoresEvolucao();
   criarChart('chart-evolucao-mensal', {
-    type:'bar',
+    type:'line',
     data:{ labels: meses.map(nomeMes), datasets: seriesEvolucaoSelecionadas.map((serie,i)=>({
-      label: serie, data: meses.map(m=>Number(porMes[m][serie])||0), backgroundColor: cores[i%cores.length], borderRadius:4
+      label: serie, data: meses.map(m=>Number(porMes[m][serie])||0),
+      borderColor: cores[i%cores.length], backgroundColor: cores[i%cores.length],
+      fill:false, tension:0.25, borderWidth:2, pointRadius:3, pointBackgroundColor: cores[i%cores.length]
     })) },
     options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{ y:{beginAtZero:true} } }
   });
