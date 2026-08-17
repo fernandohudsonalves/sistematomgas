@@ -330,6 +330,7 @@ let state = {
   metas: {},
   precosControlados: {},
   checklistRotina: [],
+  catalogoLivre: false,
   checklistDias: {},
   funcionarios: [],
   historicoMensal: [],
@@ -726,7 +727,7 @@ function enviarWhatsAppEntregador(dados){
   window.open(url, '_blank');
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasDespesas','fiados','fiadoPagamentos','creditos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','logoUrl','faviconUrl'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasDespesas','fiados','fiadoPagamentos','creditos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -785,12 +786,14 @@ async function loadAll(){
         categoriasMudaram = true;
       }
     });
-    CATEGORIAS_PRODUTO_PADRAO.forEach(function(cat){
-      if(!state.categoriasProdutos.includes(cat)){
-        state.categoriasProdutos.push(cat);
-        categoriasMudaram = true;
-      }
-    });
+    if(!state.catalogoLivre){
+      CATEGORIAS_PRODUTO_PADRAO.forEach(function(cat){
+        if(!state.categoriasProdutos.includes(cat)){
+          state.categoriasProdutos.push(cat);
+          categoriasMudaram = true;
+        }
+      });
+    }
     if(categoriasMudaram){
       await save('categoriasProdutos'); await save('produtos'); await save('vendas'); await save('agendamentos');
     }
@@ -1454,18 +1457,34 @@ function viewLimpezaDuplicidades(){
     '</div>';
 }
 function viewGerenciarCategorias(){
-  const catsProd = categoriasNaoControladas();
-  const linhasProd = catsProd.map(function(cat){
-    const qtd = produtosDaCategoria(cat).length;
-    if(editCategoriaProdutoNome===cat){
-      return '<tr><td><input type="text" id="input-edit-cat-produto" value="'+cat+'"></td><td>'+qtd+' produto(s)</td>'+
-        '<td><button class="act-link" data-save-cat-produto="'+cat+'">✓ salvar</button><button class="del-link" data-cancel-cat-produto="'+cat+'">cancelar</button></td></tr>';
+  const fixosGas = produtosFixosDoGrupo('gas');
+  const fixosAgua = produtosFixosDoGrupo('agua');
+  const linhaFixo = function(p){
+    if(editProdutoFixoId===p.id){
+      return '<tr><td>'+p.nome+'</td><td><input type="number" id="input-edit-preco-fixo" min="0" step="0.01" value="'+Number(p.preco).toFixed(2)+'"></td>'+
+        '<td><button class="act-link" data-save-preco-fixo="'+p.id+'">✓ salvar</button><button class="del-link" data-cancel-preco-fixo="'+p.id+'">cancelar</button></td></tr>';
     }
-    return '<tr><td>'+cat+'</td><td>'+qtd+' produto(s)</td>'+
-      '<td><button class="act-link" data-edit-cat-produto="'+cat+'">✎ editar</button><button class="del-link" data-del-cat-produto="'+cat+'">🗑 excluir</button></td></tr>';
+    return '<tr><td>'+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td><td><button class="act-link" data-edit-preco-fixo="'+p.id+'">✎ editar preço</button></td></tr>';
+  };
+  const tabelaFixo = function(lista){
+    return lista.length===0 ? '<div class="hint">Nenhum item aqui ainda — use Vendas ou Agendamento uma vez que eles reaparecem prontos pra editar o preço.</div>' :
+      '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th></th></tr></thead><tbody>'+lista.map(linhaFixo).join('')+'</tbody></table></div>';
+  };
+
+  const subs = categoriasNaoControladas();
+  const blocoSub = subs.map(function(sub){
+    const produtos = produtosDaCategoria(sub);
+    const linhasProd = produtos.length===0 ? '<div class="hint" style="margin:6px 0;">Nenhum produto nessa subcategoria ainda.</div>' :
+      '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th></th></tr></thead><tbody>'+
+      produtos.map(p=>'<tr><td>'+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td>'+
+        '<td><button class="act-link" data-edit-produto="'+p.id+'">✎ editar</button><button class="del-link" data-del-produto="'+p.id+'">🗑 excluir</button></td></tr>').join('')+
+      '</tbody></table></div>';
+    const cabecalho = editCategoriaProdutoNome===sub
+      ? '<input type="text" id="input-edit-cat-produto" value="'+sub+'" onclick="event.preventDefault()"> <button type="button" class="act-link" data-save-cat-produto="'+sub+'">✓ salvar</button><button type="button" class="del-link" data-cancel-cat-produto="'+sub+'">cancelar</button>'
+      : '<strong>'+sub+'</strong> <span class="hint">('+produtos.length+' produto(s))</span> <button type="button" class="act-link" data-edit-cat-produto="'+sub+'">✎ renomear</button><button type="button" class="del-link" data-del-cat-produto="'+sub+'">🗑 excluir</button>';
+    return '<details style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;"><summary>'+cabecalho+'</summary>'+
+      '<div style="margin-top:8px;">'+linhasProd+'</div></details>';
   }).join('');
-  const tabelaProd = catsProd.length===0 ? '<div class="empty">Nenhum tipo de categoria cadastrado ainda.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Produtos</th><th></th></tr></thead><tbody>'+linhasProd+'</tbody></table></div>';
 
   const catsDesp = state.categoriasDespesas;
   const linhasDesp = catsDesp.map(function(cat){
@@ -1480,12 +1499,20 @@ function viewGerenciarCategorias(){
   const tabelaDesp = catsDesp.length===0 ? '<div class="empty">Nenhuma categoria de despesa cadastrada ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Despesas</th><th></th></tr></thead><tbody>'+linhasDesp+'</tbody></table></div>';
 
-  return '<div class="card"><h2>Tipos de Categoria (Outros / Bling)</h2>'+
-    '<div class="hint">São os tipos usados dentro da Categoria "Outros" (o que o Bling chama de categoria). Editar o nome atualiza automaticamente os produtos, vendas e agendamentos que já usam esse tipo. Os itens de gás e água ficam numa aba própria — vá em Categorias Fixas pra mudar o preço deles.</div>'+
-    tabelaProd+
-    '<h3 style="margin-top:16px;">Adicionar tipo de categoria</h3>'+
-    '<div class="inline-add"><input type="text" id="nova-cat-produto-config-input" placeholder="Nome do novo tipo">'+
+  return '<div class="card"><h2>Categoria: Gás</h2>'+tabelaFixo(fixosGas)+'</div>'+
+    '<div class="card"><h2>Categoria: Água</h2>'+tabelaFixo(fixosAgua)+'</div>'+
+    '<div class="card"><h2>Categoria: Outros</h2>'+
+    '<div class="hint">Cada subcategoria funciona como o "tipo" que vem do Bling. Clique numa subcategoria pra ver, editar ou excluir os produtos dela.</div>'+
+    (blocoSub||'<div class="empty" style="margin-top:8px;">Nenhuma subcategoria cadastrada ainda.</div>')+
+    '<h3 style="margin-top:16px;">Nova subcategoria</h3>'+
+    '<div class="inline-add"><input type="text" id="nova-cat-produto-config-input" placeholder="Nome da subcategoria">'+
     '<button type="button" class="btn small ghost" id="btn-add-cat-produto-config">Adicionar</button></div>'+
+    '<h3 style="margin-top:16px;">Novo produto</h3><form id="form-produto" class="form-row">'+
+    '<div><label>Subcategoria <span class="req">*</span></label><select name="categoria" required>'+opcoesComPlaceholder(subs,'Selecione')+'</select></div>'+
+    '<div><label>Nome do produto <span class="req">*</span></label><input type="text" name="nome" required></div>'+
+    '<div><label>Preço (R$) <span class="req">*</span></label><input type="number" name="preco" min="0" step="0.01" placeholder="0,00" required></div>'+
+    '<div style="align-self:end;"><button type="submit" class="btn small">Adicionar produto</button></div>'+
+    '</form>'+
     '</div>'+
     '<div class="card"><h2>Categorias de despesas</h2>'+
     '<div class="hint">Editar o nome atualiza automaticamente as despesas que já usam essa categoria.</div>'+
@@ -1714,7 +1741,7 @@ function viewCadastros(){
     {id:'clientes', label:'Clientes'},
     {id:'empresas', label:'Empresas'},
     {id:'produtos', label:'Produtos'},
-    {id:'categorias', label:'Tipos de Categoria'},
+    {id:'categorias', label:'Categoria / Subcategoria / Produto'},
     {id:'categoriasfixas', label:'Categorias Fixas'},
   ];
   let content = '';
@@ -2091,6 +2118,10 @@ function viewConfig(){
     '<details><summary>Zerar catálogo de produtos e categorias</summary>'+
     '<div class="hint" style="margin-top:8px;">Use isto antes de importar um catálogo novo. Apaga todos os produtos e categorias cadastrados, <strong>mantendo apenas gás e água</strong>. Clientes e empresas não são afetados.</div>'+
     '<button type="button" class="btn small ghost" id="btn-zerar-catalogo" style="margin-top:10px;">Zerar produtos e categorias (manter gás/água)</button>'+
+    '</details>'+
+    '<details style="margin-top:10px;"><summary>Excluir TUDO — inclusive gás e água — e começar do zero</summary>'+
+    '<div class="hint" style="margin-top:8px;">Apaga <strong>todas as categorias e produtos</strong>, inclusive os itens fixos de gás e água (eles voltam a aparecer depois, sem preço, prontos pra você recadastrar do seu jeito na aba "Categoria / Subcategoria / Produto"). Isso <strong>não mexe nos números do Estoque</strong> (kg, cheio/vazio) — só na estrutura do catálogo.</div>'+
+    '<button type="button" class="btn small" id="btn-zerar-tudo-catalogo" style="background:var(--danger);margin-top:10px;">Excluir tudo e começar do zero</button>'+
     '</details>'+
     '<details style="margin-top:10px;"><summary>Zerar todos os lançamentos</summary>'+
     '<div class="hint" style="margin-top:8px;">Apaga <strong>vendas, despesas, a receber, créditos, agendamentos e histórico de estoque</strong> (volta tudo a zero). Clientes, empresas e o catálogo de produtos são mantidos.</div>'+
@@ -3909,6 +3940,18 @@ function attachHandlers(){
     state.categoriasProdutos = CATEGORIAS_CONTROLADAS.slice();
     await save('produtos'); await save('categoriasProdutos');
     alert('Catálogo zerado. Só ficaram as categorias de gás e água — pode importar o catálogo novo.');
+    renderAll();
+  };
+
+  const btnZerarTudoCatalogo = document.getElementById('btn-zerar-tudo-catalogo');
+  if(btnZerarTudoCatalogo) btnZerarTudoCatalogo.onclick = async ()=>{
+    if(!confirm('Isso vai apagar TODAS as categorias e produtos, incluindo os itens fixos de gás e água. Os números do Estoque (kg, cheio/vazio) não são afetados — só a estrutura do catálogo. Deseja continuar?')) return;
+    if(!confirm('Tem certeza mesmo? Essa ação não pode ser desfeita. Você vai recadastrar tudo do zero.')) return;
+    state.produtos = [];
+    state.categoriasProdutos = [];
+    state.catalogoLivre = true;
+    await save('produtos'); await save('categoriasProdutos'); await save('catalogoLivre');
+    alert('Tudo excluído. Comece a cadastrar em Cadastros → Categoria / Subcategoria / Produto.');
     renderAll();
   };
 
