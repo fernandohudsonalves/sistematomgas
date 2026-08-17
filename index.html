@@ -256,6 +256,7 @@ table td:last-child{min-width:180px;}
 <div id="app" style="display:none;"></div>
 
 <script>
+const APP_BUILD_HORARIO = "17/08/2026 23:40";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -264,6 +265,7 @@ const AUTH_APP_HTML = `
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <div id="logo-box"></div>
+      <span style="color:#cbd5e1;font-size:11px;" title="Horário em que este index.html foi gerado (atualize APP_BUILD_HORARIO a cada deploy)">v ${APP_BUILD_HORARIO}</span>
       <button id="btn-logout" class="link-btn" style="color:#fff;">Sair</button>
     </div>
     <input type="file" id="logo-file-input" accept="image/*" style="display:none;">
@@ -4159,10 +4161,18 @@ function guessHeader(headers, keywords){
   const h = headers.find(h=>keywords.some(k=>h.toLowerCase().includes(k)));
   return h || headers[0];
 }
+function celulaParaTexto(v){
+  if(v==null) return '';
+  if(v instanceof Date){
+    const y=v.getFullYear(), m=String(v.getMonth()+1).padStart(2,'0'), d=String(v.getDate()).padStart(2,'0');
+    return y+'-'+m+'-'+d;
+  }
+  return String(v);
+}
 function linhasParaObjetos(headers, linhas){
   return linhas.map(function(cells){
     const obj = {};
-    headers.forEach((h,i)=>obj[h]=(cells[i]!=null?String(cells[i]):''));
+    headers.forEach((h,i)=>obj[h]=celulaParaTexto(cells[i]));
     return obj;
   });
 }
@@ -4342,7 +4352,7 @@ function lerArquivoPlanilha(file, onResult, containerId){
         const nomes = wb.SheetNames;
         const usarSheet = function(nome){
           const ws = wb.Sheets[nome];
-          const matriz = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, dateNF:'yyyy-mm-dd', blankrows:false});
+          const matriz = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, blankrows:false});
           if(!matriz || matriz.length<2){ alert('Essa aba da planilha parece vazia.'); return; }
           const headers = matriz[0].map(h=>String(h||'').trim());
           const linhas = matriz.slice(1).filter(l=>l.some(c=>c!=null && String(c).trim()!==''));
@@ -4399,6 +4409,28 @@ function normalizarDataImportada(txt, fallback){
     if(yyyy.length===2) yyyy = '20'+yyyy;
     return yyyy+'-'+mm+'-'+dd;
   }
+  const MESES_ABREV = {jan:1,fev:2,feb:2,mar:3,abr:4,apr:4,mai:5,may:5,jun:6,jul:7,ago:8,aug:8,set:9,sep:9,out:10,oct:10,nov:11,dez:12,dec:12};
+  const mesAnoMatch = s.toLowerCase().match(/^([a-zçãé]{3,})[\s\/\-]*(\d{2,4})$/i);
+  if(mesAnoMatch){
+    const chave = mesAnoMatch[1].slice(0,3).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(MESES_ABREV[chave]){
+      let yyyy = mesAnoMatch[2];
+      if(yyyy.length===2) yyyy = '20'+yyyy;
+      return yyyy+'-'+String(MESES_ABREV[chave]).padStart(2,'0')+'-01';
+    }
+  }
+  const serialMatch = s.match(/^\d{4,6}(\.\d+)?$/);
+  if(serialMatch){
+    const serial = parseFloat(s);
+    if(serial>15000 && serial<80000){
+      const d = new Date(Math.round((serial-25569)*86400*1000));
+      if(!isNaN(d.getTime())) return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';
+    }
+  }
+  const soAno = s.match(/^(\d{4})$/);
+  if(soAno) return soAno[1]+'-01-01';
+  const tentativa = new Date(s);
+  if(!isNaN(tentativa.getTime()) && s.length>5) return tentativa.getFullYear()+'-'+String(tentativa.getMonth()+1).padStart(2,'0')+'-01';
   return fallback;
 }
 function categoriaControladaEquivalente(texto){
