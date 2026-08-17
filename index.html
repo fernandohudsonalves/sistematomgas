@@ -2001,37 +2001,37 @@ function viewChecklist(){
   const dia = diaChecklist(data);
   const itens = state.checklistRotina.map(it=>({id:it.id, texto:it.texto, fixo:true}))
     .concat(dia.extras.map(it=>({id:it.id, texto:it.texto, fixo:false})));
-  const linhas = itens.map(function(it){
-    const marc = dia.marcacoes[it.id];
-    const acoes = hoje ? (
-      '<div class="checklist-acoes">'+
-      '<button type="button" class="act-link" data-edit-item-checklist="'+it.id+'">✎ editar</button>'+
-      '<button type="button" class="act-link" data-toggle-tipo-item="'+it.id+'">'+(it.fixo?'↔ tornar esporádico':'↔ tornar fixo')+'</button>'+
-      '<button type="button" class="del-link" data-del-item-checklist="'+it.id+'">🗑 excluir</button>'+
-      '</div>'
-    ) : '';
-    if(hoje && editChecklistItemId===it.id){
-      return '<div class="checklist-item">'+
-        '<div class="checklist-texto" style="flex:1;"><input type="text" id="input-edit-item-checklist" value="'+it.texto+'" style="width:100%;"></div>'+
-        '<div class="checklist-acoes">'+
-        '<button type="button" class="act-link" data-salvar-item-checklist="'+it.id+'">✓ salvar</button>'+
-        '<button type="button" class="del-link" data-cancelar-item-checklist="1">cancelar</button>'+
-        '</div></div>';
-    }
-    if(marc){
-      return '<div class="checklist-item feito">'+
-        '<div class="checklist-texto"><span class="check-ok">✓</span> <span class="riscado">'+it.texto+'</span>'+(it.fixo?'':' <span class="hint">(do dia)</span>')+'</div>'+
-        '<div class="checklist-meta">Feito por <strong>'+marc.responsavel+'</strong> às '+marc.horario+
-        (hoje?' <button type="button" class="del-link" data-desmarcar-check="'+it.id+'">desfazer</button>':'')+'</div>'+
-        acoes+
-        '</div>';
-    }
-    return '<div class="checklist-item">'+
-      '<div class="checklist-texto">'+it.texto+(it.fixo?'':' <span class="hint">(do dia)</span>')+'</div>'+
-      (hoje ? '<select class="checklist-select-func" data-marcar-check="'+it.id+'">'+opcoesComPlaceholder(state.funcionarios,'Quem fez?')+'</select>' : '<span class="hint">pendente</span>')+
-      acoes+
-      '</div>';
-  }).join('');
+const linhas = itens.map(function(it){
+const marc = dia.marcacoes[it.id];
+const acoes = hoje ? (
+'<span class="checklist-acoes">'+
+'<button type="button" class="act-link" data-edit-item-checklist="'+it.id+'">✎</button>'+
+'<button type="button" class="act-link" data-toggle-tipo-item="'+it.id+'">'+(it.fixo?'↔':'⊕')+'</button>'+
+'<button type="button" class="del-link" data-del-item-checklist="'+it.id+'">🗑</button>'+
+'</span>'
+) : '';
+if(hoje && editChecklistItemId===it.id){
+return '<div class="checklist-item">'+
+'<input type="text" id="input-edit-item-checklist" value="'+it.texto+'" style="flex:1;font-size:12px;min-width:0;">'+
+'<span class="checklist-acoes">'+
+'<button type="button" class="act-link" data-salvar-item-checklist="'+it.id+'">✓</button>'+
+'<button type="button" class="del-link" data-cancelar-item-checklist="1">✕</button>'+
+'</span></div>';
+}
+if(marc){
+return '<div class="checklist-item feito">'+
+'<span class="checklist-texto">✓ <span class="riscado">'+it.texto+'</span>'+(it.fixo?'':' ⏰')+'</span>'+
+'<span class="checklist-meta">'+marc.responsavel+' '+marc.horario+
+(hoje?' <button type="button" class="del-link" data-desmarcar-check="'+it.id+'">↶</button>':'')+'</span>'+
+acoes+
+'</div>';
+}
+return '<div class="checklist-item">'+
+'<span class="checklist-texto">'+it.texto+(it.fixo?'':' ⏰')+'</span>'+
+(hoje ? '<select class="checklist-select-func" data-marcar-check="'+it.id+'">'+opcoesComPlaceholder(state.funcionarios,'quem?')+'</select>' : '<span class="checklist-meta">pendente</span>')+
+acoes+
+'</div>';
+}).join('');
   const listaHtml = itens.length===0 ? '<div class="empty">Nenhum item no checklist ainda. Adicione um item de rotina ou do dia abaixo.</div>' : '<div class="checklist-lista">'+linhas+'</div>';
 
   const funcionariosHtml = state.funcionarios.map(f=>
