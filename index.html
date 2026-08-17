@@ -152,15 +152,16 @@ table td:last-child{min-width:180px;}
 .hint{font-size:12px;color:var(--text3);margin-top:4px;}
 .subtabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
 .checklist-nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-.checklist-lista{margin-top:12px;display:flex;flex-direction:column;gap:8px;}
-.checklist-item{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:var(--radius);background:var(--blue-tint);}
+.checklist-lista{margin-top:8px;display:flex;flex-direction:column;gap:3px;}
+.checklist-item{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;padding:4px 8px;border-radius:6px;background:var(--blue-tint);overflow:hidden;}
 .checklist-item.feito{background:var(--green-tint);}
-.checklist-texto{font-size:14px;font-weight:500;}
-.checklist-meta{font-size:12px;color:var(--text2);}
+.checklist-texto{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+.checklist-meta{font-size:11px;color:var(--text2);white-space:nowrap;flex-shrink:0;}
 .check-ok{color:var(--green);font-weight:800;}
 .riscado{text-decoration:line-through;color:var(--text2);}
-.checklist-select-func{max-width:180px;}
-.checklist-acoes{display:flex;gap:4px;flex-wrap:wrap;}
+.checklist-select-func{max-width:130px;font-size:12px;padding:2px 4px;flex-shrink:0;}
+.checklist-acoes{display:flex;gap:3px;flex-wrap:nowrap;flex-shrink:0;}
+.checklist-acoes button{font-size:11px;}
 .item-venda-row{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:#F8FAFC;}
 .item-venda-row .form-row{align-items:end;}
 .cat-checklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 16px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;}
