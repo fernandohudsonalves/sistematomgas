@@ -256,7 +256,7 @@ table td:last-child{min-width:180px;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "17/08/2026 23:55";
+const APP_BUILD_HORARIO = "18/08/2026 00:15";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -1193,8 +1193,7 @@ function viewDashboard(){
     '<div id="historico-mapping"></div>'+
     '<h3 style="margin-top:18px;">Gráfico</h3>'+
     viewSeletorSeriesEvolucao()+
-    '<div class="chart-box"><canvas id="chart-evolucao-mensal"></canvas></div>'+
-    tabelaMesesImportadosHtml()+
+    '<div class="chart-box" id="chart-evolucao-mensal-box"><canvas id="chart-evolucao-mensal"></canvas><div id="chart-evolucao-mensal-empty" class="empty" style="display:none;"></div></div>'+
     '</div>';
 }
 
@@ -2466,13 +2465,17 @@ function tabelaMesesImportadosHtml(){
 }
 function renderEvolucaoMensalChart(){
   const el = document.getElementById('chart-evolucao-mensal');
+  const msgEl = document.getElementById('chart-evolucao-mensal-empty');
   if(!el) return;
   const porMes = evolucaoMensalCompleta();
   const meses = Object.keys(porMes).sort();
   if(meses.length===0 || !seriesEvolucaoSelecionadas || seriesEvolucaoSelecionadas.length===0){
-    el.parentElement.innerHTML = '<div class="empty">Suba a planilha de evolução mensal e marque ao menos uma coluna pra ver o gráfico.</div>';
+    el.style.display = 'none';
+    if(msgEl){ msgEl.style.display = ''; msgEl.textContent = 'Suba a planilha de evolução mensal e marque ao menos uma coluna pra ver o gráfico.'; }
     return;
   }
+  el.style.display = '';
+  if(msgEl) msgEl.style.display = 'none';
   const cores = seriesCoresEvolucao();
   criarChart('chart-evolucao-mensal', {
     type:'line',
