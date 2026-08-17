@@ -447,8 +447,12 @@ function iconGota(cheio, cor, tamanho){
   return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24"><path d="M12 2.3C12 2.3 5 11.2 5 16a7 7 0 0 0 14 0c0-4.8-7-13.7-7-13.7z" fill="none" stroke="'+c+'" stroke-width="1.4"/></svg>';
 }
 function iconEntrega(tipo, cor, tamanho){
-  const s = tamanho || 18;
-  const imgs = {
+const s = tamanho || 18;
+const c = cor || '#1E3A8A';
+if(tipo==='Entrega a pé'){
+return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="'+c+'" style="vertical-align:middle;"><circle cx="13.5" cy="4" r="2.2"/><path d="M14.5 7.5L10 11l.5 3.8L8.5 23h2.2l1.8-5.2 1.5 5.2h2.2l-2-7.2.5-3.8L17 10l-1-2.5z"/></svg>';
+}
+const imgs = {
     'Retirada': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAABDklEQVQokZ3Suy6EURQF4G/GpZHQKBRmJB5Ao6KRSOgUvIFGIvEElAoiUYln8ADiATRKCqJEJ2Eq9+uQE3uS35xJzFjJyT75s9ba+6z9l6qTWwJl7GAOyzjQBsoFSk+IK5htR5zQNVCZadw/8YI6NlDL2C1QnGAMq5jALnpzeo6iQRXDGMQ0NjN2CxQN3gv3GyxiJZf8RjdG0BengVpsZA1D2MuUP3hMazzBKNI+11GKIG9xHQ2a8/iKep4mmI/u1RA3CEu4jO2UWhikc58MruJjf9RDTEU+p9nQTSiGWI+6HeMvZOwWKBq84QNn2Md4pwbprU+4i/Be/2OQJniIf+K5U4PU+SiecoHjP9X4BvStN1F8z/edAAAAAElFTkSuQmCC',
     'Entrega a pé': 'iVBORw0KGgoAAAANSUhEUgAAAAcAAAALCAYAAACzkJeoAAAAr0lEQVQYlU3OsUrCcRTF8Y8mIpT0Bv9FCFwLBHPqGZqCcGko0EWamoLCRRDMB7DBzRfoJRra2l3FKChFp7jw+4t3uXC+95xzC9n5AIp4whmusczFfGeo49CeGHOAP7xjvg+P8Yo7XKTYHbxBAx/YoId7lAOeYoxPrHCLI1RL6GCNJmq4wgO24fzBJVpoJ9iNznCeoI8JpqjgEW/hfEmxo/TkDL94DrhIl98JRs0QX//TjiBb0xJKNgAAAABJRU5ErkJggg==',
     'Entrega de carro': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA3UlEQVQYlXXRrUvDcRAG8I/zBQw6DLKk3WAXg00Em2UMRcsEBZP/hMEiJl9gZYio3WITk2VYVg06sawYxCDCODhh/Nge+Ia7+z7P3XM3Mr98LLGOXfxhAZ/o4gvneFFAKcMjNHCJGh5xhW1cIzpUi+TR8tzqGi5wiltMYwkVtPCBtxQr4xudIMfY9znyD35TdCKEMyetzPQ1bWJ/DIuZmMzXj/HiqIkdvIfnqUxs4WDI539EfTODjei8h5Pc5ixe8TSAuIJ2XiA8Hwb5Ls9xk95C+XkAOZZ4lruo46EHc4Qr2Wtma6YAAAAASUVORK5CYII=',
