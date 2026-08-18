@@ -256,7 +256,7 @@ table td:last-child{min-width:180px;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "18/08/2026 00:30";
+const APP_BUILD_HORARIO = "18/08/2026 00:50";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -1188,13 +1188,16 @@ function viewDashboard(){
     '<h3 style="margin-top:22px;">Entregas realizadas por tipo</h3><div class="grid cols4" id="db-entregas-contador"></div>'+
     '</div>'+
     '<div class="card"><h2>Evolução das vendas</h2>'+
-    '<div class="hint">Preencha sua planilha de evolução mensal e suba aqui todo mês (repita o arquivo com a linha nova — meses repetidos são atualizados, sem duplicar). Funciona junto com os dados já lançados no sistema.</div>'+
-    '<input type="file" id="historico-input" accept=".csv,.txt,.tsv,.xlsx,.xls" style="margin-top:10px;">'+
-    '<div id="historico-mapping"></div>'+
+    cardUploadEvolucaoVendasHtml()+
     '<h3 style="margin-top:18px;">Gráfico</h3>'+
     viewSeletorSeriesEvolucao()+
     '<div class="chart-box" id="chart-evolucao-mensal-box"><canvas id="chart-evolucao-mensal"></canvas><div id="chart-evolucao-mensal-empty" class="empty" style="display:none;"></div></div>'+
     '</div>';
+}
+function cardUploadEvolucaoVendasHtml(){
+  return '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-evolucao">modelo em Excel</a>, preencha e suba aqui todo mês (repita o arquivo com a linha nova — meses repetidos são atualizados, sem duplicar). O mesmo arquivo alimenta o gráfico de Evolução das vendas no Painel.</div>'+
+    '<input type="file" id="historico-input" accept=".csv,.txt,.tsv,.xlsx,.xls" style="margin-top:10px;">'+
+    '<div id="historico-mapping"></div>';
 }
 
 function clientesComFiado(){
@@ -1645,7 +1648,8 @@ function viewVendas(){
     }
   }
 
-  return banner + '<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
+  return banner + '<div class="card"><h2>📥 Subir evolução das vendas (planilha)</h2>'+cardUploadEvolucaoVendasHtml()+'</div>'+
+    '<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
@@ -3462,6 +3466,8 @@ function attachHandlers(){
     if(!file) return;
     lerArquivoPlanilha(file, (headers, linhas)=>{ renderHistoricoMapping(headers, linhas); }, 'historico-mapping');
   };
+  const linkModeloEvolucao = document.getElementById('link-baixar-modelo-evolucao');
+  if(linkModeloEvolucao) linkModeloEvolucao.onclick = (e)=>{ e.preventDefault(); gerarModeloEvolucaoVendas(); };
 
   const linkModeloDespesas = document.getElementById('link-baixar-modelo-despesas');
   if(linkModeloDespesas) linkModeloDespesas.onclick = (e)=>{ e.preventDefault(); baixarBase64('modelo_vendas_despesas.xlsx', MODELO_XLSX_B64, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); };
@@ -4187,6 +4193,19 @@ function linhasParaObjetos(headers, linhas){
     headers.forEach((h,i)=>obj[h]=celulaParaTexto(cells[i]));
     return obj;
   });
+}
+function gerarModeloEvolucaoVendas(){
+  if(typeof XLSX==='undefined'){ alert('Não consegui carregar a biblioteca de Excel. Confira sua conexão com a internet e tente de novo.'); return; }
+  const wb = XLSX.utils.book_new();
+  const cabecalho = ['Mês','Dias no Mês'].concat(CATEGORIAS_PRODUTO_PADRAO).concat(['Vendas do Mês','Despesas do Mês']);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cabecalho]), 'Evolução');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Como usar esta planilha'],
+    ['1. Uma linha por mês. A primeira coluna precisa ser o mês (ex.: 01/10/2024).'],
+    ['2. Cada coluna de produto usa o mesmo nome já cadastrado no sistema — não precisa preencher todas, deixe em branco o que não vender.'],
+    ['3. Suba este arquivo em Vendas ou no Painel > Evolução das vendas, sempre que for atualizar.']
+  ]), 'Instruções');
+  XLSX.writeFile(wb, 'modelo_evolucao_das_vendas.xlsx');
 }
 function gerarModeloImportacaoDiaria(){
   if(typeof XLSX==='undefined'){ alert('Não consegui carregar a biblioteca de Excel. Confira sua conexão com a internet e tente de novo.'); return; }
