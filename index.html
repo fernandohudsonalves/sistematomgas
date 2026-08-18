@@ -558,10 +558,12 @@ function wireSeletorCategoria(cfg){
     }
     if(cfg.produtoLivreEl) cfg.produtoLivreEl.value = produtoEl.value;
     if(opt && opt.dataset.preco && cfg.valorUnitEl) cfg.valorUnitEl.value = Number(opt.dataset.preco).toFixed(2);
-    if(cfg.onProdutoChange) cfg.onProdutoChange(opt);
-    if(typeof atualizarTotalCarrinho==='function') atualizarTotalCarrinho();
+    try{ if(cfg.onProdutoChange) cfg.onProdutoChange(opt); }
+    catch(e){ console.error('Erro em onProdutoChange', e); }
+    finally{ if(typeof atualizarTotalCarrinho==='function') atualizarTotalCarrinho(); }
   };
   produtoEl.onchange = handleProdutoChange;
+  produtoEl.addEventListener('input', handleProdutoChange);
 
   const atualizarEtiqueta = (produtoPreSelecionado)=>{
     if(!etiquetaEl) return;
@@ -637,11 +639,13 @@ function calcularTotalCarrinho(){
 function atualizarTotalCarrinho(){
   const totalEl = document.getElementById('carrinho-total');
   if(!totalEl) return;
-  const {total, frete} = calcularTotalCarrinho();
-  totalEl.textContent = frete>0 ?
-    'Produtos: '+fmtMoney(total)+'  +  Frete: '+fmtMoney(frete)+'  =  Total: '+fmtMoney(total+frete) :
-    'Total do carrinho: '+fmtMoney(total);
-  atualizarBoxCreditoVenda();
+  try{
+    const {total, frete} = calcularTotalCarrinho();
+    totalEl.textContent = frete>0 ?
+      'Produtos: '+fmtMoney(total)+'  +  Frete: '+fmtMoney(frete)+'  =  Total: '+fmtMoney(total+frete) :
+      'Total do carrinho: '+fmtMoney(total);
+  }catch(e){ console.error('Erro ao calcular total do carrinho', e); }
+  try{ atualizarBoxCreditoVenda(); }catch(e){ console.error('Erro ao atualizar box de crédito', e); }
 }
 function atualizarBoxCreditoVenda(){
   const box = document.getElementById('credito-cliente-box');
@@ -1518,19 +1522,6 @@ function viewGerenciarCategorias(){
       '<div style="margin-top:8px;">'+linhasProd+'</div></details>';
   }).join('');
 
-  const catsDesp = state.categoriasDespesas;
-  const linhasDesp = catsDesp.map(function(cat){
-    const qtd = despesasDaCategoria(cat).length;
-    if(editCategoriaDespesaNome===cat){
-      return '<tr><td><input type="text" id="input-edit-cat-despesa" value="'+cat+'"></td><td>'+qtd+' despesa(s)</td>'+
-        '<td><button class="act-link" data-save-cat-despesa="'+cat+'">✓ salvar</button><button class="del-link" data-cancel-cat-despesa="'+cat+'">cancelar</button></td></tr>';
-    }
-    return '<tr><td>'+cat+'</td><td>'+qtd+' despesa(s)</td>'+
-      '<td><button class="act-link" data-edit-cat-despesa="'+cat+'">✎ editar</button><button class="del-link" data-del-cat-despesa="'+cat+'">🗑 excluir</button></td></tr>';
-  }).join('');
-  const tabelaDesp = catsDesp.length===0 ? '<div class="empty">Nenhuma categoria de despesa cadastrada ainda.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Despesas</th><th></th></tr></thead><tbody>'+linhasDesp+'</tbody></table></div>';
-
   return '<div class="card"><h2>Categoria: Gás</h2>'+tabelaFixo(fixosGas)+'</div>'+
     '<div class="card"><h2>Categoria: Água</h2>'+tabelaFixo(fixosAgua)+'</div>'+
     '<div class="card"><h2>Categoria: Outros</h2>'+
@@ -1546,14 +1537,28 @@ function viewGerenciarCategorias(){
     '<div style="align-self:end;"><button type="submit" class="btn small">Adicionar produto</button></div>'+
     '</form>'+
     '</div>'+
-    '<div class="card"><h2>Categorias de despesas</h2>'+
+    viewLimpezaDuplicidades();
+}
+function viewCadastroDespesas(){
+  const catsDesp = state.categoriasDespesas;
+  const linhasDesp = catsDesp.map(function(cat){
+    const qtd = despesasDaCategoria(cat).length;
+    if(editCategoriaDespesaNome===cat){
+      return '<tr><td><input type="text" id="input-edit-cat-despesa" value="'+cat+'"></td><td>'+qtd+' despesa(s)</td>'+
+        '<td><button class="act-link" data-save-cat-despesa="'+cat+'">✓ salvar</button><button class="del-link" data-cancel-cat-despesa="'+cat+'">cancelar</button></td></tr>';
+    }
+    return '<tr><td>'+cat+'</td><td>'+qtd+' despesa(s)</td>'+
+      '<td><button class="act-link" data-edit-cat-despesa="'+cat+'">✎ editar</button><button class="del-link" data-del-cat-despesa="'+cat+'">🗑 excluir</button></td></tr>';
+  }).join('');
+  const tabelaDesp = catsDesp.length===0 ? '<div class="empty">Nenhuma categoria de despesa cadastrada ainda.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Despesas</th><th></th></tr></thead><tbody>'+linhasDesp+'</tbody></table></div>';
+  return '<div class="card"><h2>Categorias de despesas</h2>'+
     '<div class="hint">Editar o nome atualiza automaticamente as despesas que já usam essa categoria.</div>'+
     tabelaDesp+
     '<h3 style="margin-top:16px;">Adicionar categoria de despesa</h3>'+
     '<div class="inline-add"><input type="text" id="nova-cat-despesa-config-input" placeholder="Nome da nova categoria">'+
     '<button type="button" class="btn small ghost" id="btn-add-cat-despesa-config">Adicionar</button></div>'+
-    '</div>'+
-    viewLimpezaDuplicidades();
+    '</div>';
 }
 function viewProdutos(){
   const cats = categoriasNaoControladas();
@@ -1770,6 +1775,7 @@ function viewCadastros(){
     {id:'empresas', label:'Empresas'},
     {id:'produtos', label:'Produtos'},
     {id:'categorias', label:'Categoria / Subcategoria / Produto'},
+    {id:'cadastrodespesas', label:'Cadastro de Despesas'},
     {id:'categoriasfixas', label:'Categorias Fixas'},
   ];
   let content = '';
@@ -1777,6 +1783,7 @@ function viewCadastros(){
   else if(cadastroSub==='empresas') content = viewEmpresas();
   else if(cadastroSub==='produtos') content = viewProdutos();
   else if(cadastroSub==='categorias') content = viewGerenciarCategorias();
+  else if(cadastroSub==='cadastrodespesas') content = viewCadastroDespesas();
   else content = viewCategoriasFixas();
   return '<div class="subtabs">'+subtabs.map(s=>'<button data-cadastro-sub="'+s.id+'" class="'+(cadastroSub===s.id?'active':'')+'">'+s.label+'</button>').join('')+'</div>'+content;
 }
@@ -4222,11 +4229,12 @@ function gerarModeloImportacaoDiaria(){
     ['Nota (Vendas): '+NOTAS.join(' | ')],
     ['Tipo de Entrega (Vendas): '+TIPOS_ENTREGA.join(' | ')],
     ['Categoria/Produto (Vendas): use o nome exato do produto ou categoria já cadastrado no sistema (ex.: P13, P45, Água 20L Safira, etc.)'],
+    ['Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.'],
     ['Categoria (Despesas): '+state.categoriasDespesas.join(' | ')]
   ]);
   XLSX.utils.book_append_sheet(wb, wsInstr, 'Instruções');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-    ['Data','Cliente','Canal','Categoria/Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação']
+    ['Data','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação']
   ]), 'Vendas');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
     ['Data','Categoria','Valor','Descrição']
@@ -4270,9 +4278,10 @@ function processarImportacaoDiariaExcel(file){
     }
     const resumo = [];
     const hoje = todayStr();
+    const nomesClientesExistentes = new Set(state.clientes.map(c=>chaveNormalizada(c.nome)));
 
     if(linhasVendas.length){
-      let importadas=0, ignoradas=0;
+      let importadas=0, ignoradas=0, clientesNovosDeVendas=0;
       linhasVendas.forEach(function(r){
         const textoCategoria = (r['Categoria/Produto']||'').trim();
         if(!textoCategoria){ ignoradas++; return; }
@@ -4291,6 +4300,20 @@ function processarImportacaoDiariaExcel(file){
         const valor_total = Math.round(quantidade*valor_unit*100)/100;
         const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
         const cliente = (r['Cliente']||'').trim();
+        if(cliente){
+          const chaveCliente = chaveNormalizada(cliente);
+          if(!nomesClientesExistentes.has(chaveCliente)){
+            nomesClientesExistentes.add(chaveCliente);
+            state.clientes.push({
+              id: uid(), nome: cliente,
+              telefone: (r['Telefone Cliente']||'').trim(),
+              endereco: (r['Endereço Cliente']||'').trim(),
+              complemento: (r['Complemento Cliente']||'').trim(),
+              obs: ''
+            });
+            clientesNovosDeVendas++;
+          }
+        }
         const canal = (r['Canal']||'').trim() || CANAIS[0];
         const pagamento = (r['Forma de Pagamento']||'').trim() || PAGAMENTOS[0];
         const nota = (r['Nota']||'').trim() || 'Não lança';
@@ -4309,7 +4332,9 @@ function processarImportacaoDiariaExcel(file){
         importadas++;
       });
       if(importadas>0){ await save('vendas'); await save('estoque'); await save('categoriasProdutos'); }
+      if(clientesNovosDeVendas>0) await save('clientes');
       resumo.push(importadas+' venda(s) importada(s)'+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem categoria/produto válido)':''));
+      if(clientesNovosDeVendas>0) resumo.push(clientesNovosDeVendas+' cliente(s) novo(s) cadastrado(s) a partir da aba Vendas');
     }
 
     if(linhasDespesas.length){
@@ -4332,18 +4357,17 @@ function processarImportacaoDiariaExcel(file){
 
     if(linhasClientes.length){
       let novos=0, duplicados=0;
-      const nomesExistentes = new Set(state.clientes.map(c=>chaveNormalizada(c.nome)));
       linhasClientes.forEach(function(r){
         const nome = (r['Nome']||'').trim();
         if(!nome) return;
         const chave = chaveNormalizada(nome);
-        if(nomesExistentes.has(chave)){ duplicados++; return; }
-        nomesExistentes.add(chave);
+        if(nomesClientesExistentes.has(chave)){ duplicados++; return; }
+        nomesClientesExistentes.add(chave);
         state.clientes.push({id:uid(), nome, telefone:(r['Telefone']||'').trim(), endereco:(r['Endereço']||'').trim(), complemento:(r['Complemento']||'').trim(), obs:(r['Observação']||'').trim()});
         novos++;
       });
       if(novos>0) await save('clientes');
-      resumo.push(novos+' cliente(s) novo(s)'+(duplicados>0?' — '+duplicados+' já existiam':''));
+      resumo.push(novos+' cliente(s) novo(s) cadastrado(s) a partir da aba Clientes'+(duplicados>0?' — '+duplicados+' já existiam':''));
     }
 
     if(linhasProdutos.length){
@@ -4644,12 +4668,16 @@ function renderCsvVendasMapping(){
     '<div class="mapping-row"><span>Valor unitário</span><select id="map-v-valorunit">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Valor total (se não tiver unitário)</span><select id="map-v-valortotal">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Cliente</span><select id="map-v-cliente">'+optsVazio+'</select></div>'+
+    '<div class="mapping-row"><span>Telefone do cliente</span><select id="map-v-cliente-telefone">'+optsVazio+'</select></div>'+
+    '<div class="mapping-row"><span>Endereço do cliente</span><select id="map-v-cliente-endereco">'+optsVazio+'</select></div>'+
+    '<div class="mapping-row"><span>Complemento do cliente</span><select id="map-v-cliente-complemento">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Data</span><select id="map-v-data">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Canal</span><select id="map-v-canal">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Forma de pagamento</span><select id="map-v-pagamento">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Tipo de entrega</span><select id="map-v-entrega">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Empresa (convênio)</span><select id="map-v-empresa">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Frete</span><select id="map-v-frete">'+optsVazio+'</select></div>'+
+    '<div class="hint" style="margin-top:6px;">Se a planilha tiver telefone/endereço do cliente, o sistema cadastra o cliente novo automaticamente ao importar — clientes que já existem (mesmo nome) não são duplicados.</div>'+
     '<div class="form-row" style="max-width:620px;margin-top:10px;">'+
     '<div><label>Data padrão (linhas sem data)</label><input type="date" id="input-v-data-base" value="'+todayStr()+'"></div>'+
     '<div><label>Canal padrão (linhas sem canal)</label><select id="input-v-canal-base">'+opcoesComPlaceholder(CANAIS,'Selecione')+'</select></div>'+
@@ -4664,6 +4692,9 @@ function renderCsvVendasMapping(){
   document.getElementById('map-v-valorunit').value = guessHeaderPriority(csvVendasHeaders,[['valor unit','valor.unit','unitário','unitario']]);
   document.getElementById('map-v-valortotal').value = guessHeaderPriority(csvVendasHeaders,[['valor total','total']]);
   document.getElementById('map-v-cliente').value = guessHeaderPriority(csvVendasHeaders,[['cliente','nome']]);
+  document.getElementById('map-v-cliente-telefone').value = guessHeaderPriority(csvVendasHeaders,[['celular','whats'],['fone','tel','phone']]);
+  document.getElementById('map-v-cliente-endereco').value = guessHeaderPriority(csvVendasHeaders,[['endereço','endereco','address','rua','logradouro']]);
+  document.getElementById('map-v-cliente-complemento').value = guessHeaderPriority(csvVendasHeaders,[['complemento','compl','bairro']]);
   document.getElementById('map-v-data').value = guessHeaderPriority(csvVendasHeaders,[['data']]);
   document.getElementById('map-v-canal').value = guessHeaderPriority(csvVendasHeaders,[['canal']]);
   document.getElementById('map-v-pagamento').value = guessHeaderPriority(csvVendasHeaders,[['pagamento']]);
@@ -4676,6 +4707,9 @@ function renderCsvVendasMapping(){
     const colValorUnit = document.getElementById('map-v-valorunit').value;
     const colValorTotal = document.getElementById('map-v-valortotal').value;
     const colCliente = document.getElementById('map-v-cliente').value;
+    const colClienteTelefone = document.getElementById('map-v-cliente-telefone').value;
+    const colClienteEndereco = document.getElementById('map-v-cliente-endereco').value;
+    const colClienteComplemento = document.getElementById('map-v-cliente-complemento').value;
     const colData = document.getElementById('map-v-data').value;
     const colCanal = document.getElementById('map-v-canal').value;
     const colPagamento = document.getElementById('map-v-pagamento').value;
@@ -4688,7 +4722,8 @@ function renderCsvVendasMapping(){
     const entregaBase = document.getElementById('input-v-entrega-base').value || TIPOS_ENTREGA[0];
     if(!colCategoria){ alert('Selecione ao menos a coluna de categoria/produto.'); return; }
     if(!confirm('Isso vai criar '+csvVendasRows.length+' venda(s) no sistema e ajustar o estoque de gás/água conforme necessário. Continuar?')) return;
-    let importadas = 0, ignoradas = 0;
+    let importadas = 0, ignoradas = 0, clientesNovos = 0;
+    const nomesClientesExistentes = new Set(state.clientes.map(c=>chaveNormalizada(c.nome)));
     csvVendasRows.forEach(function(r){
       const textoCategoria = (r[colCategoria]||'').trim();
       if(!textoCategoria){ ignoradas++; return; }
@@ -4713,6 +4748,20 @@ function renderCsvVendasMapping(){
       const valor_total = Math.round(quantidade*valor_unit*100)/100;
       const data = colData && r[colData] ? normalizarDataImportada(r[colData], dataBase) : dataBase;
       const cliente = colCliente ? (r[colCliente]||'').trim() : '';
+      if(cliente){
+        const chaveCliente = chaveNormalizada(cliente);
+        if(!nomesClientesExistentes.has(chaveCliente)){
+          nomesClientesExistentes.add(chaveCliente);
+          state.clientes.push({
+            id: uid(), nome: cliente,
+            telefone: colClienteTelefone ? (r[colClienteTelefone]||'').trim() : '',
+            endereco: colClienteEndereco ? (r[colClienteEndereco]||'').trim() : '',
+            complemento: colClienteComplemento ? (r[colClienteComplemento]||'').trim() : '',
+            obs: ''
+          });
+          clientesNovos++;
+        }
+      }
       const canal = colCanal && r[colCanal] ? r[colCanal].trim() : canalBase;
       const pagamento = colPagamento && r[colPagamento] ? r[colPagamento].trim() : pagamentoBase;
       const tipo_entrega = colEntrega && r[colEntrega] ? r[colEntrega].trim() : entregaBase;
@@ -4729,9 +4778,10 @@ function renderCsvVendasMapping(){
       importadas++;
     });
     await save('vendas'); await save('estoque'); await save('categoriasProdutos');
+    if(clientesNovos>0) await save('clientes');
     csvVendasRows=null; csvVendasHeaders=null;
     renderAll();
-    alert(importadas+' venda(s) importada(s) com sucesso!'+(ignoradas>0?' '+ignoradas+' linha(s) ignoradas (sem categoria, ou eram itens de gás/água não reconhecidos — confira o nome exato da categoria).':''));
+    alert(importadas+' venda(s) importada(s) com sucesso!'+(clientesNovos>0?' '+clientesNovos+' cliente(s) novo(s) cadastrado(s) automaticamente.':'')+(ignoradas>0?' '+ignoradas+' linha(s) ignoradas (sem categoria, ou eram itens de gás/água não reconhecidos — confira o nome exato da categoria).':''));
   };
 }
 function renderCsvDespesasMapping(){
