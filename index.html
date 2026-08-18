@@ -372,6 +372,20 @@ let csvRows = null, csvHeaders = null;
 let csvProdRows = null, csvProdHeaders = null;
 let csvFiadoRows = null, csvFiadoHeaders = null;
 let csvVendasRows = null, csvVendasHeaders = null;
+function parseValorBR(str){
+  str = String(str==null?'':str).trim();
+  if(!str) return NaN;
+  const lastComma = str.lastIndexOf(',');
+  const lastDot = str.lastIndexOf('.');
+  if(lastComma>-1 && lastDot>-1){
+    if(lastComma>lastDot){ str = str.replace(/\./g,'').replace(',', '.'); }
+    else { str = str.replace(/,/g,''); }
+  } else if(lastComma>-1){
+    str = str.replace(',', '.');
+  }
+  return Number(str);
+}
+let despesaManualAberta = false;
 let csvDespesasRows = null, csvDespesasHeaders = null;
 let editDespesaId = null, editClienteId = null, editVendaId = null, editFiadoId = null, editConvenioId = null;
 let editEmpresaId = null, editAgendamentoId = null, pendingEditVendaId = null;
@@ -484,9 +498,12 @@ function entregaLabel(tipo, hora){
   if(!tipo) return '—';
   return '<span style="display:inline-flex;align-items:center;gap:5px;">'+iconEntrega(tipo,'#1E3A8A')+'<span>'+tipo+(hora?' às '+hora:'')+'</span></span>';
 }
-function novoItemVendaRow(){
+function novoItemVendaRow(opts){
+  opts = opts || {};
+  const compact = !!opts.compact;
+  const contexto = opts.contexto || null; // {grupo, etiqueta}
   const div = document.createElement('div');
-  div.className = 'item-venda-row iv-extra-row';
+  div.className = 'item-venda-row iv-extra-row'+(compact?' iv-extra-compact':'');
   const uidBase = uid();
   const selId = 'sel-produto-extra-'+uidBase;
   const manualId = 'manual-extra-'+uidBase;
@@ -495,7 +512,9 @@ function novoItemVendaRow(){
   const etiquetaId = 'sel-etiqueta-extra-'+uidBase;
   const catHiddenId = 'sel-categoria-extra-'+uidBase;
   const produtoWrapId = 'wrap-produto-extra-'+uidBase;
-  div.innerHTML = '<div class="form-row">'+
+  const labelContexto = contexto ? (contexto.grupo==='gas' ? 'Gás' : contexto.grupo==='agua' ? 'Água' : contexto.etiqueta) : '';
+  div.innerHTML = (compact ? '<div class="hint" style="margin-bottom:6px;">Categoria: <strong>'+labelContexto+'</strong> <button type="button" class="link-btn iv-trocar-categoria" style="margin-left:6px;">trocar</button></div>' : '')+
+    '<div class="form-row">'+
     htmlSeletorCategoria({categoriaHiddenId:catHiddenId, grupoId:grupoId, etiquetaWrapId:etiquetaWrapId, etiquetaId:etiquetaId, required:false})+
     '<div class="iv-produto-livre-wrap" id="'+produtoWrapId+'" style="display:none;"><label>Produto</label><select class="iv-produto-select" id="'+selId+'"></select>'+
     '<div id="'+manualId+'" style="display:none;margin-top:8px;"><label>Nome do produto (digite)</label><input type="text" class="iv-produto-livre" placeholder="Nome do item"></div></div>'+
@@ -512,9 +531,51 @@ function novoItemVendaRow(){
     produtoWrapId:produtoWrapId, produtoId:selId, categoriaHiddenId:catHiddenId, manualWrapId:manualId,
     produtoLivreEl:produtoLivreInput, valorUnitEl:valorUnitInput
   });
+  if(compact && contexto){
+    const grupoEl = div.querySelector('#'+grupoId);
+    const etiquetaEl = div.querySelector('#'+etiquetaId);
+    if(grupoEl){
+      grupoEl.value = contexto.grupo;
+      if(grupoEl.onchange) grupoEl.onchange();
+    }
+    if(contexto.grupo==='outros' && etiquetaEl && contexto.etiqueta){
+      etiquetaEl.value = contexto.etiqueta;
+      if(etiquetaEl.onchange) etiquetaEl.onchange();
+    }
+    div.querySelectorAll('.iv-grupo-field, .iv-etiqueta-field').forEach(function(e){ e.style.display='none'; });
+    const btnTrocar = div.querySelector('.iv-trocar-categoria');
+    if(btnTrocar) btnTrocar.onclick = ()=>{
+      div.querySelectorAll('.iv-grupo-field').forEach(function(e){ e.style.display=''; });
+      const grupoElAtual = div.querySelector('.iv-grupo-select');
+      if(grupoElAtual && grupoElAtual.value==='outros'){
+        div.querySelectorAll('.iv-etiqueta-field').forEach(function(e){ e.style.display='block'; });
+      }
+      const hintEl = div.querySelector('.hint');
+      if(hintEl) hintEl.remove();
+    };
+    const selProdutoCompact = div.querySelector('.iv-produto-select');
+    setTimeout(function(){ if(selProdutoCompact) selProdutoCompact.focus(); }, 0);
+  }
   div.querySelector('.iv-remove').onclick = ()=>{ div.remove(); atualizarTotalCarrinho(); };
   div.querySelectorAll('.iv-quantidade,.iv-valor-unit').forEach(inp=>inp.oninput = atualizarTotalCarrinho);
   return div;
+}
+function todasLinhasItemVenda(){
+  const linhas = [];
+  const principal = document.querySelector('.iv-item-principal');
+  if(principal) linhas.push(principal);
+  document.querySelectorAll('#itens-extra-lista .iv-extra-row').forEach(r=>linhas.push(r));
+  return linhas;
+}
+function obterContextoUltimoItemVenda(){
+  const linhas = todasLinhasItemVenda();
+  if(linhas.length===0) return null;
+  const ultima = linhas[linhas.length-1];
+  const grupoEl = ultima.querySelector('.iv-grupo-select');
+  const etiquetaEl = ultima.querySelector('.iv-etiqueta-select');
+  if(!grupoEl || !grupoEl.value) return null;
+  if(grupoEl.value==='outros' && (!etiquetaEl || !etiquetaEl.value)) return null;
+  return { grupo: grupoEl.value, etiqueta: grupoEl.value==='outros' ? etiquetaEl.value : null };
 }
 function atualizarDatalistProdutos(categoria, datalistId){
   const dl = document.getElementById(datalistId);
@@ -544,10 +605,10 @@ function popularSelectProdutoFixo(selectId, grupo){
 }
 function htmlSeletorCategoria(p){
   return '<input type="hidden" id="'+p.categoriaHiddenId+'" name="categoria"'+(p.required?' required':'')+'>'+
-    '<div><label>Categoria'+(p.required?' <span class="req">*</span>':'')+'</label><select id="'+p.grupoId+'">'+
+    '<div class="iv-grupo-field"><label>Categoria'+(p.required?' <span class="req">*</span>':'')+'</label><select id="'+p.grupoId+'" class="iv-grupo-select">'+
     '<option value="" selected disabled>Selecione</option><option value="gas">Gás</option><option value="agua">Água</option><option value="outros">Outros</option>'+
     '</select></div>'+
-    '<div id="'+p.etiquetaWrapId+'" style="display:none;"><label>Tipo da Categoria'+(p.required?' <span class="req">*</span>':'')+'</label><select id="'+p.etiquetaId+'">'+
+    '<div id="'+p.etiquetaWrapId+'" class="iv-etiqueta-field" style="display:none;"><label>Tipo da Categoria'+(p.required?' <span class="req">*</span>':'')+'</label><select id="'+p.etiquetaId+'" class="iv-etiqueta-select">'+
     opcoesComPlaceholder(categoriasNaoControladas(),'Selecione o tipo')+'</select></div>';
 }
 function wireSeletorCategoria(cfg){
@@ -879,8 +940,10 @@ async function save(key){
     if(!data || data.length===0){
       console.warn('O upsert não retornou linhas para "'+key+'" — normalmente isso indica que falta a política de UPDATE na tabela app_data (RLS).');
       alert('Os dados não foram salvos no Supabase. Confira se a tabela app_data tem a política de UPDATE para usuários autenticados, além da de INSERT.');
+      return false;
     }
-  }catch(e){ console.error('Erro ao salvar', key, e); alert('Não foi possível salvar no Supabase: '+(e.message||e)); }
+    return true;
+  }catch(e){ console.error('Erro ao salvar', key, e); alert('Não foi possível salvar no Supabase: '+(e.message||e)); return false; }
 }
 
 /* ---------- BACKUP ---------- */
@@ -1730,7 +1793,7 @@ function viewVendas(){
     '<div><label>Complemento</label><input type="text" id="ncv-complemento"></div>'+
     '</div><button type="button" class="btn small ghost" id="btn-salvar-cliente-venda">Salvar cliente</button></div>'+
     '<h3 style="margin-top:16px;">Itens da venda</h3>'+
-    '<div class="item-venda-row">'+
+    '<div class="item-venda-row iv-item-principal">'+
     '<div class="form-row">'+
     htmlSeletorCategoria({categoriaHiddenId:'sel-categoria', grupoId:'sel-grupo', etiquetaWrapId:'wrap-etiqueta', etiquetaId:'sel-etiqueta', required:true})+
     '<div id="wrap-produto" style="display:none;"><label>Produto <span class="req">*</span></label><select id="sel-produto-catalogo"></select>'+
@@ -1744,7 +1807,11 @@ function viewVendas(){
     '<button type="button" class="btn small ghost" id="btn-add-cat-produto">Adicionar</button></div></div>'+
     '</div>'+
     '<div id="itens-extra-lista"></div>'+
-    '<button type="button" class="btn small ghost" id="btn-add-item-venda">+ Incluir outro produto</button>'+
+    '<div class="hint" style="margin-top:8px;">Comprou mais de um item? Use "mesma categoria" pra continuar na categoria/tipo que você acabou de escolher — só troque pra "outra categoria" quando for um tipo diferente de produto.</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">'+
+    '<button type="button" class="btn small ghost" id="btn-add-item-mesma-categoria">+ Incluir outro item desta categoria</button>'+
+    '<button type="button" class="btn small ghost" id="btn-add-item-venda">+ Incluir item de outra categoria</button>'+
+    '</div>'+
     '<div id="carrinho-total" class="carrinho-total-badge">Total do carrinho: R$ 0,00</div>'+
     '<div class="form-row" style="margin-top:14px;">'+
     '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select><div class="hint" id="hint-forma-pagamento">"Abateu" desconta automaticamente do crédito em haver do cliente selecionado, limitado ao saldo disponível — se o crédito não cobrir tudo, a diferença já entra como fiado (a receber) sozinha.</div></div>'+
@@ -1801,12 +1868,12 @@ function viewDespesas(){
     '<input type="file" id="csv-despesas-input" accept=".csv,.txt,.tsv,.xlsx,.xls" style="margin-top:8px;">'+
     '<div id="csv-despesas-mapping"></div>'+
     '</div>'+
-    '<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar despesa</h2><form id="form-despesa">'+
+    '<div class="card"><details id="details-despesa-manual"'+(despesaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar despesa</h2><form id="form-despesa">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Categoria <span class="req">*</span></label><select name="categoria" required>'+opcoesComPlaceholder(state.categoriasDespesas,'Escolha uma categoria')+'</select>'+
     '<button type="button" class="link-btn" id="btn-nova-cat-despesa">+ nova categoria de despesa</button></div>'+
-    '<div><label>Valor (R$) <span class="req">*</span></label><input type="number" name="valor" min="0" step="0.01" placeholder="0,00" required></div>'+
+    '<div><label>Valor (R$) <span class="req">*</span></label><input type="text" inputmode="decimal" name="valor" placeholder="0,00" required></div>'+
     '</div>'+
     '<div id="nova-cat-despesa-wrap" style="display:none;"><div class="inline-add">'+
     '<input type="text" id="nova-cat-despesa-input" placeholder="Nome da nova categoria">'+
@@ -3195,7 +3262,14 @@ function attachHandlers(){
   };
   const btnAddItemVenda = document.getElementById('btn-add-item-venda');
   if(btnAddItemVenda) btnAddItemVenda.onclick = ()=>{
-    document.getElementById('itens-extra-lista').appendChild(novoItemVendaRow());
+    document.getElementById('itens-extra-lista').appendChild(novoItemVendaRow({compact:false}));
+    atualizarTotalCarrinho();
+  };
+  const btnAddItemMesmaCategoria = document.getElementById('btn-add-item-mesma-categoria');
+  if(btnAddItemMesmaCategoria) btnAddItemMesmaCategoria.onclick = ()=>{
+    const contexto = obterContextoUltimoItemVenda();
+    if(!contexto){ alert('Escolha a categoria (e o tipo, se for "Outros") do item atual antes de incluir outro da mesma categoria.'); return; }
+    document.getElementById('itens-extra-lista').appendChild(novoItemVendaRow({compact:true, contexto:contexto}));
     atualizarTotalCarrinho();
   };
   if(fv && fv.quantidade) fv.quantidade.oninput = atualizarTotalCarrinho;
@@ -3241,19 +3315,31 @@ function attachHandlers(){
     });
   });
 
+  const detalhesDespesaManual = document.getElementById('details-despesa-manual');
+  if(detalhesDespesaManual) detalhesDespesaManual.ontoggle = ()=>{ despesaManualAberta = detalhesDespesaManual.open; };
   const fd = document.getElementById('form-despesa');
   if(fd) fd.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(fd);
+    const valorLancado = parseValorBR(f.get('valor'));
+    if(!f.get('valor') || isNaN(valorLancado) || valorLancado<=0){
+      alert('Digite um valor válido, por exemplo 50,00');
+      return;
+    }
     if(editDespesaId){
       const d = state.despesas.find(x=>x.id===editDespesaId);
-      if(d){ d.data=f.get('data'); d.categoria=f.get('categoria'); d.valor=Number(f.get('valor')); d.descricao=f.get('descricao'); }
+      if(d){ d.data=f.get('data'); d.categoria=f.get('categoria'); d.valor=valorLancado; d.descricao=f.get('descricao'); }
       editDespesaId = null;
     } else {
-      state.despesas.push({id:uid(), criadoEm:Date.now(), data:f.get('data'), categoria:f.get('categoria'), valor:Number(f.get('valor')), descricao:f.get('descricao')});
+      state.despesas.push({id:uid(), criadoEm:Date.now(), data:f.get('data'), categoria:f.get('categoria'), valor:valorLancado, descricao:f.get('descricao')});
     }
-    await save('despesas');
+    const salvouOk = await save('despesas');
+    despesaManualAberta = true; // mantém o painel aberto pra não parecer que "sumiu" a tela
     renderAll();
+    if(salvouOk){
+      const wrapHoje = document.getElementById('lista-despesas-hoje-wrap');
+      if(wrapHoje) wrapHoje.scrollIntoView({behavior:'smooth', block:'start'});
+    }
   };
 
   const fc = document.getElementById('form-cliente');
@@ -3486,6 +3572,7 @@ function attachHandlers(){
       fvEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       const itensExtraEl = document.getElementById('itens-extra-lista'); if(itensExtraEl) itensExtraEl.innerHTML='';
       const btnAddItemEl = document.getElementById('btn-add-item-venda'); if(btnAddItemEl) btnAddItemEl.style.display='none';
+      const btnAddItemMesmaCatEl = document.getElementById('btn-add-item-mesma-categoria'); if(btnAddItemMesmaCatEl) btnAddItemMesmaCatEl.style.display='none';
       toggleDetalhesEntregaVenda();
       atualizarTotalCarrinho();
       fvEl.scrollIntoView({behavior:'smooth'});
@@ -3512,7 +3599,10 @@ function attachHandlers(){
       const fdEl = document.getElementById('form-despesa');
       if(!d || !fdEl) return;
       editDespesaId = d.id;
-      fdEl.data.value=d.data; fdEl.categoria.value=d.categoria; fdEl.valor.value=Number(d.valor).toFixed(2); fdEl.descricao.value=d.descricao;
+      despesaManualAberta = true;
+      const detalhesEl = fdEl.closest('details');
+      if(detalhesEl) detalhesEl.open = true;
+      fdEl.data.value=d.data; fdEl.categoria.value=d.categoria; fdEl.valor.value=Number(d.valor).toFixed(2).replace('.', ','); fdEl.descricao.value=d.descricao;
       fdEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       fdEl.scrollIntoView({behavior:'smooth'});
     });
