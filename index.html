@@ -3,6 +3,7 @@
 <head>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sistema Tom Gás</title>
@@ -256,7 +257,7 @@ table td:last-child{min-width:180px;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "18/08/2026 00:50";
+const APP_BUILD_HORARIO = "18/08/2026 16:10";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -453,7 +454,7 @@ const s = tamanho || 18;
 const c = cor || '#1E3A8A';
 const imgs = {
     'Retirada': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAABDklEQVQokZ3Suy6EURQF4G/GpZHQKBRmJB5Ao6KRSOgUvIFGIvEElAoiUYln8ADiATRKCqJEJ2Eq9+uQE3uS35xJzFjJyT75s9ba+6z9l6qTWwJl7GAOyzjQBsoFSk+IK5htR5zQNVCZadw/8YI6NlDL2C1QnGAMq5jALnpzeo6iQRXDGMQ0NjN2CxQN3gv3GyxiJZf8RjdG0BengVpsZA1D2MuUP3hMazzBKNI+11GKIG9xHQ2a8/iKep4mmI/u1RA3CEu4jO2UWhikc58MruJjf9RDTEU+p9nQTSiGWI+6HeMvZOwWKBq84QNn2Md4pwbprU+4i/Be/2OQJniIf+K5U4PU+SiecoHjP9X4BvStN1F8z/edAAAAAElFTkSuQmCC',
-    'Entrega a pé': 'iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAAAt0lEQVR4nJXRoU9CcRDA8c8TwsMAIxAcbiT9DxzBAAZN+gcwqCQ2kwatNhhmIonORjO/v8LALAYNVjfGngHexp6/Obxyd7vvvtvdRWma2jeKWdE4H2XlE25whQ94S+7BQUDwjXd85Qe7cAnX6KGOk7/gLu5QwRGGaCMOwadIsMAnpjhG9deCeMAaE9TQxCNWIXMBHZyhj4ttPgyZbzHAGHOUbc4Y4zlvvsQrZtv+BUu0MiD6zwd/AJ8xIEVB/60YAAAAAElFTkSuQmCC',
+    'Entrega a pé': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABnElEQVQ4jaVTXSiDURh+yN8swiJcKBRWZO2GViyiXCiUkVhNaqQUosSVNEUi3NC0i+XCTy5Iyo2VWyOTZn6jtV/T2D7ah3zaqdXmfHHhuTrv857n6X1O74niOI7DPxDNJ/UxLCpbtMitmIHl9pHqh4PX4Ob+CQ+2Z3x9cTBdOKl+OGIoBoC0OBv11YVwehi01pdQ/T8n0G0cY/fgEjanD8zrO9X/1WBiwYDx+QNy9njfMKjZg93tp4S8BndWL1bWjZCX5SI+LgaiFAHMV27UtOvw7AtQYspAs2iAKDURfapysO+f8L4EoJ9TQCiIhXJgkxLj5yMmJyVgWF0BiTiL1EETlv3A0U4vjGc2ShwE7yKZr91QDW3B5WFIvTzZgDp5ASWmIoTQM7YNP8NiX69CXk4auke3cWbh3wfKQLtmJEvU3yVDUX469LPNhJ9aOqTEBMEIITjcfi5HNs1Vta2E09zI1D7hT85tETyJH140qlfJxVOzI+KSy8MQvrZDRxlERDCZHVA2SVAqzoyYMkMkRKdCCqv9hUrwv+8M4BsbafCoWHXDUAAAAABJRU5ErkJggg==',
     'Entrega de carro': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA3UlEQVQYlXXRrUvDcRAG8I/zBQw6DLKk3WAXg00Em2UMRcsEBZP/hMEiJl9gZYio3WITk2VYVg06sawYxCDCODhh/Nge+Ia7+z7P3XM3Mr98LLGOXfxhAZ/o4gvneFFAKcMjNHCJGh5xhW1cIzpUi+TR8tzqGi5wiltMYwkVtPCBtxQr4xudIMfY9znyD35TdCKEMyetzPQ1bWJ/DIuZmMzXj/HiqIkdvIfnqUxs4WDI539EfTODjei8h5Pc5ixe8TSAuIJ2XiA8Hwb5Ls9xk95C+XkAOZZ4lruo46EHc4Qr2Wtma6YAAAAASUVORK5CYII=',
     'Entrega de moto': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABUElEQVQokZXSMUiVYRTG8Z8aoQ5p6mBBhYK4iYM5XA0c2gprEzEuCYng4KSDS2A6NTjp4iKOJmgUoqBYGYFItEcQFLWUIiIKQaK8t4Mp18AOfHzf+3De/3nOw1dwPfPUP+oSpnEZXfh+VtuFPOVvleF+nBr/F1CELNYxj9d5HVGFecqfuofRmJwAe6G3nAeQXA3F9w5eog8PsBS5nAKU4Aau4UoE1oT3aMA39OImvsQ7exJQiw18xcewv48KdOIxpvAL9dg8EW7Obh0+YRAjaMYKDjCGt3GxOrSf0XvsoBSTuBOBXUQ7isP+IapiyBO04lnASxPgFYaxhQmsBXw30v8dTldjSDneoQ3jCXAXBZF0N24FoAafcTvOP2KFhwHvQUcip50qcTXcJLsJmJ6kP48c0tT+cLiAR9hOgEW8wBzeIBMrzZ7xzyxjBh9yzhk4AgxjR80D8QofAAAAAElFTkSuQmCC',
     'Entrega de Strada': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAHCAYAAADXhRcnAAAAxElEQVQYlW3QIU+CYRQF4AfFTTcsjOaG3cEYxQAzaGZkk0ESP8GOhWywWdgIJIgkOhSDREfF5MZEgwp7t5ft2zdOurs7595zTqZY60rhDmV8ooQ5luhjlaQepJU4xBMeMUMH73hAIUnMood84tAZ7vGNc1zHuYIGRhhiGmyvcbLHwT784Bj/aIXPGbxhEOcbXKWUX3jGH07RDnGCOJQwxiJeDrsqjhLiCT6CVdTxust8iRya2MRML7G4HcKDW1zE5hv43QKS8CeKzldLEQAAAABJRU5ErkJggg==',
@@ -4214,38 +4215,102 @@ function gerarModeloEvolucaoVendas(){
   ]), 'Instruções');
   XLSX.writeFile(wb, 'modelo_evolucao_das_vendas.xlsx');
 }
-function gerarModeloImportacaoDiaria(){
-  if(typeof XLSX==='undefined'){ alert('Não consegui carregar a biblioteca de Excel. Confira sua conexão com a internet e tente de novo.'); return; }
-  const wb = XLSX.utils.book_new();
-  const wsInstr = XLSX.utils.aoa_to_sheet([
-    ['Como usar esta planilha'],
-    ['1. Preencha as abas Vendas, Despesas, Clientes e Produtos durante o dia. Deixe em branco a aba que não for usar.'],
-    ['2. No fim do expediente, vá em Configurações > Importação diária e suba este mesmo arquivo.'],
-    ['3. Não mude o nome das abas nem os títulos da primeira linha de cada aba — é assim que o sistema reconhece as colunas.'],
-    [''],
-    ['Valores válidos para preencher:'],
-    ['Canal (Vendas): '+CANAIS.join(' | ')],
-    ['Forma de Pagamento (Vendas): '+PAGAMENTOS.join(' | ')],
-    ['Nota (Vendas): '+NOTAS.join(' | ')],
-    ['Tipo de Entrega (Vendas): '+TIPOS_ENTREGA.join(' | ')],
-    ['Categoria/Produto (Vendas): use o nome exato do produto ou categoria já cadastrado no sistema (ex.: P13, P45, Água 20L Safira, etc.)'],
-    ['Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.'],
-    ['Categoria (Despesas): '+state.categoriasDespesas.join(' | ')]
-  ]);
-  XLSX.utils.book_append_sheet(wb, wsInstr, 'Instruções');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-    ['Data','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação']
-  ]), 'Vendas');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-    ['Data','Categoria','Valor','Descrição']
-  ]), 'Despesas');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-    ['Nome','Telefone','Endereço','Complemento','Observação']
-  ]), 'Clientes');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-    ['Nome','Categoria','Preço']
-  ]), 'Produtos');
-  XLSX.writeFile(wb, 'modelo_importacao_diaria.xlsx');
+async function gerarModeloImportacaoDiaria(){
+  if(typeof ExcelJS==='undefined'){ alert('Não consegui carregar a biblioteca de Excel. Confira sua conexão com a internet e tente de novo.'); return; }
+  const wb = new ExcelJS.Workbook();
+
+  // ---- Aba oculta com as listas usadas nos menus suspensos ----
+  const categoriasProdutoValidas = state.categoriasProdutos.slice();
+  const categoriasProdutoNaoControladas = state.categoriasProdutos.filter(c=>!CATEGORIAS_CONTROLADAS.includes(c));
+  const categoriasDespesaValidas = state.categoriasDespesas.slice();
+  const wsListas = wb.addWorksheet('ListasValidas');
+  const colunasListas = [
+    {titulo:'Canal', valores:CANAIS},
+    {titulo:'FormaPagamento', valores:PAGAMENTOS},
+    {titulo:'Nota', valores:NOTAS},
+    {titulo:'TipoEntrega', valores:TIPOS_ENTREGA},
+    {titulo:'CategoriaProduto', valores:categoriasProdutoValidas},
+    {titulo:'CategoriaDespesa', valores:categoriasDespesaValidas},
+    {titulo:'CategoriaProdutoNaoControlada', valores:categoriasProdutoNaoControladas}
+  ];
+  colunasListas.forEach(function(col, idx){
+    const letra = String.fromCharCode(65+idx);
+    wsListas.getCell(letra+'1').value = col.titulo;
+    col.valores.forEach(function(v, i){ wsListas.getCell(letra+(i+2)).value = v; });
+  });
+  wsListas.state = 'veryHidden';
+  function faixaLista(letra, qtd){ return '=ListasValidas!$'+letra+'$2:$'+letra+'$'+(Math.max(qtd,1)+1); }
+  function aplicarDropdown(ws, colunaLetra, letraLista, qtd, linhaIni, linhaFim){
+    if(qtd<=0) return;
+    for(let l=linhaIni; l<=linhaFim; l++){
+      ws.getCell(colunaLetra+l).dataValidation = {
+        type:'list', allowBlank:true, formulae:[faixaLista(letraLista, qtd)],
+        showErrorMessage:true, errorStyle:'warning',
+        errorTitle:'Valor fora da lista', error:'Escolha uma das opções da lista (ou deixe em branco).'
+      };
+    }
+  }
+
+  // ---- Aba Instruções ----
+  const wsInstr = wb.addWorksheet('Instruções');
+  wsInstr.getColumn(1).width = 100;
+  [
+    'Como usar esta planilha',
+    '1. Preencha as abas Vendas, Despesas, Clientes e Produtos durante o dia. Deixe em branco a aba que não for usar.',
+    '2. No fim do expediente, vá em Configurações > Importação diária e suba este mesmo arquivo.',
+    '3. Não mude o nome das abas nem os títulos da primeira linha de cada aba — é assim que o sistema reconhece as colunas.',
+    '4. As colunas com opções fixas (Canal, Forma de Pagamento, Nota, Tipo de Entrega, Categoria) já vêm com uma setinha — clique na célula e escolha da lista, sem precisar digitar.',
+    '',
+    'Valores válidos para preencher:',
+    'Canal (Vendas): '+CANAIS.join(' | '),
+    'Forma de Pagamento (Vendas): '+PAGAMENTOS.join(' | '),
+    'Nota (Vendas): '+NOTAS.join(' | '),
+    'Tipo de Entrega (Vendas): '+TIPOS_ENTREGA.join(' | '),
+    'Categoria/Produto (Vendas): use o nome exato do produto ou categoria já cadastrado no sistema (ex.: P13, P45, Água 20L Safira, etc.) — já vem com dropdown das categorias cadastradas.',
+    'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
+    'Categoria (Despesas): '+state.categoriasDespesas.join(' | ')
+  ].forEach(function(linha){ wsInstr.addRow([linha]); });
+
+  const ULTIMA_LINHA = 300;
+
+  // ---- Aba Vendas ----
+  const wsVendas = wb.addWorksheet('Vendas');
+  wsVendas.addRow(['Data','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação']);
+  wsVendas.getRow(1).font = {bold:true};
+  wsVendas.columns.forEach(c=>{ c.width = 16; });
+  aplicarDropdown(wsVendas, 'F', 'A', CANAIS.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'G', 'E', categoriasProdutoValidas.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'J', 'B', PAGAMENTOS.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'K', 'C', NOTAS.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'L', 'D', TIPOS_ENTREGA.length, 2, ULTIMA_LINHA);
+
+  // ---- Aba Despesas ----
+  const wsDespesas = wb.addWorksheet('Despesas');
+  wsDespesas.addRow(['Data','Categoria','Valor','Descrição']);
+  wsDespesas.getRow(1).font = {bold:true};
+  wsDespesas.columns.forEach(c=>{ c.width = 18; });
+  aplicarDropdown(wsDespesas, 'B', 'F', categoriasDespesaValidas.length, 2, ULTIMA_LINHA);
+
+  // ---- Aba Clientes ----
+  const wsClientes = wb.addWorksheet('Clientes');
+  wsClientes.addRow(['Nome','Telefone','Endereço','Complemento','Observação']);
+  wsClientes.getRow(1).font = {bold:true};
+  wsClientes.columns.forEach(c=>{ c.width = 18; });
+
+  // ---- Aba Produtos ----
+  const wsProdutos = wb.addWorksheet('Produtos');
+  wsProdutos.addRow(['Nome','Categoria','Preço']);
+  wsProdutos.getRow(1).font = {bold:true};
+  wsProdutos.columns.forEach(c=>{ c.width = 18; });
+  aplicarDropdown(wsProdutos, 'B', 'G', categoriasProdutoNaoControladas.length, 2, ULTIMA_LINHA);
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'modelo_importacao_diaria.xlsx';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 function processarImportacaoDiariaExcel(file){
   if(typeof XLSX==='undefined'){ alert('Não consegui carregar a biblioteca de Excel. Confira sua conexão com a internet e tente de novo.'); return; }
