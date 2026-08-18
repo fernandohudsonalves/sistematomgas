@@ -67,6 +67,9 @@ main{flex:1;padding:18px;max-width:980px;width:100%;margin:0 auto;}
 .grid.cols4{grid-template-columns:repeat(auto-fit,minmax(120px,1fr));}
 
 .metric{background:var(--blue-tint);border-radius:var(--radius);padding:14px 16px;border-left:4px solid var(--royal);}
+.metric.metric-link{cursor:pointer;transition:filter .15s,transform .1s;}
+.metric.metric-link:hover{filter:brightness(0.96);}
+.metric.metric-link:active{transform:scale(0.98);}
 .metric.pos{background:var(--green-tint);border-left-color:var(--green);}
 .metric.neg{background:var(--danger-tint);border-left-color:var(--danger);}
 .metric .label{font-size:12px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
@@ -257,7 +260,7 @@ table td:last-child{min-width:180px;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "18/08/2026 16:10";
+const APP_BUILD_HORARIO = "18/08/2026 20:30";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -313,6 +316,12 @@ const CATEGORIAS_OUTRAS = ['Acessórios para Gás','Acessórios para Água','Ban
   'Carvão','Cosméticos','Dúzia de Ovos','Farofas','Impressões e Xérox','Nhoque','Ovos Soltos','Produtos de Limpeza',
   'Produtos de Mercearia','Serviços Fernando','Suplementos','Terra dos Ventos','Toalhas'];
 const CATEGORIAS_PRODUTO_PADRAO = CATEGORIAS_CONTROLADAS.concat(CATEGORIAS_OUTRAS);
+/* Grupo (Gás / Água / Outros) de cada subcategoria não controlada — usado pra organizar o catálogo
+   e a planilha de importação. Subcategorias sem entrada aqui caem em "Outros" por padrão. */
+const CATEGORIAS_OUTRAS_GRUPO_PADRAO = {'Acessórios para Gás':'gas','Acessórios para Água':'agua'};
+const GRUPOS_PRODUTO = [{chave:'gas',label:'Gás'},{chave:'agua',label:'Água'},{chave:'outros',label:'Outros'}];
+function labelGrupoProduto(g){ const info = GRUPOS_PRODUTO.find(x=>x.chave===g); return info ? info.label : 'Outros'; }
+function chaveGrupoProduto(label){ const info = GRUPOS_PRODUTO.find(x=>chaveNormalizada(x.label)===chaveNormalizada(String(label||''))); return info ? info.chave : 'outros'; }
 const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Combustível','Salário','Aluguel','Manutenção','Outros'];
 
 const PESO_GAS_KG = {P5:5, P13:13, P20:20, P45:45};
@@ -336,6 +345,7 @@ let state = {
   estoque: defaultEstoque(),
   estoqueLancamentos: [],
   categoriasProdutos: CATEGORIAS_PRODUTO_PADRAO.slice(),
+  categoriasProdutosGrupo: Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO),
   categoriasDespesas: CATEGORIAS_DESPESA_PADRAO.slice(),
   fiados: [],
   fiadoPagamentos: [],
@@ -354,6 +364,9 @@ let state = {
 };
 let currentTab = 'dashboard';
 let relatorioSub = 'vendas';
+let relEmpresaSel = '';
+let relEmpresaDe = '';
+let relEmpresaAte = '';
 let cadastroSub = 'clientes';
 let csvRows = null, csvHeaders = null;
 let csvProdRows = null, csvProdHeaders = null;
@@ -458,7 +471,7 @@ const s = tamanho || 18;
 const c = cor || '#1E3A8A';
 const imgs = {
     'Retirada': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAABDklEQVQokZ3Suy6EURQF4G/GpZHQKBRmJB5Ao6KRSOgUvIFGIvEElAoiUYln8ADiATRKCqJEJ2Eq9+uQE3uS35xJzFjJyT75s9ba+6z9l6qTWwJl7GAOyzjQBsoFSk+IK5htR5zQNVCZadw/8YI6NlDL2C1QnGAMq5jALnpzeo6iQRXDGMQ0NjN2CxQN3gv3GyxiJZf8RjdG0BengVpsZA1D2MuUP3hMazzBKNI+11GKIG9xHQ2a8/iKep4mmI/u1RA3CEu4jO2UWhikc58MruJjf9RDTEU+p9nQTSiGWI+6HeMvZOwWKBq84QNn2Md4pwbprU+4i/Be/2OQJniIf+K5U4PU+SiecoHjP9X4BvStN1F8z/edAAAAAElFTkSuQmCC',
-    'Entrega a pé': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABnElEQVQ4jaVTXSiDURh+yN8swiJcKBRWZO2GViyiXCiUkVhNaqQUosSVNEUi3NC0i+XCTy5Iyo2VWyOTZn6jtV/T2D7ah3zaqdXmfHHhuTrv857n6X1O74niOI7DPxDNJ/UxLCpbtMitmIHl9pHqh4PX4Ob+CQ+2Z3x9cTBdOKl+OGIoBoC0OBv11YVwehi01pdQ/T8n0G0cY/fgEjanD8zrO9X/1WBiwYDx+QNy9njfMKjZg93tp4S8BndWL1bWjZCX5SI+LgaiFAHMV27UtOvw7AtQYspAs2iAKDURfapysO+f8L4EoJ9TQCiIhXJgkxLj5yMmJyVgWF0BiTiL1EETlv3A0U4vjGc2ShwE7yKZr91QDW3B5WFIvTzZgDp5ASWmIoTQM7YNP8NiX69CXk4auke3cWbh3wfKQLtmJEvU3yVDUX469LPNhJ9aOqTEBMEIITjcfi5HNs1Vta2E09zI1D7hT85tETyJH140qlfJxVOzI+KSy8MQvrZDRxlERDCZHVA2SVAqzoyYMkMkRKdCCqv9hUrwv+8M4BsbafCoWHXDUAAAAABJRU5ErkJggg==',
+    'Entrega a pé': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABv0lEQVQ4jWN89enffwYKABMurZ+//GTIqlzNEJg0h+HqzecY8jCA04DnLz8ynDr/kOHxsw8Mpy48wpCHARYMEShQUxZjCPM1ZHjw+C2Dr6sOhjxBA0C2n7n4iOHHzz8MrCw4HYrdC9v2XQP7/96jtwzPXn5kWLj6NMOPn78x1IEARix8+/6bwT9hNoMgPyfDs5efGJiYGBl4uNkZ1JXFGLpr/RlY0FyD4YI9h24wvP/4jSE1xoqBkZGB4c+fvwyxIaYMx87cZ6jt2srwHy3SMcLg0Mm7DA5WKgzaahIM339AnO1sq8agoiDCcOTUPcJeePXmMwMnBxvY9qSi5Qz3Hr5hsLNQZmgq9QJ7BR1geEFMhJeBl4edYd32Swyfv/wAu+bQibsMiYXLGD5++k7YABB48eoTw+wlxxh4eTgYOqr8GMpzXBjuP3rLsHrLBQy1WA2YPO8Q2P8VOc7gUA/1MQAnrGXrzzJ8+vIDvwGgxLPzwA0GbxdtBiNdWbh4WrQVw6fPPxg27LiM34C2SbsZuDjZGHKT7FDEQQGpJCcM9hoywIhGUHQlhJsziAhxo9rExMhQmO7IsGX3FYQgAwMDANKvoVpJWu+aAAAAAElFTkSuQmCC',
     'Entrega de carro': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA3UlEQVQYlXXRrUvDcRAG8I/zBQw6DLKk3WAXg00Em2UMRcsEBZP/hMEiJl9gZYio3WITk2VYVg06sawYxCDCODhh/Nge+Ia7+z7P3XM3Mr98LLGOXfxhAZ/o4gvneFFAKcMjNHCJGh5xhW1cIzpUi+TR8tzqGi5wiltMYwkVtPCBtxQr4xudIMfY9znyD35TdCKEMyetzPQ1bWJ/DIuZmMzXj/HiqIkdvIfnqUxs4WDI539EfTODjei8h5Pc5ixe8TSAuIJ2XiA8Hwb5Ls9xk95C+XkAOZZ4lruo46EHc4Qr2Wtma6YAAAAASUVORK5CYII=',
     'Entrega de moto': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABUElEQVQokZXSMUiVYRTG8Z8aoQ5p6mBBhYK4iYM5XA0c2gprEzEuCYng4KSDS2A6NTjp4iKOJmgUoqBYGYFItEcQFLWUIiIKQaK8t4Mp18AOfHzf+3De/3nOw1dwPfPUP+oSpnEZXfh+VtuFPOVvleF+nBr/F1CELNYxj9d5HVGFecqfuofRmJwAe6G3nAeQXA3F9w5eog8PsBS5nAKU4Aau4UoE1oT3aMA39OImvsQ7exJQiw18xcewv48KdOIxpvAL9dg8EW7Obh0+YRAjaMYKDjCGt3GxOrSf0XvsoBSTuBOBXUQ7isP+IapiyBO04lnASxPgFYaxhQmsBXw30v8dTldjSDneoQ3jCXAXBZF0N24FoAafcTvOP2KFhwHvQUcip50qcTXcJLsJmJ6kP48c0tT+cLiAR9hOgEW8wBzeIBMrzZ7xzyxjBh9yzhk4AgxjR80D8QofAAAAAElFTkSuQmCC',
     'Entrega de Strada': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAHCAYAAADXhRcnAAAAxElEQVQYlW3QIU+CYRQF4AfFTTcsjOaG3cEYxQAzaGZkk0ESP8GOhWywWdgIJIgkOhSDREfF5MZEgwp7t5ft2zdOurs7595zTqZY60rhDmV8ooQ5luhjlaQepJU4xBMeMUMH73hAIUnMood84tAZ7vGNc1zHuYIGRhhiGmyvcbLHwT784Bj/aIXPGbxhEOcbXKWUX3jGH07RDnGCOJQwxiJeDrsqjhLiCT6CVdTxust8iRya2MRML7G4HcKDW1zE5hv43QKS8CeKzldLEQAAAABJRU5ErkJggg==',
@@ -749,7 +762,7 @@ function enviarWhatsAppEntregador(dados){
   window.open(url, '_blank');
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -763,6 +776,7 @@ async function loadAll(){
   if(!state.convenioLancamentos) state.convenioLancamentos = [];
   if(!state.produtos) state.produtos = [];
   if(!state.precosControlados) state.precosControlados = {};
+  if(!state.categoriasProdutosGrupo) state.categoriasProdutosGrupo = Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO);
   if(!state.checklistRotina) state.checklistRotina = [];
   if(!state.checklistDias) state.checklistDias = {};
   if(!state.funcionarios) state.funcionarios = [];
@@ -1167,16 +1181,20 @@ function viewDashboard(){
   const aguaMes = vendasMes.filter(v=>{ const i=CATEGORIAS_ESTOQUE[v.categoria]; return i&&i.grupo==='agua'; }).reduce((s,v)=>s+v.valor_total,0);
   const outrosMes = totalVendasMes - gasMes - aguaMes;
   const fiadoAberto = totalFiadoAberto();
+  const emHaver = totalEmHaver();
+  const conveniosMes = totalConveniosMes(mk);
 
   return comunicadosBannerHtml()+metaCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div></div>'+
     '<div class="metric neg"><div class="label">Despesas do dia</div><div class="value">'+fmtMoney(totalDespesasHoje)+'</div></div>'+
     '</div></div>'+
     '<div class="card"><h2>Resumo do mês</h2><div class="grid cols4">'+
-    '<div class="metric"><div class="label">Vendas no mês</div><div class="value">'+fmtMoney(totalVendasMes)+'</div></div>'+
-    '<div class="metric neg"><div class="label">Despesas no mês</div><div class="value">'+fmtMoney(totalDespesasMes)+'</div></div>'+
-    '<div class="metric '+(lucroMes>=0?'pos':'neg')+'"><div class="label">Resultado no mês</div><div class="value">'+fmtMoney(lucroMes)+'</div></div>'+
-    '<div class="metric"><div class="label">A receber</div><div class="value">'+fmtMoney(fiadoAberto)+'</div></div>'+
+    '<div class="metric metric-link" data-ir-relatorio="vendas"><div class="label">Vendas no mês</div><div class="value">'+fmtMoney(totalVendasMes)+'</div></div>'+
+    '<div class="metric neg metric-link" data-ir-relatorio="despesas"><div class="label">Despesas no mês</div><div class="value">'+fmtMoney(totalDespesasMes)+'</div></div>'+
+    '<div class="metric '+(lucroMes>=0?'pos':'neg')+' metric-link" data-ir-relatorio="vendas"><div class="label">Resultado no mês</div><div class="value">'+fmtMoney(lucroMes)+'</div></div>'+
+    '<div class="metric metric-link" data-ir-relatorio="fiado"><div class="label">A receber</div><div class="value">'+fmtMoney(fiadoAberto)+'</div></div>'+
+    '<div class="metric metric-link" data-ir-relatorio="creditos"><div class="label">Em haver</div><div class="value">'+fmtMoney(emHaver)+'</div></div>'+
+    '<div class="metric metric-link" data-ir-relatorio="empresas"><div class="label">Convênios no mês</div><div class="value">'+fmtMoney(conveniosMes)+'</div></div>'+
     '</div></div>'+
     '<div class="card"><h2>Vendas do mês por categoria</h2><div class="grid cols4">'+
     '<div class="metric"><div class="label"><span class="badge gas">Gás</span></div><div class="value">'+fmtMoney(gasMes)+'</div></div>'+
@@ -1237,6 +1255,14 @@ function saldoDoCliente(cliente){
 }
 function totalFiadoAberto(){
   return clientesComFiado().reduce((s,c)=>s+saldoDoCliente(c), 0);
+}
+function totalEmHaver(){
+  return clientesComCredito().reduce((s,c)=>s+Math.max(0,saldoCreditoCliente(c)), 0);
+}
+function totalConveniosMes(mk){
+  const vendasConvenio = state.vendas.filter(v=>monthKey(v.data)===mk && v.empresa).reduce((s,v)=>s+v.valor_total,0);
+  const lancConvenio = state.convenioLancamentos.filter(c=>monthKey(c.data)===mk).reduce((s,c)=>s+c.valor,0);
+  return vendasConvenio + lancConvenio;
 }
 
 
@@ -1392,6 +1418,12 @@ function categoriasNaoControladas(){
 function produtosDaCategoria(categoria){
   return state.produtos.filter(p=>p.categoria===categoria).sort((a,b)=>a.nome.localeCompare(b.nome));
 }
+function grupoDaSubcategoria(cat){
+  return (state.categoriasProdutosGrupo && state.categoriasProdutosGrupo[cat]) || 'outros';
+}
+function subcategoriasDoGrupo(grupo){
+  return categoriasNaoControladas().filter(c=>grupoDaSubcategoria(c)===grupo);
+}
 function despesasDaCategoria(categoria){
   return state.despesas.filter(d=>d.categoria===categoria);
 }
@@ -1401,6 +1433,10 @@ function renomearCategoriaProduto(oldName, newName){
   state.produtos.forEach(function(p){ if(p.categoria===oldName) p.categoria = newName; });
   state.vendas.forEach(function(v){ if(v.categoria===oldName) v.categoria = newName; });
   state.agendamentos.forEach(function(a){ if(a.categoria===oldName) a.categoria = newName; });
+  if(state.categoriasProdutosGrupo && Object.prototype.hasOwnProperty.call(state.categoriasProdutosGrupo, oldName)){
+    state.categoriasProdutosGrupo[newName] = state.categoriasProdutosGrupo[oldName];
+    delete state.categoriasProdutosGrupo[oldName];
+  }
 }
 function renomearCategoriaDespesa(oldName, newName){
   const idx = state.categoriasDespesas.indexOf(oldName);
@@ -1427,6 +1463,10 @@ function mesclarCategoriasDuplicadas(){
     state.produtos.forEach(function(p){ if(p.categoria===d.de) p.categoria = d.para; });
     state.vendas.forEach(function(v){ if(v.categoria===d.de) v.categoria = d.para; });
     state.agendamentos.forEach(function(a){ if(a.categoria===d.de) a.categoria = d.para; });
+    if(state.categoriasProdutosGrupo && Object.prototype.hasOwnProperty.call(state.categoriasProdutosGrupo, d.de)){
+      if(!state.categoriasProdutosGrupo[d.para]) state.categoriasProdutosGrupo[d.para] = state.categoriasProdutosGrupo[d.de];
+      delete state.categoriasProdutosGrupo[d.de];
+    }
   });
   state.categoriasProdutos = novaLista;
   return duplicatas.length;
@@ -1515,27 +1555,40 @@ function viewGerenciarCategorias(){
   };
 
   const subs = categoriasNaoControladas();
-  const blocoSub = subs.map(function(sub){
-    const produtos = produtosDaCategoria(sub);
-    const linhasProd = produtos.length===0 ? '<div class="hint" style="margin:6px 0;">Nenhum produto nessa subcategoria ainda.</div>' :
-      '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th></th></tr></thead><tbody>'+
-      produtos.map(p=>'<tr><td>'+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td>'+
-        '<td><button class="act-link" data-edit-produto="'+p.id+'">✎ editar</button><button class="del-link" data-del-produto="'+p.id+'">🗑 excluir</button></td></tr>').join('')+
-      '</tbody></table></div>';
-    const cabecalho = editCategoriaProdutoNome===sub
-      ? '<input type="text" id="input-edit-cat-produto" value="'+sub+'" onclick="event.preventDefault()"> <button type="button" class="act-link" data-save-cat-produto="'+sub+'">✓ salvar</button><button type="button" class="del-link" data-cancel-cat-produto="'+sub+'">cancelar</button>'
-      : '<strong>'+sub+'</strong> <span class="hint">('+produtos.length+' produto(s))</span> <button type="button" class="act-link" data-edit-cat-produto="'+sub+'">✎ renomear</button><button type="button" class="del-link" data-del-cat-produto="'+sub+'">🗑 excluir</button>';
-    return '<details style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;"><summary>'+cabecalho+'</summary>'+
-      '<div style="margin-top:8px;">'+linhasProd+'</div></details>';
-  }).join('');
+  function blocoSubDoGrupo(lista){
+    if(lista.length===0) return '';
+    return lista.map(function(sub){
+      const produtos = produtosDaCategoria(sub);
+      const linhasProd = produtos.length===0 ? '<div class="hint" style="margin:6px 0;">Nenhum produto nessa subcategoria ainda.</div>' :
+        '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th></th></tr></thead><tbody>'+
+        produtos.map(p=>'<tr><td>'+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td>'+
+          '<td><button class="act-link" data-edit-produto="'+p.id+'">✎ editar</button><button class="del-link" data-del-produto="'+p.id+'">🗑 excluir</button></td></tr>').join('')+
+        '</tbody></table></div>';
+      const cabecalho = editCategoriaProdutoNome===sub
+        ? '<input type="text" id="input-edit-cat-produto" value="'+sub+'" onclick="event.preventDefault()"> <button type="button" class="act-link" data-save-cat-produto="'+sub+'">✓ salvar</button><button type="button" class="del-link" data-cancel-cat-produto="'+sub+'">cancelar</button>'
+        : '<strong>'+sub+'</strong> <span class="hint">('+produtos.length+' produto(s))</span> <button type="button" class="act-link" data-edit-cat-produto="'+sub+'">✎ renomear</button><button type="button" class="del-link" data-del-cat-produto="'+sub+'">🗑 excluir</button>';
+      return '<details style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;"><summary>'+cabecalho+'</summary>'+
+        '<div style="margin-top:8px;">'+linhasProd+'</div></details>';
+    }).join('');
+  }
+  const subsGas = subcategoriasDoGrupo('gas');
+  const subsAgua = subcategoriasDoGrupo('agua');
+  const subsOutros = subcategoriasDoGrupo('outros');
+  const opcoesGrupo = '<option value="" selected disabled>Categoria (Gás/Água/Outros)</option>'+GRUPOS_PRODUTO.map(g=>'<option value="'+g.chave+'">'+g.label+'</option>').join('');
 
-  return '<div class="card"><h2>Categoria: Gás</h2>'+tabelaFixo(fixosGas)+'</div>'+
-    '<div class="card"><h2>Categoria: Água</h2>'+tabelaFixo(fixosAgua)+'</div>'+
+  return '<div class="card"><h2>Categoria: Gás</h2>'+tabelaFixo(fixosGas)+
+    (blocoSubDoGrupo(subsGas)||'<div class="hint" style="margin-top:8px;">Nenhuma subcategoria extra de gás (ex.: acessórios) cadastrada ainda.</div>')+
+    '</div>'+
+    '<div class="card"><h2>Categoria: Água</h2>'+tabelaFixo(fixosAgua)+
+    (blocoSubDoGrupo(subsAgua)||'<div class="hint" style="margin-top:8px;">Nenhuma subcategoria extra de água (ex.: acessórios) cadastrada ainda.</div>')+
+    '</div>'+
     '<div class="card"><h2>Categoria: Outros</h2>'+
     '<div class="hint">Cada subcategoria funciona como o "tipo" que vem do Bling. Clique numa subcategoria pra ver, editar ou excluir os produtos dela.</div>'+
-    (blocoSub||'<div class="empty" style="margin-top:8px;">Nenhuma subcategoria cadastrada ainda.</div>')+
+    (blocoSubDoGrupo(subsOutros)||'<div class="empty" style="margin-top:8px;">Nenhuma subcategoria cadastrada ainda.</div>')+
     '<h3 style="margin-top:16px;">Nova subcategoria</h3>'+
+    '<div class="hint">Escolha em qual categoria (Gás, Água ou Outros) essa subcategoria deve aparecer — isso também organiza a planilha de importação.</div>'+
     '<div class="inline-add"><input type="text" id="nova-cat-produto-config-input" placeholder="Nome da subcategoria">'+
+    '<select id="nova-cat-produto-config-grupo">'+opcoesGrupo+'</select>'+
     '<button type="button" class="btn small ghost" id="btn-add-cat-produto-config">Adicionar</button></div>'+
     '<h3 style="margin-top:16px;">Novo produto</h3><form id="form-produto" class="form-row">'+
     '<div><label>Subcategoria <span class="req">*</span></label><select name="categoria" required>'+opcoesComPlaceholder(subs,'Selecione')+'</select></div>'+
@@ -1614,7 +1667,7 @@ function catalogoProdutosHtml(cats){
     const produtos = produtosDaCategoria(cat);
     return '<div class="item-venda-row" style="margin-top:10px;">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'+
-      '<strong>'+cat+'</strong><span class="pill">'+produtos.length+' produto(s)</span></div>'+
+      '<strong>'+cat+'</strong> <span class="hint">('+labelGrupoProduto(grupoDaSubcategoria(cat))+')</span><span class="pill">'+produtos.length+' produto(s)</span></div>'+
       (produtos.length===0 ? '<div class="empty">Nenhum produto nessa categoria ainda.</div>' :
       '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Produto</th><th>Preço</th><th></th></tr></thead><tbody>'+
       produtos.map(p=>'<tr><td>'+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td>'+
@@ -1694,7 +1747,7 @@ function viewVendas(){
     '<button type="button" class="btn small ghost" id="btn-add-item-venda">+ Incluir outro produto</button>'+
     '<div id="carrinho-total" class="carrinho-total-badge">Total do carrinho: R$ 0,00</div>'+
     '<div class="form-row" style="margin-top:14px;">'+
-    '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select><div class="hint" id="hint-forma-pagamento">"Abateu" desconta automaticamente do crédito em haver do cliente selecionado. Se o cliente tiver crédito, prefira usar a opção que aparece acima, ao lado do nome dele.</div></div>'+
+    '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select><div class="hint" id="hint-forma-pagamento">"Abateu" desconta automaticamente do crédito em haver do cliente selecionado, limitado ao saldo disponível — se o crédito não cobrir tudo, a diferença já entra como fiado (a receber) sozinha.</div></div>'+
     '<div><label>Nota (para o Bling) <span class="req">*</span></label><select name="nota" required>'+opcoesComPlaceholder(NOTAS,'Selecione o tipo de nota')+'</select></div>'+
     '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
     '</div>'+
@@ -2574,10 +2627,12 @@ function renderEvolucaoMensalChart(){
   });
 }
 function relatorioEmpresas(){
+  const deVal = relEmpresaDe || firstOfMonth();
+  const ateVal = relEmpresaAte || todayStr();
   return '<h3>Filtrar por período</h3><div class="form-row">'+
-    '<div><label>De</label><input type="date" id="re-de" value="'+firstOfMonth()+'"></div>'+
-    '<div><label>Até</label><input type="date" id="re-ate" value="'+todayStr()+'"></div>'+
-    '<div><label>Empresa conveniada</label><select id="re-empresa"><option value="">Todas as empresas</option>'+empresasOptions_lista().map(n=>'<option value="'+n+'">'+n+'</option>').join('')+'</select></div>'+
+    '<div><label>De</label><input type="date" id="re-de" value="'+deVal+'"></div>'+
+    '<div><label>Até</label><input type="date" id="re-ate" value="'+ateVal+'"></div>'+
+    '<div><label>Empresa conveniada</label><select id="re-empresa"><option value="">Todas as empresas</option>'+empresasOptions_lista().map(n=>'<option value="'+n+'"'+(n===relEmpresaSel?' selected':'')+'>'+n+'</option>').join('')+'</select></div>'+
     '</div>'+
     '<button class="btn small ghost" id="re-filtrar">Filtrar</button><div id="re-resultado" style="margin-top:16px;"></div>';
 }
@@ -2896,12 +2951,16 @@ function attachHandlers(){
   const btnAddCatProdutoConfig = document.getElementById('btn-add-cat-produto-config');
   if(btnAddCatProdutoConfig) btnAddCatProdutoConfig.onclick = async ()=>{
     const inp = document.getElementById('nova-cat-produto-config-input');
+    const selGrupo = document.getElementById('nova-cat-produto-config-grupo');
     const val = inp.value.trim();
+    const grupo = selGrupo && selGrupo.value ? selGrupo.value : 'outros';
     if(!val) return;
     if(state.categoriasProdutos.includes(val)){ alert('Já existe uma categoria de produto com esse nome.'); return; }
     if(categoriaControladaEquivalente(val)){ alert('Isso parece um item de gás ou água, que já é controlado automaticamente pelo estoque — não crie uma categoria separada pra ele. Se o preço estiver errado, edite direto na seção "Gás e água" da aba Produtos.'); return; }
     state.categoriasProdutos.push(val);
-    await save('categoriasProdutos');
+    if(!state.categoriasProdutosGrupo) state.categoriasProdutosGrupo = {};
+    state.categoriasProdutosGrupo[val] = grupo;
+    await save('categoriasProdutos'); await save('categoriasProdutosGrupo');
     renderAll();
   };
   document.querySelectorAll('[data-edit-cat-produto]').forEach(btn=>btn.onclick=()=>{
@@ -2934,7 +2993,8 @@ function attachHandlers(){
     if(!confirm(msg)) return;
     state.categoriasProdutos = state.categoriasProdutos.filter(c=>c!==cat);
     state.produtos = state.produtos.filter(p=>p.categoria!==cat);
-    await save('categoriasProdutos'); await save('produtos');
+    if(state.categoriasProdutosGrupo) delete state.categoriasProdutosGrupo[cat];
+    await save('categoriasProdutos'); await save('produtos'); await save('categoriasProdutosGrupo');
     renderAll();
   });
 
@@ -3000,7 +3060,8 @@ function attachHandlers(){
     if(!confirm('Isso vai excluir '+selecionadas.length+' categoria(s) e '+totalProdutos+' produto(s) do catálogo, mantendo só o controle de estoque nativo de gás/água. Vendas já registradas não são afetadas. Confirma?')) return;
     state.categoriasProdutos = state.categoriasProdutos.filter(c=>!selecionadas.includes(c));
     state.produtos = state.produtos.filter(p=>!selecionadas.includes(p.categoria));
-    await save('categoriasProdutos'); await save('produtos');
+    if(state.categoriasProdutosGrupo) selecionadas.forEach(c=>{ delete state.categoriasProdutosGrupo[c]; });
+    await save('categoriasProdutos'); await save('produtos'); await save('categoriasProdutosGrupo');
     alert('Categorias e produtos removidos. O estoque de gás e água continua controlado normalmente pela aba Estoque.');
     renderAll();
   };
@@ -3089,12 +3150,19 @@ function attachHandlers(){
           state.vendas.filter(v=>v.grupoId===grupoId).forEach(v=>{ v.pagamento = 'Abateu'; });
         }
       } else if(camposComuns.pagamento==='Abateu' && camposComuns.cliente){
-        const totalVendaComFrete = itens.reduce((s,i)=>s+i.valor_total,0) + freteTotal;
+        const totalVendaComFrete = Math.round((itens.reduce((s,i)=>s+i.valor_total,0) + freteTotal)*100)/100;
         const saldoAntes = saldoCreditoCliente(camposComuns.cliente);
-        state.creditos.push({id:uid(), cliente:camposComuns.cliente, valor: -totalVendaComFrete, data:camposComuns.data, obs:'Abatido automaticamente na venda de '+fmtMoney(totalVendaComFrete)});
+        const abatido = Math.round(Math.min(Math.max(saldoAntes,0), totalVendaComFrete)*100)/100;
+        const diferenca = Math.round((totalVendaComFrete - abatido)*100)/100;
+        state.creditos.push({id:uid(), cliente:camposComuns.cliente, valor:-abatido, data:camposComuns.data,
+          obs:'Abatido na venda de '+fmtMoney(totalVendaComFrete)+(diferenca>0.004?' (diferença de '+fmtMoney(diferenca)+' foi pro fiado)':'')});
         await save('creditos');
-        if(totalVendaComFrete > saldoAntes + 0.004){
-          alert('Atenção: '+camposComuns.cliente+' tinha '+fmtMoney(saldoAntes)+' de crédito em haver, mas essa venda deu '+fmtMoney(totalVendaComFrete)+'. O saldo de crédito ficou negativo — confira em Relatórios → Créditos em haver.');
+        if(diferenca>0.004){
+          state.fiados.push({id:uid(), cliente:camposComuns.cliente, valor:diferenca, data:camposComuns.data,
+            descricao:'Diferença da venda de '+fmtMoney(totalVendaComFrete)+' (parte paga com crédito em haver — "Abateu")', status:'aberto'});
+          await save('fiados');
+          state.vendas.filter(v=>v.grupoId===grupoId).forEach(v=>{ v.pagamento = 'Abateu + Fiado'; });
+          alert(camposComuns.cliente+' tinha '+fmtMoney(saldoAntes)+' de crédito em haver. Abatemos '+fmtMoney(abatido)+' e os '+fmtMoney(diferenca)+' restantes foram lançados como fiado (a receber).');
         }
       }
       const veioDeAgendamento = !!agendamentoParaConcluir;
@@ -3340,6 +3408,9 @@ function attachHandlers(){
     e.preventDefault();
     const f = new FormData(fConvenio);
     const empresaSel = document.getElementById('re-empresa').value;
+    relEmpresaSel = empresaSel;
+    relEmpresaDe = document.getElementById('re-de').value;
+    relEmpresaAte = document.getElementById('re-ate').value;
     if(editConvenioId){
       const ci = state.convenioLancamentos.find(x=>x.id===editConvenioId);
       if(ci){ ci.valor=Number(f.get('valor')); ci.data=f.get('data'); ci.descricao=f.get('descricao')||''; }
@@ -3360,6 +3431,9 @@ function attachHandlers(){
   });
   document.querySelectorAll('[data-del-convenio]').forEach(btn=>btn.onclick=async()=>{
     if(!confirm('Excluir este lançamento?')) return;
+    relEmpresaSel = document.getElementById('re-empresa').value;
+    relEmpresaDe = document.getElementById('re-de').value;
+    relEmpresaAte = document.getElementById('re-ate').value;
     state.convenioLancamentos = state.convenioLancamentos.filter(x=>x.id!==btn.dataset.delConvenio);
     await save('convenioLancamentos');
     renderAll();
@@ -3786,8 +3860,15 @@ function attachHandlers(){
   const rdFiltrar = document.getElementById('rd-filtrar'); if(rdFiltrar) rdFiltrar.onclick = renderRelatorioDespesasResultado;
   const rentFiltrar = document.getElementById('rent-filtrar'); if(rentFiltrar) rentFiltrar.onclick = renderRelatorioEntregasResultado;
   const rnFiltrar = document.getElementById('rn-filtrar'); if(rnFiltrar) rnFiltrar.onclick = renderRelatorioNotasResultado;
-  const reFiltrar = document.getElementById('re-filtrar'); if(reFiltrar) reFiltrar.onclick = renderRelatorioEmpresasResultado;
-  const reEmpresaSel = document.getElementById('re-empresa'); if(reEmpresaSel) reEmpresaSel.onchange = renderRelatorioEmpresasResultado;
+  const reFiltrar = document.getElementById('re-filtrar'); if(reFiltrar) reFiltrar.onclick = ()=>{
+    relEmpresaDe = document.getElementById('re-de').value;
+    relEmpresaAte = document.getElementById('re-ate').value;
+    renderRelatorioEmpresasResultado();
+  };
+  const reEmpresaSel = document.getElementById('re-empresa'); if(reEmpresaSel) reEmpresaSel.onchange = ()=>{
+    relEmpresaSel = reEmpresaSel.value;
+    renderRelatorioEmpresasResultado();
+  };
   const reAnexoInput = document.getElementById('re-anexo-input');
   if(reAnexoInput) reAnexoInput.onchange = async (e)=>{
     const arquivos = Array.from(e.target.files||[]);
@@ -3847,6 +3928,11 @@ function attachHandlers(){
     renderEvolucaoMensalChart();
   }
   document.querySelectorAll('[data-ir-metas]').forEach(btn=>btn.onclick=()=>{ currentTab='metas'; renderAll(); });
+  document.querySelectorAll('[data-ir-relatorio]').forEach(btn=>btn.onclick=()=>{
+    currentTab = 'relatorios';
+    relatorioSub = btn.dataset.irRelatorio;
+    renderAll();
+  });
 
   const fMeta = document.getElementById('form-meta');
   if(fMeta) fMeta.onsubmit = async(e)=>{
@@ -4223,7 +4309,8 @@ function attachHandlers(){
     if(!confirm('Tem certeza mesmo? Essa ação não pode ser desfeita.')) return;
     state.produtos = state.produtos.filter(p=>p.fixo);
     state.categoriasProdutos = CATEGORIAS_CONTROLADAS.slice();
-    await save('produtos'); await save('categoriasProdutos');
+    state.categoriasProdutosGrupo = {};
+    await save('produtos'); await save('categoriasProdutos'); await save('categoriasProdutosGrupo');
     alert('Catálogo zerado. Só ficaram as categorias de gás e água — pode importar o catálogo novo.');
     renderAll();
   };
@@ -4234,8 +4321,9 @@ function attachHandlers(){
     if(!confirm('Tem certeza mesmo? Essa ação não pode ser desfeita. Você vai recadastrar tudo do zero.')) return;
     state.produtos = [];
     state.categoriasProdutos = [];
+    state.categoriasProdutosGrupo = {};
     state.catalogoLivre = true;
-    await save('produtos'); await save('categoriasProdutos'); await save('catalogoLivre');
+    await save('produtos'); await save('categoriasProdutos'); await save('categoriasProdutosGrupo'); await save('catalogoLivre');
     alert('Tudo excluído. Comece a cadastrar em Cadastros → Categoria / Subcategoria / Produto.');
     renderAll();
   };
@@ -4395,6 +4483,7 @@ async function gerarModeloImportacaoDiaria(){
   const categoriasProdutoValidas = state.categoriasProdutos.slice();
   const categoriasProdutoNaoControladas = state.categoriasProdutos.filter(c=>!CATEGORIAS_CONTROLADAS.includes(c));
   const categoriasDespesaValidas = state.categoriasDespesas.slice();
+  const gruposProduto = GRUPOS_PRODUTO.map(g=>g.label);
   const wsListas = wb.addWorksheet('ListasValidas');
   const colunasListas = [
     {titulo:'Canal', valores:CANAIS},
@@ -4403,7 +4492,8 @@ async function gerarModeloImportacaoDiaria(){
     {titulo:'TipoEntrega', valores:TIPOS_ENTREGA},
     {titulo:'CategoriaProduto', valores:categoriasProdutoValidas},
     {titulo:'CategoriaDespesa', valores:categoriasDespesaValidas},
-    {titulo:'CategoriaProdutoNaoControlada', valores:categoriasProdutoNaoControladas}
+    {titulo:'CategoriaProdutoNaoControlada', valores:categoriasProdutoNaoControladas},
+    {titulo:'GrupoProduto', valores:gruposProduto}
   ];
   colunasListas.forEach(function(col, idx){
     const letra = String.fromCharCode(65+idx);
@@ -4440,7 +4530,9 @@ async function gerarModeloImportacaoDiaria(){
     'Tipo de Entrega (Vendas): '+TIPOS_ENTREGA.join(' | '),
     'Categoria/Produto (Vendas): use o nome exato do produto ou categoria já cadastrado no sistema (ex.: P13, P45, Água 20L Safira, etc.) — já vem com dropdown das categorias cadastradas.',
     'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
-    'Categoria (Despesas): '+state.categoriasDespesas.join(' | ')
+    'Categoria (Despesas): '+state.categoriasDespesas.join(' | '),
+    'Grupo (Produtos): '+gruposProduto.join(' | ')+' — usado só quando a Categoria da linha ainda não existe no sistema, pra saber em qual das três a nova categoria deve entrar. Se a Categoria já existir, o grupo dela é mantido do jeito que já está cadastrado.',
+    'Categoria (Produtos): o "tipo" do produto (ex.: Produtos de Limpeza, Acessórios para Gás). Já vem com dropdown das categorias não controladas cadastradas — gás e água já são controlados pelo Estoque e não entram aqui.'
   ].forEach(function(linha){ wsInstr.addRow([linha]); });
 
   const ULTIMA_LINHA = 300;
@@ -4471,9 +4563,10 @@ async function gerarModeloImportacaoDiaria(){
 
   // ---- Aba Produtos ----
   const wsProdutos = wb.addWorksheet('Produtos');
-  wsProdutos.addRow(['Nome','Categoria','Preço']);
+  wsProdutos.addRow(['Grupo','Categoria','Produto','Preço']);
   wsProdutos.getRow(1).font = {bold:true};
   wsProdutos.columns.forEach(c=>{ c.width = 18; });
+  aplicarDropdown(wsProdutos, 'A', 'H', gruposProduto.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsProdutos, 'B', 'G', categoriasProdutoNaoControladas.length, 2, ULTIMA_LINHA);
 
   const buffer = await wb.xlsx.writeBuffer();
@@ -4609,19 +4702,27 @@ function processarImportacaoDiariaExcel(file){
 
     if(linhasProdutos.length){
       let novos=0, ignorados=0;
+      let categoriasGrupoAlterado = false;
       linhasProdutos.forEach(function(r){
-        const nome = (r['Nome']||'').trim();
+        const nome = (r['Produto']||r['Nome']||'').trim();
         if(!nome){ ignorados++; return; }
         const categoria = (r['Categoria']||'').trim() || 'Outros';
         if(categoriaControladaEquivalente(nome) || categoriaControladaEquivalente(categoria)){ ignorados++; return; }
         const preco = Number(String(r['Preço']||'0').replace(/\./g,'').replace(',','.'))||0;
         const jaExiste = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveNormalizada(nome) && chaveNormalizada(p.categoria)===chaveNormalizada(categoria));
         if(jaExiste){ ignorados++; return; }
-        if(!state.categoriasProdutos.includes(categoria)) state.categoriasProdutos.push(categoria);
+        const categoriaJaExistia = state.categoriasProdutos.includes(categoria);
+        if(!categoriaJaExistia) state.categoriasProdutos.push(categoria);
+        if(!categoriaJaExistia && !(state.categoriasProdutosGrupo && state.categoriasProdutosGrupo[categoria])){
+          if(!state.categoriasProdutosGrupo) state.categoriasProdutosGrupo = {};
+          state.categoriasProdutosGrupo[categoria] = chaveGrupoProduto(r['Grupo']);
+          categoriasGrupoAlterado = true;
+        }
         state.produtos.push({id:uid(), nome, categoria, preco, ativo:true});
         novos++;
       });
       if(novos>0){ await save('produtos'); await save('categoriasProdutos'); }
+      if(categoriasGrupoAlterado) await save('categoriasProdutosGrupo');
       resumo.push(novos+' produto(s) novo(s)'+(ignorados>0?' — '+ignorados+' ignorado(s)':''));
     }
 
