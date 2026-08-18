@@ -387,7 +387,7 @@ function parseValorBR(str){
 }
 let despesaManualAberta = false;
 let csvDespesasRows = null, csvDespesasHeaders = null;
-let editDespesaId = null, editClienteId = null, editVendaId = null, editFiadoId = null, editConvenioId = null;
+let editDespesaId = null, editClienteId = null, editVendaId = null, editFiadoId = null, editConvenioId = null, editConvenioPagamentoId = null;
 let editEmpresaId = null, editAgendamentoId = null, pendingEditVendaId = null;
 let clienteExtrato = null, clienteRegistrandoPagamento = null, editFiadoPagamentoId = null;
 let agendamentoParaConcluir = null, prefillVenda = null;
@@ -823,7 +823,7 @@ function enviarWhatsAppEntregador(dados){
   window.open(url, '_blank');
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -835,6 +835,7 @@ async function loadAll(){
   if(!state.empresas) state.empresas = [];
   if(!state.fiadoPagamentos) state.fiadoPagamentos = [];
   if(!state.convenioLancamentos) state.convenioLancamentos = [];
+  if(!state.convenioPagamentos) state.convenioPagamentos = [];
   if(!state.produtos) state.produtos = [];
   if(!state.precosControlados) state.precosControlados = {};
   if(!state.categoriasProdutosGrupo) state.categoriasProdutosGrupo = Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO);
@@ -2847,9 +2848,12 @@ function renderRelatorioEmpresasResultado(){
   }
   const vendasEmpresa = state.vendas.filter(v=>v.data>=de && v.data<=ate && v.empresa===empresaSel).sort((a,b)=>a.data.localeCompare(b.data));
   const lancEmpresa = state.convenioLancamentos.filter(c=>c.empresa===empresaSel && c.data>=de && c.data<=ate).sort((a,b)=>a.data.localeCompare(b.data));
+  const pagEmpresa = (state.convenioPagamentos||[]).filter(p=>p.empresa===empresaSel && p.data>=de && p.data<=ate).sort((a,b)=>a.data.localeCompare(b.data));
   const totalVendas = vendasEmpresa.reduce((s,v)=>s+v.valor_total,0);
   const totalLanc = lancEmpresa.reduce((s,c)=>s+c.valor,0);
+  const totalPago = pagEmpresa.reduce((s,p)=>s+p.valor,0);
   const total = totalVendas + totalLanc;
+  const saldo = total - totalPago;
   const mesRef = monthKey(de);
   const empresaObj = state.empresas.find(e=>e.nome===empresaSel);
   const linhasVendas = vendasEmpresa.map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td><td></td></tr>');
@@ -2860,7 +2864,16 @@ function renderRelatorioEmpresasResultado(){
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto/Descrição</th><th>Cliente</th><th>Valor</th><th></th></tr></thead><tbody>'+
     todasLinhas.join('')+
     '</tbody></table></div>';
-  wrap.innerHTML = '<div class="metric" style="max-width:280px;margin-bottom:12px;"><div class="label">Total — '+empresaSel+'</div><div class="value">'+fmtMoney(total)+'</div></div>'+
+  const linhasPag = pagEmpresa.map(p=>'<tr><td>'+fmtDate(p.data)+'</td><td>'+(p.forma_pagamento||'—')+'</td><td>'+fmtMoney(p.valor)+'</td>'+
+    '<td><button class="act-link" data-edit-convenio-pag="'+p.id+'">✎ editar</button><button class="del-link" data-del-convenio-pag="'+p.id+'">🗑 excluir</button></td></tr>');
+  const tabelaPag = linhasPag.length===0 ? '<div class="empty">Nenhum pagamento registrado nesse período.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Forma</th><th>Valor</th><th></th></tr></thead><tbody>'+
+    linhasPag.join('')+'</tbody></table></div>';
+  wrap.innerHTML = '<div class="grid cols4" style="margin-bottom:12px;">'+
+    '<div class="metric"><div class="label">Total do período</div><div class="value">'+fmtMoney(total)+'</div></div>'+
+    '<div class="metric pos"><div class="label">Pago no período</div><div class="value">'+fmtMoney(totalPago)+'</div></div>'+
+    '<div class="metric '+(saldo>0?'neg':'pos')+'"><div class="label">Saldo <span class="badge '+(saldo>0?'status-receber':'status-pago')+'">'+(saldo>0?'a receber':'quitado')+'</span></div><div class="value">'+fmtMoney(saldo)+'</div></div>'+
+    '</div>'+
     (empresaObj && empresaObj.telefone ? '<div style="margin-bottom:14px;">'+botaoWhatsApp(empresaObj.telefone)+'</div>' : '<div class="hint" style="margin-bottom:14px;">Esta empresa não tem WhatsApp cadastrado — edite a empresa em "Empresas conveniadas" para adicionar.</div>')+
     '<h3>Lançar valor manualmente (sem gerar venda)</h3>'+
     '<div class="hint">Use para lançar um valor retroativo do convênio, sem precisar registrar uma venda como é feito no fiado.</div>'+
@@ -2870,12 +2883,112 @@ function renderRelatorioEmpresasResultado(){
     '<div><label>Descrição</label><input type="text" name="descricao" placeholder="Ex: convênio referente a mês anterior"></div></div>'+
     '<button type="submit" class="btn small">Lançar valor</button></form>'+
     tabelaVendas+
+    '<h3 style="margin-top:18px;">Registrar pagamento recebido (baixa)</h3>'+
+    '<div class="hint">Assim como no fiado, registre aqui quando a empresa pagar o convênio. O saldo acima é atualizado automaticamente.</div>'+
+    '<form id="form-convenio-pag" style="margin-top:8px;"><div class="form-row">'+
+    '<div><label>Data do pagamento</label><input type="date" name="data" value="'+ate+'" required></div>'+
+    '<div><label>Valor pago (R$)</label><input type="text" inputmode="decimal" name="valor" placeholder="0,00" required></div>'+
+    '<div><label>Forma de pagamento</label><select name="forma_pagamento"><option value="Pix">Pix</option><option value="Dinheiro">Dinheiro</option><option value="Transferência">Transferência</option><option value="Boleto">Boleto</option><option value="Outro">Outro</option></select></div></div>'+
+    '<button type="submit" class="btn small green">Registrar pagamento</button></form>'+
+    tabelaPag+
     '<h3 style="margin-top:18px;">Anexos do convênio — '+nomeMes(mesRef)+'</h3>'+
     '<div class="hint">Fotos do talão fiscal e PDFs de nota — não precisam ser anexados na hora da venda, suba quando for mais prático (ex: no fim do dia). No dia 01, gere o PDF completo do mês anterior com um clique.</div>'+
     '<input type="file" id="re-anexo-input" accept="image/*,.pdf" multiple style="margin-top:8px;">'+
     '<div id="re-anexos-lista" class="hint" style="margin-top:10px;">Carregando anexos...</div>'+
     '<button class="btn small" id="btn-gerar-pdf-convenio" style="margin-top:12px;">📄 Gerar PDF do convênio (vendas + anexos)</button>';
   carregarERenderizarAnexos(empresaSel, mesRef);
+  attachConvenioHandlers();
+}
+/* Anexa os handlers do formulário de lançamento manual e de pagamento (baixa) do convênio.
+   É chamada sempre que renderRelatorioEmpresasResultado() recria o HTML, garantindo que os
+   botões/forms recém-criados no DOM sempre tenham seus listeners — antes esses handlers só
+   eram ligados dentro de attachHandlers(), ANTES do form existir no DOM (o form só é criado
+   aqui dentro), então o clique caía no envio padrão do <form> (recarregando a página) e nada
+   era salvo. */
+function attachConvenioHandlers(){
+  const fConvenio = document.getElementById('form-convenio');
+  if(fConvenio) fConvenio.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(fConvenio);
+    const empresaSel = document.getElementById('re-empresa').value;
+    relEmpresaSel = empresaSel;
+    relEmpresaDe = document.getElementById('re-de').value;
+    relEmpresaAte = document.getElementById('re-ate').value;
+    const valorConvenio = parseValorBR(f.get('valor'));
+    if(!f.get('valor') || isNaN(valorConvenio) || valorConvenio<=0){
+      alert('Digite um valor válido, por exemplo 50,00');
+      return;
+    }
+    if(editConvenioId){
+      const ci = state.convenioLancamentos.find(x=>x.id===editConvenioId);
+      if(ci){ ci.valor=valorConvenio; ci.data=f.get('data'); ci.descricao=f.get('descricao')||''; }
+      editConvenioId = null;
+    } else {
+      state.convenioLancamentos.push({id:uid(), empresa:empresaSel, valor:valorConvenio, data:f.get('data'), descricao:f.get('descricao')||''});
+    }
+    const ok = await save('convenioLancamentos');
+    if(!ok) return;
+    renderAll();
+  };
+  document.querySelectorAll('[data-edit-convenio]').forEach(btn=>btn.onclick=()=>{
+    const ci = state.convenioLancamentos.find(x=>x.id===btn.dataset.editConvenio);
+    if(!ci) return;
+    editConvenioId = ci.id;
+    const form = document.getElementById('form-convenio');
+    if(form){ form.data.value=ci.data; form.valor.value=Number(ci.valor).toFixed(2).replace('.', ','); form.descricao.value=ci.descricao||''; form.scrollIntoView({behavior:'smooth'}); }
+  });
+  document.querySelectorAll('[data-del-convenio]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir este lançamento?')) return;
+    relEmpresaSel = document.getElementById('re-empresa').value;
+    relEmpresaDe = document.getElementById('re-de').value;
+    relEmpresaAte = document.getElementById('re-ate').value;
+    state.convenioLancamentos = state.convenioLancamentos.filter(x=>x.id!==btn.dataset.delConvenio);
+    const ok = await save('convenioLancamentos');
+    if(!ok) return;
+    renderAll();
+  });
+  const fPag = document.getElementById('form-convenio-pag');
+  if(fPag) fPag.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(fPag);
+    const empresaSel = document.getElementById('re-empresa').value;
+    relEmpresaSel = empresaSel;
+    relEmpresaDe = document.getElementById('re-de').value;
+    relEmpresaAte = document.getElementById('re-ate').value;
+    const valorPag = parseValorBR(f.get('valor'));
+    if(!f.get('valor') || isNaN(valorPag) || valorPag<=0){
+      alert('Digite um valor válido, por exemplo 50,00');
+      return;
+    }
+    if(!state.convenioPagamentos) state.convenioPagamentos = [];
+    if(editConvenioPagamentoId){
+      const p = state.convenioPagamentos.find(x=>x.id===editConvenioPagamentoId);
+      if(p){ p.valor=valorPag; p.data=f.get('data'); p.forma_pagamento=f.get('forma_pagamento')||''; }
+      editConvenioPagamentoId = null;
+    } else {
+      state.convenioPagamentos.push({id:uid(), empresa:empresaSel, valor:valorPag, data:f.get('data'), forma_pagamento:f.get('forma_pagamento')||''});
+    }
+    const ok = await save('convenioPagamentos');
+    if(!ok) return;
+    renderAll();
+  };
+  document.querySelectorAll('[data-edit-convenio-pag]').forEach(btn=>btn.onclick=()=>{
+    const p = (state.convenioPagamentos||[]).find(x=>x.id===btn.dataset.editConvenioPag);
+    if(!p) return;
+    editConvenioPagamentoId = p.id;
+    const form = document.getElementById('form-convenio-pag');
+    if(form){ form.data.value=p.data; form.valor.value=Number(p.valor).toFixed(2).replace('.', ','); form.forma_pagamento.value=p.forma_pagamento||'Pix'; form.scrollIntoView({behavior:'smooth'}); }
+  });
+  document.querySelectorAll('[data-del-convenio-pag]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir este pagamento?')) return;
+    relEmpresaSel = document.getElementById('re-empresa').value;
+    relEmpresaDe = document.getElementById('re-de').value;
+    relEmpresaAte = document.getElementById('re-ate').value;
+    state.convenioPagamentos = (state.convenioPagamentos||[]).filter(x=>x.id!==btn.dataset.delConvenioPag);
+    const ok = await save('convenioPagamentos');
+    if(!ok) return;
+    renderAll();
+  });
 }
 async function carregarAnexosConvenio(empresa, mes){
   try{
@@ -3490,48 +3603,6 @@ function attachHandlers(){
     await save('fiados');
     renderAll();
   };
-
-  const fConvenio = document.getElementById('form-convenio');
-  if(fConvenio) fConvenio.onsubmit = async(e)=>{
-    e.preventDefault();
-    const f = new FormData(fConvenio);
-    const empresaSel = document.getElementById('re-empresa').value;
-    relEmpresaSel = empresaSel;
-    relEmpresaDe = document.getElementById('re-de').value;
-    relEmpresaAte = document.getElementById('re-ate').value;
-    const valorConvenio = parseValorBR(f.get('valor'));
-    if(!f.get('valor') || isNaN(valorConvenio) || valorConvenio<=0){
-      alert('Digite um valor válido, por exemplo 50,00');
-      return;
-    }
-    if(editConvenioId){
-      const ci = state.convenioLancamentos.find(x=>x.id===editConvenioId);
-      if(ci){ ci.valor=valorConvenio; ci.data=f.get('data'); ci.descricao=f.get('descricao')||''; }
-      editConvenioId = null;
-    } else {
-      state.convenioLancamentos.push({id:uid(), empresa:empresaSel, valor:valorConvenio, data:f.get('data'), descricao:f.get('descricao')||''});
-    }
-    await save('convenioLancamentos');
-    renderAll();
-    setTimeout(renderRelatorioEmpresasResultado, 0);
-  };
-  document.querySelectorAll('[data-edit-convenio]').forEach(btn=>btn.onclick=()=>{
-    const ci = state.convenioLancamentos.find(x=>x.id===btn.dataset.editConvenio);
-    if(!ci) return;
-    editConvenioId = ci.id;
-    const form = document.getElementById('form-convenio');
-    if(form){ form.data.value=ci.data; form.valor.value=Number(ci.valor).toFixed(2).replace('.', ','); form.descricao.value=ci.descricao||''; form.scrollIntoView({behavior:'smooth'}); }
-  });
-  document.querySelectorAll('[data-del-convenio]').forEach(btn=>btn.onclick=async()=>{
-    if(!confirm('Excluir este lançamento?')) return;
-    relEmpresaSel = document.getElementById('re-empresa').value;
-    relEmpresaDe = document.getElementById('re-de').value;
-    relEmpresaAte = document.getElementById('re-ate').value;
-    state.convenioLancamentos = state.convenioLancamentos.filter(x=>x.id!==btn.dataset.delConvenio);
-    await save('convenioLancamentos');
-    renderAll();
-    setTimeout(renderRelatorioEmpresasResultado, 0);
-  });
 
   document.querySelectorAll('[data-ver-extrato]').forEach(btn=>btn.onclick=()=>{
     clienteExtrato = decodeURIComponent(btn.dataset.verExtrato);
@@ -4438,8 +4509,10 @@ function attachHandlers(){
     state.agendamentos = [];
     state.estoque = defaultEstoque();
     state.estoqueLancamentos = [];
+    state.convenioLancamentos = [];
+    state.convenioPagamentos = [];
     clienteExtrato = null; clienteRegistrandoPagamento = null;
-    await save('vendas'); await save('despesas'); await save('fiados'); await save('fiadoPagamentos'); await save('creditos'); await save('comodatos'); await save('agendamentos'); await save('estoque'); await save('estoqueLancamentos');
+    await save('vendas'); await save('despesas'); await save('fiados'); await save('fiadoPagamentos'); await save('creditos'); await save('comodatos'); await save('agendamentos'); await save('estoque'); await save('estoqueLancamentos'); await save('convenioLancamentos'); await save('convenioPagamentos');
     atualizarBadgeApp();
     alert('Lançamentos zerados com sucesso. Clientes, empresas e o catálogo de produtos foram mantidos.');
     renderAll();
