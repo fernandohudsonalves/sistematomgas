@@ -2368,6 +2368,26 @@ function itemComodatoLabel(categoria, item){
   return par ? par[0] : item;
 }
 function chaveComodato(c){ return [c.direcao, c.nome, c.categoria, c.item, c.produto].join('|'); }
+/* Monta um objeto no mesmo formato usado pelos lançamentos de "Ajustar estoque manualmente"
+   (tipo/item/itemChave/estado/direcao/quantidade), a partir de um lançamento de comodato,
+   pra poder reaproveitar aplicarEfeitoEstoqueLanc() e refletir o comodato no estoque real.
+   Direção "cliente" com quantidade positiva = saiu item da loja (estoque desce).
+   Direção "atacadista" com quantidade positiva = entrou item extra do atacadista (estoque sobe). */
+function efeitoEstoqueLancDeComodato(c){
+  const grupoEstoque = c.categoria==='Gás' ? state.estoque.gas : state.estoque.agua;
+  if(!grupoEstoque || !grupoEstoque[c.item]) return null;
+  const itemLabel = c.categoria==='Gás' ? c.item : itemComodatoLabel(c.categoria, c.item);
+  const estado = c.produto==='Vasilhame vazio' ? 'Vazio' : 'Cheio';
+  const sinal = c.direcao==='cliente' ? -1 : 1;
+  const delta = sinal * c.quantidade;
+  if(delta===0) return null;
+  return {
+    id: uid(), criadoEm: Date.now(), data: c.data, tipo: c.categoria, item: itemLabel, itemChave: c.item,
+    estado, direcao: delta>0 ? 'entrada' : 'saida', quantidade: Math.abs(delta),
+    motivo: 'Comodato — '+(c.direcao==='cliente'?'emprestado a ':'recebido de ')+c.nome+(c.obs?' ('+c.obs+')':''),
+    usuario: usuarioAtualNome
+  };
+}
 function saldosComodato(direcao){
   const mapa = {};
   state.comodatos.filter(c=>c.direcao===direcao).forEach(c=>{
@@ -2388,7 +2408,7 @@ function tabelaSaldosComodato(direcao, tituloColuna){
 function relatorioComodatos(){
   return '<h3>Lançar comodato / empréstimo</h3>'+
     '<div class="hint">Use quantidade <strong>positiva</strong> quando alguém fica devendo pra você (emprestou/saiu casco ou carga), e <strong>negativa</strong> quando é devolvido/quitado — igual funciona em "Créditos". '+
-    'Se o cliente ficou com uma carga completa (já devolveu o vasilhame vazio), lance como Produto "Carga completa" — não precisa criar item novo no estoque, é só uma dívida em quantidade, igual dinheiro.</div>'+
+    'Se o cliente ficou com uma carga completa (já devolveu o vasilhame vazio), lance como Produto "Carga completa".</div>'+
     '<form id="form-comodato"><div class="form-row">'+
     '<div><label>Direção <span class="req">*</span></label><select name="direcao" required>'+
     '<option value="" selected disabled>Selecione</option>'+
@@ -2405,6 +2425,8 @@ function relatorioComodatos(){
     '<div><label>Quantidade <span class="req">*</span></label><input type="number" name="quantidade" step="1" placeholder="Ex: 2 ou -2" required></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+todayStr()+'" required></div></div>'+
     '<label>Observação</label><input type="text" name="obs" placeholder="Ex: pegou 2 vasilhames vazios emprestados">'+
+    '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;"><input type="checkbox" name="baixa_estoque" id="cmd-baixa-estoque" checked style="width:auto;"> Dar baixa/entrada automática no estoque</label>'+
+    '<div class="hint">Marcado: este lançamento também ajusta o estoque (cheio/vazio) do item na hora. Desmarque só se for um caso avulso que não deve mexer no estoque.</div>'+
     '<button type="submit" class="btn small">Lançar</button></form>'+
     '<h3 style="margin-top:16px;">Clientes me devendo (comodato emprestado)</h3>'+
     tabelaSaldosComodato('cliente','Cliente')+
@@ -2416,10 +2438,12 @@ function relatorioComodatos(){
 function comodatosListaHtml(){
   const todos = state.comodatos.slice().sort((a,b)=>b.data.localeCompare(a.data));
   if(todos.length===0) return '<div class="empty">Nenhum comodato lançado ainda.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Direção</th><th>Nome</th><th>Categoria / Item</th><th>Produto</th><th>Data</th><th>Qtd</th><th>Observação</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><thead><tr><th>Direção</th><th>Nome</th><th>Categoria / Item</th><th>Produto</th><th>Data</th><th>Qtd</th><th>Estoque</th><th>Observação</th><th></th></tr></thead><tbody>'+
     todos.map(c=>'<tr><td>'+(c.direcao==='cliente'?'Cliente':'Atacadista')+'</td><td>'+c.nome+'</td>'+
     '<td>'+c.categoria+' — '+itemComodatoLabel(c.categoria,c.item)+'</td><td>'+c.produto+'</td><td>'+fmtDate(c.data)+'</td>'+
-    '<td>'+(c.quantidade>0?'+':'')+c.quantidade+'</td><td>'+(c.obs||'—')+'</td>'+
+    '<td>'+(c.quantidade>0?'+':'')+c.quantidade+'</td>'+
+    '<td>'+(c.baixaEstoque?'<span class="badge status-pago">ajustou</span>':'<span class="badge" style="background:var(--border);color:var(--text2);">não mexeu</span>')+'</td>'+
+    '<td>'+(c.obs||'—')+'</td>'+
     '<td><button class="act-link" data-edit-comodato="'+c.id+'">✎ editar</button><button class="del-link" data-del-comodato="'+c.id+'">🗑 excluir</button></td></tr>').join('')+
     '</tbody></table></div>';
 }
@@ -3977,15 +4001,25 @@ function attachHandlers(){
     fcmEl.direcao.value=c.direcao; fcmEl.nome.value=c.nome; fcmEl.categoria.value=c.categoria;
     popularItensComodato(c.categoria, c.item);
     fcmEl.produto.value=c.produto; fcmEl.quantidade.value=c.quantidade; fcmEl.data.value=c.data; fcmEl.obs.value=c.obs||'';
+    fcmEl.querySelector('#cmd-baixa-estoque').checked = !!c.baixaEstoque;
     fcmEl.querySelector('button[type=submit]').textContent='Salvar alterações';
     fcmEl.scrollIntoView({behavior:'smooth'});
   });
   document.querySelectorAll('[data-del-comodato]').forEach(btn=>btn.onclick=async()=>{
     const c = state.comodatos.find(x=>x.id===btn.dataset.delComodato);
     if(!c) return;
-    if(confirm('Excluir esse lançamento de '+c.nome+' ('+fmtDate(c.data)+')?\n\nEssa ação não pode ser desfeita.')){
+    if(confirm('Excluir esse lançamento de '+c.nome+' ('+fmtDate(c.data)+')?'+(c.baixaEstoque?'\n\nO ajuste que ele fez no estoque também será revertido.':'')+'\n\nEssa ação não pode ser desfeita.')){
+      if(c.baixaEstoque && c.estoqueLancId){
+        const lancAntigo = state.estoqueLancamentos.find(l=>l.id===c.estoqueLancId);
+        if(lancAntigo){
+          aplicarEfeitoEstoqueLanc(lancAntigo, true);
+          state.estoqueLancamentos = state.estoqueLancamentos.filter(l=>l.id!==c.estoqueLancId);
+        }
+      }
       state.comodatos = state.comodatos.filter(x=>x.id!==c.id);
       await save('comodatos');
+      await save('estoque');
+      await save('estoqueLancamentos');
       renderAll();
     }
   });
@@ -3994,16 +4028,43 @@ function attachHandlers(){
     e.preventDefault();
     const f = new FormData(formComodato);
     const quantidade = Number(f.get('quantidade'))||0;
+    const baixaEstoque = !!formComodato.querySelector('#cmd-baixa-estoque').checked;
     const dados = {direcao:f.get('direcao'), nome:f.get('nome'), categoria:f.get('categoria'), item:f.get('item'), produto:f.get('produto'), quantidade, data:f.get('data'), obs:f.get('obs')||''};
+    let c;
     if(editComodatoId){
-      const c = state.comodatos.find(x=>x.id===editComodatoId);
-      if(c) Object.assign(c, dados);
+      c = state.comodatos.find(x=>x.id===editComodatoId);
+      if(c){
+        // desfaz o efeito antigo no estoque (se algum) antes de aplicar o novo
+        if(c.baixaEstoque && c.estoqueLancId){
+          const lancAntigo = state.estoqueLancamentos.find(l=>l.id===c.estoqueLancId);
+          if(lancAntigo){
+            aplicarEfeitoEstoqueLanc(lancAntigo, true);
+            state.estoqueLancamentos = state.estoqueLancamentos.filter(l=>l.id!==c.estoqueLancId);
+          }
+        }
+        Object.assign(c, dados);
+        c.baixaEstoque = false; c.estoqueLancId = null;
+      }
       editComodatoId = null;
       formComodato.querySelector('button[type=submit]').textContent='Lançar';
     } else {
-      state.comodatos.push(Object.assign({id:uid()}, dados));
+      c = Object.assign({id:uid()}, dados);
+      state.comodatos.push(c);
+    }
+    if(c && baixaEstoque && quantidade!==0){
+      const lanc = efeitoEstoqueLancDeComodato(c);
+      if(lanc){
+        aplicarEfeitoEstoqueLanc(lanc, false);
+        state.estoqueLancamentos.push(lanc);
+        c.baixaEstoque = true;
+        c.estoqueLancId = lanc.id;
+      } else {
+        alert('Não foi possível identificar o item de estoque para dar baixa automática — o comodato foi lançado normalmente, mas o estoque não foi ajustado.');
+      }
     }
     await save('comodatos');
+    await save('estoque');
+    await save('estoqueLancamentos');
     renderAll();
   };
 
