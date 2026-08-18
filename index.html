@@ -256,7 +256,7 @@ table td:last-child{min-width:180px;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "18/08/2026 00:15";
+const APP_BUILD_HORARIO = "18/08/2026 00:30";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -2450,7 +2450,7 @@ function viewSeletorSeriesEvolucao(){
     seriesEvolucaoSelecionadas = padrao.length ? padrao.slice(0,3) : colunas.slice(0,1);
   }
   return '<div class="hint" style="margin-bottom:8px;">Escolha quais colunas mostrar no gráfico (pode marcar uma ou várias):</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:12px;">'+
+    '<div id="seletor-series-evolucao" style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:12px;">'+
     colunas.map(c=>'<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;"><input type="checkbox" class="chk-serie-evolucao" value="'+c+'" '+(seriesEvolucaoSelecionadas.includes(c)?'checked':'')+'> '+c+'</label>').join('')+
     '</div>';
 }
@@ -2477,14 +2477,19 @@ function renderEvolucaoMensalChart(){
   el.style.display = '';
   if(msgEl) msgEl.style.display = 'none';
   const cores = seriesCoresEvolucao();
+  const usaEixoSecundario = seriesEvolucaoSelecionadas.some(s=>/vendas|despesas/i.test(s)) && seriesEvolucaoSelecionadas.some(s=>!/vendas|despesas/i.test(s));
   criarChart('chart-evolucao-mensal', {
     type:'line',
     data:{ labels: meses.map(nomeMes), datasets: seriesEvolucaoSelecionadas.map((serie,i)=>({
       label: serie, data: meses.map(m=>Number(porMes[m][serie])||0),
       borderColor: cores[i%cores.length], backgroundColor: cores[i%cores.length],
-      fill:false, tension:0.25, borderWidth:2, pointRadius:3, pointBackgroundColor: cores[i%cores.length]
+      fill:false, tension:0.25, borderWidth:2, pointRadius:3, pointBackgroundColor: cores[i%cores.length],
+      yAxisID: (usaEixoSecundario && /vendas|despesas/i.test(serie)) ? 'y1' : 'y'
     })) },
-    options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{ y:{beginAtZero:true} } }
+    options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales: usaEixoSecundario ? {
+      y:{ beginAtZero:true, title:{display:true,text:'Quantidade'} },
+      y1:{ beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'R$'} }
+    } : { y:{beginAtZero:true} } }
   });
 }
 function relatorioEmpresas(){
@@ -3648,10 +3653,12 @@ function attachHandlers(){
   const dbFiltrar = document.getElementById('db-filtrar'); if(dbFiltrar) dbFiltrar.onclick = renderDashboardRelatorios;
   if(currentTab==='dashboard' && document.getElementById('db-de')) renderDashboardRelatorios();
   if(currentTab==='dashboard' && document.getElementById('chart-evolucao-mensal')){
-    document.querySelectorAll('.chk-serie-evolucao').forEach(chk=>chk.onchange=()=>{
+    const seletorEvolucao = document.getElementById('seletor-series-evolucao');
+    if(seletorEvolucao) seletorEvolucao.onchange = (e)=>{
+      if(!e.target.classList || !e.target.classList.contains('chk-serie-evolucao')) return;
       seriesEvolucaoSelecionadas = Array.from(document.querySelectorAll('.chk-serie-evolucao:checked')).map(c=>c.value);
       renderEvolucaoMensalChart();
-    });
+    };
     renderEvolucaoMensalChart();
   }
   document.querySelectorAll('[data-ir-metas]').forEach(btn=>btn.onclick=()=>{ currentTab='metas'; renderAll(); });
