@@ -211,7 +211,7 @@ table td:last-child{min-width:180px;}
 <body>
 <div id="auth-screen" class="auth-wrap">
   <div class="auth-card">
-    <div style="display:flex;align-items:center;margin-bottom:2px;"><span class="dot"></span><h1>Sistema Tom Gás</h1></div>
+    <div style="display:flex;align-items:center;margin-bottom:2px;flex-wrap:wrap;gap:8px;"><span class="dot"></span><h1>Sistema Tom Gás</h1><span style="background:#B6FF3D;color:#142A63;font-weight:800;font-size:11px;padding:3px 10px;border-radius:20px;letter-spacing:.3px;">ATUALIZADO CORRIGIDO</span></div>
     <div class="sub">Acesso restrito à equipe do depósito</div>
     <div class="auth-tabs">
       <button data-authtab="login" class="active">Entrar</button>
@@ -260,12 +260,13 @@ table td:last-child{min-width:180px;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "18/08/2026 20:30";
+const APP_BUILD_HORARIO = "18/08/2026 21:15";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
       <div class="dot"></div>
       <h1>Sistema Tom Gás</h1>
+      <span style="background:#B6FF3D;color:#142A63;font-weight:800;font-size:11px;padding:3px 10px;border-radius:20px;letter-spacing:.3px;margin-left:8px;white-space:nowrap;">ATUALIZADO CORRIGIDO</span>
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <div id="logo-box"></div>
