@@ -211,7 +211,7 @@ table td:last-child{min-width:180px;}
 <body>
 <div id="auth-screen" class="auth-wrap">
   <div class="auth-card">
-    <div style="display:flex;align-items:center;margin-bottom:2px;flex-wrap:wrap;gap:8px;"><span class="dot"></span><h1>Sistema Tom Gás</h1><span style="background:#B6FF3D;color:#142A63;font-weight:800;font-size:11px;padding:3px 10px;border-radius:20px;letter-spacing:.3px;">ATUALIZADO CORRIGIDO</span></div>
+    <div style="display:flex;align-items:center;margin-bottom:2px;"><span class="dot"></span><h1>Sistema Tom Gás</h1></div>
     <div class="sub">Acesso restrito à equipe do depósito</div>
     <div class="auth-tabs">
       <button data-authtab="login" class="active">Entrar</button>
@@ -260,13 +260,12 @@ table td:last-child{min-width:180px;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "18/08/2026 21:15";
+const APP_BUILD_HORARIO = "18/08/2026 21:40";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
       <div class="dot"></div>
       <h1>Sistema Tom Gás</h1>
-      <span style="background:#B6FF3D;color:#142A63;font-weight:800;font-size:11px;padding:3px 10px;border-radius:20px;letter-spacing:.3px;margin-left:8px;white-space:nowrap;">ATUALIZADO CORRIGIDO</span>
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <div id="logo-box"></div>
@@ -1248,7 +1247,9 @@ function viewDashboard(){
   const emHaver = totalEmHaver();
   const conveniosMes = totalConveniosMes(mk);
 
-  return comunicadosBannerHtml()+metaCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
+  return comunicadosBannerHtml()+
+    '<div style="text-align:center;margin-bottom:14px;"><span style="background:#B6FF3D;color:#142A63;font-weight:800;font-size:12px;padding:5px 14px;border-radius:20px;letter-spacing:.3px;display:inline-block;">ATUALIZADO CORRIGIDO — v '+APP_BUILD_HORARIO+'</span></div>'+
+    metaCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div></div>'+
     '<div class="metric neg"><div class="label">Despesas do dia</div><div class="value">'+fmtMoney(totalDespesasHoje)+'</div></div>'+
     '</div></div>'+
@@ -2865,7 +2866,7 @@ function renderRelatorioEmpresasResultado(){
     '<div class="hint">Use para lançar um valor retroativo do convênio, sem precisar registrar uma venda como é feito no fiado.</div>'+
     '<form id="form-convenio" style="margin-top:8px;"><div class="form-row">'+
     '<div><label>Data</label><input type="date" name="data" value="'+de+'" required></div>'+
-    '<div><label>Valor (R$)</label><input type="number" step="0.01" min="0" name="valor" required></div>'+
+    '<div><label>Valor (R$)</label><input type="text" inputmode="decimal" name="valor" placeholder="0,00" required></div>'+
     '<div><label>Descrição</label><input type="text" name="descricao" placeholder="Ex: convênio referente a mês anterior"></div></div>'+
     '<button type="submit" class="btn small">Lançar valor</button></form>'+
     tabelaVendas+
@@ -3498,12 +3499,17 @@ function attachHandlers(){
     relEmpresaSel = empresaSel;
     relEmpresaDe = document.getElementById('re-de').value;
     relEmpresaAte = document.getElementById('re-ate').value;
+    const valorConvenio = parseValorBR(f.get('valor'));
+    if(!f.get('valor') || isNaN(valorConvenio) || valorConvenio<=0){
+      alert('Digite um valor válido, por exemplo 50,00');
+      return;
+    }
     if(editConvenioId){
       const ci = state.convenioLancamentos.find(x=>x.id===editConvenioId);
-      if(ci){ ci.valor=Number(f.get('valor')); ci.data=f.get('data'); ci.descricao=f.get('descricao')||''; }
+      if(ci){ ci.valor=valorConvenio; ci.data=f.get('data'); ci.descricao=f.get('descricao')||''; }
       editConvenioId = null;
     } else {
-      state.convenioLancamentos.push({id:uid(), empresa:empresaSel, valor:Number(f.get('valor')), data:f.get('data'), descricao:f.get('descricao')||''});
+      state.convenioLancamentos.push({id:uid(), empresa:empresaSel, valor:valorConvenio, data:f.get('data'), descricao:f.get('descricao')||''});
     }
     await save('convenioLancamentos');
     renderAll();
@@ -3514,7 +3520,7 @@ function attachHandlers(){
     if(!ci) return;
     editConvenioId = ci.id;
     const form = document.getElementById('form-convenio');
-    if(form){ form.data.value=ci.data; form.valor.value=ci.valor; form.descricao.value=ci.descricao||''; form.scrollIntoView({behavior:'smooth'}); }
+    if(form){ form.data.value=ci.data; form.valor.value=Number(ci.valor).toFixed(2).replace('.', ','); form.descricao.value=ci.descricao||''; form.scrollIntoView({behavior:'smooth'}); }
   });
   document.querySelectorAll('[data-del-convenio]').forEach(btn=>btn.onclick=async()=>{
     if(!confirm('Excluir este lançamento?')) return;
