@@ -206,6 +206,17 @@ table td:last-child{min-width:180px;}
 .auth-msg.err{background:var(--danger-tint);color:var(--danger);}
 .auth-form{display:none;}
 .auth-form.active{display:block;}
+#agenda-fab{position:fixed;bottom:20px;right:20px;z-index:500;background:#142A63;color:#fff;border:none;border-radius:24px;padding:12px 18px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;}
+#agenda-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;display:none;}
+#agenda-drawer{position:fixed;top:0;right:-380px;width:360px;max-width:90vw;height:100%;background:#fff;z-index:601;box-shadow:-4px 0 20px rgba(0,0,0,.2);padding:16px;overflow-y:auto;transition:right .25s;}
+#agenda-drawer.open{right:0;}
+#agenda-overlay.open{display:block;}
+.ag-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.ag-head button{width:auto;background:none;border:none;font-size:18px;cursor:pointer;}
+.ag-item{border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;}
+.ag-item .ag-titulo{font-weight:700;}
+.ag-item .ag-meta{color:#666;font-size:12px;margin:2px 0;}
+.ag-item .ag-acoes button{width:auto;font-size:12px;margin-right:8px;background:none;border:none;color:#1E3A8A;cursor:pointer;padding:0;}
 </style>
 </head>
 <body>
@@ -275,6 +286,28 @@ const AUTH_APP_HTML = `
   </header>
   <nav id="nav"></nav>
   <main id="main"></main>
+  <button id="agenda-fab">📋 Painel</button>
+  <div id="agenda-overlay"></div>
+  <aside id="agenda-drawer">
+    <div class="ag-head"><h3>📋 Painel — Agenda</h3><button id="agenda-fechar">✕</button></div>
+    <div id="agenda-lista"></div>
+    <form id="form-agenda-evento">
+      <input type="hidden" name="id">
+      <label>Título *</label><input type="text" name="titulo" required>
+      <div class="form-row"><div><label>Data *</label><input type="date" name="data" required></div>
+      <div><label>Hora *</label><input type="time" name="hora" required></div></div>
+      <div class="form-row"><div><label>Categoria</label><select name="categoria">
+      <option>Trabalho</option><option>Pessoal</option><option>Treinamento</option><option>Confraternização</option></select></div>
+      <div><label>Prioridade</label><select name="prioridade"><option>Alta</option><option>Média</option><option>Baixa</option></select></div></div>
+      <div class="form-row"><div><label>Lembrete</label><select name="lembrete">
+      <option value="5">5 min antes</option><option value="60">1h antes</option><option value="1440">1 dia antes</option><option value="0">Sem lembrete</option></select></div>
+      <div><label>Status</label><select name="status"><option>Pendente</option><option>Concluído</option><option>Cancelado</option></select></div></div>
+      <label><input type="checkbox" name="som" checked style="width:auto;"> Alerta sonoro</label>
+      <label>Observações</label><textarea name="obs" rows="2"></textarea>
+      <button type="submit" class="btn small" style="margin-top:8px;">Salvar</button>
+      <button type="button" id="agenda-cancelar-edicao" class="btn small ghost" style="display:none;">Cancelar edição</button>
+    </form>
+  </aside>
 `;
 document.getElementById('app').innerHTML = AUTH_APP_HTML;
 
@@ -334,6 +367,31 @@ function defaultEstoque(){
     agua: { dfonte:{cheio:0,vazio:0}, safira:{cheio:0,vazio:0} }
   };
 }
+/* Estoque mínimo (só considera o "cheio", que é o que vende) — quando o estoque físico
+   cheio de um item cai abaixo desse número, o sistema mostra um alerta no Painel e no Estoque. */
+function defaultEstoqueMinimo(){
+  return {
+    gas: { P5:0, P13:0, P20:0, P45:0 },
+    agua: { dfonte:0, safira:0 }
+  };
+}
+function itensAbaixoDoMinimo(){
+  if(!state.estoqueMinimo) return [];
+  const alertas = [];
+  ['gas','agua'].forEach(grupo=>{
+    const chaves = grupo==='gas' ? ITENS_GAS_COMODATO : ITENS_AGUA_COMODATO.map(p=>p[1]);
+    chaves.forEach(chave=>{
+      const min = (state.estoqueMinimo[grupo] && state.estoqueMinimo[grupo][chave]) || 0;
+      if(min<=0) return;
+      const atual = (state.estoque[grupo] && state.estoque[grupo][chave] && state.estoque[grupo][chave].cheio) || 0;
+      if(atual < min){
+        const label = grupo==='gas' ? chave : (ITENS_AGUA_COMODATO.find(p=>p[1]===chave)||[chave])[0];
+        alertas.push({grupo, chave, label, atual, min});
+      }
+    });
+  });
+  return alertas;
+}
 
 let state = {
   vendas: [],
@@ -342,6 +400,10 @@ let state = {
   empresas: [],
   produtos: [],
   estoque: defaultEstoque(),
+  estoqueMinimo: defaultEstoqueMinimo(),
+  paradasRota: [],
+  campanhas: [],
+  envioCampanhaLog: [],
   estoqueLancamentos: [],
   categoriasProdutos: CATEGORIAS_PRODUTO_PADRAO.slice(),
   categoriasProdutosGrupo: Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO),
@@ -408,6 +470,8 @@ const TABS = [
   {id:'cadastros', label:'Cadastros'},
   {id:'estoque', label:'Estoque'},
   {id:'agendamentos', label:'Agendamentos'},
+  {id:'rota', label:'Rota do dia'},
+  {id:'campanhas', label:'Campanhas'},
   {id:'checklist', label:'Checklist Diário'},
   {id:'relatorios', label:'Relatórios'},
   {id:'config', label:'Configurações'},
@@ -426,6 +490,10 @@ function localizarItemChecklist(id){
 function fmtMoney(v){ return (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function fmtDate(d){ const p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
+function diasEntre(dataA, dataB){
+  const a = new Date(dataA+'T00:00:00'), b = new Date(dataB+'T00:00:00');
+  return Math.round((b-a)/86400000);
+}
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function monthKey(d){ return d.slice(0,7); }
 function firstOfMonth(){ return todayStr().slice(0,7)+'-01'; }
@@ -465,6 +533,175 @@ function botaoWhatsApp(telefone){
   if(!link) return '';
   return '<a class="act-link" href="'+link+'" target="_blank" rel="noopener" style="background:var(--green-tint);color:var(--green);">'+iconWhatsApp('#25D366',13)+' whats</a>';
 }
+function linkWhatsAppComTexto(telefone, texto){
+  let d = apenasDigitos(telefone);
+  if(!d) return null;
+  if(d.length<=11) d = '55'+d;
+  return 'https://wa.me/'+d+(texto?('?text='+encodeURIComponent(texto)):'');
+}
+
+/* ===================== Previsão de recompra ===================== */
+function historicoComprasCliente(cliente){
+  return Array.from(new Set(state.vendas.filter(v=>v.cliente===cliente).map(v=>v.data))).sort();
+}
+function previsaoRecompraClientes(){
+  const nomes = Array.from(new Set(state.vendas.filter(v=>v.cliente).map(v=>v.cliente)));
+  const hoje = todayStr();
+  const resultados = [];
+  nomes.forEach(nome=>{
+    const datas = historicoComprasCliente(nome);
+    if(datas.length<2) return; // precisa de pelo menos 2 compras pra calcular uma média
+    const intervalos = [];
+    for(let i=1;i<datas.length;i++){
+      const dias = diasEntre(datas[i-1], datas[i]);
+      if(dias>0) intervalos.push(dias);
+    }
+    if(intervalos.length===0) return;
+    const media = Math.round(intervalos.reduce((s,d)=>s+d,0)/intervalos.length);
+    const ultima = datas[datas.length-1];
+    const diasDesde = diasEntre(ultima, hoje);
+    resultados.push({nome, ultima, media, diasDesde, atraso: diasDesde-media, telefone: getClienteTelefone(nome)});
+  });
+  return resultados.sort((a,b)=>b.atraso-a.atraso);
+}
+function getClienteTelefone(nome){
+  const c = state.clientes.find(x=>x.nome===nome);
+  return c ? c.telefone : '';
+}
+function aplicarPlaceholdersMensagem(texto, dados){
+  return String(texto||'')
+    .replace(/\{nome\}/g, dados.nome||'')
+    .replace(/\{dias\}/g, dados.dias!=null?String(dados.dias):'')
+    .replace(/\{media\}/g, dados.media!=null?String(dados.media):'');
+}
+
+/* ===================== Campanhas (texto/imagem/vídeo em massa) ===================== */
+let campanhaSub = 'campanhas';
+let campanhaEnviarId = null;
+let campanhaEnviarModo = 'todos'; // 'todos' | 'recompra'
+function jaEnviouCampanha(campanhaId, cliente){
+  return (state.envioCampanhaLog||[]).some(l=>l.campanhaId===campanhaId && l.cliente===cliente);
+}
+function formCampanhaHtml(){
+  return '<h3>Nova campanha (texto, imagem ou vídeo)</h3>'+
+    '<div class="hint">Use <strong>{nome}</strong> na mensagem que o sistema troca automaticamente pelo nome de cada cliente na hora de gerar o link do WhatsApp. Foto é comprimida e guardada no sistema; pra vídeo, cole um link (Google Drive, YouTube, etc.) — vídeo é pesado demais pra guardar direto no banco de dados.</div>'+
+    '<form id="form-campanha"><label>Título da campanha (só pra você identificar) <span class="req">*</span></label>'+
+    '<input type="text" name="titulo" placeholder="Ex: Promoção de outono" required>'+
+    '<label>Mensagem <span class="req">*</span></label>'+
+    '<textarea name="mensagem" rows="4" placeholder="Ex: Olá {nome}! Temos uma condição especial essa semana..." required></textarea>'+
+    '<label>Link de vídeo (opcional)</label><input type="url" name="link_video" placeholder="https://...">'+
+    '<label>Imagem (opcional)</label><input type="file" id="campanha-imagem-input" accept="image/*">'+
+    '<div id="campanha-imagem-preview" style="margin-top:8px;"></div>'+
+    '<button type="submit" class="btn small" style="margin-top:10px;">Salvar campanha</button></form>';
+}
+function listaCampanhasHtml(){
+  if((state.campanhas||[]).length===0) return '<div class="empty">Nenhuma campanha criada ainda.</div>';
+  return '<div class="table-wrap"><table><thead><tr><th>Título</th><th>Mensagem</th><th>Mídia</th><th></th></tr></thead><tbody>'+
+    state.campanhas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).map(c=>
+      '<tr><td>'+c.titulo+'</td><td style="max-width:260px;">'+(c.mensagem||'').slice(0,90)+((c.mensagem||'').length>90?'…':'')+'</td>'+
+      '<td>'+(c.imagemBase64?'🖼️ imagem ':'')+(c.linkVideo?'🎬 vídeo':'')+(!c.imagemBase64&&!c.linkVideo?'—':'')+'</td>'+
+      '<td><button class="act-link" data-enviar-campanha-todos="'+c.id+'">📢 enviar pra todos</button>'+
+      '<button class="del-link" data-del-campanha="'+c.id+'">🗑 excluir</button></td></tr>'
+    ).join('')+'</tbody></table></div>';
+}
+function telaEnvioCampanha(campanha, destinatarios, modo){
+  if(!campanha) return '<div class="empty">Campanha não encontrada.</div>';
+  const total = destinatarios.length;
+  const enviados = destinatarios.filter(d=>jaEnviouCampanha(campanha.id, d.nome)).length;
+  return '<button class="act-link" data-voltar-campanha="1" style="margin-bottom:10px;">← voltar</button>'+
+    '<h3>Enviando: '+campanha.titulo+'</h3>'+
+    '<div class="hint">O WhatsApp não deixa mandar mensagem automática em massa por um sistema comum (só com API paga do WhatsApp Business) — então aqui você clica em cada cliente, o WhatsApp abre com a mensagem já pronta, e você só aperta enviar. '+
+    (campanha.imagemBase64 ? 'Baixe a imagem uma vez e deixe salva no celular pra anexar rapidinho em cada conversa.' : '')+'</div>'+
+    (campanha.imagemBase64 ? '<a class="btn small ghost" href="'+campanha.imagemBase64+'" download="'+campanha.titulo.replace(/[^a-z0-9]+/gi,'_')+'.jpg" style="margin:8px 0;display:inline-block;">⬇️ Baixar imagem da campanha</a>' : '')+
+    (campanha.linkVideo ? '<div class="hint">Link do vídeo: <a href="'+campanha.linkVideo+'" target="_blank" rel="noopener">'+campanha.linkVideo+'</a> — cole esse link junto na mensagem se quiser.</div>' : '')+
+    '<div class="metric" style="max-width:220px;margin:10px 0;"><div class="label">Progresso</div><div class="value">'+enviados+' / '+total+'</div></div>'+
+    (total===0 ? '<div class="empty">Nenhum cliente com telefone cadastrado nessa lista.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th>'+(modo==='recompra'?'<th>Atraso</th>':'')+'<th>Status</th><th></th></tr></thead><tbody>'+
+    destinatarios.map(d=>{
+      const enviado = jaEnviouCampanha(campanha.id, d.nome);
+      const msg = aplicarPlaceholdersMensagem(campanha.mensagem, {nome:d.nome, dias:d.diasDesde, media:d.media})+(campanha.linkVideo?('\n'+campanha.linkVideo):'');
+      const link = linkWhatsAppComTexto(d.telefone, msg);
+      return '<tr><td>'+d.nome+'</td><td>'+(d.telefone||'—')+'</td>'+
+        (modo==='recompra'?'<td>'+(d.atraso>0?'+':'')+d.atraso+' dias</td>':'')+
+        '<td>'+(enviado?'<span class="badge status-pago">enviado</span>':'<span class="badge status-receber">pendente</span>')+'</td>'+
+        '<td>'+(link?'<a class="act-link" href="'+link+'" target="_blank" rel="noopener" style="background:var(--green-tint);color:var(--green);" data-marcar-enviado-campanha="'+campanha.id+'" data-marcar-enviado-cliente="'+d.nome+'">'+iconWhatsApp('#25D366',13)+' abrir whats</a>':'<span class="hint">sem telefone</span>')+'</td></tr>';
+    }).join('')+'</tbody></table></div>');
+}
+function viewCampanhas(){
+  const subtabs = [{id:'campanhas', label:'Campanhas (texto/imagem/vídeo)'},{id:'recompra', label:'Previsão de recompra'}];
+  let content;
+  if(campanhaEnviarId){
+    const campanha = (state.campanhas||[]).find(c=>c.id===campanhaEnviarId);
+    let destinatarios;
+    if(campanhaEnviarModo==='recompra'){
+      destinatarios = previsaoRecompraClientes().filter(r=>r.atraso>0 && r.telefone);
+    } else {
+      destinatarios = state.clientes.filter(c=>c.telefone).map(c=>({nome:c.nome, telefone:c.telefone}));
+    }
+    content = telaEnvioCampanha(campanha, destinatarios, campanhaEnviarModo);
+  } else if(campanhaSub==='recompra'){
+    const previsao = previsaoRecompraClientes();
+    const atrasados = previsao.filter(r=>r.atraso>0);
+    content = '<h3>Clientes com previsão de recompra</h3>'+
+      '<div class="hint">Calculado pelo intervalo médio entre as compras de cada cliente (precisa de pelo menos 2 compras no histórico). "Atraso" positivo significa que já passou do tempo médio dele sem comprar de novo — bom sinal pra mandar uma lembrança.</div>'+
+      (atrasados.length>0 && (state.campanhas||[]).length>0 ?
+        '<div style="margin:10px 0;"><label>Campanha pra enviar pros '+atrasados.length+' cliente(s) atrasado(s)</label>'+
+        '<select id="sel-campanha-recompra">'+state.campanhas.map(c=>'<option value="'+c.id+'">'+c.titulo+'</option>').join('')+'</select> '+
+        '<button class="btn small" id="btn-enviar-recompra" style="margin-top:6px;">Preparar envio</button></div>'
+        : (atrasados.length>0 ? '<div class="hint">Crie uma campanha na aba "Campanhas" primeiro pra poder enviar pra esses clientes.</div>' : ''))+
+      (previsao.length===0 ? '<div class="empty">Ainda não há clientes com histórico suficiente (pelo menos 2 compras) pra calcular a previsão.</div>' :
+      '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Última compra</th><th>Intervalo médio</th><th>Dias desde a última</th><th>Atraso</th></tr></thead><tbody>'+
+      previsao.map(r=>'<tr'+(r.atraso>0?' style="background:var(--amber-tint);"':'')+'><td>'+r.nome+'</td><td>'+fmtDate(r.ultima)+'</td><td>'+r.media+' dias</td><td>'+r.diasDesde+' dias</td>'+
+        '<td style="font-weight:700;'+(r.atraso>0?'color:var(--amber);':'')+'">'+(r.atraso>0?'+':'')+r.atraso+' dias</td></tr>').join('')+
+      '</tbody></table></div>');
+  } else {
+    content = formCampanhaHtml()+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml();
+  }
+  return '<div class="card"><div class="subtabs">'+subtabs.map(s=>'<button data-campanha-sub="'+s.id+'" class="'+(campanhaSub===s.id&&!campanhaEnviarId?'active':'')+'">'+s.label+'</button>').join('')+
+    '</div><div id="campanha-content">'+content+'</div></div>';
+}
+
+/* ===================== Rota do dia ===================== */
+function paradasDoDiaHtml(){
+  const hoje = todayStr();
+  const entregasHoje = todosAgendamentosEVendas().filter(v=>v.data===hoje && v.status!=='concluido').sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  const paradasEntrega = entregasHoje.map(v=>({tipo:'entrega', nome:v.cliente||'Entrega', endereco:getClienteEndereco(v.cliente), obs:(v.hora||'')+' — '+(v.produto||'')}));
+  const extras = (state.paradasRota||[]).filter(p=>p.data===hoje).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+  return {paradasEntrega, extras};
+}
+function montarUrlRotaGoogleMaps(paradas){
+  const enderecos = paradas.map(p=>p.endereco).filter(e=>e && e.trim());
+  if(enderecos.length===0) return null;
+  const destino = enderecos[enderecos.length-1];
+  const waypoints = enderecos.slice(0,-1);
+  let url = 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destino)+'&travelmode=driving';
+  if(waypoints.length>0) url += '&waypoints='+waypoints.map(w=>encodeURIComponent(w)).join('|');
+  return url;
+}
+function viewRotaDoDia(){
+  const hoje = todayStr();
+  const {paradasEntrega, extras} = paradasDoDiaHtml();
+  const todasParadas = paradasEntrega.concat(extras.map(p=>({tipo:'extra', nome:p.nome, endereco:p.endereco, obs:p.obs, id:p.id})));
+  const urlRota = montarUrlRotaGoogleMaps(todasParadas);
+  return '<div class="card"><h2>Rota do dia — '+fmtDate(hoje)+'</h2>'+
+    '<div class="hint">Junta as entregas agendadas de hoje com paradas extras que você adicionar (ex: buscar ovos, ir ao mecânico). A ordem da lista abaixo é a ordem da rota — use subir/descer pra reorganizar. Depois é só abrir no Google Maps, que já traça o trajeto com todas as paradas.</div>'+
+    (todasParadas.length===0 ? '<div class="empty">Nenhuma entrega agendada pra hoje e nenhuma parada extra adicionada ainda.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>#</th><th>Tipo</th><th>Nome / Motivo</th><th>Endereço</th><th>Obs.</th><th></th></tr></thead><tbody>'+
+    todasParadas.map((p,idx)=>'<tr><td>'+(idx+1)+'</td><td>'+(p.tipo==='entrega'?'<span class="badge status-receber">entrega</span>':'<span class="badge" style="background:var(--purple-tint);color:var(--purple);">extra</span>')+'</td>'+
+      '<td>'+p.nome+'</td><td>'+(p.endereco||'<span class="hint">sem endereço</span>')+'</td><td>'+(p.obs||'—')+'</td>'+
+      '<td>'+(p.tipo==='extra'?('<button class="act-link" data-parada-subir="'+p.id+'">↑</button><button class="act-link" data-parada-descer="'+p.id+'">↓</button><button class="del-link" data-parada-del="'+p.id+'">🗑</button>'):'<span class="hint">vem do agendamento</span>')+'</td></tr>').join('')+
+    '</tbody></table></div>')+
+    (urlRota ? '<a class="btn" href="'+urlRota+'" target="_blank" rel="noopener" style="margin-top:12px;display:inline-block;">🗺️ Abrir rota no Google Maps</a>' : '<div class="hint" style="margin-top:10px;">Adicione pelo menos um endereço pra poder abrir a rota.</div>')+
+    '</div>'+
+    '<div class="card"><h2>Adicionar parada extra</h2>'+
+    '<form id="form-parada-extra"><div class="form-row">'+
+    '<div><label>Nome / motivo <span class="req">*</span></label><input type="text" name="nome" placeholder="Ex: Buscar ovos no sítio" required></div>'+
+    '<div><label>Endereço <span class="req">*</span></label><input type="text" name="endereco" placeholder="Ex: Rua Tal, 123 - Bairro" required></div>'+
+    '</div><label>Observação</label><input type="text" name="obs" placeholder="Ex: passar antes das 11h">'+
+    '<button type="submit" class="btn small" style="margin-top:8px;">Adicionar parada</button></form></div>';
+}
+
+/* ===================== Fim rota / campanhas ===================== */
 function iconVasilhame(cheio, cor, tamanho){
   const c = cor || '#1E3A8A';
   const s = tamanho || 20;
@@ -824,7 +1061,7 @@ function enviarWhatsAppEntregador(dados){
   window.open(url, '_blank');
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','agendaEventos'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -872,6 +1109,11 @@ async function loadAll(){
   if(!state.comodatos) state.comodatos = [];
   if(!state.comunicados) state.comunicados = [];
   if(!state.metas) state.metas = {};
+  if(!state.estoqueMinimo) state.estoqueMinimo = defaultEstoqueMinimo();
+  if(!state.paradasRota) state.paradasRota = [];
+  if(!state.campanhas) state.campanhas = [];
+  if(!state.envioCampanhaLog) state.envioCampanhaLog = [];
+  if(!state.agendaEventos) state.agendaEventos = [];
   if(state.categoriasProdutos){
     const RENOMEACOES_CATEGORIAS = {
       'Mercearia':'Produtos de Mercearia',
@@ -1017,10 +1259,11 @@ async function limparBackupsAntigos(){
 async function rodarBackupAutomaticoSeNecessario(){
   // Feito na primeira abertura do dia: como ainda não foi lançado nada hoje,
   // o estado atual reflete o fechamento de ONTEM — é isso que fica registrado.
+  // Sempre grava direto (upsert) — não depende mais de checagem prévia que podia falhar silenciosamente.
   const dataFechamento = diaAnteriorStr(todayStr());
   const chave = 'backup:'+dataFechamento;
-  const ja = await existeBackup(chave);
-  if(!ja) await criarBackupComChave(chave, 'automatico');
+  const ok = await criarBackupComChave(chave, 'automatico');
+  if(!ok) console.error('Backup automático falhou ao abrir o sistema — veja o erro acima no console.');
 }
 async function renderListaBackups(){
   const container = document.getElementById('lista-backups');
@@ -1128,6 +1371,8 @@ function renderAll(){
   if(currentTab==='cadastros') main.innerHTML = viewCadastros();
   if(currentTab==='estoque') main.innerHTML = viewEstoque();
   if(currentTab==='agendamentos') main.innerHTML = viewAgendamentos();
+  if(currentTab==='rota') main.innerHTML = viewRotaDoDia();
+  if(currentTab==='campanhas') main.innerHTML = viewCampanhas();
   if(currentTab==='checklist') main.innerHTML = viewChecklist();
   if(currentTab==='relatorios') main.innerHTML = viewRelatorios();
   if(currentTab==='config') main.innerHTML = viewConfig();
@@ -1248,8 +1493,11 @@ function viewDashboard(){
   const fiadoAberto = totalFiadoAberto();
   const emHaver = totalEmHaver();
   const conveniosMes = totalConveniosMes(mk);
+  const alertasEstoque = itensAbaixoDoMinimo();
 
   return comunicadosBannerHtml()+
+    (alertasEstoque.length>0 ? '<div class="card" style="border-left:4px solid var(--danger);cursor:pointer;" data-ir-relatorio-estoque="1"><h2 style="color:var(--danger);">⚠️ Estoque baixo — '+alertasEstoque.length+' item(ns)</h2>'+
+      '<div class="hint">'+alertasEstoque.map(al=>al.label+' ('+al.atual+'/'+al.min+')').join(' · ')+' — toque para ver na aba Estoque.</div></div>' : '')+
     '<div style="text-align:center;margin-bottom:14px;"><span style="background:#B6FF3D;color:#142A63;font-weight:800;font-size:12px;padding:5px 14px;border-radius:20px;letter-spacing:.3px;display:inline-block;">Sistema Tom Gás Versão 1.0 - atualizado em 19-08-2028 - Versão de Produção</span></div>'+
     metaCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div></div>'+
@@ -1999,12 +2247,17 @@ function viewCapacidadeGas(){
 }
 function viewEstoque(){
   const g = state.estoque.gas, a = state.estoque.agua;
-  const gasBoxes = ['P5','P13','P20','P45'].map(t=>
-    '<div class="stock-box" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:88px;">'+iconVasilhame(true,'#1E3A8A',TAMANHOS_GAS[t])+'<div class="n">'+g[t].cheio+'</div><div class="l">'+t+' — cheio</div></div>'+
-    '<div class="stock-box" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:88px;">'+iconVasilhame(false,'#1E3A8A',TAMANHOS_GAS[t])+'<div class="n">'+g[t].vazio+'</div><div class="l">'+t+' — vazio</div></div>').join('');
+  const min = state.estoqueMinimo || defaultEstoqueMinimo();
+  const alertas = itensAbaixoDoMinimo();
+  const gasBoxes = ['P5','P13','P20','P45'].map(t=>{
+    const abaixo = min.gas && min.gas[t]>0 && g[t].cheio < min.gas[t];
+    return '<div class="stock-box" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:88px;'+(abaixo?'border-color:var(--danger);':'')+'">'+iconVasilhame(true,'#1E3A8A',TAMANHOS_GAS[t])+'<div class="n" style="'+(abaixo?'color:var(--danger);':'')+'">'+g[t].cheio+'</div><div class="l">'+t+' — cheio'+(abaixo?' ⚠️':'')+'</div></div>'+
+    '<div class="stock-box" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:88px;">'+iconVasilhame(false,'#1E3A8A',TAMANHOS_GAS[t])+'<div class="n">'+g[t].vazio+'</div><div class="l">'+t+' — vazio</div></div>';
+  }).join('');
   const aguaBoxes = [['dfonte',"D'Fonte",'dfonte','#7C3AED'],['safira','Safira','agua','#16A34A']].map(function(p){
     var k=p[0], label=p[1], cls=p[2], cor=p[3];
-    return '<div class="stock-box '+cls+'">'+iconGota(true,cor)+'<div class="n">'+a[k].cheio+'</div><div class="l">'+label+' — cheio</div></div>'+
+    const abaixo = min.agua && min.agua[k]>0 && a[k].cheio < min.agua[k];
+    return '<div class="stock-box '+cls+'" style="'+(abaixo?'border-color:var(--danger);':'')+'"><div style="'+(abaixo?'filter:none;':'')+'">'+iconGota(true,cor)+'</div><div class="n" style="'+(abaixo?'color:var(--danger);':'')+'">'+a[k].cheio+'</div><div class="l">'+label+' — cheio'+(abaixo?' ⚠️':'')+'</div></div>'+
     '<div class="stock-box '+cls+'">'+iconGota(false,cor)+'<div class="n">'+a[k].vazio+'</div><div class="l">'+label+' — vazio</div></div>';
   }).join('');
   const gasInputs = ['P5','P13','P20','P45'].map(t=>
@@ -2014,8 +2267,20 @@ function viewEstoque(){
     '<div><label>'+t+' — vazio</label><input type="number" name="gas_'+t+'_vazio" value="'+g[t].vazio+'"></div>').join('');
 
   return viewCapacidadeGas()+
+    (alertas.length>0 ? '<div class="card" style="border-left:4px solid var(--danger);"><h2 style="color:var(--danger);">⚠️ Estoque abaixo do mínimo</h2>'+
+      '<div class="table-wrap"><table><thead><tr><th>Item</th><th>Cheio atual</th><th>Mínimo configurado</th></tr></thead><tbody>'+
+      alertas.map(al=>'<tr><td>'+al.label+'</td><td style="color:var(--danger);font-weight:700;">'+al.atual+'</td><td>'+al.min+'</td></tr>').join('')+
+      '</tbody></table></div></div>' : '')+
     '<div class="card"><h2>Estoque — Gás</h2><div class="grid cols4">'+gasBoxes+'</div></div>'+
     '<div class="card"><h2>Estoque — Água</h2><div class="grid cols4">'+aguaBoxes+'</div></div>'+
+    '<div class="card"><h2>Estoque mínimo (alertas)</h2>'+
+    '<div class="hint">Defina a partir de quantos cheios de cada item o sistema deve avisar que está acabando. Deixe 0 pra não avisar sobre aquele item.</div>'+
+    '<form id="form-estoque-minimo"><div class="form-row">'+
+    ['P5','P13','P20','P45'].map(t=>'<div><label>Mín. '+t+' cheio</label><input type="number" min="0" step="1" name="min_gas_'+t+'" value="'+((min.gas&&min.gas[t])||0)+'"></div>').join('')+
+    '</div><div class="form-row">'+
+    '<div><label>Mín. Água D\'Fonte cheio</label><input type="number" min="0" step="1" name="min_agua_dfonte" value="'+((min.agua&&min.agua.dfonte)||0)+'"></div>'+
+    '<div><label>Mín. Água Safira cheio</label><input type="number" min="0" step="1" name="min_agua_safira" value="'+((min.agua&&min.agua.safira)||0)+'"></div>'+
+    '</div><button type="submit" class="btn small">Salvar mínimos</button></form></div>'+
     '<div class="card"><h2>Lançar movimentação de estoque</h2>'+
     '<div class="hint">Use isto quando o fornecedor trouxer carga nova, ou pra registrar qualquer entrada/saída — fica no histórico com data, quantidade e quem lançou.</div>'+
     '<form id="form-estoque-mov"><div class="form-row">'+
@@ -3607,6 +3872,17 @@ function attachHandlers(){
     if(valorSelecionado) movItem.value = valorSelecionado;
   };
   if(movTipo) movTipo.onchange = ()=>popularItensMov(movTipo.value);
+  const feMin = document.getElementById('form-estoque-minimo');
+  if(feMin) feMin.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(feMin);
+    if(!state.estoqueMinimo) state.estoqueMinimo = defaultEstoqueMinimo();
+    ['P5','P13','P20','P45'].forEach(t=>{ state.estoqueMinimo.gas[t] = Math.max(0, Number(f.get('min_gas_'+t))||0); });
+    state.estoqueMinimo.agua.dfonte = Math.max(0, Number(f.get('min_agua_dfonte'))||0);
+    state.estoqueMinimo.agua.safira = Math.max(0, Number(f.get('min_agua_safira'))||0);
+    await save('estoqueMinimo');
+    renderAll();
+  };
   const feMov = document.getElementById('form-estoque-mov');
   if(feMov) feMov.onsubmit = async(e)=>{
     e.preventDefault();
@@ -4125,6 +4401,97 @@ function attachHandlers(){
 
   document.querySelectorAll('[data-sub]').forEach(btn=>btn.onclick=()=>{ relatorioSub = btn.dataset.sub; renderAll(); });
   document.querySelectorAll('[data-cadastro-sub]').forEach(btn=>btn.onclick=()=>{ cadastroSub = btn.dataset.cadastroSub; renderAll(); });
+
+  // ---- Campanhas ----
+  document.querySelectorAll('[data-campanha-sub]').forEach(btn=>btn.onclick=()=>{ campanhaSub = btn.dataset.campanhaSub; campanhaEnviarId=null; renderAll(); });
+  let imagemCampanhaSelecionada = null;
+  const campanhaImgInput = document.getElementById('campanha-imagem-input');
+  if(campanhaImgInput) campanhaImgInput.onchange = async()=>{
+    const file = campanhaImgInput.files[0];
+    if(!file) return;
+    imagemCampanhaSelecionada = await comprimirImagemArquivo(file);
+    const prev = document.getElementById('campanha-imagem-preview');
+    if(prev) prev.innerHTML = '<img src="'+imagemCampanhaSelecionada+'" style="max-height:120px;border-radius:8px;">';
+  };
+  const formCampanha = document.getElementById('form-campanha');
+  if(formCampanha) formCampanha.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(formCampanha);
+    const campanha = {
+      id: uid(), criadoEm: Date.now(),
+      titulo: f.get('titulo'), mensagem: f.get('mensagem'),
+      linkVideo: f.get('link_video')||'', imagemBase64: imagemCampanhaSelecionada||null
+    };
+    if(!state.campanhas) state.campanhas = [];
+    state.campanhas.push(campanha);
+    await save('campanhas');
+    imagemCampanhaSelecionada = null;
+    formCampanha.reset();
+    const prev = document.getElementById('campanha-imagem-preview'); if(prev) prev.innerHTML='';
+    renderAll();
+  };
+  document.querySelectorAll('[data-enviar-campanha-todos]').forEach(btn=>btn.onclick=()=>{
+    campanhaEnviarId = btn.dataset.enviarCampanhaTodos; campanhaEnviarModo = 'todos'; renderAll();
+  });
+  document.querySelectorAll('[data-del-campanha]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir essa campanha? O histórico de quem já recebeu também será apagado.')) return;
+    const id = btn.dataset.delCampanha;
+    state.campanhas = state.campanhas.filter(c=>c.id!==id);
+    state.envioCampanhaLog = (state.envioCampanhaLog||[]).filter(l=>l.campanhaId!==id);
+    await save('campanhas'); await save('envioCampanhaLog');
+    renderAll();
+  });
+  const btnVoltarCampanha = document.querySelector('[data-voltar-campanha]');
+  if(btnVoltarCampanha) btnVoltarCampanha.onclick = ()=>{ campanhaEnviarId = null; renderAll(); };
+  const btnEnviarRecompra = document.getElementById('btn-enviar-recompra');
+  if(btnEnviarRecompra) btnEnviarRecompra.onclick = ()=>{
+    const sel = document.getElementById('sel-campanha-recompra');
+    if(!sel) return;
+    campanhaEnviarId = sel.value; campanhaEnviarModo = 'recompra'; renderAll();
+  };
+  document.querySelectorAll('[data-marcar-enviado-campanha]').forEach(a=>a.onclick=async()=>{
+    const campanhaId = a.dataset.marcarEnviadoCampanha, cliente = a.dataset.marcarEnviadoCliente;
+    if(!jaEnviouCampanha(campanhaId, cliente)){
+      if(!state.envioCampanhaLog) state.envioCampanhaLog = [];
+      state.envioCampanhaLog.push({campanhaId, cliente, data: todayStr()});
+      await save('envioCampanhaLog');
+      renderAll();
+    }
+  });
+
+  // ---- Rota do dia ----
+  const formParadaExtra = document.getElementById('form-parada-extra');
+  if(formParadaExtra) formParadaExtra.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(formParadaExtra);
+    if(!state.paradasRota) state.paradasRota = [];
+    state.paradasRota.push({id:uid(), data:todayStr(), nome:f.get('nome'), endereco:f.get('endereco'), obs:f.get('obs')||'', ordem: state.paradasRota.filter(p=>p.data===todayStr()).length});
+    await save('paradasRota');
+    formParadaExtra.reset();
+    renderAll();
+  };
+  document.querySelectorAll('[data-parada-del]').forEach(btn=>btn.onclick=async()=>{
+    state.paradasRota = (state.paradasRota||[]).filter(p=>p.id!==btn.dataset.paradaDel);
+    await save('paradasRota');
+    renderAll();
+  });
+  function moverParada(id, direcao){
+    const hoje = todayStr();
+    const doDia = (state.paradasRota||[]).filter(p=>p.data===hoje).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+    const idx = doDia.findIndex(p=>p.id===id);
+    const alvo = idx+direcao;
+    if(idx<0 || alvo<0 || alvo>=doDia.length) return;
+    const ordens = doDia.map(p=>p.ordem||0);
+    const tmp = doDia[idx].ordem; doDia[idx].ordem = doDia[alvo].ordem; doDia[alvo].ordem = tmp;
+    return true;
+  }
+  document.querySelectorAll('[data-parada-subir]').forEach(btn=>btn.onclick=async()=>{
+    if(moverParada(btn.dataset.paradaSubir, -1)){ await save('paradasRota'); renderAll(); }
+  });
+  document.querySelectorAll('[data-parada-descer]').forEach(btn=>btn.onclick=async()=>{
+    if(moverParada(btn.dataset.paradaDescer, 1)){ await save('paradasRota'); renderAll(); }
+  });
+
   const rvFiltrar = document.getElementById('rv-filtrar'); if(rvFiltrar) rvFiltrar.onclick = renderRelatorioVendasResultado;
   const riFiltrar = document.getElementById('ri-filtrar'); if(riFiltrar) riFiltrar.onclick = renderRelatorioItensResultado;
   const riMarcarTodas = document.getElementById('ri-marcar-todas');
@@ -4212,6 +4579,7 @@ function attachHandlers(){
     renderEvolucaoMensalChart();
   }
   document.querySelectorAll('[data-ir-metas]').forEach(btn=>btn.onclick=()=>{ currentTab='metas'; renderAll(); });
+  document.querySelectorAll('[data-ir-relatorio-estoque]').forEach(btn=>btn.onclick=()=>{ currentTab='estoque'; renderAll(); });
   document.querySelectorAll('[data-ir-relatorio]').forEach(btn=>btn.onclick=()=>{
     currentTab = 'relatorios';
     relatorioSub = btn.dataset.irRelatorio;
@@ -5670,6 +6038,7 @@ async function afterLogin(){
   renderHeaderLogo();
   aplicarFavicon();
   renderAll();
+  initAgenda();
   rodarBackupAutomaticoSeNecessario();
   iniciarNotificacoesRealtime();
   atualizarBadgeApp();
@@ -5812,6 +6181,90 @@ document.addEventListener('click', function(e){
   input.value = val;
   input.dispatchEvent(new Event('input', {bubbles:true}));
 });
+
+/* ---------- AGENDA (Painel flutuante) ---------- */
+function renderAgendaLista(){
+  const box = document.getElementById('agenda-lista');
+  if(!box) return;
+  const evs = (state.agendaEventos||[]).slice().sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora));
+  if(evs.length===0){ box.innerHTML = '<div class="empty">Nenhum evento ainda.</div>'; return; }
+  const corPrior = {Alta:'#DC2626',Média:'#D97706',Baixa:'#16A34A'};
+  box.innerHTML = evs.map(ev=>
+    '<div class="ag-item" style="border-left:4px solid '+(corPrior[ev.prioridade]||'#999')+';">'+
+    '<div class="ag-titulo">'+ev.titulo+' <span style="font-weight:400;font-size:11px;">('+ev.status+')</span></div>'+
+    '<div class="ag-meta">📅 '+fmtDate(ev.data)+' às '+ev.hora+' · '+ev.categoria+' · '+ev.prioridade+(ev.som?' · 🔔':'')+'</div>'+
+    (ev.obs?'<div class="ag-meta">'+ev.obs+'</div>':'')+
+    '<div class="ag-acoes"><button data-ag-editar="'+ev.id+'">✎ editar</button><button data-ag-excluir="'+ev.id+'">🗑 excluir</button></div>'+
+    '</div>'
+  ).join('');
+}
+function initAgenda(){
+  const fab = document.getElementById('agenda-fab'), overlay = document.getElementById('agenda-overlay'),
+    drawer = document.getElementById('agenda-drawer'), fechar = document.getElementById('agenda-fechar'),
+    form = document.getElementById('form-agenda-evento'), cancelarEd = document.getElementById('agenda-cancelar-edicao');
+  function abrir(){ drawer.classList.add('open'); overlay.classList.add('open'); renderAgendaLista(); }
+  function fecharDrawer(){ drawer.classList.remove('open'); overlay.classList.remove('open'); }
+  if(fab) fab.onclick = abrir;
+  if(fechar) fechar.onclick = fecharDrawer;
+  if(overlay) overlay.onclick = fecharDrawer;
+  if(cancelarEd) cancelarEd.onclick = ()=>{ form.reset(); form.id.value=''; cancelarEd.style.display='none'; };
+  if(form) form.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(form);
+    const id = f.get('id');
+    const dados = {
+      titulo:f.get('titulo'), data:f.get('data'), hora:f.get('hora'), categoria:f.get('categoria'),
+      prioridade:f.get('prioridade'), lembrete:f.get('lembrete'), status:f.get('status'),
+      som: form.som.checked, obs:f.get('obs')||''
+    };
+    if(!state.agendaEventos) state.agendaEventos = [];
+    if(id){
+      const idx = state.agendaEventos.findIndex(x=>x.id===id);
+      if(idx>-1) state.agendaEventos[idx] = Object.assign(state.agendaEventos[idx], dados);
+    } else {
+      dados.id = uid(); dados.avisado = {};
+      state.agendaEventos.push(dados);
+    }
+    await save('agendaEventos');
+    form.reset(); form.id.value=''; if(cancelarEd) cancelarEd.style.display='none';
+    renderAgendaLista();
+  };
+  document.getElementById('agenda-lista').addEventListener('click', async(e)=>{
+    const btnEd = e.target.closest('[data-ag-editar]'), btnEx = e.target.closest('[data-ag-excluir]');
+    if(btnEd){
+      const ev = state.agendaEventos.find(x=>x.id===btnEd.dataset.agEditar);
+      if(!ev) return;
+      form.id.value = ev.id; form.titulo.value = ev.titulo; form.data.value = ev.data; form.hora.value = ev.hora;
+      form.categoria.value = ev.categoria; form.prioridade.value = ev.prioridade; form.lembrete.value = ev.lembrete;
+      form.status.value = ev.status; form.som.checked = !!ev.som; form.obs.value = ev.obs||'';
+      if(cancelarEd) cancelarEd.style.display='inline-block';
+    }
+    if(btnEx){
+      if(!confirm('Excluir esse evento?')) return;
+      state.agendaEventos = state.agendaEventos.filter(x=>x.id!==btnEx.dataset.agExcluir);
+      await save('agendaEventos');
+      renderAgendaLista();
+    }
+  });
+  // Verifica lembretes a cada minuto e toca som se estiver na hora
+  setInterval(()=>{
+    const agora = new Date();
+    (state.agendaEventos||[]).forEach(ev=>{
+      if(ev.status!=='Pendente' || !ev.lembrete || Number(ev.lembrete)<=0) return;
+      const alvo = new Date(ev.data+'T'+ev.hora+':00');
+      const minsAntes = Number(ev.lembrete);
+      const diffMin = (alvo - agora)/60000;
+      if(diffMin<=minsAntes && diffMin>minsAntes-1){
+        if(!ev.avisado) ev.avisado = {};
+        if(ev.avisado[minsAntes]) return;
+        ev.avisado[minsAntes] = true;
+        save('agendaEventos');
+        if(ev.som){ try{ new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=').play(); }catch(err){} }
+        alert('🔔 Lembrete: '+ev.titulo+' às '+ev.hora);
+      }
+    });
+  }, 60000);
+}
 
 /* ---------- INIT ---------- */
 async function init(){
