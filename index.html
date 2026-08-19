@@ -404,7 +404,6 @@ let state = {
   paradasRota: [],
   campanhas: [],
   envioCampanhaLog: [],
-  categoriasClientes: ['Clientes Ativos','Amigos'],
   estoqueLancamentos: [],
   categoriasProdutos: CATEGORIAS_PRODUTO_PADRAO.slice(),
   categoriasProdutosGrupo: Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO),
@@ -577,63 +576,91 @@ function aplicarPlaceholdersMensagem(texto, dados){
 }
 
 /* ===================== Campanhas (texto/imagem/vídeo em massa) ===================== */
-let campanhaSub='campanhas';
-let campanhaEnviarId=null;
-let campanhaEnviarModo='grupo';
-let editCampanhaId=null;
-let campanhaVideoSelecionado=null;
-let campanhaImagemSelecionadaGlobal=null;
-function jaEnviouCampanha(campanhaId,cliente){ return (state.envioCampanhaLog||[]).some(l=>l.campanhaId===campanhaId&&l.cliente===cliente); }
-function destinatariosCampanha(campanha){
-  if(!campanha) return [];
-  const clientes=state.clientes||[];
-  if(campanha.destinoTipo==='teste'){
-    const c=clientes.find(x=>x.id===campanha.clienteTesteId); return c&&c.telefone?[{id:c.id,nome:c.nome,telefone:c.telefone}]:[];
-  }
-  if(campanha.destinoTipo==='clientes') return clientes.filter(c=>(campanha.clienteIds||[]).includes(c.id)&&c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
-  if(campanha.destinoTipo==='grupo'){
-    const grupos=campanha.grupos||[];
-    return clientes.filter(c=>grupos.some(g=>gruposClienteDoCliente(c).includes(g))&&c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
-  }
-  return clientes.filter(c=>c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
+let campanhaSub = 'campanhas';
+let campanhaEnviarId = null;
+let campanhaEnviarModo = 'todos'; // 'todos' | 'recompra'
+function jaEnviouCampanha(campanhaId, cliente){
+  return (state.envioCampanhaLog||[]).some(l=>l.campanhaId===campanhaId && l.cliente===cliente);
 }
-function campanhaMidiaHtml(c){ return (c.imagemBase64?'🖼️ imagem ':'')+(c.videoDataUrl?'🎬 vídeo PC ':'')+(c.linkVideo?'🔗 vídeo link':'')+(!c.imagemBase64&&!c.videoDataUrl&&!c.linkVideo?'—':''); }
-function clientesSelecionadosOptions(sel){ const set=new Set(sel||[]); return (state.clientes||[]).map(c=>'<option value="'+c.id+'" '+(set.has(c.id)?'selected':'')+'>'+escapeHtmlCampanha(c.nome)+' — '+escapeHtmlCampanha(c.telefone||'sem telefone')+'</option>').join(''); }
-function formCampanhaHtml(c){
-  const grupos=state.categoriasClientes||[], sg=c?.grupos||[], sc=c?.clienteIds||[];
-  return '<h3>'+(c?'Editar campanha':'Nova campanha')+'</h3><div class="hint">A campanha pode ser alterada depois de salva. Você pode selecionar um vídeo diretamente do PC (até 12 MB) ou usar um link.</div>'+
-  '<form id="form-campanha" data-edit-id="'+(c?.id||'')+'">'+
-  '<label>Título da campanha <span class="req">*</span></label><input type="text" name="titulo" value="'+escapeHtmlCampanha(c?.titulo||'')+'" required>'+
-  '<label>Mensagem <span class="req">*</span></label><textarea name="mensagem" rows="4" required>'+escapeHtmlCampanha(c?.mensagem||'')+'</textarea>'+
-  '<div class="form-row"><div><label>Público</label><select name="destinoTipo"><option value="grupo" '+(c?.destinoTipo==='grupo'?'selected':'')+'>Grupo(s) / lote(s)</option><option value="clientes" '+(c?.destinoTipo==='clientes'?'selected':'')+'>Clientes escolhidos</option><option value="teste" '+(c?.destinoTipo==='teste'?'selected':'')+'>Somente 1 cliente — teste</option><option value="todos" '+(c?.destinoTipo==='todos'?'selected':'')+'>Todos os clientes</option></select></div>'+
-  '<div><label>Grupo(s)</label><select name="grupos" multiple size="4">'+grupos.map(g=>'<option value="'+escapeHtmlCampanha(g)+'" '+(sg.includes(g)?'selected':'')+'>'+escapeHtmlCampanha(g)+'</option>').join('')+'</select><div class="hint">Ctrl/Cmd para vários.</div></div></div>'+
-  '<label>Clientes escolhidos</label><select name="clienteIds" multiple size="6">'+clientesSelecionadosOptions(sc)+'</select>'+
-  '<label>Cliente único para teste</label><select name="clienteTesteId"><option value="">Selecione um cliente</option>'+clientesSelecionadosOptions(c?.clienteTesteId?[c.clienteTesteId]:[])+'</select>'+
-  '<label>Link de vídeo (opcional)</label><input type="url" name="link_video" value="'+escapeHtmlCampanha(c?.linkVideo||'')+'" placeholder="https://...">'+
-  '<label>Vídeo do PC (opcional)</label><input type="file" id="campanha-video-input" accept="video/*"><div id="campanha-video-preview" style="margin-top:8px;">'+(c?.videoDataUrl?'<video src="'+c.videoDataUrl+'" controls style="max-width:100%;max-height:220px;border-radius:8px;"></video>':'')+'</div>'+
-  '<label>Imagem (opcional)</label><input type="file" id="campanha-imagem-input" accept="image/*"><div id="campanha-imagem-preview" style="margin-top:8px;">'+(c?.imagemBase64?'<img src="'+c.imagemBase64+'" style="max-height:120px;border-radius:8px;">':'')+'</div>'+
-  '<button type="submit" class="btn small">'+(c?'Salvar alterações':'Salvar campanha')+'</button> '+(c?'<button type="button" class="btn small ghost" id="btn-cancelar-edicao-campanha">Cancelar</button>':'')+'</form>';
+function formCampanhaHtml(){
+  return '<h3>Nova campanha (texto, imagem ou vídeo)</h3>'+
+    '<div class="hint">Use <strong>{nome}</strong> na mensagem que o sistema troca automaticamente pelo nome de cada cliente na hora de gerar o link do WhatsApp. Foto é comprimida e guardada no sistema; pra vídeo, cole um link (Google Drive, YouTube, etc.) — vídeo é pesado demais pra guardar direto no banco de dados.</div>'+
+    '<form id="form-campanha"><label>Título da campanha (só pra você identificar) <span class="req">*</span></label>'+
+    '<input type="text" name="titulo" placeholder="Ex: Promoção de outono" required>'+
+    '<label>Mensagem <span class="req">*</span></label>'+
+    '<textarea name="mensagem" rows="4" placeholder="Ex: Olá {nome}! Temos uma condição especial essa semana..." required></textarea>'+
+    '<label>Link de vídeo (opcional)</label><input type="url" name="link_video" placeholder="https://...">'+
+    '<label>Imagem (opcional)</label><input type="file" id="campanha-imagem-input" accept="image/*">'+
+    '<div id="campanha-imagem-preview" style="margin-top:8px;"></div>'+
+    '<button type="submit" class="btn small" style="margin-top:10px;">Salvar campanha</button></form>';
 }
 function listaCampanhasHtml(){
-  if(!(state.campanhas||[]).length) return '<div class="empty">Nenhuma campanha criada ainda.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Título</th><th>Público</th><th>Mensagem</th><th>Mídia</th><th></th></tr></thead><tbody>'+state.campanhas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).map(c=>{ const p=c.destinoTipo==='grupo'?((c.grupos||[]).join(', ')||'Nenhum grupo'):c.destinoTipo==='teste'?'1 cliente (teste)':c.destinoTipo==='clientes'?((c.clienteIds||[]).length+' cliente(s)'):'Todos'; return '<tr><td>'+escapeHtmlCampanha(c.titulo)+'</td><td>'+escapeHtmlCampanha(p)+'</td><td>'+escapeHtmlCampanha((c.mensagem||'').slice(0,90))+'</td><td>'+campanhaMidiaHtml(c)+'</td><td><button class="act-link" data-enviar-campanha="'+c.id+'">📢 preparar envio</button><button class="act-link" data-edit-campanha="'+c.id+'">✎ editar</button><button class="del-link" data-del-campanha="'+c.id+'">🗑 excluir</button></td></tr>';}).join('')+'</tbody></table></div>';
+  if((state.campanhas||[]).length===0) return '<div class="empty">Nenhuma campanha criada ainda.</div>';
+  return '<div class="table-wrap"><table><thead><tr><th>Título</th><th>Mensagem</th><th>Mídia</th><th></th></tr></thead><tbody>'+
+    state.campanhas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).map(c=>
+      '<tr><td>'+c.titulo+'</td><td style="max-width:260px;">'+(c.mensagem||'').slice(0,90)+((c.mensagem||'').length>90?'…':'')+'</td>'+
+      '<td>'+(c.imagemBase64?'🖼️ imagem ':'')+(c.linkVideo?'🎬 vídeo':'')+(!c.imagemBase64&&!c.linkVideo?'—':'')+'</td>'+
+      '<td><button class="act-link" data-enviar-campanha-todos="'+c.id+'">📢 enviar pra todos</button>'+
+      '<button class="del-link" data-del-campanha="'+c.id+'">🗑 excluir</button></td></tr>'
+    ).join('')+'</tbody></table></div>';
 }
-function telaEnvioCampanha(campanha,destinatarios){
+function telaEnvioCampanha(campanha, destinatarios, modo){
   if(!campanha) return '<div class="empty">Campanha não encontrada.</div>';
-  const enviados=destinatarios.filter(d=>jaEnviouCampanha(campanha.id,d.nome)).length;
-  return '<button class="act-link" data-voltar-campanha="1">← voltar</button><h3>Enviando: '+escapeHtmlCampanha(campanha.titulo)+'</h3><div class="hint">A lista abaixo respeita o lote/teste escolhido. O WhatsApp abre com a mensagem pronta.</div>'+
-  (campanha.imagemBase64?'<a class="btn small ghost" href="'+campanha.imagemBase64+'" download="campanha.jpg">⬇️ Baixar imagem</a>':'')+(campanha.videoDataUrl?'<a class="btn small ghost" href="'+campanha.videoDataUrl+'" download="campanha-video">⬇️ Baixar vídeo</a>':'')+(campanha.linkVideo?'<div class="hint">Vídeo: <a href="'+campanha.linkVideo+'" target="_blank" rel="noopener">'+campanha.linkVideo+'</a></div>':'')+
-  '<div class="metric" style="max-width:220px;margin:10px 0;"><div class="label">Progresso</div><div class="value">'+enviados+' / '+destinatarios.length+'</div></div>'+
-  (destinatarios.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Status</th><th></th></tr></thead><tbody>'+destinatarios.map(d=>{const enviado=jaEnviouCampanha(campanha.id,d.nome); let msg=aplicarPlaceholdersMensagem(campanha.mensagem,{nome:d.nome}); if(campanha.linkVideo) msg+='\n'+campanha.linkVideo; return '<tr><td>'+escapeHtmlCampanha(d.nome)+'</td><td>'+escapeHtmlCampanha(d.telefone)+'</td><td>'+(enviado?'<span class="badge status-pago">enviado</span>':'<span class="badge status-receber">pendente</span>')+'</td><td><a class="act-link" href="'+linkWhatsAppComTexto(d.telefone,msg)+'" target="_blank" rel="noopener" data-marcar-enviado-campanha="'+campanha.id+'" data-marcar-enviado-cliente="'+escapeHtmlCampanha(d.nome)+'">'+iconWhatsApp('#25D366',13)+' abrir whats</a></td></tr>';}).join('')+'</tbody></table></div>':'<div class="empty">Nenhum cliente com telefone cadastrado nesse público.</div>');
+  const total = destinatarios.length;
+  const enviados = destinatarios.filter(d=>jaEnviouCampanha(campanha.id, d.nome)).length;
+  return '<button class="act-link" data-voltar-campanha="1" style="margin-bottom:10px;">← voltar</button>'+
+    '<h3>Enviando: '+campanha.titulo+'</h3>'+
+    '<div class="hint">O WhatsApp não deixa mandar mensagem automática em massa por um sistema comum (só com API paga do WhatsApp Business) — então aqui você clica em cada cliente, o WhatsApp abre com a mensagem já pronta, e você só aperta enviar. '+
+    (campanha.imagemBase64 ? 'Baixe a imagem uma vez e deixe salva no celular pra anexar rapidinho em cada conversa.' : '')+'</div>'+
+    (campanha.imagemBase64 ? '<a class="btn small ghost" href="'+campanha.imagemBase64+'" download="'+campanha.titulo.replace(/[^a-z0-9]+/gi,'_')+'.jpg" style="margin:8px 0;display:inline-block;">⬇️ Baixar imagem da campanha</a>' : '')+
+    (campanha.linkVideo ? '<div class="hint">Link do vídeo: <a href="'+campanha.linkVideo+'" target="_blank" rel="noopener">'+campanha.linkVideo+'</a> — cole esse link junto na mensagem se quiser.</div>' : '')+
+    '<div class="metric" style="max-width:220px;margin:10px 0;"><div class="label">Progresso</div><div class="value">'+enviados+' / '+total+'</div></div>'+
+    (total===0 ? '<div class="empty">Nenhum cliente com telefone cadastrado nessa lista.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th>'+(modo==='recompra'?'<th>Atraso</th>':'')+'<th>Status</th><th></th></tr></thead><tbody>'+
+    destinatarios.map(d=>{
+      const enviado = jaEnviouCampanha(campanha.id, d.nome);
+      const msg = aplicarPlaceholdersMensagem(campanha.mensagem, {nome:d.nome, dias:d.diasDesde, media:d.media})+(campanha.linkVideo?('\n'+campanha.linkVideo):'');
+      const link = linkWhatsAppComTexto(d.telefone, msg);
+      return '<tr><td>'+d.nome+'</td><td>'+(d.telefone||'—')+'</td>'+
+        (modo==='recompra'?'<td>'+(d.atraso>0?'+':'')+d.atraso+' dias</td>':'')+
+        '<td>'+(enviado?'<span class="badge status-pago">enviado</span>':'<span class="badge status-receber">pendente</span>')+'</td>'+
+        '<td>'+(link?'<a class="act-link" href="'+link+'" target="_blank" rel="noopener" style="background:var(--green-tint);color:var(--green);" data-marcar-enviado-campanha="'+campanha.id+'" data-marcar-enviado-cliente="'+d.nome+'">'+iconWhatsApp('#25D366',13)+' abrir whats</a>':'<span class="hint">sem telefone</span>')+'</td></tr>';
+    }).join('')+'</tbody></table></div>');
 }
 function viewCampanhas(){
-  const subtabs=[{id:'campanhas',label:'Campanhas e públicos'},{id:'recompra',label:'Previsão de recompra'}]; let content;
-  if(campanhaEnviarId){ const c=state.campanhas.find(x=>x.id===campanhaEnviarId); content=telaEnvioCampanha(c,campanhaEnviarModo==='recompra'?previsaoRecompraClientes().filter(r=>r.atraso>0&&r.telefone):destinatariosCampanha(c)); }
-  else if(campanhaSub==='recompra'){ const p=previsaoRecompraClientes(), a=p.filter(r=>r.atraso>0); content='<h3>Clientes com previsão de recompra</h3>'+(a.length&&state.campanhas.length?'<select id="sel-campanha-recompra">'+state.campanhas.map(c=>'<option value="'+c.id+'">'+escapeHtmlCampanha(c.titulo)+'</option>').join('')+'</select><button class="btn small" id="btn-enviar-recompra">Preparar envio</button>':'')+(p.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Última compra</th><th>Intervalo médio</th><th>Atraso</th></tr></thead><tbody>'+p.map(r=>'<tr><td>'+escapeHtmlCampanha(r.nome)+'</td><td>'+fmtDate(r.ultima)+'</td><td>'+r.media+' dias</td><td>'+r.atraso+' dias</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">Ainda não há histórico suficiente.</div>'); }
-  else if(editCampanhaId){ const ec=state.campanhas.find(x=>x.id===editCampanhaId); content=formCampanhaHtml(ec)+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml(); }
-  else content=formCampanhaHtml()+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml();
-  return '<div class="card"><div class="subtabs">'+subtabs.map(x=>'<button data-campanha-sub="'+x.id+'" class="'+(campanhaSub===x.id&&!campanhaEnviarId?'active':'')+'">'+x.label+'</button>').join('')+'</div><div id="campanha-content">'+content+'</div></div>';
+  const subtabs = [{id:'campanhas', label:'Campanhas (texto/imagem/vídeo)'},{id:'recompra', label:'Previsão de recompra'}];
+  let content;
+  if(campanhaEnviarId){
+    const campanha = (state.campanhas||[]).find(c=>c.id===campanhaEnviarId);
+    let destinatarios;
+    if(campanhaEnviarModo==='recompra'){
+      destinatarios = previsaoRecompraClientes().filter(r=>r.atraso>0 && r.telefone);
+    } else {
+      destinatarios = state.clientes.filter(c=>c.telefone).map(c=>({nome:c.nome, telefone:c.telefone}));
+    }
+    content = telaEnvioCampanha(campanha, destinatarios, campanhaEnviarModo);
+  } else if(campanhaSub==='recompra'){
+    const previsao = previsaoRecompraClientes();
+    const atrasados = previsao.filter(r=>r.atraso>0);
+    content = '<h3>Clientes com previsão de recompra</h3>'+
+      '<div class="hint">Calculado pelo intervalo médio entre as compras de cada cliente (precisa de pelo menos 2 compras no histórico). "Atraso" positivo significa que já passou do tempo médio dele sem comprar de novo — bom sinal pra mandar uma lembrança.</div>'+
+      (atrasados.length>0 && (state.campanhas||[]).length>0 ?
+        '<div style="margin:10px 0;"><label>Campanha pra enviar pros '+atrasados.length+' cliente(s) atrasado(s)</label>'+
+        '<select id="sel-campanha-recompra">'+state.campanhas.map(c=>'<option value="'+c.id+'">'+c.titulo+'</option>').join('')+'</select> '+
+        '<button class="btn small" id="btn-enviar-recompra" style="margin-top:6px;">Preparar envio</button></div>'
+        : (atrasados.length>0 ? '<div class="hint">Crie uma campanha na aba "Campanhas" primeiro pra poder enviar pra esses clientes.</div>' : ''))+
+      (previsao.length===0 ? '<div class="empty">Ainda não há clientes com histórico suficiente (pelo menos 2 compras) pra calcular a previsão.</div>' :
+      '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Última compra</th><th>Intervalo médio</th><th>Dias desde a última</th><th>Atraso</th></tr></thead><tbody>'+
+      previsao.map(r=>'<tr'+(r.atraso>0?' style="background:var(--amber-tint);"':'')+'><td>'+r.nome+'</td><td>'+fmtDate(r.ultima)+'</td><td>'+r.media+' dias</td><td>'+r.diasDesde+' dias</td>'+
+        '<td style="font-weight:700;'+(r.atraso>0?'color:var(--amber);':'')+'">'+(r.atraso>0?'+':'')+r.atraso+' dias</td></tr>').join('')+
+      '</tbody></table></div>');
+  } else {
+    content = formCampanhaHtml()+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml();
+  }
+  return '<div class="card"><div class="subtabs">'+subtabs.map(s=>'<button data-campanha-sub="'+s.id+'" class="'+(campanhaSub===s.id&&!campanhaEnviarId?'active':'')+'">'+s.label+'</button>').join('')+
+    '</div><div id="campanha-content">'+content+'</div></div>';
 }
+
 /* ===================== Rota do dia ===================== */
 function paradasDoDiaHtml(){
   const hoje = todayStr();
@@ -1034,14 +1061,12 @@ function enviarWhatsAppEntregador(dados){
   window.open(url, '_blank');
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','agendaEventos','categoriasClientes'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','agendaEventos'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
     if(error) throw error;
     (data||[]).forEach(row=>{ state[row.chave] = row.valor; });
-    if(!Array.isArray(state.categoriasClientes)) state.categoriasClientes=['Clientes Ativos','Amigos'];
-    (state.clientes||[]).forEach(c=>{ if(!Array.isArray(c.grupos)) c.grupos=[]; });
   }catch(e){ console.error('Erro ao carregar dados', e); alert('Não foi possível carregar os dados do Supabase. Verifique a tabela app_data e as permissões.'); }
   if(!state.estoque || !state.estoque.gas || !state.estoque.agua){ state.estoque = defaultEstoque(); }
   if(!state.agendamentos) state.agendamentos = [];
@@ -2141,9 +2166,6 @@ function viewCadastros(){
   else content = viewCategoriasFixas();
   return '<div class="subtabs">'+subtabs.map(s=>'<button data-cadastro-sub="'+s.id+'" class="'+(cadastroSub===s.id?'active':'')+'">'+s.label+'</button>').join('')+'</div>'+content;
 }
-function gruposClienteDoCliente(c){ return Array.isArray(c.grupos) ? c.grupos : []; }
-function clientesPorGrupo(grupo){ return (state.clientes||[]).filter(c=>gruposClienteDoCliente(c).includes(grupo)); }
-function escapeHtmlCampanha(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function viewClientes(){
   return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'+
     '<h2 style="margin:0;">Clientes cadastrados <span class="pill">'+state.clientes.length+'</span></h2>'+
@@ -2159,9 +2181,7 @@ function viewClientes(){
     '<div class="form-row"><div><label>Endereço</label><input type="text" name="endereco"></div>'+
     '<div><label>Complemento</label><input type="text" name="complemento" placeholder="Bloco, apto, ponto de referência..."></div></div>'+
     '<label>Observações</label><input type="text" name="obs">'+
-    '<label>Grupos / categorias do cliente</label><div class="cat-checklist">'+((state.categoriasClientes||[]).map(g=>'<label class="checkbox-item"><input type="checkbox" name="gruposCliente" value="'+escapeHtmlCampanha(g)+'"> '+escapeHtmlCampanha(g)+'</label>').join('')||'<span class="hint">Crie grupos abaixo.</span>')+'</div>'+
     '<button type="submit" class="btn">Adicionar cliente</button></form></div>'+
-    '<div class="card"><h2>Grupos / categorias de clientes</h2><div class="hint">Crie lotes como Clientes Ativos, Amigos, VIP, Teste etc.</div><div class="inline-add"><input id="novo-grupo-cliente" placeholder="Ex: Clientes Ativos"><button type="button" class="btn small" id="btn-add-grupo-cliente">+ Criar grupo</button></div><div style="margin-top:10px;">'+((state.categoriasClientes||[]).map(g=>'<span class="pill" style="margin:3px 4px 3px 0;">'+escapeHtmlCampanha(g)+' <button type="button" class="link-btn" data-del-grupo-cliente="'+escapeHtmlCampanha(g)+'">×</button></span>').join('')||'<div class="empty">Nenhum grupo criado.</div>')+'</div></div>'+
     '<div class="card"><h2>Importar clientes de uma planilha (CSV)</h2>'+
     '<div class="hint">Exporte seus clientes do seu CRM como arquivo .csv e envie aqui. Depois você escolhe qual coluna é qual.</div>'+
     '<input type="file" id="csv-input" accept=".csv,.txt,.tsv,.xlsx,.xls" style="margin-top:10px;"><div id="csv-mapping"></div></div>';
@@ -2169,8 +2189,8 @@ function viewClientes(){
 
 function clientesTable(list){
   if(list.length===0) return '<div class="empty">Nenhum cliente cadastrado ainda.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone/Whats</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th></th></tr></thead><tbody>'+
-  list.map(c=>'<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td>'+
+  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone/Whats</th><th>Endereço</th><th>Complemento</th><th></th></tr></thead><tbody>'+
+  list.map(c=>'<tr><td>'+c.nome+'</td><td>'+(c.telefone||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td>'+
   '<td>'+botaoWhatsApp(c.telefone)+'<button class="act-link" data-edit-cliente="'+c.id+'">✎ editar</button><button class="del-link" data-del-cliente="'+c.id+'">🗑 excluir</button></td></tr>').join('')+'</tbody></table></div>';
 }
 
@@ -3784,10 +3804,10 @@ function attachHandlers(){
     const f = new FormData(fc);
     if(editClienteId){
       const c = state.clientes.find(x=>x.id===editClienteId);
-      if(c){ c.nome=f.get('nome'); c.telefone=f.get('telefone')||''; c.endereco=f.get('endereco')||''; c.complemento=f.get('complemento')||''; c.obs=f.get('obs')||''; c.grupos=[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value); }
+      if(c){ c.nome=f.get('nome'); c.telefone=f.get('telefone')||''; c.endereco=f.get('endereco')||''; c.complemento=f.get('complemento')||''; c.obs=f.get('obs')||''; }
       editClienteId = null;
     } else {
-      state.clientes.push({id:uid(), nome:f.get('nome'), telefone:f.get('telefone')||'', endereco:f.get('endereco')||'', complemento:f.get('complemento')||'', obs:f.get('obs')||'', grupos:[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value)});
+      state.clientes.push({id:uid(), nome:f.get('nome'), telefone:f.get('telefone')||'', endereco:f.get('endereco')||'', complemento:f.get('complemento')||'', obs:f.get('obs')||''});
     }
     await save('clientes');
     renderAll();
@@ -4027,7 +4047,7 @@ function attachHandlers(){
       const fcEl = document.getElementById('form-cliente');
       if(!c || !fcEl) return;
       editClienteId = c.id;
-      fcEl.nome.value=c.nome; fcEl.telefone.value=c.telefone||''; fcEl.endereco.value=c.endereco||''; fcEl.complemento.value=c.complemento||''; fcEl.obs.value=c.obs||''; fcEl.querySelectorAll('input[name="gruposCliente"]').forEach(x=>x.checked=gruposClienteDoCliente(c).includes(x.value));
+      fcEl.nome.value=c.nome; fcEl.telefone.value=c.telefone||''; fcEl.endereco.value=c.endereco||''; fcEl.complemento.value=c.complemento||''; fcEl.obs.value=c.obs||'';
       fcEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       fcEl.scrollIntoView({behavior:'smooth'});
     });
@@ -4096,10 +4116,10 @@ function attachHandlers(){
   };
 
   const btnIrNovoCliente = document.getElementById('btn-ir-novo-cliente');
-  if(btnIrNovoCliente)btnIrNovoCliente.onclick=()=>{const f=document.getElementById('form-cliente');if(f)f.scrollIntoView({behavior:'smooth',block:'start'});};
-  const btnAddGrupoCliente=document.getElementById('btn-add-grupo-cliente');
-  if(btnAddGrupoCliente)btnAddGrupoCliente.onclick=async()=>{const i=document.getElementById('novo-grupo-cliente'),g=(i?.value||'').trim();if(!g)return;if((state.categoriasClientes||[]).some(x=>chaveNormalizada(x)===chaveNormalizada(g))){alert('Esse grupo já existe.');return;}state.categoriasClientes.push(g);await save('categoriasClientes');renderAll();};
-  document.querySelectorAll('[data-del-grupo-cliente]').forEach(b=>b.onclick=async()=>{const g=b.dataset.delGrupoCliente;if(!confirm('Excluir o grupo "'+g+'"?'))return;state.categoriasClientes=(state.categoriasClientes||[]).filter(x=>x!==g);state.clientes.forEach(c=>c.grupos=gruposClienteDoCliente(c).filter(x=>x!==g));await save('categoriasClientes');await save('clientes');renderAll();});
+  if(btnIrNovoCliente) btnIrNovoCliente.onclick = ()=>{
+    const formCli = document.getElementById('form-cliente');
+    if(formCli) formCli.scrollIntoView({behavior:'smooth', block:'start'});
+  };
   const busca = document.getElementById('busca-cliente');
   const detalhesClientes = document.getElementById('details-lista-clientes');
   if(detalhesClientes) detalhesClientes.ontoggle = ()=>{ clientesListaAberta = detalhesClientes.open; };
@@ -4383,20 +4403,62 @@ function attachHandlers(){
   document.querySelectorAll('[data-cadastro-sub]').forEach(btn=>btn.onclick=()=>{ cadastroSub = btn.dataset.cadastroSub; renderAll(); });
 
   // ---- Campanhas ----
-  document.querySelectorAll('[data-campanha-sub]').forEach(btn=>btn.onclick=()=>{campanhaSub=btn.dataset.campanhaSub; campanhaEnviarId=null; renderAll();});
-  const campanhaImgInput=document.getElementById('campanha-imagem-input');
-  if(campanhaImgInput) campanhaImgInput.onchange=async()=>{const file=campanhaImgInput.files[0]; if(!file)return; campanhaImagemSelecionadaGlobal=await comprimirImagemArquivo(file); const prev=document.getElementById('campanha-imagem-preview'); if(prev)prev.innerHTML='<img src="'+campanhaImagemSelecionadaGlobal+'" style="max-height:120px;border-radius:8px;">';};
-  const campanhaVideoInput=document.getElementById('campanha-video-input');
-  if(campanhaVideoInput) campanhaVideoInput.onchange=()=>{const file=campanhaVideoInput.files[0]; if(!file)return; if(file.size>12*1024*1024){alert('O vídeo selecionado tem mais de 12 MB. Use um vídeo menor ou informe um link.'); campanhaVideoInput.value=''; return;} const r=new FileReader(); r.onload=e=>{campanhaVideoSelecionado=e.target.result; const prev=document.getElementById('campanha-video-preview'); if(prev)prev.innerHTML='<video src="'+campanhaVideoSelecionado+'" controls style="max-width:100%;max-height:220px;border-radius:8px;"></video>';}; r.readAsDataURL(file);};
-  const formCampanha=document.getElementById('form-campanha');
-  if(formCampanha) formCampanha.onsubmit=async e=>{e.preventDefault(); const f=new FormData(formCampanha); const editId=formCampanha.dataset.editId; const grupos=[...formCampanha.querySelectorAll('[name="grupos"] option:checked')].map(o=>o.value); const clienteIds=[...formCampanha.querySelectorAll('[name="clienteIds"] option:checked')].map(o=>o.value); const dados={titulo:(f.get('titulo')||'').trim(),mensagem:f.get('mensagem')||'',destinoTipo:f.get('destinoTipo')||'grupo',grupos,clienteIds,clienteTesteId:f.get('clienteTesteId')||'',linkVideo:f.get('link_video')||''}; if(campanhaImagemSelecionadaGlobal)dados.imagemBase64=campanhaImagemSelecionadaGlobal; if(campanhaVideoSelecionado)dados.videoDataUrl=campanhaVideoSelecionado; if(editId){const c=state.campanhas.find(x=>x.id===editId); if(c)Object.assign(c,dados,{atualizadoEm:Date.now()});}else state.campanhas.push(Object.assign({id:uid(),criadoEm:Date.now()},dados)); campanhaImagemSelecionadaGlobal=null; campanhaVideoSelecionado=null; await save('campanhas'); editCampanhaId=null; renderAll();};
-  const btnCancelEd=document.getElementById('btn-cancelar-edicao-campanha'); if(btnCancelEd)btnCancelEd.onclick=()=>{editCampanhaId=null;renderAll();};
-  document.querySelectorAll('[data-edit-campanha]').forEach(btn=>btn.onclick=()=>{editCampanhaId=btn.dataset.editCampanha; campanhaImagemSelecionadaGlobal=null; campanhaVideoSelecionado=null; campanhaSub='campanhas'; renderAll();});
-  document.querySelectorAll('[data-enviar-campanha]').forEach(btn=>btn.onclick=()=>{campanhaEnviarId=btn.dataset.enviarCampanha; campanhaEnviarModo='grupo'; renderAll();});
-  document.querySelectorAll('[data-del-campanha]').forEach(btn=>btn.onclick=async()=>{if(!confirm('Excluir essa campanha? O histórico de envio também será apagado.'))return; const id=btn.dataset.delCampanha; state.campanhas=state.campanhas.filter(c=>c.id!==id); state.envioCampanhaLog=(state.envioCampanhaLog||[]).filter(l=>l.campanhaId!==id); await save('campanhas'); await save('envioCampanhaLog'); renderAll();});
-  const btnVoltarCampanha=document.querySelector('[data-voltar-campanha]'); if(btnVoltarCampanha)btnVoltarCampanha.onclick=()=>{campanhaEnviarId=null;renderAll();};
-  const btnEnviarRecompra=document.getElementById('btn-enviar-recompra'); if(btnEnviarRecompra)btnEnviarRecompra.onclick=()=>{const sel=document.getElementById('sel-campanha-recompra');if(sel){campanhaEnviarId=sel.value;campanhaEnviarModo='recompra';renderAll();}};
-  document.querySelectorAll('[data-marcar-enviado-campanha]').forEach(a=>a.onclick=async()=>{const campanhaId=a.dataset.marcarEnviadoCampanha,cliente=a.dataset.marcarEnviadoCliente;if(!jaEnviouCampanha(campanhaId,cliente)){state.envioCampanhaLog.push({campanhaId,cliente,data:todayStr()});await save('envioCampanhaLog');}});
+  document.querySelectorAll('[data-campanha-sub]').forEach(btn=>btn.onclick=()=>{ campanhaSub = btn.dataset.campanhaSub; campanhaEnviarId=null; renderAll(); });
+  let imagemCampanhaSelecionada = null;
+  const campanhaImgInput = document.getElementById('campanha-imagem-input');
+  if(campanhaImgInput) campanhaImgInput.onchange = async()=>{
+    const file = campanhaImgInput.files[0];
+    if(!file) return;
+    imagemCampanhaSelecionada = await comprimirImagemArquivo(file);
+    const prev = document.getElementById('campanha-imagem-preview');
+    if(prev) prev.innerHTML = '<img src="'+imagemCampanhaSelecionada+'" style="max-height:120px;border-radius:8px;">';
+  };
+  const formCampanha = document.getElementById('form-campanha');
+  if(formCampanha) formCampanha.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(formCampanha);
+    const campanha = {
+      id: uid(), criadoEm: Date.now(),
+      titulo: f.get('titulo'), mensagem: f.get('mensagem'),
+      linkVideo: f.get('link_video')||'', imagemBase64: imagemCampanhaSelecionada||null
+    };
+    if(!state.campanhas) state.campanhas = [];
+    state.campanhas.push(campanha);
+    await save('campanhas');
+    imagemCampanhaSelecionada = null;
+    formCampanha.reset();
+    const prev = document.getElementById('campanha-imagem-preview'); if(prev) prev.innerHTML='';
+    renderAll();
+  };
+  document.querySelectorAll('[data-enviar-campanha-todos]').forEach(btn=>btn.onclick=()=>{
+    campanhaEnviarId = btn.dataset.enviarCampanhaTodos; campanhaEnviarModo = 'todos'; renderAll();
+  });
+  document.querySelectorAll('[data-del-campanha]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir essa campanha? O histórico de quem já recebeu também será apagado.')) return;
+    const id = btn.dataset.delCampanha;
+    state.campanhas = state.campanhas.filter(c=>c.id!==id);
+    state.envioCampanhaLog = (state.envioCampanhaLog||[]).filter(l=>l.campanhaId!==id);
+    await save('campanhas'); await save('envioCampanhaLog');
+    renderAll();
+  });
+  const btnVoltarCampanha = document.querySelector('[data-voltar-campanha]');
+  if(btnVoltarCampanha) btnVoltarCampanha.onclick = ()=>{ campanhaEnviarId = null; renderAll(); };
+  const btnEnviarRecompra = document.getElementById('btn-enviar-recompra');
+  if(btnEnviarRecompra) btnEnviarRecompra.onclick = ()=>{
+    const sel = document.getElementById('sel-campanha-recompra');
+    if(!sel) return;
+    campanhaEnviarId = sel.value; campanhaEnviarModo = 'recompra'; renderAll();
+  };
+  document.querySelectorAll('[data-marcar-enviado-campanha]').forEach(a=>a.onclick=async()=>{
+    const campanhaId = a.dataset.marcarEnviadoCampanha, cliente = a.dataset.marcarEnviadoCliente;
+    if(!jaEnviouCampanha(campanhaId, cliente)){
+      if(!state.envioCampanhaLog) state.envioCampanhaLog = [];
+      state.envioCampanhaLog.push({campanhaId, cliente, data: todayStr()});
+      await save('envioCampanhaLog');
+      renderAll();
+    }
+  });
+
   // ---- Rota do dia ----
   const formParadaExtra = document.getElementById('form-parada-extra');
   if(formParadaExtra) formParadaExtra.onsubmit = async(e)=>{
