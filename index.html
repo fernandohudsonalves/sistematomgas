@@ -269,7 +269,6 @@ const AUTH_APP_HTML = `
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <div id="logo-box"></div>
-      <span style="color:#cbd5e1;font-size:11px;" title="Horário em que este index.html foi gerado (atualize APP_BUILD_HORARIO a cada deploy)">v ${APP_BUILD_HORARIO}</span>
       <button id="btn-logout" class="link-btn" style="color:#fff;">Sair</button>
     </div>
     <input type="file" id="logo-file-input" accept="image/*" style="display:none;">
@@ -1251,7 +1250,7 @@ function viewDashboard(){
   const conveniosMes = totalConveniosMes(mk);
 
   return comunicadosBannerHtml()+
-    '<div style="text-align:center;margin-bottom:14px;"><span style="background:#B6FF3D;color:#142A63;font-weight:800;font-size:12px;padding:5px 14px;border-radius:20px;letter-spacing:.3px;display:inline-block;">ATUALIZADO CORRIGIDO — v '+APP_BUILD_HORARIO+'</span></div>'+
+    '<div style="text-align:center;margin-bottom:14px;"><span style="background:#B6FF3D;color:#142A63;font-weight:800;font-size:12px;padding:5px 14px;border-radius:20px;letter-spacing:.3px;display:inline-block;">Sistema Tom Gás Versão 1.0 - atualizado em 19-08-2028 - Versão de Produção</span></div>'+
     metaCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div></div>'+
     '<div class="metric neg"><div class="label">Despesas do dia</div><div class="value">'+fmtMoney(totalDespesasHoje)+'</div></div>'+
@@ -2282,7 +2281,7 @@ function viewConfig(){
     '</details>'+
     '</div>'+
     '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+
-    '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong> e <strong>Produtos</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado", despesas viram lançamentos, clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
+    '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong> e <strong>Produtos</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos, clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
     '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
     '<div id="resumo-importacao-diaria"></div>'+
     '</div>'+
@@ -2314,6 +2313,7 @@ function viewRelatorios(){
     {id:'fiado', label:'Fiado / A receber'},
     {id:'creditos', label:'Créditos em haver'},
     {id:'comodatos', label:'Comodatos / Empréstimos'},
+    {id:'patrimonio', label:'Patrimônio real'},
     {id:'notas', label:'Notas para o Bling'},
     {id:'empresas', label:'Empresas conveniadas'},
   ];
@@ -2325,6 +2325,7 @@ function viewRelatorios(){
   else if(relatorioSub==='fiado') content = relatorioFiado();
   else if(relatorioSub==='creditos') content = relatorioCreditos();
   else if(relatorioSub==='comodatos') content = relatorioComodatos();
+  else if(relatorioSub==='patrimonio') content = relatorioPatrimonio();
   else if(relatorioSub==='notas') content = relatorioNotas();
   else content = relatorioEmpresas();
   return '<div class="card"><div class="subtabs">'+subtabs.map(s=>'<button data-sub="'+s.id+'" class="'+(relatorioSub===s.id?'active':'')+'">'+s.label+'</button>').join('')+
@@ -2410,6 +2411,51 @@ function tabelaSaldosComodato(direcao, tituloColuna){
     linhas.map(l=>'<tr><td>'+l.nome+'</td><td>'+l.categoria+' — '+itemComodatoLabel(l.categoria,l.item)+'</td><td>'+l.produto+'</td>'+
     '<td>'+(l.saldo>0?'+':'')+l.saldo+'</td></tr>').join('')+
     '</tbody></table></div>';
+}
+/* Soma o saldo de comodato em aberto (todos os nomes juntos) pra um item/estado específico.
+   direcao='cliente' -> itens emprestados a clientes (ainda são nossos, só estão fora).
+   direcao='atacadista' -> itens que devemos ao atacadista (estão com a gente, mas não são nossos). */
+function saldoComodatoPorItem(direcao, grupoEstoque, itemChave, estado){
+  const categoriaComodato = grupoEstoque==='gas' ? 'Gás' : 'Água';
+  const produtoAlvo = estado==='vazio' ? 'Vasilhame vazio' : 'Carga completa (cheio)';
+  return state.comodatos
+    .filter(c=>c.direcao===direcao && c.categoria===categoriaComodato && c.item===itemChave && c.produto===produtoAlvo)
+    .reduce((s,c)=>s+c.quantidade, 0);
+}
+/* Patrimônio real de um item = estoque físico na loja + o que está emprestado com clientes
+   (continua sendo nosso) - o que devemos ao atacadista (está com a gente mas não é nosso). */
+function linhaPatrimonioItem(grupoEstoque, itemChave, label){
+  const fisico = (state.estoque[grupoEstoque] && state.estoque[grupoEstoque][itemChave]) || {cheio:0,vazio:0};
+  const linhas = ['cheio','vazio'].map(estado=>{
+    const fisicoQtd = fisico[estado]||0;
+    const emprestado = saldoComodatoPorItem('cliente', grupoEstoque, itemChave, estado);
+    const devendo = saldoComodatoPorItem('atacadista', grupoEstoque, itemChave, estado);
+    return {estado, fisicoQtd, emprestado, devendo, patrimonio: fisicoQtd + emprestado - devendo};
+  });
+  return {chave:itemChave, label, linhas};
+}
+function tabelaPatrimonioGrupo(titulo, linhasGrupo){
+  const soma = (campo)=>linhasGrupo.reduce((s,it)=>s+it.linhas.reduce((s2,l)=>s2+l[campo],0),0);
+  return '<h3 style="margin-top:16px;">'+titulo+'</h3>'+
+    '<div class="table-wrap"><table><thead><tr><th>Item</th><th>Estado</th><th>Estoque físico</th><th>Emprestado a clientes</th><th>Devemos ao atacadista</th><th>Patrimônio real</th></tr></thead><tbody>'+
+    linhasGrupo.map(it=>it.linhas.map((l,idx)=>
+      '<tr><td>'+(idx===0?it.label:'')+'</td><td>'+(l.estado==='cheio'?'Cheio':'Vazio')+'</td>'+
+      '<td>'+l.fisicoQtd+'</td>'+
+      '<td>'+(l.emprestado>0?'+':'')+l.emprestado+'</td>'+
+      '<td>'+(l.devendo>0?'-'+l.devendo:l.devendo)+'</td>'+
+      '<td style="font-weight:700;">'+l.patrimonio+'</td></tr>'
+    ).join('')).join('')+
+    '</tbody><tfoot><tr style="font-weight:700;"><td colspan="2">Total '+titulo+'</td>'+
+    '<td>'+soma('fisicoQtd')+'</td><td>'+soma('emprestado')+'</td><td>'+soma('devendo')+'</td><td>'+soma('patrimonio')+'</td></tr></tfoot>'+
+    '</table></div>';
+}
+function relatorioPatrimonio(){
+  const linhasGas = ITENS_GAS_COMODATO.map(t=>linhaPatrimonioItem('gas', t, t));
+  const linhasAgua = ITENS_AGUA_COMODATO.map(p=>linhaPatrimonioItem('agua', p[1], p[0]));
+  return '<h3>Patrimônio real (o que é realmente nosso)</h3>'+
+    '<div class="hint">Junta o estoque físico da loja com o que está emprestado com clientes (continua sendo nosso, só está fora) e desconta o que devemos ao atacadista (está com a gente, mas não é nosso). Cheio e vazio são contados separadamente, em unidades — não em kg ou R$.</div>'+
+    tabelaPatrimonioGrupo('Gás', linhasGas) +
+    tabelaPatrimonioGrupo('Água', linhasAgua);
 }
 function relatorioComodatos(){
   return '<h3>Lançar comodato / empréstimo</h3>'+
@@ -4858,7 +4904,7 @@ function processarImportacaoDiariaExcel(file){
     const nomesClientesExistentes = new Set(state.clientes.map(c=>chaveNormalizada(c.nome)));
 
     if(linhasVendas.length){
-      let importadas=0, ignoradas=0, clientesNovosDeVendas=0;
+      let importadas=0, ignoradas=0, clientesNovosDeVendas=0, creditosAlterados=false, fiadosGeradosPorAbate=0;
       linhasVendas.forEach(function(r){
         const textoCategoria = (r['Categoria/Produto']||'').trim();
         if(!textoCategoria){ ignoradas++; return; }
@@ -4907,11 +4953,33 @@ function processarImportacaoDiariaExcel(file){
         state.vendas.push(venda);
         ajustaEstoquePorVenda(categoria, quantidade, false);
         importadas++;
+
+        // Se a planilha marcou a venda como "Abateu", desconta automaticamente do crédito em
+        // haver do cliente (igual ao lançamento manual) e, se sobrar diferença, lança de fiado —
+        // sem precisar escolher nada na hora de importar.
+        if(pagamento==='Abateu' && cliente){
+          const totalVendaComFrete = Math.round((valor_total+frete)*100)/100;
+          const saldoAntes = saldoCreditoCliente(cliente);
+          const abatido = Math.round(Math.min(Math.max(saldoAntes,0), totalVendaComFrete)*100)/100;
+          const diferenca = Math.round((totalVendaComFrete-abatido)*100)/100;
+          state.creditos.push({id:uid(), cliente:cliente, valor:-abatido, data:data,
+            obs:'Abatido na venda de '+fmtMoney(totalVendaComFrete)+(diferenca>0.004?' (diferença de '+fmtMoney(diferenca)+' foi pro fiado)':'')+' — importado de planilha'});
+          creditosAlterados = true;
+          if(diferenca>0.004){
+            state.fiados.push({id:uid(), cliente:cliente, valor:diferenca, data:data,
+              descricao:'Diferença da venda de '+fmtMoney(totalVendaComFrete)+' (parte paga com crédito em haver — importado de planilha)', status:'aberto'});
+            venda.pagamento = 'Abateu + Fiado';
+            fiadosGeradosPorAbate++;
+          }
+        }
       });
       if(importadas>0){ await save('vendas'); await save('estoque'); await save('categoriasProdutos'); }
       if(clientesNovosDeVendas>0) await save('clientes');
+      if(creditosAlterados) await save('creditos');
+      if(fiadosGeradosPorAbate>0) await save('fiados');
       resumo.push(importadas+' venda(s) importada(s)'+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem categoria/produto válido)':''));
       if(clientesNovosDeVendas>0) resumo.push(clientesNovosDeVendas+' cliente(s) novo(s) cadastrado(s) a partir da aba Vendas');
+      if(creditosAlterados) resumo.push('Crédito em haver abatido automaticamente nas vendas marcadas como "Abateu"'+(fiadosGeradosPorAbate>0?' ('+fiadosGeradosPorAbate+' com diferença lançada de fiado)':''));
     }
 
     if(linhasDespesas.length){
