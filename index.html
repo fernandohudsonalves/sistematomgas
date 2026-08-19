@@ -616,22 +616,40 @@ function destinatariosCampanha(campanha){
 }
 function campanhaMidiaHtml(c){ return (c.imagemBase64?'🖼️ imagem ':'')+(c.videoDataUrl?'🎬 vídeo PC ':'')+(c.linkVideo?'🔗 vídeo link':'')+(!c.imagemBase64&&!c.videoDataUrl&&!c.linkVideo?'—':''); }
 function clientesSelecionadosOptions(sel){ const set=new Set(sel||[]); return (state.clientes||[]).map(c=>'<option value="'+c.id+'" '+(set.has(c.id)?'selected':'')+'>'+escapeHtmlCampanha(c.nome)+' — '+escapeHtmlCampanha(c.telefone||'sem telefone')+'</option>').join(''); }
+const CAMP_DESTINO_HINTS={
+  grupo:'Manda pra todo cliente marcado no(s) grupo(s) escolhidos abaixo.',
+  clientes:'Manda só pros clientes que você marcar na lista abaixo.',
+  teste:'Manda só pra 1 cliente — bom pra testar a mensagem antes de mandar pra todo mundo.',
+  todos:'Manda pra todo cliente da sua base que tenha telefone cadastrado.'
+};
 function formCampanhaHtml(c){
   const grupos=state.categoriasClientes||[], sg=c?.grupos||[], sc=c?.clienteIds||[];
-  return '<h3>'+(c?'Editar campanha':'Nova campanha')+'</h3><div class="hint">A campanha pode ser alterada depois de salva. Você pode selecionar um vídeo diretamente do PC (até 12 MB) ou usar um link.</div>'+
+  const dt=c?.destinoTipo||'grupo';
+  return '<h3 style="margin-top:0;">'+(c?'Editar campanha':'Nova campanha')+'</h3>'+
   '<form id="form-campanha" data-edit-id="'+(c?.id||'')+'">'+
-  '<label>Título da campanha <span class="req">*</span></label><input type="text" name="titulo" value="'+escapeHtmlCampanha(c?.titulo||'')+'" required>'+
-  '<label>Mensagem <span class="req">*</span></label><textarea name="mensagem" rows="4" required>'+escapeHtmlCampanha(c?.mensagem||'')+'</textarea>'+
-  ((state.publicos||[]).length?'<label>Usar público salvo</label><select id="camp-usar-publico"><option value="">— escolher manualmente —</option>'+state.publicos.map(p=>'<option value="'+p.id+'">'+escapeHtmlCampanha(p.nome)+'</option>').join('')+'</select>':'')+
-  '<div class="form-row"><div><label>Público</label><select name="destinoTipo"><option value="grupo" '+(c?.destinoTipo==='grupo'?'selected':'')+'>Grupo(s) / lote(s)</option><option value="clientes" '+(c?.destinoTipo==='clientes'?'selected':'')+'>Clientes escolhidos</option><option value="teste" '+(c?.destinoTipo==='teste'?'selected':'')+'>Somente 1 cliente — teste</option><option value="todos" '+(c?.destinoTipo==='todos'?'selected':'')+'>Todos os clientes</option></select></div>'+
-  '<div><label>Grupo(s)</label><select name="grupos" multiple size="4">'+grupos.map(g=>'<option value="'+escapeHtmlCampanha(g)+'" '+(sg.includes(g)?'selected':'')+'>'+escapeHtmlCampanha(g)+'</option>').join('')+'</select><div class="hint">Ctrl/Cmd para vários.</div></div></div>'+
-  '<label>Clientes escolhidos</label><select name="clienteIds" multiple size="6">'+clientesSelecionadosOptions(sc)+'</select>'+
-  '<button type="button" class="btn small ghost" id="btn-salvar-publico-atual">💾 salvar este público</button>'+
-  '<label>Cliente único para teste</label><select name="clienteTesteId"><option value="">Selecione um cliente</option>'+clientesSelecionadosOptions(c?.clienteTesteId?[c.clienteTesteId]:[])+'</select>'+
-  '<label>Link de vídeo (opcional)</label><input type="url" name="link_video" value="'+escapeHtmlCampanha(c?.linkVideo||'')+'" placeholder="https://...">'+
-  '<label>Vídeo do PC (opcional)</label><input type="file" id="campanha-video-input" accept="video/*"><div id="campanha-video-preview" style="margin-top:8px;">'+(c?.videoDataUrl?'<video src="'+c.videoDataUrl+'" controls style="max-width:100%;max-height:220px;border-radius:8px;"></video>':'')+'</div>'+
-  '<label>Imagem (opcional)</label><input type="file" id="campanha-imagem-input" accept="image/*"><div id="campanha-imagem-preview" style="margin-top:8px;">'+(c?.imagemBase64?'<img src="'+c.imagemBase64+'" style="max-height:120px;border-radius:8px;">':'')+'</div>'+
-  '<button type="submit" class="btn small">'+(c?'Salvar alterações':'Salvar campanha')+'</button> '+(c?'<button type="button" class="btn small ghost" id="btn-cancelar-edicao-campanha">Cancelar</button>':'')+'</form>';
+
+  '<h3>1. Mensagem</h3>'+
+  '<label>Título da campanha <span class="req">*</span></label><input type="text" name="titulo" value="'+escapeHtmlCampanha(c?.titulo||'')+'" required><div class="hint">É só pra você identificar a campanha na lista — o cliente não vê o título.</div>'+
+  '<label>Texto que o cliente vai receber <span class="req">*</span></label><textarea name="mensagem" rows="4" required>'+escapeHtmlCampanha(c?.mensagem||'')+'</textarea><div class="hint">Use {nome} no texto pra personalizar com o nome de cada cliente automaticamente.</div>'+
+
+  '<h3>2. Público — quem vai receber</h3>'+
+  '<div class="hint" style="margin:-4px 0 10px;">O envio é sempre individual: pra cada cliente da lista o sistema gera um link do WhatsApp com o texto pronto, e você clica em "abrir whats" um por um. O público aqui só define quem entra nessa lista.</div>'+
+  ((state.publicos||[]).length?'<label>Usar público salvo</label><select id="camp-usar-publico"><option value="">— escolher manualmente abaixo —</option>'+state.publicos.map(p=>'<option value="'+p.id+'">'+escapeHtmlCampanha(p.nome)+'</option>').join('')+'</select>':'')+
+  '<label>Tipo de público</label><select name="destinoTipo" id="camp-destino-tipo"><option value="grupo" '+(dt==='grupo'?'selected':'')+'>Grupo(s) / lote(s)</option><option value="clientes" '+(dt==='clientes'?'selected':'')+'>Clientes escolhidos</option><option value="teste" '+(dt==='teste'?'selected':'')+'>Somente 1 cliente — teste</option><option value="todos" '+(dt==='todos'?'selected':'')+'>Todos os clientes</option></select>'+
+  '<div class="hint" id="camp-destino-hint">'+CAMP_DESTINO_HINTS[dt]+'</div>'+
+
+  '<div id="camp-campo-grupo" style="display:'+(dt==='grupo'?'block':'none')+';margin-top:8px;"><label>Grupo(s) de clientes</label><select name="grupos" multiple size="4">'+grupos.map(g=>'<option value="'+escapeHtmlCampanha(g)+'" '+(sg.includes(g)?'selected':'')+'>'+escapeHtmlCampanha(g)+'</option>').join('')+'</select><div class="hint">Ctrl/Cmd para selecionar vários. Grupos são criados na aba Clientes.</div></div>'+
+  '<div id="camp-campo-clientes" style="display:'+(dt==='clientes'?'block':'none')+';margin-top:8px;"><label>Escolha os clientes</label><select name="clienteIds" multiple size="6">'+clientesSelecionadosOptions(sc)+'</select><button type="button" class="btn small ghost" id="btn-salvar-publico-atual">💾 salvar esta seleção como público</button></div>'+
+  '<div id="camp-campo-teste" style="display:'+(dt==='teste'?'block':'none')+';margin-top:8px;"><label>Cliente único para teste</label><select name="clienteTesteId"><option value="">Selecione um cliente</option>'+clientesSelecionadosOptions(c?.clienteTesteId?[c.clienteTesteId]:[])+'</select></div>'+
+  '<div id="camp-campo-todos" style="display:'+(dt==='todos'?'block':'none')+';margin-top:8px;"><div class="hint">Nenhuma seleção extra necessária — todos os clientes com telefone entram na lista.</div></div>'+
+
+  '<h3>3. Mídia (opcional)</h3>'+
+  '<div class="hint" style="margin:-4px 0 10px;">Foto e vídeo não vão anexados automaticamente no link do WhatsApp — você baixa e anexa na hora do envio (veja instrução na tela de "preparar envio").</div>'+
+  '<label>Link de vídeo</label><input type="url" name="link_video" value="'+escapeHtmlCampanha(c?.linkVideo||'')+'" placeholder="https://...">'+
+  '<label>Vídeo do PC (até 12 MB)</label><input type="file" id="campanha-video-input" accept="video/*"><div id="campanha-video-preview" style="margin-top:8px;">'+(c?.videoDataUrl?'<video src="'+c.videoDataUrl+'" controls style="max-width:100%;max-height:220px;border-radius:8px;"></video>':'')+'</div>'+
+  '<label>Imagem</label><input type="file" id="campanha-imagem-input" accept="image/*"><div id="campanha-imagem-preview" style="margin-top:8px;">'+(c?.imagemBase64?'<img src="'+c.imagemBase64+'" style="max-height:120px;border-radius:8px;">':'')+'</div>'+
+
+  '<button type="submit" class="btn small" style="margin-top:20px;">'+(c?'Salvar alterações':'Salvar campanha')+'</button> '+(c?'<button type="button" class="btn small ghost" id="btn-cancelar-edicao-campanha">Cancelar</button>':'')+'</form>';
 }
 function listaCampanhasHtml(){
   if(!(state.campanhas||[]).length) return '<div class="empty">Nenhuma campanha criada ainda.</div>';
@@ -646,28 +664,71 @@ function listaCampanhasHtml(){
 
 /* ---- Públicos salvos (audiências reutilizáveis) ---- */
 let editPublicoId=null;
+function valorTotalCompradoCliente(nome){
+  return state.vendas.filter(v=>v.cliente===nome).reduce((s,v)=>s+(v.valor_total||0),0);
+}
+function saldoComodatoCliente(nome){
+  return state.comodatos.filter(c=>c.cliente===nome).reduce((s,c)=>s+(c.quantidade||0),0);
+}
+const PUBLICO_TIPOS=[
+  {v:'grupo',label:'Grupo(s) / lote(s)',desc:'Clientes marcados no(s) grupo(s) escolhidos abaixo.'},
+  {v:'clientes',label:'Clientes escolhidos',desc:'Só os clientes que você marcar manualmente.'},
+  {v:'endereco',label:'📍 Rua / bairro',desc:'Detecta pelo endereço cadastrado — digite trechos de rua ou bairro, separados por vírgula.'},
+  {v:'inadimplentes',label:'💰 Devendo (fiado em aberto)',desc:'Clientes com saldo de fiado em aberto acima do valor mínimo.'},
+  {v:'vip',label:'⭐ VIP (maior valor comprado)',desc:'Clientes que já compraram acima do valor mínimo, do maior pro menor.'},
+  {v:'recompra',label:'🔁 Atrasados pra recomprar',desc:'Clientes com previsão de recompra vencida (mesmo cálculo da aba Previsão de recompra).'},
+  {v:'comodato',label:'🛢️ Com casco/vasilhame em aberto',desc:'Clientes que ainda estão com item de comodato não devolvido.'},
+  {v:'todos',label:'Todos os clientes',desc:'Toda a base com telefone cadastrado.'}
+];
 function destinatariosPublico(p){
   const clientes=state.clientes||[];
   if(!p) return [];
   if(p.tipo==='clientes') return clientes.filter(c=>(p.clienteIds||[]).includes(c.id)&&c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
   if(p.tipo==='grupo'){ const gr=p.grupos||[]; return clientes.filter(c=>c.telefone&&gruposClienteDoCliente(c).some(g=>gr.includes(g))).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone})); }
+  if(p.tipo==='endereco'){
+    const kws=(p.enderecoTexto||'').split(',').map(s=>chaveNormalizada(s.trim())).filter(Boolean);
+    if(!kws.length) return [];
+    return clientes.filter(c=>{ const alvo=chaveNormalizada((c.endereco||'')+' '+(c.complemento||'')); return c.telefone && kws.some(k=>alvo.includes(k)); }).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
+  }
+  if(p.tipo==='inadimplentes'){
+    const min=Number(p.valorMinimo)||0;
+    return clientes.filter(c=>c.telefone && saldoDoCliente(c.nome)>min).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
+  }
+  if(p.tipo==='vip'){
+    const min=Number(p.valorMinimo)||0;
+    return clientes.filter(c=>c.telefone && valorTotalCompradoCliente(c.nome)>=min).sort((a,b)=>valorTotalCompradoCliente(b.nome)-valorTotalCompradoCliente(a.nome)).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
+  }
+  if(p.tipo==='recompra'){
+    const diasMin=Number(p.diasMinimo)||0;
+    return previsaoRecompraClientes().filter(r=>r.atraso>diasMin && r.telefone).map(r=>{ const c=clientes.find(x=>x.nome===r.nome); return {id:c?c.id:r.nome, nome:r.nome, telefone:r.telefone}; });
+  }
+  if(p.tipo==='comodato'){
+    return clientes.filter(c=>c.telefone && saldoComodatoCliente(c.nome)>0).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
+  }
   return clientes.filter(c=>c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
 }
 function formPublicoHtml(p){
-  const grupos=state.categoriasClientes||[], sg=p?.grupos||[], sc=p?.clienteIds||[];
-  return '<h3>'+(p?'Editar público':'Novo público salvo')+'</h3><div class="hint">Monte uma audiência uma vez e reutilize em várias campanhas.</div>'+
+  const grupos=state.categoriasClientes||[], sg=p?.grupos||[], sc=p?.clienteIds||[], tipo=p?.tipo||'grupo';
+  const vis=k=>tipo===k?'block':'none';
+  return '<h3>'+(p?'Editar público':'Novo público salvo')+'</h3><div class="hint">Monte uma audiência uma vez (manual ou automática) e reutilize em várias campanhas — ela se atualiza sozinha sempre que os dados dos clientes mudarem.</div>'+
   '<form id="form-publico" data-edit-id="'+(p?.id||'')+'">'+
-  '<label>Nome do público <span class="req">*</span></label><input type="text" name="nome" value="'+escapeHtmlCampanha(p?.nome||'')+'" required placeholder="Ex: VIP, Inadimplentes, Bairro Centro">'+
-  '<div class="form-row"><div><label>Tipo</label><select name="tipo"><option value="grupo" '+(p?.tipo==='grupo'?'selected':'')+'>Grupo(s) / lote(s)</option><option value="clientes" '+(p?.tipo==='clientes'?'selected':'')+'>Clientes escolhidos</option><option value="todos" '+(p?.tipo==='todos'?'selected':'')+'>Todos os clientes</option></select></div>'+
-  '<div><label>Grupo(s)</label><select name="grupos" multiple size="4">'+grupos.map(g=>'<option value="'+escapeHtmlCampanha(g)+'" '+(sg.includes(g)?'selected':'')+'>'+escapeHtmlCampanha(g)+'</option>').join('')+'</select></div></div>'+
-  '<label>Clientes escolhidos</label><select name="clienteIds" multiple size="6">'+clientesSelecionadosOptions(sc)+'</select>'+
-  '<button type="submit" class="btn small">'+(p?'Salvar alterações':'Salvar público')+'</button> '+(p?'<button type="button" class="btn small ghost" id="btn-cancelar-edicao-publico">Cancelar</button>':'')+'</form>';
+  '<label>Nome do público <span class="req">*</span></label><input type="text" name="nome" value="'+escapeHtmlCampanha(p?.nome||'')+'" required placeholder="Ex: VIP, Devendo, Jardim Apucarana">'+
+  '<label>Como selecionar</label><select name="tipo" id="pub-tipo">'+PUBLICO_TIPOS.map(t=>'<option value="'+t.v+'" '+(tipo===t.v?'selected':'')+'>'+t.label+'</option>').join('')+'</select>'+
+  '<div class="hint" id="pub-tipo-hint">'+(PUBLICO_TIPOS.find(t=>t.v===tipo)||{}).desc+'</div>'+
+  '<div id="pub-campo-grupo" style="display:'+vis('grupo')+';margin-top:8px;"><label>Grupo(s)</label><select name="grupos" multiple size="4">'+grupos.map(g=>'<option value="'+escapeHtmlCampanha(g)+'" '+(sg.includes(g)?'selected':'')+'>'+escapeHtmlCampanha(g)+'</option>').join('')+'</select></div>'+
+  '<div id="pub-campo-clientes" style="display:'+vis('clientes')+';margin-top:8px;"><label>Clientes escolhidos</label><select name="clienteIds" multiple size="6">'+clientesSelecionadosOptions(sc)+'</select></div>'+
+  '<div id="pub-campo-endereco" style="display:'+vis('endereco')+';margin-top:8px;"><label>Trechos de rua/bairro (separe por vírgula)</label><input type="text" name="enderecoTexto" id="pub-endereco-input" value="'+escapeHtmlCampanha(p?.enderecoTexto||'')+'" placeholder="Ex: Jardim Apucarana, Av Santa Catarina, Rua Rio Grande do Sul"><button type="button" class="link-btn" id="btn-sugestao-endereco">usar sugestão: Jardim Apucarana, Av. Santa Catarina, Rua Rio Grande do Sul, Rua Ceará, Av. Mato Grosso, Rua Sergipe</button><div class="hint">Compara com o campo Endereço/Complemento do cadastro do cliente — não precisa ser exato, maiúscula ou acento.</div></div>'+
+  '<div id="pub-campo-valorInad" style="display:'+vis('inadimplentes')+';margin-top:8px;"><label>Valor mínimo devendo (R$)</label><input type="number" step="0.01" min="0" name="valorMinimoInad" value="'+(p?.tipo==='inadimplentes'?(p?.valorMinimo||0):0)+'"></div>'+
+  '<div id="pub-campo-valorVip" style="display:'+vis('vip')+';margin-top:8px;"><label>Valor mínimo já comprado (R$)</label><input type="number" step="0.01" min="0" name="valorMinimoVip" value="'+(p?.tipo==='vip'?(p?.valorMinimo||500):500)+'"></div>'+
+  '<div id="pub-campo-recompra" style="display:'+vis('recompra')+';margin-top:8px;"><label>Dias mínimos de atraso</label><input type="number" min="0" name="diasMinimo" value="'+(p?.diasMinimo||0)+'"></div>'+
+  '<button type="submit" class="btn small" style="margin-top:14px;">'+(p?'Salvar alterações':'Salvar público')+'</button> '+(p?'<button type="button" class="btn small ghost" id="btn-cancelar-edicao-publico">Cancelar</button>':'')+'</form>';
 }
 function listaPublicosHtml(){
   if(!(state.publicos||[]).length) return '<div class="empty">Nenhum público salvo ainda.</div>';
   return '<div class="lc-grid">'+state.publicos.map(p=>{
     const n=destinatariosPublico(p).length;
-    const tipoLabel=p.tipo==='grupo'?((p.grupos||[]).join(', ')||'Grupo'):p.tipo==='clientes'?'Clientes selecionados':'Todos os clientes';
+    const info=PUBLICO_TIPOS.find(t=>t.v===p.tipo);
+    const tipoLabel=p.tipo==='grupo'?((p.grupos||[]).join(', ')||'Grupo'):p.tipo==='endereco'?(p.enderecoTexto||'—'):(info?info.label:'Todos os clientes');
     return '<div class="lc-card"><div class="lc-top"><strong>'+escapeHtmlCampanha(p.nome)+'</strong><span class="badge gas">'+n+' contato(s)</span></div>'+
     '<div class="lc-msg">'+escapeHtmlCampanha(tipoLabel)+'</div>'+
     '<div class="lc-acoes"><button class="act-link" data-editar-publico="'+p.id+'">✎ editar</button><button class="del-link" data-del-publico="'+p.id+'">🗑 excluir</button></div></div>';
@@ -724,10 +785,16 @@ async function enviarCampanhaAutomatica(campanha, destinatarios, btn){
 function telaEnvioCampanha(campanha,destinatarios){
   if(!campanha) return '<div class="empty">Campanha não encontrada.</div>';
   const enviados=destinatarios.filter(d=>jaEnviouCampanha(campanha.id,d.nome)).length;
-  return '<button class="act-link" data-voltar-campanha="1">← voltar</button><h3>Enviando: '+escapeHtmlCampanha(campanha.titulo)+'</h3><div class="hint">Você pode enviar automaticamente pelo WhatsApp Business, sem abrir o WhatsApp para cada cliente. Também é possível continuar pelo modo manual.</div><button type="button" class="btn small" id="btn-enviar-campanha-automatico" style="margin:10px 0;">🚀 enviar automaticamente</button> <span class="hint">Requer a API oficial do WhatsApp Business configurada no Supabase.</span>'+
-  (campanha.imagemBase64?'<a class="btn small ghost" href="'+campanha.imagemBase64+'" download="campanha.jpg">⬇️ Baixar imagem</a>':'')+(campanha.videoDataUrl?'<a class="btn small ghost" href="'+campanha.videoDataUrl+'" download="campanha-video">⬇️ Baixar vídeo</a>':'')+(campanha.linkVideo?'<div class="hint">Vídeo: <a href="'+campanha.linkVideo+'" target="_blank" rel="noopener">'+campanha.linkVideo+'</a></div>':'')+
+  const temMidia = campanha.imagemBase64 || campanha.videoDataUrl || campanha.linkVideo;
+  return '<button class="act-link" data-voltar-campanha="1">← voltar</button><h3>Enviando: '+escapeHtmlCampanha(campanha.titulo)+'</h3>'+
   '<div class="metric" style="max-width:220px;margin:10px 0;"><div class="label">Progresso</div><div class="value">'+enviados+' / '+destinatarios.length+'</div></div>'+
-  (destinatarios.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Status</th><th></th></tr></thead><tbody>'+destinatarios.map(d=>{const enviado=jaEnviouCampanha(campanha.id,d.nome); let msg=aplicarPlaceholdersMensagem(campanha.mensagem,{nome:d.nome}); if(campanha.linkVideo) msg+='\n'+campanha.linkVideo; return '<tr><td>'+escapeHtmlCampanha(d.nome)+'</td><td>'+escapeHtmlCampanha(d.telefone)+'</td><td>'+(enviado?'<span class="badge status-pago">enviado</span>':'<span class="badge status-receber">pendente</span>')+'</td><td><a class="act-link" href="'+linkWhatsAppComTexto(d.telefone,msg)+'" target="_blank" rel="noopener" data-marcar-enviado-campanha="'+campanha.id+'" data-marcar-enviado-cliente="'+escapeHtmlCampanha(d.nome)+'">'+iconWhatsApp('#25D366',13)+' abrir whats</a></td></tr>';}).join('')+'</tbody></table></div>':'<div class="empty">Nenhum cliente com telefone cadastrado nesse público.</div>');
+  (temMidia?'<div class="card" style="background:var(--amber-tint);border:none;padding:12px 14px;margin-bottom:14px;">'+
+    '<h3 style="color:var(--amber);margin:0 0 6px;">📎 Esta campanha tem foto/vídeo</h3>'+
+    '<div class="hint" style="color:var(--text2);">O WhatsApp não permite abrir a conversa já com a mídia anexada — isso só é possível com a API paga. Faça assim:</div>'+
+    '<div class="hint" style="color:var(--text2);margin-top:6px;"><b>1.</b> Baixe a mídia abaixo &nbsp; <b>2.</b> Clique em "abrir whats" do cliente (o texto já vem pronto) &nbsp; <b>3.</b> Anexe a mídia baixada antes de enviar</div>'+
+    '<div style="margin-top:10px;">'+(campanha.imagemBase64?'<a class="btn small ghost" href="'+campanha.imagemBase64+'" download="campanha.jpg">⬇️ Baixar imagem</a> ':'')+(campanha.videoDataUrl?'<a class="btn small ghost" href="'+campanha.videoDataUrl+'" download="campanha-video">⬇️ Baixar vídeo</a>':'')+(campanha.linkVideo?'<div class="hint" style="margin-top:6px;">Vídeo por link: <a href="'+campanha.linkVideo+'" target="_blank" rel="noopener">'+campanha.linkVideo+'</a></div>':'')+'</div></div>':'')+
+  (destinatarios.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Status</th><th></th></tr></thead><tbody>'+destinatarios.map(d=>{const enviado=jaEnviouCampanha(campanha.id,d.nome); let msg=aplicarPlaceholdersMensagem(campanha.mensagem,{nome:d.nome}); if(campanha.linkVideo) msg+='\n'+campanha.linkVideo; return '<tr><td>'+escapeHtmlCampanha(d.nome)+'</td><td>'+escapeHtmlCampanha(d.telefone)+'</td><td>'+(enviado?'<span class="badge status-pago">enviado</span>':'<span class="badge status-receber">pendente</span>')+'</td><td><a class="act-link" href="'+linkWhatsAppComTexto(d.telefone,msg)+'" target="_blank" rel="noopener" data-marcar-enviado-campanha="'+campanha.id+'" data-marcar-enviado-cliente="'+escapeHtmlCampanha(d.nome)+'">'+iconWhatsApp('#25D366',13)+' abrir whats</a></td></tr>';}).join('')+'</tbody></table></div>':'<div class="empty">Nenhum cliente com telefone cadastrado nesse público.</div>')+
+  '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);"><button type="button" class="link-btn" id="btn-enviar-campanha-automatico">🚀 Prefere enviar tudo automático? (requer API paga do WhatsApp Business)</button></div>';
 }
 function viewCampanhas(){
   const subtabs=[{id:'campanhas',label:'📢 Campanhas'},{id:'rapido',label:'⚡ Envio rápido'},{id:'publicos',label:'👥 Públicos salvos'},{id:'recompra',label:'🔁 Previsão de recompra'}]; let content;
@@ -4489,9 +4556,24 @@ function attachHandlers(){
   if(campUsarPublico) campUsarPublico.onchange=()=>{
     const p=state.publicos.find(x=>x.id===campUsarPublico.value); if(!p) return;
     const fc=document.getElementById('form-campanha');
-    fc.destinoTipo.value = p.tipo==='todos'?'todos':p.tipo;
-    [...fc.querySelectorAll('[name="grupos"] option')].forEach(o=>o.selected=(p.grupos||[]).includes(o.value));
-    [...fc.querySelectorAll('[name="clienteIds"] option')].forEach(o=>o.selected=(p.clienteIds||[]).includes(o.value));
+    if(['grupo','clientes','todos'].includes(p.tipo)){
+      fc.destinoTipo.value = p.tipo;
+      [...fc.querySelectorAll('[name="grupos"] option')].forEach(o=>o.selected=(p.grupos||[]).includes(o.value));
+      [...fc.querySelectorAll('[name="clienteIds"] option')].forEach(o=>o.selected=(p.clienteIds||[]).includes(o.value));
+    } else {
+      // públicos automáticos (endereço, inadimplentes, vip, recompra, comodato) resolvem pra uma lista de clientes
+      const ids=destinatariosPublico(p).map(d=>d.id);
+      fc.destinoTipo.value='clientes';
+      [...fc.querySelectorAll('[name="grupos"] option')].forEach(o=>o.selected=false);
+      [...fc.querySelectorAll('[name="clienteIds"] option')].forEach(o=>o.selected=ids.includes(o.value));
+    }
+    fc.destinoTipo.dispatchEvent(new Event('change'));
+  };
+  const campDestinoTipo=document.getElementById('camp-destino-tipo');
+  if(campDestinoTipo) campDestinoTipo.onchange=()=>{
+    const v=campDestinoTipo.value;
+    ['grupo','clientes','teste','todos'].forEach(k=>{ const el=document.getElementById('camp-campo-'+k); if(el) el.style.display=(k===v?'block':'none'); });
+    const hintEl=document.getElementById('camp-destino-hint'); if(hintEl) hintEl.textContent=CAMP_DESTINO_HINTS[v]||'';
   };
   const btnSalvarPublicoAtual=document.getElementById('btn-salvar-publico-atual');
   if(btnSalvarPublicoAtual) btnSalvarPublicoAtual.onclick=async()=>{
@@ -4520,13 +4602,24 @@ function attachHandlers(){
   const formPublico=document.getElementById('form-publico');
   if(formPublico) formPublico.onsubmit=async e=>{
     e.preventDefault(); const f=new FormData(formPublico); const editId=formPublico.dataset.editId;
+    const tipo=f.get('tipo')||'grupo';
     const grupos=[...formPublico.querySelectorAll('[name="grupos"] option:checked')].map(o=>o.value);
     const clienteIds=[...formPublico.querySelectorAll('[name="clienteIds"] option:checked')].map(o=>o.value);
-    const dados={nome:(f.get('nome')||'').trim(),tipo:f.get('tipo')||'grupo',grupos,clienteIds};
+    const dados={nome:(f.get('nome')||'').trim(),tipo,grupos,clienteIds,enderecoTexto:f.get('enderecoTexto')||'',diasMinimo:Number(f.get('diasMinimo'))||0};
+    if(tipo==='inadimplentes') dados.valorMinimo=Number(f.get('valorMinimoInad'))||0;
+    else if(tipo==='vip') dados.valorMinimo=Number(f.get('valorMinimoVip'))||0;
     if(editId){const p=state.publicos.find(x=>x.id===editId); if(p)Object.assign(p,dados);}
     else state.publicos.push(Object.assign({id:uid(),criadoEm:Date.now()},dados));
     await save('publicos'); editPublicoId=null; renderAll();
   };
+  const pubTipoSel=document.getElementById('pub-tipo');
+  if(pubTipoSel) pubTipoSel.onchange=()=>{
+    const v=pubTipoSel.value;
+    ['grupo','clientes','endereco','valorInad','valorVip','recompra'].forEach(k=>{ const el=document.getElementById('pub-campo-'+k); if(el) el.style.display=((k===v)||(k==='valorInad'&&v==='inadimplentes')||(k==='valorVip'&&v==='vip')?'block':'none'); });
+    const hintEl=document.getElementById('pub-tipo-hint'); const info=PUBLICO_TIPOS.find(t=>t.v===v); if(hintEl&&info) hintEl.textContent=info.desc;
+  };
+  const btnSugestaoEndereco=document.getElementById('btn-sugestao-endereco');
+  if(btnSugestaoEndereco) btnSugestaoEndereco.onclick=()=>{ document.getElementById('pub-endereco-input').value='Jardim Apucarana, Av. Santa Catarina, Rua Rio Grande do Sul, Rua Ceará, Av. Mato Grosso, Rua Sergipe'; };
   const btnCancelEdPublico=document.getElementById('btn-cancelar-edicao-publico'); if(btnCancelEdPublico)btnCancelEdPublico.onclick=()=>{editPublicoId=null;renderAll();};
   document.querySelectorAll('[data-editar-publico]').forEach(btn=>btn.onclick=()=>{editPublicoId=btn.dataset.editarPublico; renderAll();});
   document.querySelectorAll('[data-del-publico]').forEach(btn=>btn.onclick=async()=>{if(!confirm('Excluir este público salvo?'))return; const id=btn.dataset.delPublico; state.publicos=state.publicos.filter(p=>p.id!==id); await save('publicos'); renderAll();});
