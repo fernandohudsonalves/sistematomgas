@@ -217,7 +217,7 @@ table td:last-child{min-width:180px;}
 .ag-item .ag-titulo{font-weight:700;}
 .ag-item .ag-meta{color:#666;font-size:12px;margin:2px 0;}
 .ag-item .ag-acoes button{width:auto;font-size:12px;margin-right:8px;background:none;border:none;color:#1E3A8A;cursor:pointer;padding:0;}
-</style>
+#checklist-hover-drawer{position:fixed;left:0;top:120px;width:330px;max-height:calc(100vh - 150px);background:var(--card,#fff);border:1px solid var(--border,#ddd);box-shadow:0 10px 35px rgba(0,0,0,.16);border-radius:0 12px 12px 0;transform:translateX(-94%);transition:transform .2s ease;z-index:9998;overflow:auto}#checklist-hover-drawer:hover,#checklist-hover-drawer.open{transform:translateX(0)}#checklist-hover-tab{position:absolute;right:-38px;top:18px;background:var(--primary,#1f5eff);color:#fff;padding:10px 8px;border-radius:0 8px 8px 0;writing-mode:vertical-rl;font-weight:700}.checklist-acoes .move-check{min-width:28px;padding:3px 6px}.import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}</style>
 </head>
 <body>
 <div id="auth-screen" class="auth-wrap">
@@ -286,10 +286,10 @@ const AUTH_APP_HTML = `
   </header>
   <nav id="nav"></nav>
   <main id="main"></main>
-  <button id="agenda-fab">📋 Painel</button>
+  <button id="agenda-fab">📋 Agenda</button>
   <div id="agenda-overlay"></div>
   <aside id="agenda-drawer">
-    <div class="ag-head"><h3>📋 Painel — Agenda</h3><button id="agenda-fechar">✕</button></div>
+    <div class="ag-head"><h3>📋 Agenda</h3><button id="agenda-fechar">✕</button></div>
     <div id="agenda-lista"></div>
     <form id="form-agenda-evento">
       <input type="hidden" name="id">
@@ -300,7 +300,7 @@ const AUTH_APP_HTML = `
       <option>Trabalho</option><option>Pessoal</option><option>Treinamento</option><option>Confraternização</option></select></div>
       <div><label>Prioridade</label><select name="prioridade"><option>Alta</option><option>Média</option><option>Baixa</option></select></div></div>
       <div class="form-row"><div><label>Lembrete</label><select name="lembrete">
-      <option value="5">5 min antes</option><option value="60">1h antes</option><option value="1440">1 dia antes</option><option value="0">Sem lembrete</option></select></div>
+      <option value="1">1 min antes</option><option value="5">5 min antes</option><option value="60">1h antes</option><option value="1440">1 dia antes</option><option value="0">Sem lembrete</option></select></div>
       <div><label>Status</label><select name="status"><option>Pendente</option><option>Concluído</option><option>Cancelado</option></select></div></div>
       <label><input type="checkbox" name="som" checked style="width:auto;"> Alerta sonoro</label>
       <label>Observações</label><textarea name="obs" rows="2"></textarea>
@@ -310,6 +310,11 @@ const AUTH_APP_HTML = `
   </aside>
 `;
 document.getElementById('app').innerHTML = AUTH_APP_HTML;
+document.getElementById('app').insertAdjacentHTML('beforeend','<aside id="checklist-hover-drawer"><div id="checklist-hover-tab">☑ Checklist</div><div id="checklist-hover-content"></div></aside>');
+function renderChecklistHoverDrawer(){const e=document.getElementById('checklist-hover-content');if(!e)return;const d=diaChecklist(todayStr());const a=state.checklistRotina.map(x=>({id:x.id,text:x.texto})).concat((d.extras||[]).map(x=>({id:x.id,text:x.texto})));e.innerHTML='<h3 style="margin:0 0 8px">Checklist de hoje</h3>'+a.map(x=>'<div style="padding:7px 0;border-bottom:1px solid var(--border,#eee)">'+(d.marcacoes[x.id]?'✅ ':'⬜ ')+escapeHtmlCampanha(x.text)+'</div>').join('')||'<div class="empty">Nenhuma tarefa hoje.</div>';}
+function initConferenciaBadge(){let b=document.getElementById('conferencia-badge');if(!b){b=document.createElement('button');b.id='conferencia-badge';b.style='position:fixed;right:18px;bottom:18px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#f59e0b;color:#fff;font-weight:700;cursor:pointer';document.body.appendChild(b);b.onclick=()=>alert((state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').map(x=>'⚠ '+x.tipo+' / '+x.campo+': '+x.valor+' — '+x.detalhe).join('\n')||'Nenhuma pendência.');}const n=(state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').length;b.style.display=n?'block':'none';b.textContent='⚠ '+n+' conferência(s)';}
+function initChecklistHoverDrawer(){const d=document.getElementById('checklist-hover-drawer');if(!d)return;d.onmouseenter=()=>d.classList.add('open');d.onmouseleave=()=>d.classList.remove('open');renderChecklistHoverDrawer();}
+
 
 const SUPABASE_URL = "https://mjoyqpgkmbunkwrinzbp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_-Jtj-aFVwQafxAaQcYGTmw_8MlhCeei";
@@ -1064,13 +1069,14 @@ function enviarWhatsAppEntregador(dados){
   window.open(url, '_blank');
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','agendaEventos','categoriasClientes'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','agendaEventos','categoriasClientes','pendenciasConferencia'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
     if(error) throw error;
     (data||[]).forEach(row=>{ state[row.chave] = row.valor; });
     if(!Array.isArray(state.categoriasClientes)) state.categoriasClientes=['Clientes Ativos','Amigos'];
+    if(!Array.isArray(state.pendenciasConferencia)) state.pendenciasConferencia=[];
     (state.clientes||[]).forEach(c=>{ if(!Array.isArray(c.grupos)) c.grupos=[]; });
   }catch(e){ console.error('Erro ao carregar dados', e); alert('Não foi possível carregar os dados do Supabase. Verifique a tabela app_data e as permissões.'); }
   if(!state.estoque || !state.estoque.gas || !state.estoque.agua){ state.estoque = defaultEstoque(); }
@@ -2033,7 +2039,7 @@ function viewVendas(){
     }
   }
 
-  return banner + '<div class="card"><h2>📥 Subir evolução das vendas (planilha)</h2>'+cardUploadEvolucaoVendasHtml()+'</div>'+
+  return banner + 
     '<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
@@ -2120,12 +2126,7 @@ function viewDespesas(){
   const despesasHoje = state.despesas.filter(d=>d.data===hoje).sort((a,b)=>b.criadoEm-a.criadoEm);
   const totalHoje = despesasHoje.reduce((s,d)=>s+d.valor,0);
 
-  return '<div class="card"><h2>📥 Subir despesas do dia (planilha)</h2>'+
-    '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-despesas">modelo em Excel</a> (aba "Despesas do dia"), preencha e suba aqui no fim do expediente. Cada linha vira um lançamento de despesa.</div>'+
-    '<input type="file" id="csv-despesas-input" accept=".csv,.txt,.tsv,.xlsx,.xls" style="margin-top:8px;">'+
-    '<div id="csv-despesas-mapping"></div>'+
-    '</div>'+
-    '<div class="card"><details id="details-despesa-manual"'+(despesaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar despesa</h2><form id="form-despesa">'+
+  return '<div class="card"><details id="details-despesa-manual"'+(despesaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar despesa</h2><form id="form-despesa">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Categoria <span class="req">*</span></label><select name="categoria" required>'+opcoesComPlaceholder(state.categoriasDespesas,'Escolha uma categoria')+'</select>'+
@@ -2421,14 +2422,13 @@ function viewChecklist(){
   const data = checklistDataAtual;
   const hoje = data===todayStr();
   const dia = diaChecklist(data);
-  const itens = state.checklistRotina.map(it=>({id:it.id, texto:it.texto, fixo:true}))
-    .concat(dia.extras.map(it=>({id:it.id, texto:it.texto, fixo:false})));
+  const itensBase=state.checklistRotina.map(it=>({id:it.id,texto:it.texto,fixo:true})).concat(dia.extras.map(it=>({id:it.id,texto:it.texto,fixo:false}))); if(!Array.isArray(dia.ordem)) dia.ordem=itensBase.map(x=>x.id); itensBase.forEach(x=>{if(!dia.ordem.includes(x.id))dia.ordem.push(x.id);}); const itens=dia.ordem.map(id=>itensBase.find(x=>x.id===id)).filter(Boolean);
 const linhas = itens.map(function(it){
 const marc = dia.marcacoes[it.id];
 const acoes = hoje ? (
 '<span class="checklist-acoes">'+
 '<button type="button" class="act-link" data-edit-item-checklist="'+it.id+'">✎</button>'+
-'<button type="button" class="act-link" data-toggle-tipo-item="'+it.id+'">'+(it.fixo?'↔':'⊕')+'</button>'+
+'<button type="button" class="act-link move-check" title="Subir" data-move-check-up="'+it.id+'">⬆</button>'+'<button type="button" class="act-link move-check" title="Descer" data-move-check-down="'+it.id+'">⬇</button>'+'<button type="button" class="act-link" data-toggle-tipo-item="'+it.id+'">'+(it.fixo?'↔':'⊕')+'</button>'+
 '<button type="button" class="del-link" data-del-item-checklist="'+it.id+'">🗑</button>'+
 '</span>'
 ) : '';
@@ -2830,7 +2830,7 @@ function relatorioFiado(){
       '<div><label>Valor pago (R$) <span class="req">*</span></label><input type="number" name="valor" min="0.01" step="0.01" value="'+(editando?editando.valor:'')+'" required></div>'+
       '<div><label>Forma de pagamento</label><select name="forma_pagamento">'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(p=>'<option'+(editando&&editando.forma_pagamento===p?' selected':'')+'>'+p+'</option>').join('')+'</select></div>'+
       '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+(editando?editando.data:todayStr())+'" required></div></div>'+
-      '<button type="submit" class="btn small">'+(editando?'Salvar alterações':'Registrar pagamento')+'</button> '+
+      '<button type="submit" class="btn small">'+(editando?'Salvar alterações':'Registrar pagamento')+'</button> '+(function(){const c=state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(clienteRegistrandoPagamento));return c&&c.telefone?botaoWhatsApp(c.telefone):'';})()+' '
       '<button type="button" class="link-btn" id="btn-cancelar-pagamento-fiado">cancelar</button></form></div>';
   }
   return '<h3>Lançar fiado existente (sem precisar registrar uma venda)</h3>'+
@@ -4774,9 +4774,7 @@ function attachHandlers(){
     const id = sel.dataset.marcarCheck;
     const dia = diaChecklist(checklistDataAtual);
     const agora = new Date();
-    dia.marcacoes[id] = {responsavel: sel.value, horario: String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0')};
-    await save('checklistDias');
-    renderAll();
+    dia.marcacoes[id]={responsavel:sel.value,horario:String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0')}; if(!Array.isArray(dia.ordem))dia.ordem=[]; const ids=state.checklistRotina.map(x=>x.id).concat(dia.extras.map(x=>x.id)); ids.forEach(x=>{if(!dia.ordem.includes(x))dia.ordem.push(x);}); const oi=dia.ordem.indexOf(id); if(oi>=0&&oi<dia.ordem.length-1){[dia.ordem[oi],dia.ordem[oi+1]]=[dia.ordem[oi+1],dia.ordem[oi]];} await save('checklistDias'); renderAll(); renderChecklistHoverDrawer();
   });
   document.querySelectorAll('[data-desmarcar-check]').forEach(btn=>btn.onclick=async()=>{
     const id = btn.dataset.desmarcarCheck;
@@ -4785,6 +4783,7 @@ function attachHandlers(){
     await save('checklistDias');
     renderAll();
   });
+  document.querySelectorAll('[data-move-check-up],[data-move-check-down]').forEach(btn=>btn.onclick=async()=>{const d=diaChecklist(checklistDataAtual);const id=btn.dataset.moveCheckUp||btn.dataset.moveCheckDown;const up=!!btn.dataset.moveCheckUp;const ids=state.checklistRotina.map(x=>x.id).concat(d.extras.map(x=>x.id));if(!Array.isArray(d.ordem))d.ordem=ids.slice();ids.forEach(x=>{if(!d.ordem.includes(x))d.ordem.push(x);});const i=d.ordem.indexOf(id),j=up?i-1:i+1;if(i<0||j<0||j>=d.ordem.length)return;[d.ordem[i],d.ordem[j]]=[d.ordem[j],d.ordem[i]];await save('checklistDias');renderAll();renderChecklistHoverDrawer();});
   document.querySelectorAll('[data-edit-item-checklist]').forEach(btn=>btn.onclick=()=>{
     editChecklistItemId = btn.dataset.editItemChecklist;
     renderAll();
@@ -5310,7 +5309,7 @@ function processarImportacaoDiariaExcel(file){
           }
         }
       });
-      if(importadas>0){ await save('vendas'); await save('estoque'); await save('categoriasProdutos'); }
+      if(importadas>0){ await save('vendas'); await save('estoque'); await save('categoriasProdutos'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia'); }
       if(clientesNovosDeVendas>0) await save('clientes');
       if(creditosAlterados) await save('creditos');
       if(fiadosGeradosPorAbate>0) await save('fiados');
@@ -5327,13 +5326,13 @@ function processarImportacaoDiariaExcel(file){
         const categoriaTxt = (r['Categoria']||'').trim();
         const categoriaExistente = state.categoriasDespesas.find(c=>chaveNormalizada(c)===chaveNormalizada(categoriaTxt));
         const categoria = categoriaExistente || categoriaTxt || state.categoriasDespesas[0];
-        if(categoriaTxt && !categoriaExistente && !state.categoriasDespesas.includes(categoria)) state.categoriasDespesas.push(categoria);
+        if(categoriaTxt && !categoriaExistente && !state.categoriasDespesas.includes(categoria)){state.categoriasDespesas.push(categoria);adicionarPendenciaConferencia('despesa','categoria',categoriaTxt,'Categoria não encontrada exatamente no cadastro; confira.');}
         const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
         const descricao = (r['Descrição']||'').trim();
         state.despesas.push({id:uid(), criadoEm:Date.now(), data, categoria, valor, descricao: descricao || 'Importado de planilha'});
         importadas++;
       });
-      if(importadas>0){ await save('despesas'); await save('categoriasDespesas'); }
+      if(importadas>0){ await save('despesas'); await save('categoriasDespesas'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia'); }
       resumo.push(importadas+' despesa(s) importada(s)'+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem valor)':''));
     }
 
@@ -5648,6 +5647,7 @@ function renderCsvFiadoMapping(){
     alert((importadosFiado+importadosCredito)+' lançamento(s) importado(s) — '+importadosFiado+' de fiado e '+importadosCredito+' de crédito.'+(ignorados>0?' '+ignorados+' linha(s) ignoradas por falta de nome ou valor.':'')+(puladosPagos>0?' '+puladosPagos+' linha(s) já pagas foram puladas.':''));
   };
 }
+function adicionarPendenciaConferencia(tipo,campo,valor,detalhe){if(!Array.isArray(state.pendenciasConferencia))state.pendenciasConferencia=[];state.pendenciasConferencia.push({id:uid(),data:todayStr(),tipo,campo,valor,detalhe,status:'pendente'});}
 function renderCsvVendasMapping(){
   const wrap = document.getElementById('csv-vendas-mapping');
   const opts = csvVendasHeaders.map(h=>'<option value="'+h+'">'+h+'</option>').join('');
@@ -5724,7 +5724,7 @@ function renderCsvVendasMapping(){
         if(categoriaControladaEquivalente(textoCategoria)){
           ignoradas++; return;
         }
-        categoria = textoCategoria;
+        categoria = textoCategoria; adicionarPendenciaConferencia('venda','categoria',textoCategoria,'Categoria não encontrada exatamente no cadastro; confira.');
         if(!state.categoriasProdutos.includes(categoria)) state.categoriasProdutos.push(categoria);
       }
       const controlada = isControlada(categoria);
@@ -5741,6 +5741,7 @@ function renderCsvVendasMapping(){
       if(cliente){
         const chaveCliente = chaveNormalizada(cliente);
         if(!nomesClientesExistentes.has(chaveCliente)){
+          adicionarPendenciaConferencia('venda','cliente',cliente,'Nome não bateu exatamente com o cadastro de clientes; confira se é a pessoa correta.');
           nomesClientesExistentes.add(chaveCliente);
           state.clientes.push({
             id: uid(), nome: cliente,
@@ -5767,7 +5768,7 @@ function renderCsvVendasMapping(){
       ajustaEstoquePorVenda(categoria, quantidade, false);
       importadas++;
     });
-    await save('vendas'); await save('estoque'); await save('categoriasProdutos');
+    await save('vendas'); await save('estoque'); await save('categoriasProdutos'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia');
     if(clientesNovos>0) await save('clientes');
     csvVendasRows=null; csvVendasHeaders=null;
     renderAll();
@@ -5811,13 +5812,13 @@ function renderCsvDespesasMapping(){
       const categoriaTxt = colCategoria && r[colCategoria] ? r[colCategoria].trim() : '';
       const categoriaExistente = state.categoriasDespesas.find(c=>chaveNormalizada(c)===chaveNormalizada(categoriaTxt));
       const categoria = categoriaExistente || categoriaTxt || categoriaBase;
-      if(categoriaTxt && !categoriaExistente && !state.categoriasDespesas.includes(categoria)) state.categoriasDespesas.push(categoria);
+      if(categoriaTxt && !categoriaExistente && !state.categoriasDespesas.includes(categoria)){state.categoriasDespesas.push(categoria);adicionarPendenciaConferencia('despesa','categoria',categoriaTxt,'Categoria não encontrada exatamente no cadastro; confira.');}
       const data = colData && r[colData] ? normalizarDataImportada(r[colData], dataBase) : dataBase;
       const descricao = colDescricao ? (r[colDescricao]||'').trim() : '';
       state.despesas.push({id:uid(), criadoEm:Date.now(), data, categoria, valor, descricao: descricao || 'Importado de planilha'});
       importadas++;
     });
-    await save('despesas'); await save('categoriasDespesas');
+    await save('despesas'); await save('categoriasDespesas'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia');
     csvDespesasRows=null; csvDespesasHeaders=null;
     renderAll();
     alert(importadas+' despesa(s) importada(s) com sucesso!'+(ignoradas>0?' '+ignoradas+' linha(s) ignoradas por falta de valor.':''));
@@ -6008,6 +6009,7 @@ async function afterLogin(){
   aplicarFavicon();
   renderAll();
   initAgenda();
+  initChecklistHoverDrawer(); initConferenciaBadge(); setInterval(initConferenciaBadge,1500);
   rodarBackupAutomaticoSeNecessario();
   iniciarNotificacoesRealtime();
   atualizarBadgeApp();
@@ -6228,7 +6230,7 @@ function initAgenda(){
         if(ev.avisado[minsAntes]) return;
         ev.avisado[minsAntes] = true;
         save('agendaEventos');
-        if(ev.som){ try{ new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=').play(); }catch(err){} }
+        if(ev.som){try{const C=window.AudioContext||window.webkitAudioContext;if(C){const ac=new C(),o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.45);}}catch(err){}}
         alert('🔔 Lembrete: '+ev.titulo+' às '+ev.hora);
       }
     });
