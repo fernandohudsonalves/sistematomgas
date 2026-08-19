@@ -192,6 +192,17 @@ table td:last-child{min-width:180px;}
 .cap-legend .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle;}
 .subtabs button{background:var(--blue-tint);color:var(--royal);border:none;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;}
 .subtabs button.active{background:var(--royal);color:#fff;}
+.camp-head{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;margin:-2px 0 14px;}
+.camp-head p{margin:0;color:var(--text3);font-size:12px;}
+.lc-grid{display:grid;gap:10px;}
+.lc-card{background:linear-gradient(180deg,#fff 0%,var(--blue-tint) 130%);border:1px solid var(--border);border-radius:12px;padding:13px 15px;transition:box-shadow .15s,transform .1s;}
+.lc-card:hover{box-shadow:0 4px 14px rgba(30,58,138,.1);}
+.lc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.lc-top strong{font-size:14px;color:var(--royal-dark);}
+.lc-msg{font-size:12.5px;color:var(--text2);margin:7px 0;line-height:1.4;}
+.lc-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--text3);}
+.lc-acoes{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;}
+.badge.roxo{background:var(--purple-tint);color:var(--purple);}
 
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--royal) 0%,var(--royal-dark) 100%);padding:20px;}
 .auth-card{background:#fff;border-radius:16px;padding:32px 28px;max-width:380px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.25);}
@@ -409,6 +420,7 @@ let state = {
   paradasRota: [],
   campanhas: [],
   envioCampanhaLog: [],
+  publicos: [],
   categoriasClientes: ['Clientes Ativos','Amigos'],
   estoqueLancamentos: [],
   categoriasProdutos: CATEGORIAS_PRODUTO_PADRAO.slice(),
@@ -610,9 +622,11 @@ function formCampanhaHtml(c){
   '<form id="form-campanha" data-edit-id="'+(c?.id||'')+'">'+
   '<label>Título da campanha <span class="req">*</span></label><input type="text" name="titulo" value="'+escapeHtmlCampanha(c?.titulo||'')+'" required>'+
   '<label>Mensagem <span class="req">*</span></label><textarea name="mensagem" rows="4" required>'+escapeHtmlCampanha(c?.mensagem||'')+'</textarea>'+
+  ((state.publicos||[]).length?'<label>Usar público salvo</label><select id="camp-usar-publico"><option value="">— escolher manualmente —</option>'+state.publicos.map(p=>'<option value="'+p.id+'">'+escapeHtmlCampanha(p.nome)+'</option>').join('')+'</select>':'')+
   '<div class="form-row"><div><label>Público</label><select name="destinoTipo"><option value="grupo" '+(c?.destinoTipo==='grupo'?'selected':'')+'>Grupo(s) / lote(s)</option><option value="clientes" '+(c?.destinoTipo==='clientes'?'selected':'')+'>Clientes escolhidos</option><option value="teste" '+(c?.destinoTipo==='teste'?'selected':'')+'>Somente 1 cliente — teste</option><option value="todos" '+(c?.destinoTipo==='todos'?'selected':'')+'>Todos os clientes</option></select></div>'+
   '<div><label>Grupo(s)</label><select name="grupos" multiple size="4">'+grupos.map(g=>'<option value="'+escapeHtmlCampanha(g)+'" '+(sg.includes(g)?'selected':'')+'>'+escapeHtmlCampanha(g)+'</option>').join('')+'</select><div class="hint">Ctrl/Cmd para vários.</div></div></div>'+
   '<label>Clientes escolhidos</label><select name="clienteIds" multiple size="6">'+clientesSelecionadosOptions(sc)+'</select>'+
+  '<button type="button" class="btn small ghost" id="btn-salvar-publico-atual">💾 salvar este público</button>'+
   '<label>Cliente único para teste</label><select name="clienteTesteId"><option value="">Selecione um cliente</option>'+clientesSelecionadosOptions(c?.clienteTesteId?[c.clienteTesteId]:[])+'</select>'+
   '<label>Link de vídeo (opcional)</label><input type="url" name="link_video" value="'+escapeHtmlCampanha(c?.linkVideo||'')+'" placeholder="https://...">'+
   '<label>Vídeo do PC (opcional)</label><input type="file" id="campanha-video-input" accept="video/*"><div id="campanha-video-preview" style="margin-top:8px;">'+(c?.videoDataUrl?'<video src="'+c.videoDataUrl+'" controls style="max-width:100%;max-height:220px;border-radius:8px;"></video>':'')+'</div>'+
@@ -621,7 +635,61 @@ function formCampanhaHtml(c){
 }
 function listaCampanhasHtml(){
   if(!(state.campanhas||[]).length) return '<div class="empty">Nenhuma campanha criada ainda.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Título</th><th>Público</th><th>Mensagem</th><th>Mídia</th><th></th></tr></thead><tbody>'+state.campanhas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).map(c=>{ const p=c.destinoTipo==='grupo'?((c.grupos||[]).join(', ')||'Nenhum grupo'):c.destinoTipo==='teste'?'1 cliente (teste)':c.destinoTipo==='clientes'?((c.clienteIds||[]).length+' cliente(s)'):'Todos'; return '<tr><td>'+escapeHtmlCampanha(c.titulo)+'</td><td>'+escapeHtmlCampanha(p)+'</td><td>'+escapeHtmlCampanha((c.mensagem||'').slice(0,90))+'</td><td>'+campanhaMidiaHtml(c)+'</td><td><button class="act-link" data-enviar-campanha="'+c.id+'">📢 preparar envio</button><button class="act-link" data-edit-campanha="'+c.id+'">✎ editar</button><button class="del-link" data-del-campanha="'+c.id+'">🗑 excluir</button></td></tr>';}).join('')+'</tbody></table></div>';
+  return '<div class="lc-grid">'+state.campanhas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).map(c=>{
+    const p=c.destinoTipo==='grupo'?((c.grupos||[]).join(', ')||'Nenhum grupo'):c.destinoTipo==='teste'?'1 cliente (teste)':c.destinoTipo==='clientes'?((c.clienteIds||[]).length+' cliente(s)'):'Todos os clientes';
+    return '<div class="lc-card"><div class="lc-top"><strong>'+escapeHtmlCampanha(c.titulo)+'</strong><span class="badge roxo">'+escapeHtmlCampanha(p)+'</span></div>'+
+    '<div class="lc-msg">'+escapeHtmlCampanha((c.mensagem||'').slice(0,110))+((c.mensagem||'').length>110?'…':'')+'</div>'+
+    '<div class="lc-meta">'+campanhaMidiaHtml(c)+'</div>'+
+    '<div class="lc-acoes"><button class="act-link" data-enviar-campanha="'+c.id+'">📢 preparar envio</button><button class="act-link" data-edit-campanha="'+c.id+'">✎ editar</button><button class="del-link" data-del-campanha="'+c.id+'">🗑 excluir</button></div></div>';
+  }).join('')+'</div>';
+}
+
+/* ---- Públicos salvos (audiências reutilizáveis) ---- */
+let editPublicoId=null;
+function destinatariosPublico(p){
+  const clientes=state.clientes||[];
+  if(!p) return [];
+  if(p.tipo==='clientes') return clientes.filter(c=>(p.clienteIds||[]).includes(c.id)&&c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
+  if(p.tipo==='grupo'){ const gr=p.grupos||[]; return clientes.filter(c=>c.telefone&&gruposClienteDoCliente(c).some(g=>gr.includes(g))).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone})); }
+  return clientes.filter(c=>c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
+}
+function formPublicoHtml(p){
+  const grupos=state.categoriasClientes||[], sg=p?.grupos||[], sc=p?.clienteIds||[];
+  return '<h3>'+(p?'Editar público':'Novo público salvo')+'</h3><div class="hint">Monte uma audiência uma vez e reutilize em várias campanhas.</div>'+
+  '<form id="form-publico" data-edit-id="'+(p?.id||'')+'">'+
+  '<label>Nome do público <span class="req">*</span></label><input type="text" name="nome" value="'+escapeHtmlCampanha(p?.nome||'')+'" required placeholder="Ex: VIP, Inadimplentes, Bairro Centro">'+
+  '<div class="form-row"><div><label>Tipo</label><select name="tipo"><option value="grupo" '+(p?.tipo==='grupo'?'selected':'')+'>Grupo(s) / lote(s)</option><option value="clientes" '+(p?.tipo==='clientes'?'selected':'')+'>Clientes escolhidos</option><option value="todos" '+(p?.tipo==='todos'?'selected':'')+'>Todos os clientes</option></select></div>'+
+  '<div><label>Grupo(s)</label><select name="grupos" multiple size="4">'+grupos.map(g=>'<option value="'+escapeHtmlCampanha(g)+'" '+(sg.includes(g)?'selected':'')+'>'+escapeHtmlCampanha(g)+'</option>').join('')+'</select></div></div>'+
+  '<label>Clientes escolhidos</label><select name="clienteIds" multiple size="6">'+clientesSelecionadosOptions(sc)+'</select>'+
+  '<button type="submit" class="btn small">'+(p?'Salvar alterações':'Salvar público')+'</button> '+(p?'<button type="button" class="btn small ghost" id="btn-cancelar-edicao-publico">Cancelar</button>':'')+'</form>';
+}
+function listaPublicosHtml(){
+  if(!(state.publicos||[]).length) return '<div class="empty">Nenhum público salvo ainda.</div>';
+  return '<div class="lc-grid">'+state.publicos.map(p=>{
+    const n=destinatariosPublico(p).length;
+    const tipoLabel=p.tipo==='grupo'?((p.grupos||[]).join(', ')||'Grupo'):p.tipo==='clientes'?'Clientes selecionados':'Todos os clientes';
+    return '<div class="lc-card"><div class="lc-top"><strong>'+escapeHtmlCampanha(p.nome)+'</strong><span class="badge gas">'+n+' contato(s)</span></div>'+
+    '<div class="lc-msg">'+escapeHtmlCampanha(tipoLabel)+'</div>'+
+    '<div class="lc-acoes"><button class="act-link" data-editar-publico="'+p.id+'">✎ editar</button><button class="del-link" data-del-publico="'+p.id+'">🗑 excluir</button></div></div>';
+  }).join('')+'</div>';
+}
+
+/* ---- Envio manual rápido (poucas pessoas, sem criar campanha) ---- */
+let rapidoSelecionados=[], rapidoResultado=null;
+function viewEnvioRapido(){
+  return '<h3>Envio manual rápido</h3><div class="hint">Escolha poucos clientes e mande uma mensagem pontual pelo WhatsApp, sem precisar salvar uma campanha.</div>'+
+  '<label>Mensagem <span class="req">*</span></label><textarea id="rapido-mensagem" rows="3" placeholder="Use {nome} para personalizar">'+escapeHtmlCampanha(document.getElementById('rapido-mensagem')?.value||'')+'</textarea>'+
+  '<label>Clientes</label><select id="rapido-clientes" multiple size="8">'+clientesSelecionadosOptions(rapidoSelecionados)+'</select>'+
+  '<div class="hint">Ctrl/Cmd para selecionar vários.</div>'+
+  '<button type="button" class="btn small green" id="btn-gerar-envio-rapido">✉️ Gerar links de envio</button>'+
+  '<div id="rapido-resultado" style="margin-top:14px;">'+(rapidoResultado||'')+'</div>';
+}
+function tabelaEnvioManual(destinatarios, mensagem){
+  if(!destinatarios.length) return '<div class="empty">Nenhum cliente com telefone selecionado.</div>';
+  return '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th></th></tr></thead><tbody>'+destinatarios.map(d=>{
+    const msg=aplicarPlaceholdersMensagem(mensagem,{nome:d.nome});
+    return '<tr><td>'+escapeHtmlCampanha(d.nome)+'</td><td>'+escapeHtmlCampanha(d.telefone)+'</td><td><a class="act-link" href="'+linkWhatsAppComTexto(d.telefone,msg)+'" target="_blank" rel="noopener">'+iconWhatsApp('#25D366',13)+' abrir whats</a></td></tr>';
+  }).join('')+'</tbody></table></div>';
 }
 async function enviarCampanhaAutomatica(campanha, destinatarios, btn){
   if(!campanha || !destinatarios.length){ alert('Não há destinatários para esta campanha.'); return; }
@@ -662,12 +730,14 @@ function telaEnvioCampanha(campanha,destinatarios){
   (destinatarios.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Status</th><th></th></tr></thead><tbody>'+destinatarios.map(d=>{const enviado=jaEnviouCampanha(campanha.id,d.nome); let msg=aplicarPlaceholdersMensagem(campanha.mensagem,{nome:d.nome}); if(campanha.linkVideo) msg+='\n'+campanha.linkVideo; return '<tr><td>'+escapeHtmlCampanha(d.nome)+'</td><td>'+escapeHtmlCampanha(d.telefone)+'</td><td>'+(enviado?'<span class="badge status-pago">enviado</span>':'<span class="badge status-receber">pendente</span>')+'</td><td><a class="act-link" href="'+linkWhatsAppComTexto(d.telefone,msg)+'" target="_blank" rel="noopener" data-marcar-enviado-campanha="'+campanha.id+'" data-marcar-enviado-cliente="'+escapeHtmlCampanha(d.nome)+'">'+iconWhatsApp('#25D366',13)+' abrir whats</a></td></tr>';}).join('')+'</tbody></table></div>':'<div class="empty">Nenhum cliente com telefone cadastrado nesse público.</div>');
 }
 function viewCampanhas(){
-  const subtabs=[{id:'campanhas',label:'Campanhas e públicos'},{id:'recompra',label:'Previsão de recompra'}]; let content;
+  const subtabs=[{id:'campanhas',label:'📢 Campanhas'},{id:'rapido',label:'⚡ Envio rápido'},{id:'publicos',label:'👥 Públicos salvos'},{id:'recompra',label:'🔁 Previsão de recompra'}]; let content;
   if(campanhaEnviarId){ const c=state.campanhas.find(x=>x.id===campanhaEnviarId); content=telaEnvioCampanha(c,campanhaEnviarModo==='recompra'?previsaoRecompraClientes().filter(r=>r.atraso>0&&r.telefone):destinatariosCampanha(c)); }
   else if(campanhaSub==='recompra'){ const p=previsaoRecompraClientes(), a=p.filter(r=>r.atraso>0); content='<h3>Clientes com previsão de recompra</h3>'+(a.length&&state.campanhas.length?'<select id="sel-campanha-recompra">'+state.campanhas.map(c=>'<option value="'+c.id+'">'+escapeHtmlCampanha(c.titulo)+'</option>').join('')+'</select><button class="btn small" id="btn-enviar-recompra">Preparar envio</button>':'')+(p.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Última compra</th><th>Intervalo médio</th><th>Atraso</th></tr></thead><tbody>'+p.map(r=>'<tr><td>'+escapeHtmlCampanha(r.nome)+'</td><td>'+fmtDate(r.ultima)+'</td><td>'+r.media+' dias</td><td>'+r.atraso+' dias</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">Ainda não há histórico suficiente.</div>'); }
+  else if(campanhaSub==='rapido'){ content=viewEnvioRapido(); }
+  else if(campanhaSub==='publicos'){ const ep=state.publicos.find(x=>x.id===editPublicoId); content=formPublicoHtml(ep)+'<h3 style="margin-top:20px;">Públicos salvos</h3>'+listaPublicosHtml(); }
   else if(editCampanhaId){ const ec=state.campanhas.find(x=>x.id===editCampanhaId); content=formCampanhaHtml(ec)+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml(); }
   else content=formCampanhaHtml()+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml();
-  return '<div class="card"><div class="subtabs">'+subtabs.map(x=>'<button data-campanha-sub="'+x.id+'" class="'+(campanhaSub===x.id&&!campanhaEnviarId?'active':'')+'">'+x.label+'</button>').join('')+'</div><div id="campanha-content">'+content+'</div></div>';
+  return '<div class="card"><div class="camp-head"><div class="subtabs">'+subtabs.map(x=>'<button data-campanha-sub="'+x.id+'" class="'+(campanhaSub===x.id&&!campanhaEnviarId?'active':'')+'">'+x.label+'</button>').join('')+'</div><p>Marketing e comunicação com clientes</p></div><div id="campanha-content">'+content+'</div></div>';
 }
 /* ===================== Rota do dia ===================== */
 function paradasDoDiaHtml(){
@@ -1069,7 +1139,7 @@ function enviarWhatsAppEntregador(dados){
   window.open(url, '_blank');
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','agendaEventos','categoriasClientes','pendenciasConferencia'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -1124,6 +1194,7 @@ async function loadAll(){
   if(!state.paradasRota) state.paradasRota = [];
   if(!state.campanhas) state.campanhas = [];
   if(!state.envioCampanhaLog) state.envioCampanhaLog = [];
+  if(!state.publicos) state.publicos = [];
   if(!state.agendaEventos) state.agendaEventos = [];
   if(state.categoriasProdutos){
     const RENOMEACOES_CATEGORIAS = {
@@ -4413,7 +4484,24 @@ function attachHandlers(){
   document.querySelectorAll('[data-cadastro-sub]').forEach(btn=>btn.onclick=()=>{ cadastroSub = btn.dataset.cadastroSub; renderAll(); });
 
   // ---- Campanhas ----
-  document.querySelectorAll('[data-campanha-sub]').forEach(btn=>btn.onclick=()=>{campanhaSub=btn.dataset.campanhaSub; campanhaEnviarId=null; renderAll();});
+  document.querySelectorAll('[data-campanha-sub]').forEach(btn=>btn.onclick=()=>{campanhaSub=btn.dataset.campanhaSub; campanhaEnviarId=null; editPublicoId=null; renderAll();});
+  const campUsarPublico=document.getElementById('camp-usar-publico');
+  if(campUsarPublico) campUsarPublico.onchange=()=>{
+    const p=state.publicos.find(x=>x.id===campUsarPublico.value); if(!p) return;
+    const fc=document.getElementById('form-campanha');
+    fc.destinoTipo.value = p.tipo==='todos'?'todos':p.tipo;
+    [...fc.querySelectorAll('[name="grupos"] option')].forEach(o=>o.selected=(p.grupos||[]).includes(o.value));
+    [...fc.querySelectorAll('[name="clienteIds"] option')].forEach(o=>o.selected=(p.clienteIds||[]).includes(o.value));
+  };
+  const btnSalvarPublicoAtual=document.getElementById('btn-salvar-publico-atual');
+  if(btnSalvarPublicoAtual) btnSalvarPublicoAtual.onclick=async()=>{
+    const fc=document.getElementById('form-campanha'); const nome=prompt('Nome para este público:'); if(!nome) return;
+    const tipo=fc.destinoTipo.value==='teste'?'clientes':fc.destinoTipo.value;
+    const grupos=[...fc.querySelectorAll('[name="grupos"] option:checked')].map(o=>o.value);
+    const clienteIds=[...fc.querySelectorAll('[name="clienteIds"] option:checked')].map(o=>o.value);
+    state.publicos.push({id:uid(),nome:nome.trim(),tipo,grupos,clienteIds,criadoEm:Date.now()});
+    await save('publicos'); alert('Público salvo! Você já pode reutilizá-lo em outras campanhas.'); renderAll();
+  };
   const campanhaImgInput=document.getElementById('campanha-imagem-input');
   if(campanhaImgInput) campanhaImgInput.onchange=async()=>{const file=campanhaImgInput.files[0]; if(!file)return; campanhaImagemSelecionadaGlobal=await comprimirImagemArquivo(file); const prev=document.getElementById('campanha-imagem-preview'); if(prev)prev.innerHTML='<img src="'+campanhaImagemSelecionadaGlobal+'" style="max-height:120px;border-radius:8px;">';};
   const campanhaVideoInput=document.getElementById('campanha-video-input');
@@ -4428,6 +4516,32 @@ function attachHandlers(){
   const btnEnviarRecompra=document.getElementById('btn-enviar-recompra'); if(btnEnviarRecompra)btnEnviarRecompra.onclick=()=>{const sel=document.getElementById('sel-campanha-recompra');if(sel){campanhaEnviarId=sel.value;campanhaEnviarModo='recompra';renderAll();}};
   const btnAutoCampanha=document.getElementById('btn-enviar-campanha-automatico'); if(btnAutoCampanha){ const cAuto=state.campanhas.find(x=>x.id===campanhaEnviarId); const dAuto=cAuto?(campanhaEnviarModo==='recompra'?previsaoRecompraClientes().filter(r=>r.atraso>0&&r.telefone):destinatariosCampanha(cAuto)):[]; btnAutoCampanha.onclick=()=>enviarCampanhaAutomatica(cAuto,dAuto,btnAutoCampanha); }
   document.querySelectorAll('[data-marcar-enviado-campanha]').forEach(a=>a.onclick=async()=>{const campanhaId=a.dataset.marcarEnviadoCampanha,cliente=a.dataset.marcarEnviadoCliente;if(!jaEnviouCampanha(campanhaId,cliente)){state.envioCampanhaLog.push({campanhaId,cliente,data:todayStr()});await save('envioCampanhaLog');}});
+  // ---- Públicos salvos ----
+  const formPublico=document.getElementById('form-publico');
+  if(formPublico) formPublico.onsubmit=async e=>{
+    e.preventDefault(); const f=new FormData(formPublico); const editId=formPublico.dataset.editId;
+    const grupos=[...formPublico.querySelectorAll('[name="grupos"] option:checked')].map(o=>o.value);
+    const clienteIds=[...formPublico.querySelectorAll('[name="clienteIds"] option:checked')].map(o=>o.value);
+    const dados={nome:(f.get('nome')||'').trim(),tipo:f.get('tipo')||'grupo',grupos,clienteIds};
+    if(editId){const p=state.publicos.find(x=>x.id===editId); if(p)Object.assign(p,dados);}
+    else state.publicos.push(Object.assign({id:uid(),criadoEm:Date.now()},dados));
+    await save('publicos'); editPublicoId=null; renderAll();
+  };
+  const btnCancelEdPublico=document.getElementById('btn-cancelar-edicao-publico'); if(btnCancelEdPublico)btnCancelEdPublico.onclick=()=>{editPublicoId=null;renderAll();};
+  document.querySelectorAll('[data-editar-publico]').forEach(btn=>btn.onclick=()=>{editPublicoId=btn.dataset.editarPublico; renderAll();});
+  document.querySelectorAll('[data-del-publico]').forEach(btn=>btn.onclick=async()=>{if(!confirm('Excluir este público salvo?'))return; const id=btn.dataset.delPublico; state.publicos=state.publicos.filter(p=>p.id!==id); await save('publicos'); renderAll();});
+  // ---- Envio manual rápido ----
+  const btnGerarRapido=document.getElementById('btn-gerar-envio-rapido');
+  if(btnGerarRapido) btnGerarRapido.onclick=()=>{
+    const msg=document.getElementById('rapido-mensagem').value.trim();
+    const sel=[...document.getElementById('rapido-clientes').querySelectorAll('option:checked')].map(o=>o.value);
+    rapidoSelecionados=sel;
+    if(!msg){ alert('Escreva a mensagem antes de gerar os links.'); return; }
+    if(!sel.length){ alert('Selecione ao menos um cliente.'); return; }
+    const destinatarios=state.clientes.filter(c=>sel.includes(c.id)&&c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
+    rapidoResultado=tabelaEnvioManual(destinatarios,msg);
+    document.getElementById('rapido-resultado').innerHTML=rapidoResultado;
+  };
   // ---- Rota do dia ----
   const formParadaExtra = document.getElementById('form-parada-extra');
   if(formParadaExtra) formParadaExtra.onsubmit = async(e)=>{
