@@ -386,6 +386,8 @@ function parseValorBR(str){
   return Number(str);
 }
 let despesaManualAberta = false;
+let backupsListaAberta = false;
+let clientesListaAberta = false;
 let csvDespesasRows = null, csvDespesasHeaders = null;
 let editDespesaId = null, editClienteId = null, editVendaId = null, editFiadoId = null, editConvenioId = null, editConvenioPagamentoId = null;
 let editEmpresaId = null, editAgendamentoId = null, pendingEditVendaId = null;
@@ -1922,7 +1924,10 @@ function viewClientes(){
     '<h2 style="margin:0;">Clientes cadastrados <span class="pill">'+state.clientes.length+'</span></h2>'+
     '<button type="button" class="btn small ghost" id="btn-ir-novo-cliente">+ Cadastrar novo cliente</button></div>'+
     '<input type="text" id="busca-cliente" class="searchbar" placeholder="Buscar por nome, telefone/whats ou endereço...">'+
-    '<div id="lista-clientes-wrap">'+clientesTable(state.clientes)+'</div></div>'+
+    '<details id="details-lista-clientes" style="margin-top:10px;"'+(clientesListaAberta?' open':'')+'>'+
+    '<summary><strong>Ver lista de clientes</strong></summary>'+
+    '<div id="lista-clientes-wrap" style="margin-top:10px;">'+clientesTable(state.clientes)+'</div>'+
+    '</details></div>'+
     '<div class="card"><h2>Novo cliente</h2><form id="form-cliente">'+
     '<div class="form-row"><div><label>Nome completo <span class="req">*</span></label><input type="text" name="nome" required></div>'+
     '<div><label>Telefone / WhatsApp <span class="req">*</span></label><input type="text" name="telefone" placeholder="(00) 00000-0000" required></div></div>'+
@@ -2272,8 +2277,9 @@ function viewConfig(){
     '<div class="card"><h2>Backup</h2>'+
     '<div class="hint">Todo dia, na primeira vez que alguém abre o sistema, é feito um backup automático com o <strong>fechamento do dia anterior</strong> — guardado no próprio Supabase, mantendo os últimos 30. Você também pode clicar em "Fazer backup agora" quantas vezes quiser, na hora que quiser (por exemplo, ao fechar o caixa do dia) — cada um fica salvo com data <strong>e hora exatas</strong>, e também baixa um arquivo no seu aparelho.</div>'+
     '<button type="button" class="btn small" id="btn-backup-manual" style="margin-top:10px;">Fazer backup agora</button>'+
-    '<h3 style="margin-top:18px;">Backups salvos</h3>'+
-    '<div id="lista-backups" class="hint">Carregando...</div>'+
+    '<details style="margin-top:18px;" id="details-lista-backups"'+(backupsListaAberta?' open':'')+'><summary><strong>Backups salvos</strong></summary>'+
+    '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
+    '</details>'+
     '</div>'+
     '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+
     '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong> e <strong>Produtos</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado", despesas viram lançamentos, clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
@@ -3793,6 +3799,8 @@ function attachHandlers(){
     if(formCli) formCli.scrollIntoView({behavior:'smooth', block:'start'});
   };
   const busca = document.getElementById('busca-cliente');
+  const detalhesClientes = document.getElementById('details-lista-clientes');
+  if(detalhesClientes) detalhesClientes.ontoggle = ()=>{ clientesListaAberta = detalhesClientes.open; };
   if(busca) busca.oninput = ()=>{
     const q = busca.value.toLowerCase().trim();
     const filtered = state.clientes.filter(c=>{
@@ -3800,6 +3808,7 @@ function attachHandlers(){
       return alvo.includes(q);
     });
     document.getElementById('lista-clientes-wrap').innerHTML = clientesTable(filtered);
+    if(detalhesClientes && q.length>0){ detalhesClientes.open = true; clientesListaAberta = true; }
     attachClienteRowHandlers();
   };
 
@@ -4492,9 +4501,16 @@ function attachHandlers(){
     btnBackupManual.disabled = false;
     btnBackupManual.textContent = textoOriginal;
     if(ok){ alert('Backup feito com sucesso! Salvo no Supabase e baixado no seu aparelho.'); } else { alert('O arquivo local foi baixado, mas houve um erro ao salvar o backup no Supabase. Guarde bem o arquivo baixado.'); }
+    backupsListaAberta = true;
+    const detalhesBackups2 = document.getElementById('details-lista-backups');
+    if(detalhesBackups2) detalhesBackups2.open = true;
     renderListaBackups();
   };
-  if(document.getElementById('lista-backups')) renderListaBackups();
+  const detalhesBackups = document.getElementById('details-lista-backups');
+  if(detalhesBackups){
+    detalhesBackups.ontoggle = ()=>{ backupsListaAberta = detalhesBackups.open; if(detalhesBackups.open) renderListaBackups(); };
+    if(detalhesBackups.open) renderListaBackups();
+  }
 
   const linkModeloDiario = document.getElementById('link-baixar-modelo-diario');
   if(linkModeloDiario) linkModeloDiario.onclick = (e)=>{ e.preventDefault(); gerarModeloImportacaoDiaria(); };
