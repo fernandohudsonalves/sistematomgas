@@ -235,19 +235,22 @@ table td:last-child{min-width:180px;}
 .ag-item .ag-acoes button{width:auto;font-size:12px;margin-right:8px;background:none;border:none;color:#1E3A8A;cursor:pointer;padding:0;}
 #checklist-hover-drawer{position:fixed;left:0;top:110px;width:300px;max-height:calc(100vh - 140px);background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(255,255,255,.99));backdrop-filter:blur(10px);border:1px solid rgba(30,58,138,.08);border-left:none;box-shadow:0 16px 40px rgba(16,32,62,.18);border-radius:0 18px 18px 0;transform:translateX(calc(-100% + 6px));transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:9998;overflow:hidden;display:flex;flex-direction:column;}
 #checklist-hover-drawer:hover,#checklist-hover-drawer.open{transform:translateX(0);}
-#checklist-hover-tab{position:absolute;right:-42px;top:20px;background:linear-gradient(135deg,var(--royal-light),var(--royal));color:#fff;padding:12px 10px;border-radius:0 12px 12px 0;writing-mode:vertical-rl;font-weight:700;font-size:12px;letter-spacing:.4px;box-shadow:3px 4px 14px rgba(20,42,99,.35);display:flex;align-items:center;gap:6px;}
-#checklist-hover-tab .chk-tab-count{writing-mode:horizontal-tb;background:var(--neon);color:var(--royal-dark);border-radius:999px;font-size:10px;padding:1px 6px;font-weight:800;}
+#checklist-hover-tab{position:absolute;right:-42px;top:20px;background:linear-gradient(135deg,var(--royal-light),var(--royal));color:#fff;padding:12px 10px;border-radius:0 12px 12px 0;writing-mode:vertical-rl;font-weight:700;font-size:12px;letter-spacing:.4px;box-shadow:3px 4px 14px rgba(20,42,99,.35);display:flex;align-items:center;gap:7px;}
+#checklist-hover-tab .chk-tab-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);flex-shrink:0;}
+#checklist-hover-tab .chk-tab-dot.done{background:var(--neon);box-shadow:0 0 6px rgba(182,255,61,.9);}
 #checklist-hover-content{padding:16px 14px 18px;overflow-y:auto;}
 #checklist-hover-content h3{margin:0 0 4px;font-size:14px;color:var(--royal);font-weight:800;display:flex;align-items:center;gap:6px;}
 .chk-drawer-sub{font-size:11px;color:var(--text3);margin:0 0 12px;}
 .chk-progress-track{height:6px;border-radius:999px;background:var(--blue-tint);overflow:hidden;margin-bottom:14px;}
 .chk-progress-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--royal-light),var(--green));transition:width .3s ease;}
-.chk-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:10px;margin-bottom:5px;transition:background .15s;}
+.chk-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:10px;margin-bottom:5px;transition:background .15s;cursor:pointer;}
 .chk-drawer-item:hover{background:var(--blue-tint);}
+.chk-drawer-item:active{background:var(--border);}
 .chk-drawer-item .chk-dot{width:20px;height:20px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid var(--border);color:transparent;}
 .chk-drawer-item.done .chk-dot{background:var(--green);border-color:var(--green);color:#fff;}
 .chk-drawer-item .chk-label{font-size:13px;font-weight:500;color:var(--text);line-height:1.3;}
 .chk-drawer-item.done .chk-label{color:var(--text3);text-decoration:line-through;}
+.chk-drawer-hint{font-size:11px;color:var(--text3);margin-top:12px;padding-top:10px;border-top:1px solid var(--border);text-align:center;}
 #checklist-hover-drawer .empty{font-size:12px;padding:6px 4px;}
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
@@ -365,7 +368,7 @@ const AUTH_APP_HTML = `
   </aside>
 `;
 document.getElementById('app').innerHTML = AUTH_APP_HTML;
-document.getElementById('app').insertAdjacentHTML('beforeend','<aside id="checklist-hover-drawer"><div id="checklist-hover-tab">☑ Checklist<span class="chk-tab-count" id="chk-tab-count"></span></div><div id="checklist-hover-content"></div></aside>');
+document.getElementById('app').insertAdjacentHTML('beforeend','<aside id="checklist-hover-drawer"><div id="checklist-hover-tab">☑ Checklist<span class="chk-tab-dot" id="chk-tab-dot"></span></div><div id="checklist-hover-content"></div></aside>');
 document.getElementById('app').insertAdjacentHTML('beforeend',`
 <button id="whats-fab" title="Buscar cliente no WhatsApp">${iconWhatsApp('#fff',28)}</button>
 <div id="whats-search-overlay">
@@ -381,13 +384,28 @@ function renderChecklistHoverDrawer(){
   const a=state.checklistRotina.map(x=>({id:x.id,text:x.texto})).concat((d.extras||[]).map(x=>({id:x.id,text:x.texto})));
   const feitos=a.filter(x=>d.marcacoes[x.id]).length;
   const pct=a.length?Math.round(feitos/a.length*100):0;
-  const cont=document.getElementById('chk-tab-count'); if(cont) cont.textContent=feitos+'/'+a.length;
+  const dot=document.getElementById('chk-tab-dot'); if(dot) dot.classList.toggle('done', a.length>0 && feitos===a.length);
   e.innerHTML='<h3>☑ Checklist de hoje</h3><div class="chk-drawer-sub">'+feitos+' de '+a.length+' concluídas</div>'+
     '<div class="chk-progress-track"><div class="chk-progress-fill" style="width:'+pct+'%"></div></div>'+
-    (a.map(x=>'<div class="chk-drawer-item'+(d.marcacoes[x.id]?' done':'')+'"><span class="chk-dot">'+(d.marcacoes[x.id]?'✓':'')+'</span><span class="chk-label">'+escapeHtmlCampanha(x.text)+'</span></div>').join('')||'<div class="empty">Nenhuma tarefa hoje.</div>');
+    (a.map(x=>'<div class="chk-drawer-item'+(d.marcacoes[x.id]?' done':'')+'" data-drawer-check-item="1"><span class="chk-dot">'+(d.marcacoes[x.id]?'✓':'')+'</span><span class="chk-label">'+escapeHtmlCampanha(x.text)+'</span></div>').join('')||'<div class="empty">Nenhuma tarefa hoje.</div>')+
+    (a.length?'<div class="chk-drawer-hint">Toque em um item pra abrir o Checklist e marcar quem fez</div>':'');
 }
 function initConferenciaBadge(){let b=document.getElementById('conferencia-badge');if(!b){b=document.createElement('button');b.id='conferencia-badge';b.style='position:fixed;right:18px;bottom:18px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#f59e0b;color:#fff;font-weight:700;cursor:pointer';document.body.appendChild(b);b.onclick=()=>alert((state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').map(x=>'⚠ '+x.tipo+' / '+x.campo+': '+x.valor+' — '+x.detalhe).join('\n')||'Nenhuma pendência.');}const n=(state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').length;b.style.display=n?'block':'none';b.textContent='⚠ '+n+' conferência(s)';}
-function initChecklistHoverDrawer(){const d=document.getElementById('checklist-hover-drawer');if(!d)return;d.onmouseenter=()=>d.classList.add('open');d.onmouseleave=()=>d.classList.remove('open');renderChecklistHoverDrawer();}
+function initChecklistHoverDrawer(){
+  const d=document.getElementById('checklist-hover-drawer');if(!d)return;
+  d.onmouseenter=()=>d.classList.add('open');
+  d.onmouseleave=()=>d.classList.remove('open');
+  const content=document.getElementById('checklist-hover-content');
+  if(content) content.onclick=(ev)=>{
+    if(!ev.target.closest('[data-drawer-check-item]')) return;
+    checklistDataAtual=todayStr();
+    currentTab='checklist';
+    d.classList.remove('open');
+    renderAll();
+    setTimeout(()=>{ const main=document.getElementById('main'); if(main) main.scrollIntoView({behavior:'smooth'}); },50);
+  };
+  renderChecklistHoverDrawer();
+}
 function normalizarBuscaWs(str){return (str||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
 function renderWsResultados(termo){
   const el=document.getElementById('ws-resultados'); if(!el) return;
