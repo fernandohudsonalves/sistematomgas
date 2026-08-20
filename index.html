@@ -1033,6 +1033,7 @@ function googleCardDashboardHtml(){
     '</div><div class="hint" style="margin-top:8px;">Toque pra ver o progresso completo.</div></div>';
 }
 /* ===================== Rota do dia ===================== */
+let editParadaExtraId = null;
 function paradasDoDiaHtml(){
   const hoje = todayStr();
   const entregasHoje = todosAgendamentosEVendas().filter(v=>v.data===hoje && v.status!=='concluido').sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
@@ -1040,12 +1041,17 @@ function paradasDoDiaHtml(){
   const extras = (state.paradasRota||[]).filter(p=>p.data===hoje).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
   return {paradasEntrega, extras};
 }
-function montarUrlRotaGoogleMaps(paradas){
+function pontoPartidaAtual(){
+  if(!Array.isArray(state.pontosPartida) || state.pontosPartida.length===0) return null;
+  return state.pontosPartida.find(p=>p.id===(state.rotaConfig||{}).pontoPartidaId) || state.pontosPartida[0];
+}
+function montarUrlRotaGoogleMaps(paradas, origemEndereco){
   const enderecos = paradas.map(p=>p.endereco).filter(e=>e && e.trim());
   if(enderecos.length===0) return null;
   const destino = enderecos[enderecos.length-1];
   const waypoints = enderecos.slice(0,-1);
   let url = 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destino)+'&travelmode=driving';
+  if(origemEndereco && origemEndereco.trim()) url += '&origin='+encodeURIComponent(origemEndereco.trim());
   if(waypoints.length>0) url += '&waypoints='+waypoints.map(w=>encodeURIComponent(w)).join('|');
   return url;
 }
@@ -1053,23 +1059,46 @@ function viewRotaDoDia(){
   const hoje = todayStr();
   const {paradasEntrega, extras} = paradasDoDiaHtml();
   const todasParadas = paradasEntrega.concat(extras.map(p=>({tipo:'extra', nome:p.nome, endereco:p.endereco, obs:p.obs, id:p.id})));
-  const urlRota = montarUrlRotaGoogleMaps(todasParadas);
-  return '<div class="card"><h2>Rota do dia — '+fmtDate(hoje)+'</h2>'+
-    '<div class="hint">Junta as entregas agendadas de hoje com paradas extras que você adicionar (ex: buscar ovos, ir ao mecânico). A ordem da lista abaixo é a ordem da rota — use subir/descer pra reorganizar. Depois é só abrir no Google Maps, que já traça o trajeto com todas as paradas.</div>'+
+  const partida = pontoPartidaAtual();
+  const urlRota = montarUrlRotaGoogleMaps(todasParadas, partida ? partida.endereco : '');
+  const paradaEditando = editParadaExtraId ? state.paradasRota.find(p=>p.id===editParadaExtraId) : null;
+
+  return '<div class="card"><h2>📍 Ponto de partida</h2>'+
+    '<div class="form-row"><div><label>Partir de</label><select id="sel-ponto-partida">'+
+    state.pontosPartida.map(p=>'<option value="'+p.id+'"'+(partida && p.id===partida.id?' selected':'')+'>'+escapeHtmlCampanha(p.nome)+'</option>').join('')+
+    '</select></div></div>'+
+    '<div class="hint" style="margin-top:6px;">'+(partida?escapeHtmlCampanha(partida.endereco):'')+'</div>'+
+    '<details style="margin-top:12px;"><summary>Gerenciar pontos de partida salvos</summary>'+
+    '<div style="margin-top:10px;">'+state.pontosPartida.map(p=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(p.nome)+'</strong><br><span class="hint">'+escapeHtmlCampanha(p.endereco)+'</span></span>'+(state.pontosPartida.length>1?'<button type="button" class="del-link" data-del-ponto-partida="'+p.id+'">🗑</button>':'')+'</div>').join('')+'</div>'+
+    '<form id="form-ponto-partida" class="form-row" style="margin-top:10px;">'+
+    '<div><label>Nome</label><input type="text" name="nome" placeholder="Ex: Casa, Depósito 2" required></div>'+
+    '<div><label>Endereço</label><input type="text" name="endereco" placeholder="Rua, número - Bairro - Cidade" required></div>'+
+    '<div style="align-self:end;"><button type="submit" class="btn small ghost">+ Salvar novo ponto</button></div>'+
+    '</div></form>'+
+    '</details></div>'+
+    '<div class="card"><h2>Rota do dia — '+fmtDate(hoje)+'</h2>'+
+    '<div class="hint">Junta as entregas agendadas de hoje com paradas extras que você adicionar (ex: buscar ovos, ir ao mecânico, ou a casa de um cliente). A ordem da lista abaixo é a ordem da rota — use subir/descer pra reorganizar. Depois é só abrir no Google Maps, que já traça o trajeto saindo do ponto de partida escolhido acima.</div>'+
     (todasParadas.length===0 ? '<div class="empty">Nenhuma entrega agendada pra hoje e nenhuma parada extra adicionada ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>#</th><th>Tipo</th><th>Nome / Motivo</th><th>Endereço</th><th>Obs.</th><th></th></tr></thead><tbody>'+
     todasParadas.map((p,idx)=>'<tr><td>'+(idx+1)+'</td><td>'+(p.tipo==='entrega'?'<span class="badge status-receber">entrega</span>':'<span class="badge" style="background:var(--purple-tint);color:var(--purple);">extra</span>')+'</td>'+
       '<td>'+p.nome+'</td><td>'+(p.endereco||'<span class="hint">sem endereço</span>')+'</td><td>'+(p.obs||'—')+'</td>'+
-      '<td>'+(p.tipo==='extra'?('<button class="act-link" data-parada-subir="'+p.id+'">↑</button><button class="act-link" data-parada-descer="'+p.id+'">↓</button><button class="del-link" data-parada-del="'+p.id+'">🗑</button>'):'<span class="hint">vem do agendamento</span>')+'</td></tr>').join('')+
+      '<td>'+(p.tipo==='extra'?('<button class="act-link" data-parada-subir="'+p.id+'">↑</button><button class="act-link" data-parada-descer="'+p.id+'">↓</button><button class="act-link" data-parada-editar="'+p.id+'">✎</button><button class="del-link" data-parada-del="'+p.id+'">🗑</button>'):'<span class="hint">vem do agendamento</span>')+'</td></tr>').join('')+
     '</tbody></table></div>')+
     (urlRota ? '<a class="btn" href="'+urlRota+'" target="_blank" rel="noopener" style="margin-top:12px;display:inline-block;">🗺️ Abrir rota no Google Maps</a>' : '<div class="hint" style="margin-top:10px;">Adicione pelo menos um endereço pra poder abrir a rota.</div>')+
     '</div>'+
-    '<div class="card"><h2>Adicionar parada extra</h2>'+
+    '<div class="card"><h2>'+(paradaEditando?'Editar parada':'Adicionar parada extra')+'</h2>'+
+    '<div class="hint">Escolha um cliente cadastrado pra já puxar o endereço dele, ou preencha manualmente pra outro motivo (ex: buscar ovos, ir ao mecânico).</div>'+
     '<form id="form-parada-extra"><div class="form-row">'+
-    '<div><label>Nome / motivo <span class="req">*</span></label><input type="text" name="nome" placeholder="Ex: Buscar ovos no sítio" required></div>'+
-    '<div><label>Endereço <span class="req">*</span></label><input type="text" name="endereco" placeholder="Ex: Rua Tal, 123 - Bairro" required></div>'+
-    '</div><label>Observação</label><input type="text" name="obs" placeholder="Ex: passar antes das 11h">'+
-    '<button type="submit" class="btn small" style="margin-top:8px;">Adicionar parada</button></form></div>';
+    '<div><label>Cliente cadastrado (opcional)</label><input type="text" list="datalist-clientes-rota" id="input-cliente-parada" placeholder="Buscar cliente...">'+
+    '<datalist id="datalist-clientes-rota">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist></div>'+
+    '<div><label>Nome / motivo <span class="req">*</span></label><input type="text" name="nome" placeholder="Ex: Buscar ovos no sítio" value="'+(paradaEditando?escapeHtmlCampanha(paradaEditando.nome):'')+'" required></div>'+
+    '</div><div class="form-row">'+
+    '<div><label>Endereço <span class="req">*</span></label><input type="text" name="endereco" placeholder="Ex: Rua Tal, 123 - Bairro" value="'+(paradaEditando?escapeHtmlCampanha(paradaEditando.endereco):'')+'" required></div>'+
+    '<div><label>Observação</label><input type="text" name="obs" placeholder="Ex: passar antes das 11h" value="'+(paradaEditando?escapeHtmlCampanha(paradaEditando.obs||''):'')+'"></div>'+
+    '</div>'+
+    '<button type="submit" class="btn small" style="margin-top:8px;">'+(paradaEditando?'Salvar alterações':'Adicionar parada')+'</button>'+
+    (paradaEditando?'<button type="button" class="btn small ghost" id="btn-cancelar-parada-extra" style="margin-top:8px;margin-left:8px;">Cancelar</button>':'')+
+    '</form></div>';
 }
 
 /* ===================== Fim rota / campanhas ===================== */
@@ -1432,7 +1461,7 @@ function enviarWhatsAppEntregador(dados){
   window.open(url, '_blank');
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -1485,6 +1514,12 @@ async function loadAll(){
   if(!state.metas) state.metas = {};
   if(!state.estoqueMinimo) state.estoqueMinimo = defaultEstoqueMinimo();
   if(!state.paradasRota) state.paradasRota = [];
+  if(!Array.isArray(state.pontosPartida)) state.pontosPartida = [];
+  if(state.pontosPartida.length===0){
+    state.pontosPartida.push({id:uid(), nome:'Loja / Depósito', endereco:'Avenida Santa Catarina, 627 - Apucarana - PR'});
+  }
+  if(!state.rotaConfig) state.rotaConfig = {};
+  if(!state.rotaConfig.pontoPartidaId) state.rotaConfig.pontoPartidaId = state.pontosPartida[0].id;
   if(!state.campanhas) state.campanhas = [];
   if(!state.envioCampanhaLog) state.envioCampanhaLog = [];
   if(!state.publicos) state.publicos = [];
@@ -2393,21 +2428,7 @@ function viewVendas(){
   const totalHoje = vendasHoje.reduce((s,v)=>s+v.valor_total,0);
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
 
-  let banner = '';
-  if(agendamentoParaConcluir){
-    const ag = state.agendamentos.find(x=>x.id===agendamentoParaConcluir);
-    if(ag){
-      banner = '<div class="card" style="border-left:4px solid var(--green);background:var(--green-tint);">'+
-        '<strong>Finalizando entrega agendada</strong> — '+(ag.cliente||'—')+' às '+ag.hora+
-        '. Complete os dados abaixo e registre a venda; a entrega sairá automaticamente da lista de pendências.'+
-        ' <button type="button" class="link-btn" id="btn-cancelar-finalizar-entrega">cancelar</button></div>';
-    } else {
-      agendamentoParaConcluir = null;
-    }
-  }
-
-  return banner + 
-    '<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
+  return '<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
@@ -2732,7 +2753,7 @@ function agendamentosTable(lista, mostrarData){
         '<button class="act-link" data-wa-ag="'+v.id+'">💬 whatsapp</button>'+
         (v.status==='concluido' ?
           '<button class="act-link" data-reabrir-ag="'+v.id+'">↺ reabrir</button>' :
-          '<button class="act-link" data-concluir-ag="'+v.id+'">✓ finalizar entrega (lançar venda)</button>')+
+          '<button class="act-link" data-concluir-ag="'+v.id+'">✓ marcar como entregue</button>')+
         '<button class="del-link" data-del-ag="'+v.id+'">🗑 excluir</button>' :
         '<button class="act-link" data-edit-venda-ag="'+v.id+'">✎ editar venda</button>'+
         (v.status==='concluido' ?
@@ -2767,16 +2788,13 @@ function iniciarEditarAgendamento(id){
     seletorAgendamento.setValor(categoriaParaPreencher, nomeProduto);
   }
   toggleAvisoRetroativoAgendamento();
+  const enderecoPreview = document.getElementById('ag-endereco-preview');
+  if(enderecoPreview){
+    const end = a.cliente ? getClienteEndereco(a.cliente) : '';
+    enderecoPreview.innerHTML = end ? '📍 '+escapeHtmlCampanha(end) : '';
+  }
   fa.querySelector('button[type=submit]').textContent='Salvar alterações';
   fa.scrollIntoView({behavior:'smooth'});
-}
-function iniciarFinalizarEntrega(id){
-  const a = state.agendamentos.find(x=>x.id===id);
-  if(!a) return;
-  agendamentoParaConcluir = a.id;
-  prefillVenda = { cliente:a.cliente||'', tipo_entrega:a.tipo_entrega||'', empresa:a.empresa||'', entrega_data:a.data||'', entrega_hora:a.hora||'', obs:a.produto_nota||'', pagamento:a.pagamento||'', frete:a.frete||'', categoria:a.categoria||'', produto_livre:(a.categoria && !isControlada(a.categoria))?(a.produto||''):'', quantidade:a.quantidade||'' };
-  currentTab = 'vendas';
-  renderAll();
 }
 function diaChecklist(data){
   if(!state.checklistDias[data]) state.checklistDias[data] = {marcacoes:{}, extras:[]};
@@ -2855,8 +2873,9 @@ function viewAgendamentos(){
   return '<div class="card"><h2>Agendar entrega (sem lançar a venda ainda)</h2>'+
     '<div class="hint">Use isto pra reservar um horário — por exemplo, agenda hoje pra entregar amanhã. Quando a entrega acontecer de fato, registre a venda normalmente na aba Vendas (os dois ficam juntos aqui na lista do dia).</div>'+
     '<form id="form-agendamento"><div class="form-row">'+
-    '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-ag" name="cliente" required>'+
-    '<datalist id="lista-clientes-ag">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist></div>'+
+    '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-ag" name="cliente" id="ag-cliente-input" required>'+
+    '<datalist id="lista-clientes-ag">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist>'+
+    '<div class="hint" id="ag-endereco-preview" style="margin-top:4px;"></div></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" id="ag-data-input" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Horário <span class="req">*</span></label><input type="time" name="hora" required></div></div>'+
     '<div id="ag-aviso-retroativo" style="display:none;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px;margin-top:6px;">'+
@@ -2883,7 +2902,11 @@ function viewAgendamentos(){
     '<button type="submit" class="btn small" style="margin-top:12px;">Agendar</button></form></div>'+
     '<div class="card"><h2>Entregas agendadas</h2>'+
     '<input type="text" id="busca-agendamento" class="searchbar" placeholder="Buscar por cliente, produto ou empresa (em todas as datas)...">'+
-    '<div class="form-row" style="max-width:240px;"><div><label>Data</label><input type="date" id="ag-data" value="'+hoje+'"></div></div>'+
+    '<div class="form-row" style="max-width:420px;align-items:end;">'+
+    '<div><label>Data</label><input type="date" id="ag-data" value="'+hoje+'"></div>'+
+    '<div><button type="button" class="btn small ghost" id="btn-rota-agendamentos">🗺️ Ver rota desta data no Maps</button></div>'+
+    '</div>'+
+    '<div class="hint" style="margin-top:6px;">Monta a rota com todas as entregas pendentes dessa data (agendadas ou já lançadas), buscando o endereço de cada cliente no cadastro, saindo do ponto de partida configurado na aba <strong>Rota do dia</strong>.</div>'+
     '<div id="ag-resultado" style="margin-top:14px;">'+agendamentosTable(listaAgendamentosDoDia(hoje))+'</div></div>';
 }
 
@@ -2924,6 +2947,7 @@ function viewConfig(){
     '</div>'+
     '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+
     '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong> e <strong>Produtos</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos, clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
+    '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e repita o mesmo número na coluna <strong>Nº da Venda</strong> — assim o sistema conta como uma venda só. Se deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, numere sempre.</div>'+
     '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
     '<div id="resumo-importacao-diaria"></div>'+
     '</div>'+
@@ -4936,18 +4960,76 @@ function attachHandlers(){
     document.getElementById('rapido-resultado').innerHTML=rapidoResultado;
   };
   // ---- Rota do dia ----
+  const selPontoPartida = document.getElementById('sel-ponto-partida');
+  if(selPontoPartida) selPontoPartida.onchange = async()=>{
+    if(!state.rotaConfig) state.rotaConfig = {};
+    state.rotaConfig.pontoPartidaId = selPontoPartida.value;
+    await save('rotaConfig');
+    renderAll();
+  };
+  const formPontoPartida = document.getElementById('form-ponto-partida');
+  if(formPontoPartida) formPontoPartida.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(formPontoPartida);
+    const novo = {id:uid(), nome:(f.get('nome')||'').trim(), endereco:(f.get('endereco')||'').trim()};
+    if(!novo.nome || !novo.endereco) return;
+    if(!Array.isArray(state.pontosPartida)) state.pontosPartida=[];
+    state.pontosPartida.push(novo);
+    if(!state.rotaConfig) state.rotaConfig = {};
+    state.rotaConfig.pontoPartidaId = novo.id;
+    await save('pontosPartida');
+    await save('rotaConfig');
+    renderAll();
+  };
+  document.querySelectorAll('[data-del-ponto-partida]').forEach(btn=>btn.onclick=async()=>{
+    if(state.pontosPartida.length<=1) return;
+    if(!confirm('Excluir este ponto de partida salvo?')) return;
+    const id = btn.dataset.delPontoPartida;
+    state.pontosPartida = state.pontosPartida.filter(p=>p.id!==id);
+    if(state.rotaConfig && state.rotaConfig.pontoPartidaId===id) state.rotaConfig.pontoPartidaId = state.pontosPartida[0].id;
+    await save('pontosPartida');
+    await save('rotaConfig');
+    renderAll();
+  });
+  const inputClienteParada = document.getElementById('input-cliente-parada');
+  if(inputClienteParada){
+    const preencherEnderecoDoCliente = ()=>{
+      const c = state.clientes.find(x=>x.nome===inputClienteParada.value);
+      const fpe = document.getElementById('form-parada-extra');
+      if(c && fpe){
+        if(!fpe.nome.value) fpe.nome.value = c.nome;
+        fpe.endereco.value = getClienteEndereco(c.nome);
+      }
+    };
+    inputClienteParada.onchange = preencherEnderecoDoCliente;
+    inputClienteParada.oninput = preencherEnderecoDoCliente;
+  }
   const formParadaExtra = document.getElementById('form-parada-extra');
   if(formParadaExtra) formParadaExtra.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(formParadaExtra);
     if(!state.paradasRota) state.paradasRota = [];
-    state.paradasRota.push({id:uid(), data:todayStr(), nome:f.get('nome'), endereco:f.get('endereco'), obs:f.get('obs')||'', ordem: state.paradasRota.filter(p=>p.data===todayStr()).length});
+    if(editParadaExtraId){
+      const p = state.paradasRota.find(x=>x.id===editParadaExtraId);
+      if(p){ p.nome=f.get('nome'); p.endereco=f.get('endereco'); p.obs=f.get('obs')||''; }
+      editParadaExtraId = null;
+    } else {
+      state.paradasRota.push({id:uid(), data:todayStr(), nome:f.get('nome'), endereco:f.get('endereco'), obs:f.get('obs')||'', ordem: state.paradasRota.filter(p=>p.data===todayStr()).length});
+    }
     await save('paradasRota');
     formParadaExtra.reset();
     renderAll();
   };
+  document.querySelectorAll('[data-parada-editar]').forEach(btn=>btn.onclick=()=>{
+    editParadaExtraId = btn.dataset.paradaEditar;
+    renderAll();
+    setTimeout(()=>{ const fpe=document.getElementById('form-parada-extra'); if(fpe) fpe.scrollIntoView({behavior:'smooth'}); },50);
+  });
+  const btnCancelarParadaExtra = document.getElementById('btn-cancelar-parada-extra');
+  if(btnCancelarParadaExtra) btnCancelarParadaExtra.onclick = ()=>{ editParadaExtraId=null; renderAll(); };
   document.querySelectorAll('[data-parada-del]').forEach(btn=>btn.onclick=async()=>{
     state.paradasRota = (state.paradasRota||[]).filter(p=>p.id!==btn.dataset.paradaDel);
+    if(editParadaExtraId===btn.dataset.paradaDel) editParadaExtraId=null;
     await save('paradasRota');
     renderAll();
   });
@@ -5192,6 +5274,29 @@ function attachHandlers(){
   const agDataInput = document.getElementById('ag-data-input');
   if(agDataInput) agDataInput.onchange = toggleAvisoRetroativoAgendamento;
   toggleAvisoRetroativoAgendamento();
+  const agClienteInput = document.getElementById('ag-cliente-input');
+  const agEnderecoPreview = document.getElementById('ag-endereco-preview');
+  const atualizarEnderecoPreviewAg = ()=>{
+    if(!agClienteInput || !agEnderecoPreview) return;
+    const nome = agClienteInput.value.trim();
+    if(!nome){ agEnderecoPreview.innerHTML=''; return; }
+    const c = state.clientes.find(x=>x.nome===nome);
+    if(!c){ agEnderecoPreview.innerHTML = '<span style="color:var(--danger);">Cliente ainda não cadastrado — o endereço não vai aparecer na rota.</span>'; return; }
+    const end = getClienteEndereco(nome);
+    agEnderecoPreview.innerHTML = end ? '📍 '+escapeHtmlCampanha(end) : '<span style="color:var(--danger);">Cliente sem endereço cadastrado.</span>';
+  };
+  if(agClienteInput){ agClienteInput.oninput = atualizarEnderecoPreviewAg; agClienteInput.onchange = atualizarEnderecoPreviewAg; atualizarEnderecoPreviewAg(); }
+  const btnRotaAgendamentos = document.getElementById('btn-rota-agendamentos');
+  if(btnRotaAgendamentos) btnRotaAgendamentos.onclick = ()=>{
+    const agDataEl = document.getElementById('ag-data');
+    const dataAlvo = agDataEl ? agDataEl.value : todayStr();
+    const lista = listaAgendamentosDoDia(dataAlvo).filter(v=>v.status!=='concluido');
+    const paradas = lista.map(v=>({nome:v.cliente||'Entrega', endereco:getClienteEndereco(v.cliente)})).filter(p=>p.endereco);
+    if(paradas.length===0){ alert('Nenhuma entrega pendente com endereço cadastrado nessa data. Confira se os clientes têm endereço no cadastro.'); return; }
+    const partida = pontoPartidaAtual();
+    const url = montarUrlRotaGoogleMaps(paradas, partida ? partida.endereco : '');
+    if(url) window.open(url, '_blank', 'noopener');
+  };
   const attachAgendamentoRowHandlers = ()=>{
     document.querySelectorAll('[data-edit-ag]').forEach(btn=>btn.onclick=()=>{
       iniciarEditarAgendamento(btn.dataset.editAg);
@@ -5205,8 +5310,9 @@ function attachHandlers(){
         tipo_entrega: a.tipo_entrega, hora: a.hora, data: a.data, empresa: a.empresa, obs: ''
       });
     });
-    document.querySelectorAll('[data-concluir-ag]').forEach(btn=>btn.onclick=()=>{
-      iniciarFinalizarEntrega(btn.dataset.concluirAg);
+    document.querySelectorAll('[data-concluir-ag]').forEach(btn=>btn.onclick=async()=>{
+      const a = state.agendamentos.find(x=>x.id===btn.dataset.concluirAg);
+      if(a){ a.status='concluido'; await save('agendamentos'); atualizarBadgeApp(); renderAll(); }
     });
     document.querySelectorAll('[data-reabrir-ag]').forEach(btn=>btn.onclick=async()=>{
       const a = state.agendamentos.find(x=>x.id===btn.dataset.reabrirAg);
@@ -5235,8 +5341,6 @@ function attachHandlers(){
     });
   };
   attachAgendamentoRowHandlers();
-  const btnCancelarFinalizar = document.getElementById('btn-cancelar-finalizar-entrega');
-  if(btnCancelarFinalizar) btnCancelarFinalizar.onclick = ()=>{ agendamentoParaConcluir=null; prefillVenda=null; renderAll(); };
 
   const agData = document.getElementById('ag-data');
   if(agData) agData.onchange = ()=>{
@@ -5665,6 +5769,7 @@ async function gerarModeloImportacaoDiaria(){
     'Nota (Vendas): '+NOTAS.join(' | '),
     'Tipo de Entrega (Vendas): '+TIPOS_ENTREGA.join(' | '),
     'Categoria/Produto (Vendas): use o nome exato do produto ou categoria já cadastrado no sistema (ex.: P13, P45, Água 20L Safira, etc.) — já vem com dropdown das categorias cadastradas.',
+    'Nº da Venda (Vendas): opcional, mas importante pro ticket médio. Se a mesma pessoa levou produtos de categorias diferentes numa única compra (ex.: gás + água), repita o MESMO número em todas as linhas dessa venda (ex.: 1, 1, 2, 3, 3, 3...). Se você deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho as linhas do mesmo cliente no mesmo dia. Já em venda de balcão sem nome de cliente, é importante numerar — senão cada linha vira uma venda separada no ticket médio. Preencha o Frete só numa das linhas de cada venda numerada, pra não contar em dobro.',
     'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
     'Categoria (Despesas): '+state.categoriasDespesas.join(' | '),
     'Grupo (Produtos): '+gruposProduto.join(' | ')+' — usado só quando a Categoria da linha ainda não existe no sistema, pra saber em qual das três a nova categoria deve entrar. Se a Categoria já existir, o grupo dela é mantido do jeito que já está cadastrado.',
@@ -5675,14 +5780,14 @@ async function gerarModeloImportacaoDiaria(){
 
   // ---- Aba Vendas ----
   const wsVendas = wb.addWorksheet('Vendas');
-  wsVendas.addRow(['Data','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação']);
+  wsVendas.addRow(['Data','Nº da Venda','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação']);
   wsVendas.getRow(1).font = {bold:true};
   wsVendas.columns.forEach(c=>{ c.width = 16; });
-  aplicarDropdown(wsVendas, 'F', 'A', CANAIS.length, 2, ULTIMA_LINHA);
-  aplicarDropdown(wsVendas, 'G', 'E', categoriasProdutoValidas.length, 2, ULTIMA_LINHA);
-  aplicarDropdown(wsVendas, 'J', 'B', PAGAMENTOS.length, 2, ULTIMA_LINHA);
-  aplicarDropdown(wsVendas, 'K', 'C', NOTAS.length, 2, ULTIMA_LINHA);
-  aplicarDropdown(wsVendas, 'L', 'D', TIPOS_ENTREGA.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'G', 'A', CANAIS.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'H', 'E', categoriasProdutoValidas.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'K', 'B', PAGAMENTOS.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'L', 'C', NOTAS.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'M', 'D', TIPOS_ENTREGA.length, 2, ULTIMA_LINHA);
 
   // ---- Aba Despesas ----
   const wsDespesas = wb.addWorksheet('Despesas');
@@ -5748,6 +5853,7 @@ function processarImportacaoDiariaExcel(file){
 
     if(linhasVendas.length){
       let importadas=0, ignoradas=0, clientesNovosDeVendas=0, creditosAlterados=false, fiadosGeradosPorAbate=0;
+      const gruposPorChaveVenda = new Map();
       linhasVendas.forEach(function(r){
         const textoCategoria = (r['Categoria/Produto']||'').trim();
         if(!textoCategoria){ ignoradas++; return; }
@@ -5785,10 +5891,22 @@ function processarImportacaoDiariaExcel(file){
         const nota = (r['Nota']||'').trim() || 'Não lança';
         const tipo_entrega = (r['Tipo de Entrega']||'').trim() || TIPOS_ENTREGA[0];
         const empresa = (r['Empresa Convênio']||'').trim();
-        const frete = TIPOS_ENTREGA_COM_FRETE.includes(tipo_entrega) ? (Number(String(r['Frete']||'0').replace(',','.'))||0) : 0;
         const obs = (r['Observação']||'').trim();
+
+        // Agrupa linhas da mesma compra (ex.: gás + água na mesma venda) pra contar como
+        // um único "carrinho" no ticket médio: usa o Nº da Venda quando preenchido, ou
+        // cliente+data como segunda opção. Sem nenhum dos dois, cada linha fica separada.
+        const numeroVenda = (r['Nº da Venda']||'').trim();
+        const chaveGrupo = numeroVenda ? ('num:'+numeroVenda) : (cliente ? ('cli:'+data+':'+chaveNormalizada(cliente)) : null);
+        let grupoId, primeiraLinhaDoGrupo = true;
+        if(chaveGrupo){
+          if(gruposPorChaveVenda.has(chaveGrupo)){ grupoId = gruposPorChaveVenda.get(chaveGrupo); primeiraLinhaDoGrupo = false; }
+          else { grupoId = uid(); gruposPorChaveVenda.set(chaveGrupo, grupoId); }
+        } else { grupoId = uid(); }
+        const freteBruto = TIPOS_ENTREGA_COM_FRETE.includes(tipo_entrega) ? (Number(String(r['Frete']||'0').replace(',','.'))||0) : 0;
+        const frete = primeiraLinhaDoGrupo ? freteBruto : 0;
         const venda = {
-          id: uid(), criadoEm: Date.now(), grupoId: uid(), fiado_pago:false,
+          id: uid(), criadoEm: Date.now(), grupoId, fiado_pago:false,
           data, cliente, canal, categoria, produto, quantidade, valor_unit, valor_total,
           pagamento, nota, tipo_entrega, empresa, frete,
           entrega_data:'', entrega_hora:'', entrega_status:'', obs: obs || 'Importado de planilha'
