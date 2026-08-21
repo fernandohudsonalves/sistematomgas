@@ -6229,6 +6229,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         const chaveTexto = chaveNormalizada(textoCategoria);
         const categoriaExistente = state.categoriasProdutos.find(c=>chaveNormalizada(c)===chaveTexto);
         let categoria = categoriaExistente;
+        let categoriaEhNova = false;
         if(!categoria){
           const resolvido = resolucaoProdutosImportacaoDiaria[chaveTexto];
           if(resolvido && resolvido.acao==='existente'){
@@ -6237,12 +6238,17 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           else {
             categoria = textoCategoria;
             if(!state.categoriasProdutos.includes(categoria)) state.categoriasProdutos.push(categoria);
+            categoriaEhNova = true;
           }
         }
         const controlada = isControlada(categoria);
         const produto = controlada ? categoria : textoCategoria;
         const quantidade = r['Quantidade'] ? (Number(String(r['Quantidade']).replace(',','.'))||1) : 1;
         const valor_unit = r['Valor Unitário'] ? (Number(String(r['Valor Unitário']).replace(/\./g,'').replace(',','.'))||0) : 0;
+        if(categoriaEhNova && !controlada){
+          const jaTemNoCatalogo = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveNormalizada(produto) && chaveNormalizada(p.categoria)===chaveNormalizada(categoria));
+          if(!jaTemNoCatalogo) state.produtos.push({id:uid(), nome:produto, categoria, preco:valor_unit, ativo:true});
+        }
         const valor_total = Math.round(quantidade*valor_unit*100)/100;
         const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
         const cliente = (r['Cliente']||'').trim();
@@ -6308,7 +6314,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           }
         }
       });
-      if(importadas>0){ await save('vendas'); await save('estoque'); await save('categoriasProdutos'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia'); }
+      if(importadas>0){ await save('vendas'); await save('estoque'); await save('categoriasProdutos'); await save('produtos'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia'); }
       if(clientesNovosDeVendas>0) await save('clientes');
       if(creditosAlterados) await save('creditos');
       if(fiadosGeradosPorAbate>0) await save('fiados');
