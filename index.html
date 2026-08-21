@@ -1116,7 +1116,7 @@ function viewRotaDoDia(){
     return '<button type="button" class="btn small green" data-enviar-rota-entregador="'+e.id+'" data-rota-data="'+dataAtual+'" style="margin-top:8px;margin-right:8px;">💬 Enviar rota pro '+escapeHtmlCampanha(e.nome.split(' ')[0])+'</button>';
   }).join('');
 
-  return '<div class="card"><h2>🛵 Entregadores</h2>'+
+  return '<div class="card"><h2>🚚 Entregadores</h2>'+
     '<div class="hint">Cadastre quem faz as entregas pra poder escolher pra quem vai cada rota ou entrega, e enviar direto pro WhatsApp de cada um.</div>'+
     '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+'</span></span><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
     '<form id="form-entregador" class="form-row" style="margin-top:10px;">'+
@@ -1145,7 +1145,7 @@ function viewRotaDoDia(){
     '<div class="table-wrap"><table><thead><tr><th>#</th><th>Tipo</th><th>Nome / Motivo</th><th>Endereço</th><th>Entregador</th><th>Obs.</th><th>Anexos</th><th></th></tr></thead><tbody>'+
     linhasTabela+
     '</tbody></table></div>')+
-    (urlRota ? '<a class="btn" href="'+urlRota+'" target="_blank" rel="noopener" style="margin-top:12px;display:inline-block;">🧭 Abrir rota no Google Maps</a>' : '<div class="hint" style="margin-top:10px;">Adicione pelo menos um endereço pra poder abrir a rota.</div>')+
+    (urlRota ? '<a class="btn" href="'+urlRota+'" target="_blank" rel="noopener" style="margin-top:12px;display:inline-block;">📍 Abrir rota no Google Maps</a>' : '<div class="hint" style="margin-top:10px;">Adicione pelo menos um endereço pra poder abrir a rota.</div>')+
     (botoesEnviarRota ? '<div style="margin-top:10px;">'+botoesEnviarRota+'</div>' : '')+
     '</div>'+
     (isHistorico ? '' : '<div class="card"><h2>'+(paradaEditando?'Editar parada':'Adicionar parada extra')+'</h2>'+
@@ -1163,7 +1163,7 @@ function viewRotaDoDia(){
     '<button type="submit" class="btn small" style="margin-top:8px;">'+(paradaEditando?'Salvar alterações':'Adicionar parada')+'</button>'+
     (paradaEditando?'<button type="button" class="btn small ghost" id="btn-cancelar-parada-extra" style="margin-top:8px;margin-left:8px;">Cancelar</button>':'')+
     '</form></div>')+
-    '<div class="card"><h2>🗓️ Histórico de Rotas</h2>'+
+    '<div class="card"><h2>📅 Histórico de Rotas</h2>'+
     '<div class="hint">Veja como foi a rota de um dia anterior — inclusive os anexos (fotos, vídeos, localização) registrados naquele dia.</div>'+
     '<div class="form-row" style="max-width:420px;align-items:end;margin-top:8px;">'+
     '<div><label>Data</label><input type="date" id="input-rota-historico-data" value="'+(rotaHistoricoData||'')+'" max="'+hoje+'"></div>'+
@@ -1528,14 +1528,14 @@ function enviarWhatsAppEntregador(dados){
   const numeroPadrao = '5543999215981';
   const numero = (dados.entregadorId ? whatsappEntregador(dados.entregadorId) : '') || numeroPadrao;
   let msg = '🚚 Nova entrega\n';
-  if(dados.entregadorId && nomeEntregador(dados.entregadorId)) msg += '🛵 Entregador: '+nomeEntregador(dados.entregadorId)+'\n';
+  if(dados.entregadorId && nomeEntregador(dados.entregadorId)) msg += '🚚 Entregador: '+nomeEntregador(dados.entregadorId)+'\n';
   msg += '🙍 Cliente: '+(dados.cliente||'—')+'\n';
   if(dados.endereco && dados.endereco!=='—') msg += '📍 Endereço: '+dados.endereco+'\n';
   msg += '📦 Itens: '+(dados.itens||'—')+'\n';
   if(dados.total) msg += '💵 Produtos: '+fmtMoney(dados.total)+'\n';
   if(dados.frete) msg += '🚛 Frete: '+fmtMoney(dados.frete)+'\n';
   const totalCobrar = (dados.total||0)+(dados.frete||0);
-  if(dados.total || dados.frete) msg += '🧮 Total: '+fmtMoney(totalCobrar)+'\n';
+  if(dados.total || dados.frete) msg += '🔢 Total: '+fmtMoney(totalCobrar)+'\n';
   msg += '⏰ Entrega: '+(dados.tipo_entrega||'—')+(dados.hora?' às '+dados.hora:'')+(dados.data?' ('+fmtDate(dados.data)+')':'')+'\n';
   if(dados.empresa) msg += '🏢 Empresa conveniada: '+dados.empresa+'\n';
   if(dados.obs) msg += '📝 Obs: '+dados.obs+'\n';
@@ -1550,7 +1550,7 @@ function enviarWhatsAppEntregador(dados){
   if(dados.endereco && dados.endereco!=='—'){
     const partida = pontoPartidaAtual();
     const urlMaps = montarUrlRotaGoogleMaps([{endereco:dados.endereco}], partida ? partida.endereco : '');
-    if(urlMaps) msg += '\n🧭 Mapa (rota até o cliente):\n'+urlMaps+'\n';
+    if(urlMaps) msg += '\n📍 Mapa (rota até o cliente):\n'+urlMaps+'\n';
   }
   if(dados.agendamentoId){
     const linkConf = location.origin+location.pathname+'?entrega='+dados.agendamentoId;
@@ -1576,7 +1576,7 @@ function enviarRotaCompletaWhatsApp(entregadorId, paradas, urlRota, data){
   paradas.forEach((p,idx)=>{
     msg += (idx+1)+'. '+p.nome+(p.endereco?' — '+p.endereco:'')+(p.obs?' ('+p.obs+')':'')+'\n';
   });
-  if(urlRota) msg += '\n🧭 Ver rota completa no Maps:\n'+urlRota+'\n';
+  if(urlRota) msg += '\n📍 Ver rota completa no Maps:\n'+urlRota+'\n';
   const url = 'https://wa.me/'+numero+'?text='+encodeURIComponent(msg);
   window.open(url, '_blank');
 }
@@ -3078,7 +3078,7 @@ function viewAgendamentos(){
     '<datalist id="lista-clientes-ag">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist>'+
     '<div class="hint" id="ag-endereco-preview" style="margin-top:4px;"></div></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" id="ag-data-input" name="data" value="'+hoje+'" required></div>'+
-    '<div><label>Horário <span class="req">*</span></label><input type="time" name="hora" required></div></div>'+
+    '<div><label>Horário <span class="req">*</span></label><input type="time" name="hora" min="07:00" max="20:00" required></div></div>'+
     '<div id="ag-aviso-retroativo" style="display:none;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px;margin-top:6px;">'+
     '<label style="display:flex;align-items:center;gap:8px;margin:0;font-size:13px;"><input type="checkbox" id="ag-confirma-retroativo" name="confirma_retroativo" style="width:auto;">Sei que essa data já passou, quero lançar mesmo assim</label>'+
     '</div>'+
@@ -3107,7 +3107,7 @@ function viewAgendamentos(){
     '<input type="text" id="busca-agendamento" class="searchbar" placeholder="Buscar por cliente, produto ou empresa (em todas as datas)...">'+
     '<div class="form-row" style="max-width:420px;align-items:end;">'+
     '<div><label>Data</label><input type="date" id="ag-data" value="'+hoje+'"></div>'+
-    '<div><button type="button" class="btn small ghost" id="btn-rota-agendamentos">🧭 Ver rota desta data no Maps</button></div>'+
+    '<div><button type="button" class="btn small ghost" id="btn-rota-agendamentos">📍 Ver rota desta data no Maps</button></div>'+
     '</div>'+
     '<div class="hint" style="margin-top:6px;">Monta a rota com todas as entregas pendentes dessa data (agendadas ou já lançadas), buscando o endereço de cada cliente no cadastro, saindo do ponto de partida configurado na aba <strong>Rota do dia</strong>.</div>'+
     '<div id="ag-resultado" style="margin-top:14px;">'+agendamentosTable(listaAgendamentosDoDia(hoje))+'</div></div>';
@@ -5555,6 +5555,11 @@ function attachHandlers(){
       return;
     }
     const temFrete = TIPOS_ENTREGA_COM_FRETE.includes(f.get('tipo_entrega'));
+    const horaForm = f.get('hora')||'';
+    if(horaForm && (horaForm < '07:00' || horaForm > '20:00')){
+      alert('O horário da entrega precisa ser entre 07:00 e 20:00.');
+      return;
+    }
     const categoriaAg = f.get('categoria');
     const controladaAg = isControlada(categoriaAg);
     const produtoAg = controladaAg ? categoriaAg : (f.get('produto_livre')||'(sem nome)');
@@ -6201,6 +6206,16 @@ function processarImportacaoDiariaExcel(file){
       alert('Não encontrei nenhuma linha preenchida nas abas Vendas, Despesas, Clientes ou Produtos desse arquivo.');
       return;
     }
+    const pendentesProdutos = detectarProdutosPendentesVendas(linhasVendas);
+    if(pendentesProdutos.length>0){
+      mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos);
+      return;
+    }
+    await continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos);
+  };
+  reader.readAsArrayBuffer(file);
+}
+async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos){
     const resumo = [];
     const hoje = todayStr();
     const nomesClientesExistentes = new Set(state.clientes.map(c=>chaveNormalizada(c.nome)));
@@ -6215,9 +6230,14 @@ function processarImportacaoDiariaExcel(file){
         const categoriaExistente = state.categoriasProdutos.find(c=>chaveNormalizada(c)===chaveTexto);
         let categoria = categoriaExistente;
         if(!categoria){
-          if(categoriaControladaEquivalente(textoCategoria)){ ignoradas++; return; }
-          categoria = textoCategoria;
-          if(!state.categoriasProdutos.includes(categoria)) state.categoriasProdutos.push(categoria);
+          const resolvido = resolucaoProdutosImportacaoDiaria[chaveTexto];
+          if(resolvido && resolvido.acao==='existente'){
+            categoria = resolvido.categoria;
+          } else if(categoriaControladaEquivalente(textoCategoria)){ ignoradas++; return; }
+          else {
+            categoria = textoCategoria;
+            if(!state.categoriasProdutos.includes(categoria)) state.categoriasProdutos.push(categoria);
+          }
         }
         const controlada = isControlada(categoria);
         const produto = controlada ? categoria : textoCategoria;
@@ -6358,8 +6378,6 @@ function processarImportacaoDiariaExcel(file){
 
     renderAll();
     alert('Importação concluída:\n\n'+resumo.join('\n'));
-  };
-  reader.readAsArrayBuffer(file);
 }
 function lerArquivoPlanilha(file, onResult, containerId){
   if(typeof XLSX==='undefined' && /\.(xlsx|xls)$/i.test(file.name)){
@@ -6627,6 +6645,97 @@ function renderCsvFiadoMapping(){
   };
 }
 function adicionarPendenciaConferencia(tipo,campo,valor,detalhe){if(!Array.isArray(state.pendenciasConferencia))state.pendenciasConferencia=[];state.pendenciasConferencia.push({id:uid(),data:todayStr(),tipo,campo,valor,detalhe,status:'pendente'});}
+let resolucaoProdutosImportacaoDiaria = {};
+function distanciaLevenshtein(a,b){
+  const m=a.length, n=b.length;
+  const dp = Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++) dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j-1],dp[i-1][j],dp[i][j-1]);
+  return dp[m][n];
+}
+function similaridadeTexto(a,b){
+  const x=chaveNormalizada(a), y=chaveNormalizada(b);
+  if(!x||!y) return 0;
+  if(x===y) return 1;
+  const maxLen = Math.max(x.length,y.length);
+  if(maxLen===0) return 1;
+  return 1 - (distanciaLevenshtein(x,y)/maxLen);
+}
+function sugerirCategoriaSimilar(texto){
+  let melhor=null, melhorScore=0;
+  (state.categoriasProdutos||[]).forEach(cat=>{
+    const score = similaridadeTexto(texto, cat);
+    if(score>melhorScore){ melhorScore=score; melhor=cat; }
+  });
+  return {categoria:melhor, score:melhorScore};
+}
+function detectarProdutosPendentesVendas(linhasVendas){
+  const distintos = new Map();
+  linhasVendas.forEach(function(r){
+    const texto = (r['Categoria/Produto']||'').trim();
+    if(!texto) return;
+    const chave = chaveNormalizada(texto);
+    if(resolucaoProdutosImportacaoDiaria[chave]) return;
+    const existente = state.categoriasProdutos.find(c=>chaveNormalizada(c)===chave);
+    if(existente) return;
+    if(categoriaControladaEquivalente(texto)) return;
+    if(!distintos.has(chave)) distintos.set(chave, {texto, ocorrencias:0});
+    distintos.get(chave).ocorrencias++;
+  });
+  return [...distintos.entries()];
+}
+function mostrarResolucaoProdutosImportacaoDiaria(pendentes, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos){
+  const overlay = document.createElement('div');
+  overlay.id = 'overlay-resolucao-produtos';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px;';
+  const opcoesProdutos = ()=> (state.categoriasProdutos||[]).map(c=>'<option value="'+escapeHtmlCampanha(c)+'">'+escapeHtmlCampanha(c)+'</option>').join('');
+  let linhasHtml = '';
+  pendentes.forEach(([chave, info])=>{
+    const sugestao = sugerirCategoriaSimilar(info.texto);
+    linhasHtml += '<div style="padding:10px 0;border-bottom:1px solid #ddd;">'+
+      '<div><strong>"'+escapeHtmlCampanha(info.texto)+'"</strong> <span class="hint">('+info.ocorrencias+'x na planilha)</span></div>'+
+      (sugestao.categoria && sugestao.score>=0.5 ? '<div class="hint">Parece com <strong>'+escapeHtmlCampanha(sugestao.categoria)+'</strong> ('+Math.round(sugestao.score*100)+'% parecido)</div>' : '')+
+      '<div class="form-row" style="margin-top:6px;">'+
+      '<div><label>O que fazer</label><select class="sel-acao-resolucao-diaria" data-chave="'+chave+'"><option value="existente"'+(sugestao.score>=0.5?' selected':'')+'>É um produto que já existe</option><option value="novo"'+(sugestao.score<0.5?' selected':'')+'>É um produto novo, cadastrar</option></select></div>'+
+      '<div class="wrap-select-existente-diaria"><label>Qual produto já existe</label><select class="sel-produto-existente-diaria" data-chave="'+chave+'">'+opcoesProdutos()+'</select></div>'+
+      '</div></div>';
+  });
+  overlay.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;padding:20px;margin-top:20px;max-height:90vh;overflow:auto;color:#222;">'+
+    '<h2>🔎 Confirme estes produtos antes de importar</h2>'+
+    '<div class="hint">Encontramos '+pendentes.length+' nome(s) de produto na planilha que não batem exatamente com o que já está cadastrado. Confirme se é um produto que já existe (com outro nome/digitação) ou se é realmente novo — assim evita duplicar o cadastro. A partir de agora o sistema lembra dessa resposta pra próxima vez que aparecer esse mesmo texto.</div>'+
+    linhasHtml+
+    '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">'+
+    '<button type="button" class="btn small ghost" id="btn-marcar-tudo-novo-diaria">Marcar tudo como novo</button>'+
+    '<button type="button" class="btn small ghost" id="btn-cancelar-resolucao-diaria">Cancelar importação</button>'+
+    '<button type="button" class="btn green" id="btn-confirmar-resolucao-diaria" style="margin-left:auto;">Confirmar e continuar importação</button>'+
+    '</div></div>';
+  document.body.appendChild(overlay);
+  document.querySelectorAll('.sel-acao-resolucao-diaria').forEach(sel=>{
+    const atualizar = ()=>{
+      const wrapExistente = sel.closest('.form-row').querySelector('.wrap-select-existente-diaria');
+      wrapExistente.style.display = sel.value==='existente' ? '' : 'none';
+    };
+    sel.onchange = atualizar; atualizar();
+  });
+  document.getElementById('btn-marcar-tudo-novo-diaria').onclick = ()=>{
+    document.querySelectorAll('.sel-acao-resolucao-diaria').forEach(sel=>{ sel.value='novo'; sel.dispatchEvent(new Event('change')); });
+  };
+  document.getElementById('btn-cancelar-resolucao-diaria').onclick = ()=>{ overlay.remove(); };
+  document.getElementById('btn-confirmar-resolucao-diaria').onclick = async ()=>{
+    document.querySelectorAll('.sel-acao-resolucao-diaria').forEach(sel=>{
+      const chave = sel.dataset.chave;
+      if(sel.value==='existente'){
+        const selProd = document.querySelector('.sel-produto-existente-diaria[data-chave="'+chave+'"]');
+        resolucaoProdutosImportacaoDiaria[chave] = {acao:'existente', categoria:selProd.value};
+      } else {
+        resolucaoProdutosImportacaoDiaria[chave] = {acao:'novo'};
+      }
+    });
+    overlay.remove();
+    await continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos);
+  };
+}
 function renderCsvVendasMapping(){
   const wrap = document.getElementById('csv-vendas-mapping');
   const opts = csvVendasHeaders.map(h=>'<option value="'+h+'">'+h+'</option>').join('');
