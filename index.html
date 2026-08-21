@@ -606,17 +606,21 @@ let usuarioAtualNome = 'Usuário';
 
 const TABS = [
   {id:'dashboard', label:'Painel'},
+  {id:'lancamentos', label:'Lançamentos', filhos:['vendas','despesas']},
   {id:'vendas', label:'Vendas'},
   {id:'despesas', label:'Despesas'},
   {id:'cadastros', label:'Cadastros'},
   {id:'estoque', label:'Estoque'},
+  {id:'entregas', label:'Entregas', filhos:['agendamentos','rota']},
   {id:'agendamentos', label:'Agendamentos'},
-  {id:'rota', label:'Rota do dia'},
+  {id:'rota', label:'Rotas'},
   {id:'campanhas', label:'Campanhas'},
   {id:'checklist', label:'Checklist Diário'},
   {id:'relatorios', label:'Relatórios'},
   {id:'config', label:'Configurações'},
 ];
+const TABS_GRUPO = ['lancamentos','entregas'];
+const TABS_VISIVEIS = TABS.filter(t=>!TABS.some(g=>g.filhos && g.filhos.includes(t.id)));
 let checklistDataAtual = null;
 let editChecklistItemId = null;
 function localizarItemChecklist(id){
@@ -1118,7 +1122,7 @@ function viewRotaDoDia(){
 
   return '<div class="card"><h2>🚚 Entregadores</h2>'+
     '<div class="hint">Cadastre quem faz as entregas pra poder escolher pra quem vai cada rota ou entrega, e enviar direto pro WhatsApp de cada um.</div>'+
-    '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+'</span></span><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
+    '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+'</span></span><button type="button" class="act-link" data-editar-whatsapp-entregador="'+e.id+'">✎ whatsapp</button><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
     '<form id="form-entregador" class="form-row" style="margin-top:10px;">'+
     '<div><label>Nome</label><input type="text" name="nome" placeholder="Ex: João" required></div>'+
     '<div><label>WhatsApp (só números, com DDD e 55)</label><input type="text" name="whatsapp" placeholder="Ex: 5543999999999"></div>'+
@@ -1137,7 +1141,7 @@ function viewRotaDoDia(){
     '<div style="align-self:end;"><button type="submit" class="btn small ghost">+ Salvar novo ponto</button></div>'+
     '</div></form>'+
     '</details></div>'+
-    '<div class="card"><h2>'+(isHistorico?'Rota — '+fmtDate(dataAtual)+' (histórico)':'Rota do dia — '+fmtDate(dataAtual))+'</h2>'+
+    '<div class="card"><h2>'+(isHistorico?'Rota — '+fmtDate(dataAtual)+' (histórico)':'Rotas — '+fmtDate(dataAtual))+'</h2>'+
     (isHistorico ? '<div class="hint" style="margin-top:-4px;margin-bottom:8px;">Visualizando um dia anterior — as paradas em si não podem mais ser reordenadas, mas ainda dá pra anexar foto/vídeo/localização. <button type="button" class="link-btn" id="btn-rota-voltar-hoje">← voltar pra rota de hoje</button></div>' : '')+
     '<div class="hint">Junta as entregas agendadas dessa data com paradas extras que você adicionar (ex: buscar ovos, ir ao mecânico, ou a casa de um cliente). A ordem da lista abaixo é a ordem da rota — use subir/descer pra reorganizar. Cada parada mostra pra qual entregador ela é e permite anexar foto, vídeo ou localização. Depois é só abrir no Google Maps ou mandar a rota pronta pro WhatsApp do entregador.</div>'+
     chipsEntregador+
@@ -1902,15 +1906,34 @@ async function renderListaBackups(){
   }catch(e){ console.error('Erro ao listar backups', e); container.innerHTML = '<div class="empty">Não foi possível carregar os backups.</div>'; }
 }
 
+function grupoDoTab(tabId){
+  return TABS.find(g=>g.filhos && g.filhos.includes(tabId)) || null;
+}
 function renderNav(){
   const nav = document.getElementById('nav');
-  let html = '';
-  TABS.forEach((t,i)=>{
+  let html = '<div id="nav-principal">';
+  TABS_VISIVEIS.forEach((t,i)=>{
     if(i>0) html += '<span class="nav-sep">|</span>';
-    html += '<button data-tab="'+t.id+'" class="'+(currentTab===t.id?'active':'')+'">'+t.label+'</button>';
+    const ativo = t.filhos ? t.filhos.includes(currentTab) : currentTab===t.id;
+    html += '<button data-tab="'+t.id+'" class="'+(ativo?'active':'')+'">'+t.label+'</button>';
   });
+  html += '</div>';
+  const grupoAberto = grupoDoTab(currentTab);
+  if(grupoAberto){
+    html += '<div id="subnav" style="margin-top:6px;">';
+    grupoAberto.filhos.forEach((fid,i)=>{
+      const ft = TABS.find(x=>x.id===fid);
+      if(i>0) html += '<span class="nav-sep">|</span>';
+      html += '<button data-tab="'+ft.id+'" class="'+(currentTab===ft.id?'active':'')+'">'+ft.label+'</button>';
+    });
+    html += '</div>';
+  }
   nav.innerHTML = html;
-  nav.querySelectorAll('button').forEach(b=>b.onclick=()=>{ currentTab=b.dataset.tab; renderAll(); });
+  nav.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const t = TABS.find(x=>x.id===b.dataset.tab);
+    currentTab = (t && t.filhos) ? t.filhos[0] : b.dataset.tab;
+    renderAll();
+  });
 }
 
 function aplicarFavicon(){
@@ -3109,7 +3132,7 @@ function viewAgendamentos(){
     '<div><label>Data</label><input type="date" id="ag-data" value="'+hoje+'"></div>'+
     '<div><button type="button" class="btn small ghost" id="btn-rota-agendamentos">📍 Ver rota desta data no Maps</button></div>'+
     '</div>'+
-    '<div class="hint" style="margin-top:6px;">Monta a rota com todas as entregas pendentes dessa data (agendadas ou já lançadas), buscando o endereço de cada cliente no cadastro, saindo do ponto de partida configurado na aba <strong>Rota do dia</strong>.</div>'+
+    '<div class="hint" style="margin-top:6px;">Monta a rota com todas as entregas pendentes dessa data (agendadas ou já lançadas), buscando o endereço de cada cliente no cadastro, saindo do ponto de partida configurado na aba <strong>Entregas &gt; Rotas</strong>.</div>'+
     '<div id="ag-resultado" style="margin-top:14px;">'+agendamentosTable(listaAgendamentosDoDia(hoje))+'</div></div>';
 }
 
@@ -5278,6 +5301,16 @@ function attachHandlers(){
     await save('entregadores');
     renderAll();
   };
+  document.querySelectorAll('[data-editar-whatsapp-entregador]').forEach(btn=>btn.onclick=async()=>{
+    const id = btn.dataset.editarWhatsappEntregador;
+    const e = (state.entregadores||[]).find(x=>x.id===id);
+    if(!e) return;
+    const novo = prompt('WhatsApp de '+e.nome+' (só números, com DDD e 55):', e.whatsapp||'');
+    if(novo===null) return;
+    e.whatsapp = novo.replace(/\D/g,'');
+    await save('entregadores');
+    renderAll();
+  });
   document.querySelectorAll('[data-del-entregador]').forEach(btn=>btn.onclick=async()=>{
     if(!confirm('Excluir este entregador? Entregas já atribuídas a ele ficarão sem entregador definido.')) return;
     const id = btn.dataset.delEntregador;
@@ -6207,8 +6240,9 @@ function processarImportacaoDiariaExcel(file){
       return;
     }
     const pendentesProdutos = detectarProdutosPendentesVendas(linhasVendas);
-    if(pendentesProdutos.length>0){
-      mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos);
+    const pendentesClientes = detectarClientesPendentesVendas(linhasVendas);
+    if(pendentesProdutos.length>0 || pendentesClientes.length>0){
+      mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos);
       return;
     }
     await continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos);
@@ -6251,10 +6285,14 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         }
         const valor_total = Math.round(quantidade*valor_unit*100)/100;
         const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
-        const cliente = (r['Cliente']||'').trim();
+        let cliente = (r['Cliente']||'').trim();
         if(cliente){
           const chaveCliente = chaveNormalizada(cliente);
-          if(!nomesClientesExistentes.has(chaveCliente)){
+          const resolvidoCliente = resolucaoClientesImportacaoDiaria[chaveCliente];
+          if(resolvidoCliente && resolvidoCliente.acao==='existente'){
+            cliente = resolvidoCliente.nome;
+            nomesClientesExistentes.add(chaveCliente);
+          } else if(!nomesClientesExistentes.has(chaveCliente)){
             nomesClientesExistentes.add(chaveCliente);
             state.clientes.push({
               id: uid(), nome: cliente,
@@ -6651,6 +6689,29 @@ function renderCsvFiadoMapping(){
   };
 }
 function adicionarPendenciaConferencia(tipo,campo,valor,detalhe){if(!Array.isArray(state.pendenciasConferencia))state.pendenciasConferencia=[];state.pendenciasConferencia.push({id:uid(),data:todayStr(),tipo,campo,valor,detalhe,status:'pendente'});}
+function detectarClientesPendentesVendas(linhasVendas){
+  const distintos = new Map();
+  linhasVendas.forEach(function(r){
+    const texto = (r['Cliente']||'').trim();
+    if(!texto) return;
+    const chave = chaveNormalizada(texto);
+    if(resolucaoClientesImportacaoDiaria[chave]) return;
+    const existente = state.clientes.find(c=>chaveNormalizada(c.nome)===chave);
+    if(existente) return;
+    if(!distintos.has(chave)) distintos.set(chave, {texto, ocorrencias:0});
+    distintos.get(chave).ocorrencias++;
+  });
+  return [...distintos.entries()];
+}
+function sugerirClienteSimilar(texto){
+  let melhor=null, melhorScore=0;
+  (state.clientes||[]).forEach(c=>{
+    const score = similaridadeTexto(texto, c.nome);
+    if(score>melhorScore){ melhorScore=score; melhor=c.nome; }
+  });
+  return {nome:melhor, score:melhorScore};
+}
+let resolucaoClientesImportacaoDiaria = {};
 let resolucaoProdutosImportacaoDiaria = {};
 function distanciaLevenshtein(a,b){
   const m=a.length, n=b.length;
@@ -6691,25 +6752,42 @@ function detectarProdutosPendentesVendas(linhasVendas){
   });
   return [...distintos.entries()];
 }
-function mostrarResolucaoProdutosImportacaoDiaria(pendentes, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos){
+function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos){
   const overlay = document.createElement('div');
   overlay.id = 'overlay-resolucao-produtos';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px;';
   const opcoesProdutos = ()=> (state.categoriasProdutos||[]).map(c=>'<option value="'+escapeHtmlCampanha(c)+'">'+escapeHtmlCampanha(c)+'</option>').join('');
+  const opcoesClientes = ()=> (state.clientes||[]).map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">'+escapeHtmlCampanha(c.nome)+'</option>').join('');
   let linhasHtml = '';
-  pendentes.forEach(([chave, info])=>{
-    const sugestao = sugerirCategoriaSimilar(info.texto);
-    linhasHtml += '<div style="padding:10px 0;border-bottom:1px solid #ddd;">'+
-      '<div><strong>"'+escapeHtmlCampanha(info.texto)+'"</strong> <span class="hint">('+info.ocorrencias+'x na planilha)</span></div>'+
-      (sugestao.categoria && sugestao.score>=0.5 ? '<div class="hint">Parece com <strong>'+escapeHtmlCampanha(sugestao.categoria)+'</strong> ('+Math.round(sugestao.score*100)+'% parecido)</div>' : '')+
-      '<div class="form-row" style="margin-top:6px;">'+
-      '<div><label>O que fazer</label><select class="sel-acao-resolucao-diaria" data-chave="'+chave+'"><option value="existente"'+(sugestao.score>=0.5?' selected':'')+'>É um produto que já existe</option><option value="novo"'+(sugestao.score<0.5?' selected':'')+'>É um produto novo, cadastrar</option></select></div>'+
-      '<div class="wrap-select-existente-diaria"><label>Qual produto já existe</label><select class="sel-produto-existente-diaria" data-chave="'+chave+'">'+opcoesProdutos()+'</select></div>'+
-      '</div></div>';
-  });
+  if(pendentesProdutos.length>0){
+    linhasHtml += '<h3 style="margin-top:16px;">📦 Produtos</h3>';
+    pendentesProdutos.forEach(([chave, info])=>{
+      const sugestao = sugerirCategoriaSimilar(info.texto);
+      linhasHtml += '<div style="padding:10px 0;border-bottom:1px solid #ddd;">'+
+        '<div><strong>"'+escapeHtmlCampanha(info.texto)+'"</strong> <span class="hint">('+info.ocorrencias+'x na planilha)</span></div>'+
+        (sugestao.categoria && sugestao.score>=0.5 ? '<div class="hint">Parece com <strong>'+escapeHtmlCampanha(sugestao.categoria)+'</strong> ('+Math.round(sugestao.score*100)+'% parecido)</div>' : '')+
+        '<div class="form-row" style="margin-top:6px;">'+
+        '<div><label>O que fazer</label><select class="sel-acao-resolucao-diaria" data-tipo="produto" data-chave="'+chave+'"><option value="existente"'+(sugestao.score>=0.5?' selected':'')+'>Já existe</option><option value="novo"'+(sugestao.score<0.5?' selected':'')+'>É novo, cadastrar</option></select></div>'+
+        '<div class="wrap-select-existente-diaria"><label>Qual já existe</label><select class="sel-existente-diaria" data-tipo="produto" data-chave="'+chave+'">'+opcoesProdutos()+'</select></div>'+
+        '</div></div>';
+    });
+  }
+  if(pendentesClientes.length>0){
+    linhasHtml += '<h3 style="margin-top:16px;">🙍 Clientes</h3>';
+    pendentesClientes.forEach(([chave, info])=>{
+      const sugestao = sugerirClienteSimilar(info.texto);
+      linhasHtml += '<div style="padding:10px 0;border-bottom:1px solid #ddd;">'+
+        '<div><strong>"'+escapeHtmlCampanha(info.texto)+'"</strong> <span class="hint">('+info.ocorrencias+'x na planilha)</span></div>'+
+        (sugestao.nome && sugestao.score>=0.5 ? '<div class="hint">Parece com <strong>'+escapeHtmlCampanha(sugestao.nome)+'</strong> ('+Math.round(sugestao.score*100)+'% parecido)</div>' : '')+
+        '<div class="form-row" style="margin-top:6px;">'+
+        '<div><label>O que fazer</label><select class="sel-acao-resolucao-diaria" data-tipo="cliente" data-chave="'+chave+'"><option value="existente"'+(sugestao.score>=0.5?' selected':'')+'>Já existe</option><option value="novo"'+(sugestao.score<0.5?' selected':'')+'>É novo, cadastrar</option></select></div>'+
+        '<div class="wrap-select-existente-diaria"><label>Qual já existe</label><select class="sel-existente-diaria" data-tipo="cliente" data-chave="'+chave+'">'+opcoesClientes()+'</select></div>'+
+        '</div></div>';
+    });
+  }
   overlay.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;padding:20px;margin-top:20px;max-height:90vh;overflow:auto;color:#222;">'+
-    '<h2>🔎 Confirme estes produtos antes de importar</h2>'+
-    '<div class="hint">Encontramos '+pendentes.length+' nome(s) de produto na planilha que não batem exatamente com o que já está cadastrado. Confirme se é um produto que já existe (com outro nome/digitação) ou se é realmente novo — assim evita duplicar o cadastro. A partir de agora o sistema lembra dessa resposta pra próxima vez que aparecer esse mesmo texto.</div>'+
+    '<h2>🔎 Confirme antes de importar</h2>'+
+    '<div class="hint">Encontramos itens na planilha que não bateram exatamente com o cadastro. Confirme cada um — o sistema lembra a resposta pra próxima vez.</div>'+
     linhasHtml+
     '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">'+
     '<button type="button" class="btn small ghost" id="btn-marcar-tudo-novo-diaria">Marcar tudo como novo</button>'+
@@ -6730,12 +6808,13 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentes, linhasVendas, linha
   document.getElementById('btn-cancelar-resolucao-diaria').onclick = ()=>{ overlay.remove(); };
   document.getElementById('btn-confirmar-resolucao-diaria').onclick = async ()=>{
     document.querySelectorAll('.sel-acao-resolucao-diaria').forEach(sel=>{
-      const chave = sel.dataset.chave;
+      const chave = sel.dataset.chave, tipo = sel.dataset.tipo;
+      const mapa = tipo==='produto' ? resolucaoProdutosImportacaoDiaria : resolucaoClientesImportacaoDiaria;
       if(sel.value==='existente'){
-        const selProd = document.querySelector('.sel-produto-existente-diaria[data-chave="'+chave+'"]');
-        resolucaoProdutosImportacaoDiaria[chave] = {acao:'existente', categoria:selProd.value};
+        const selExist = document.querySelector('.sel-existente-diaria[data-tipo="'+tipo+'"][data-chave="'+chave+'"]');
+        mapa[chave] = tipo==='produto' ? {acao:'existente', categoria:selExist.value} : {acao:'existente', nome:selExist.value};
       } else {
-        resolucaoProdutosImportacaoDiaria[chave] = {acao:'novo'};
+        mapa[chave] = {acao:'novo'};
       }
     });
     overlay.remove();
