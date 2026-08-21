@@ -587,6 +587,8 @@ function parseValorBR(str){
 }
 let despesaManualAberta = false;
 let backupsListaAberta = false;
+let ultimoBackupAutomaticoOk = null;
+let ultimoBackupAutomaticoQuando = null;
 let clientesListaAberta = false;
 let csvDespesasRows = null, csvDespesasHeaders = null;
 let editDespesaId = null, editClienteId = null, editVendaId = null, editFiadoId = null, editConvenioId = null, editConvenioPagamentoId = null;
@@ -1114,7 +1116,7 @@ function viewRotaDoDia(){
     return '<button type="button" class="btn small green" data-enviar-rota-entregador="'+e.id+'" data-rota-data="'+dataAtual+'" style="margin-top:8px;margin-right:8px;">💬 Enviar rota pro '+escapeHtmlCampanha(e.nome.split(' ')[0])+'</button>';
   }).join('');
 
-  return '<div class="card"><h2>🧑‍✈️ Entregadores</h2>'+
+  return '<div class="card"><h2>🛵 Entregadores</h2>'+
     '<div class="hint">Cadastre quem faz as entregas pra poder escolher pra quem vai cada rota ou entrega, e enviar direto pro WhatsApp de cada um.</div>'+
     '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+'</span></span><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
     '<form id="form-entregador" class="form-row" style="margin-top:10px;">'+
@@ -1143,7 +1145,7 @@ function viewRotaDoDia(){
     '<div class="table-wrap"><table><thead><tr><th>#</th><th>Tipo</th><th>Nome / Motivo</th><th>Endereço</th><th>Entregador</th><th>Obs.</th><th>Anexos</th><th></th></tr></thead><tbody>'+
     linhasTabela+
     '</tbody></table></div>')+
-    (urlRota ? '<a class="btn" href="'+urlRota+'" target="_blank" rel="noopener" style="margin-top:12px;display:inline-block;">🗺️ Abrir rota no Google Maps</a>' : '<div class="hint" style="margin-top:10px;">Adicione pelo menos um endereço pra poder abrir a rota.</div>')+
+    (urlRota ? '<a class="btn" href="'+urlRota+'" target="_blank" rel="noopener" style="margin-top:12px;display:inline-block;">🧭 Abrir rota no Google Maps</a>' : '<div class="hint" style="margin-top:10px;">Adicione pelo menos um endereço pra poder abrir a rota.</div>')+
     (botoesEnviarRota ? '<div style="margin-top:10px;">'+botoesEnviarRota+'</div>' : '')+
     '</div>'+
     (isHistorico ? '' : '<div class="card"><h2>'+(paradaEditando?'Editar parada':'Adicionar parada extra')+'</h2>'+
@@ -1526,12 +1528,12 @@ function enviarWhatsAppEntregador(dados){
   const numeroPadrao = '5543999215981';
   const numero = (dados.entregadorId ? whatsappEntregador(dados.entregadorId) : '') || numeroPadrao;
   let msg = '🚚 Nova entrega\n';
-  if(dados.entregadorId && nomeEntregador(dados.entregadorId)) msg += '🧑‍✈️ Entregador: '+nomeEntregador(dados.entregadorId)+'\n';
+  if(dados.entregadorId && nomeEntregador(dados.entregadorId)) msg += '🛵 Entregador: '+nomeEntregador(dados.entregadorId)+'\n';
   msg += '🙍 Cliente: '+(dados.cliente||'—')+'\n';
   if(dados.endereco && dados.endereco!=='—') msg += '📍 Endereço: '+dados.endereco+'\n';
   msg += '📦 Itens: '+(dados.itens||'—')+'\n';
   if(dados.total) msg += '💵 Produtos: '+fmtMoney(dados.total)+'\n';
-  if(dados.frete) msg += '🛣️ Frete: '+fmtMoney(dados.frete)+'\n';
+  if(dados.frete) msg += '🚛 Frete: '+fmtMoney(dados.frete)+'\n';
   const totalCobrar = (dados.total||0)+(dados.frete||0);
   if(dados.total || dados.frete) msg += '🧮 Total: '+fmtMoney(totalCobrar)+'\n';
   msg += '⏰ Entrega: '+(dados.tipo_entrega||'—')+(dados.hora?' às '+dados.hora:'')+(dados.data?' ('+fmtDate(dados.data)+')':'')+'\n';
@@ -1548,7 +1550,7 @@ function enviarWhatsAppEntregador(dados){
   if(dados.endereco && dados.endereco!=='—'){
     const partida = pontoPartidaAtual();
     const urlMaps = montarUrlRotaGoogleMaps([{endereco:dados.endereco}], partida ? partida.endereco : '');
-    if(urlMaps) msg += '\n🗺️ Mapa (rota até o cliente):\n'+urlMaps+'\n';
+    if(urlMaps) msg += '\n🧭 Mapa (rota até o cliente):\n'+urlMaps+'\n';
   }
   if(dados.agendamentoId){
     const linkConf = location.origin+location.pathname+'?entrega='+dados.agendamentoId;
@@ -1574,7 +1576,7 @@ function enviarRotaCompletaWhatsApp(entregadorId, paradas, urlRota, data){
   paradas.forEach((p,idx)=>{
     msg += (idx+1)+'. '+p.nome+(p.endereco?' — '+p.endereco:'')+(p.obs?' ('+p.obs+')':'')+'\n';
   });
-  if(urlRota) msg += '\n🗺️ Ver rota completa no Maps:\n'+urlRota+'\n';
+  if(urlRota) msg += '\n🧭 Ver rota completa no Maps:\n'+urlRota+'\n';
   const url = 'https://wa.me/'+numero+'?text='+encodeURIComponent(msg);
   window.open(url, '_blank');
 }
@@ -1837,6 +1839,14 @@ async function limparBackupsAntigos(){
     }
   }catch(e){ console.error('Erro ao limpar backups antigos', e); }
 }
+function mostrarAvisoFlutuante(msg, cor){
+  const div = document.createElement('div');
+  div.textContent = msg;
+  div.style.cssText = 'position:fixed;bottom:16px;left:16px;right:16px;max-width:420px;margin:0 auto;background:'+(cor||'#c62828')+';color:#fff;padding:12px 16px;border-radius:10px;font-size:13px;z-index:99999;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;';
+  div.onclick = ()=>div.remove();
+  document.body.appendChild(div);
+  setTimeout(()=>{ if(div.parentNode) div.remove(); }, 12000);
+}
 async function rodarBackupAutomaticoSeNecessario(){
   // Feito na primeira abertura do dia: como ainda não foi lançado nada hoje,
   // o estado atual reflete o fechamento de ONTEM — é isso que fica registrado.
@@ -1844,7 +1854,12 @@ async function rodarBackupAutomaticoSeNecessario(){
   const dataFechamento = diaAnteriorStr(todayStr());
   const chave = 'backup:'+dataFechamento;
   const ok = await criarBackupComChave(chave, 'automatico');
-  if(!ok) console.error('Backup automático falhou ao abrir o sistema — veja o erro acima no console.');
+  ultimoBackupAutomaticoOk = ok;
+  ultimoBackupAutomaticoQuando = new Date();
+  if(!ok){
+    console.error('Backup automático falhou ao abrir o sistema — veja o erro acima no console.');
+    mostrarAvisoFlutuante('⚠️ O backup automático de hoje falhou. Vá em Configurações > Backups e clique em "Fazer backup agora".');
+  }
 }
 async function renderListaBackups(){
   const container = document.getElementById('lista-backups');
@@ -3092,7 +3107,7 @@ function viewAgendamentos(){
     '<input type="text" id="busca-agendamento" class="searchbar" placeholder="Buscar por cliente, produto ou empresa (em todas as datas)...">'+
     '<div class="form-row" style="max-width:420px;align-items:end;">'+
     '<div><label>Data</label><input type="date" id="ag-data" value="'+hoje+'"></div>'+
-    '<div><button type="button" class="btn small ghost" id="btn-rota-agendamentos">🗺️ Ver rota desta data no Maps</button></div>'+
+    '<div><button type="button" class="btn small ghost" id="btn-rota-agendamentos">🧭 Ver rota desta data no Maps</button></div>'+
     '</div>'+
     '<div class="hint" style="margin-top:6px;">Monta a rota com todas as entregas pendentes dessa data (agendadas ou já lançadas), buscando o endereço de cada cliente no cadastro, saindo do ponto de partida configurado na aba <strong>Rota do dia</strong>.</div>'+
     '<div id="ag-resultado" style="margin-top:14px;">'+agendamentosTable(listaAgendamentosDoDia(hoje))+'</div></div>';
@@ -3128,6 +3143,7 @@ function viewConfig(){
     '</div>'+
     '<div class="card"><h2>Backup</h2>'+
     '<div class="hint">Todo dia, na primeira vez que alguém abre o sistema, é feito um backup automático com o <strong>fechamento do dia anterior</strong> — guardado no próprio Supabase, mantendo os últimos 30. Você também pode clicar em "Fazer backup agora" quantas vezes quiser, na hora que quiser (por exemplo, ao fechar o caixa do dia) — cada um fica salvo com data <strong>e hora exatas</strong>, e também baixa um arquivo no seu aparelho.</div>'+
+    (ultimoBackupAutomaticoQuando ? ('<div class="hint" style="margin-top:6px;">Última tentativa de backup automático nesta sessão: '+(ultimoBackupAutomaticoOk?'✅ deu certo':'❌ falhou')+' às '+ultimoBackupAutomaticoQuando.toLocaleTimeString()+'.</div>') : '<div class="hint" style="margin-top:6px;">Ainda não rodou o backup automático nesta sessão — abra essa tela de novo depois de recarregar a página.</div>')+
     '<button type="button" class="btn small" id="btn-backup-manual" style="margin-top:10px;">Fazer backup agora</button>'+
     '<details style="margin-top:18px;" id="details-lista-backups"'+(backupsListaAberta?' open':'')+'><summary><strong>Backups salvos</strong></summary>'+
     '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
