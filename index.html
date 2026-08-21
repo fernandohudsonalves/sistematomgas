@@ -1094,11 +1094,12 @@ function viewRotaDoDia(){
     const acoesParada = p.tipo==='extra' && !isHistorico ?
       ('<button class="act-link" data-parada-subir="'+p.id+'">↑</button><button class="act-link" data-parada-descer="'+p.id+'">↓</button><button class="act-link" data-parada-editar="'+p.id+'">✎</button><button class="del-link" data-parada-del="'+p.id+'">🗑</button>') :
       (p.tipo==='entrega' ? '<span class="hint">vem do agendamento</span>' : '');
+    const acaoAvisar = p.cliente ? '<button type="button" class="act-link" data-avisar-cliente="'+escapeHtmlCampanha(p.cliente)+'">📲 avisar cliente</button>' : '';
     return '<tr><td>'+(idx+1)+'</td><td>'+(p.tipo==='entrega'?'<span class="badge status-receber">entrega</span>':'<span class="badge" style="background:var(--purple-tint);color:var(--purple);">extra</span>')+'</td>'+
       '<td>'+escapeHtmlCampanha(p.nome)+'</td><td>'+(p.endereco?escapeHtmlCampanha(p.endereco):'<span class="hint">sem endereço</span>')+'</td>'+
       '<td>'+entregadorBadge+'</td><td>'+(p.obs?escapeHtmlCampanha(p.obs):'—')+'</td>'+
       '<td><button type="button" class="act-link" data-toggle-anexos-parada="'+key+'">📎 '+anexosDaParada.length+'</button></td>'+
-      '<td>'+acoesParada+'</td></tr>'+
+      '<td>'+acoesParada+' '+acaoAvisar+'</td></tr>'+
       (anexoAbertoParadaKey===key ? '<tr><td colspan="8" style="background:var(--blue-tint);"><div style="padding:10px;">'+
         anexosGaleriaHtml(anexosDaParada)+
         '<div style="margin-top:10px;">'+anexoFormHtml('form-anexo-'+key.replace(':','-'), {
@@ -1524,25 +1525,45 @@ function entregadoresOptionsHtml(valorAtual){
 function enviarWhatsAppEntregador(dados){
   const numeroPadrao = '5543999215981';
   const numero = (dados.entregadorId ? whatsappEntregador(dados.entregadorId) : '') || numeroPadrao;
-  let msg = 'Nova entrega\n';
-  if(dados.entregadorId && nomeEntregador(dados.entregadorId)) msg += 'Entregador: '+nomeEntregador(dados.entregadorId)+'\n';
-  msg += 'Cliente: '+(dados.cliente||'—')+'\n';
-  if(dados.endereco && dados.endereco!=='—') msg += 'Endereço: '+dados.endereco+'\n';
-  msg += 'Itens: '+(dados.itens||'—')+'\n';
-  if(dados.total) msg += 'Produtos: '+fmtMoney(dados.total)+'\n';
-  if(dados.frete) msg += 'Frete: '+fmtMoney(dados.frete)+'\n';
-  if(dados.total || dados.frete) msg += 'Total: '+fmtMoney((dados.total||0)+(dados.frete||0))+'\n';
-  if(dados.pagamento && dados.pagamento!=='—') msg += 'Pagamento: '+dados.pagamento+'\n';
-  msg += 'Entrega: '+(dados.tipo_entrega||'—')+(dados.hora?' às '+dados.hora:'')+(dados.data?' ('+fmtDate(dados.data)+')':'')+'\n';
-  if(dados.empresa) msg += 'Empresa conveniada: '+dados.empresa+'\n';
-  if(dados.obs) msg += 'Obs: '+dados.obs+'\n';
+  let msg = '🚚 Nova entrega\n';
+  if(dados.entregadorId && nomeEntregador(dados.entregadorId)) msg += '🧑‍✈️ Entregador: '+nomeEntregador(dados.entregadorId)+'\n';
+  msg += '🙍 Cliente: '+(dados.cliente||'—')+'\n';
+  if(dados.endereco && dados.endereco!=='—') msg += '📍 Endereço: '+dados.endereco+'\n';
+  msg += '📦 Itens: '+(dados.itens||'—')+'\n';
+  if(dados.total) msg += '💵 Produtos: '+fmtMoney(dados.total)+'\n';
+  if(dados.frete) msg += '🛣️ Frete: '+fmtMoney(dados.frete)+'\n';
+  const totalCobrar = (dados.total||0)+(dados.frete||0);
+  if(dados.total || dados.frete) msg += '🧮 Total: '+fmtMoney(totalCobrar)+'\n';
+  msg += '⏰ Entrega: '+(dados.tipo_entrega||'—')+(dados.hora?' às '+dados.hora:'')+(dados.data?' ('+fmtDate(dados.data)+')':'')+'\n';
+  if(dados.empresa) msg += '🏢 Empresa conveniada: '+dados.empresa+'\n';
+  if(dados.obs) msg += '📝 Obs: '+dados.obs+'\n';
+  msg += '\n';
+  if(dados.pago){
+    msg += '✅✅✅ JÁ PAGO — NÃO PRECISA COBRAR NADA ✅✅✅\n';
+  } else if(dados.pagamento==='Marcou/Fiado'){
+    msg += '📒📒📒 FIADO — NÃO COBRAR AGORA (fica marcado na conta) 📒📒📒\n';
+  } else {
+    msg += '💰💰💰 COBRAR NA ENTREGA: '+fmtMoney(totalCobrar)+' ('+(dados.pagamento||'combinar com cliente')+') 💰💰💰\n';
+  }
   if(dados.endereco && dados.endereco!=='—'){
     const partida = pontoPartidaAtual();
     const urlMaps = montarUrlRotaGoogleMaps([{endereco:dados.endereco}], partida ? partida.endereco : '');
-    if(urlMaps) msg += '\nMapa (rota até o cliente):\n'+urlMaps+'\n';
+    if(urlMaps) msg += '\n🗺️ Mapa (rota até o cliente):\n'+urlMaps+'\n';
+  }
+  if(dados.agendamentoId){
+    const linkConf = location.origin+location.pathname+'?entrega='+dados.agendamentoId;
+    msg += '\n🔗 Confirmar entrega (marcar entregue + foto do comprovante):\n'+linkConf+'\n';
   }
   const url = 'https://wa.me/'+numero+'?text='+encodeURIComponent(msg);
   window.open(url, '_blank');
+}
+function avisarClienteACaminho(nomeCliente){
+  const tel = getClienteTelefone(nomeCliente);
+  if(!tel){ alert('Este cliente não tem telefone/WhatsApp cadastrado.'); return; }
+  const primeiroNome = (nomeCliente||'').split(' ')[0];
+  const msg = 'Oi, '+primeiroNome+'! 🚚💨 Sua entrega já está a caminho, chega em breve. Qualquer coisa é só chamar por aqui!';
+  const link = linkWhatsAppComTexto(tel, msg);
+  if(link) window.open(link, '_blank');
 }
 function enviarRotaCompletaWhatsApp(entregadorId, paradas, urlRota, data){
   const numeroPadrao = '5543999215981';
@@ -2880,7 +2901,7 @@ function listaAgendamentosDoDia(data){
   }));
   const avulsos = state.agendamentos.filter(a=>a.data===data).map(a=>({
     id:a.id, hora:a.hora, cliente:a.cliente, produto:a.produto_nota, tipo_entrega:a.tipo_entrega, empresa:a.empresa,
-    origem:'agendamento', status:a.status, entregadorId:a.entregadorId||'', agendamentoId:a.id
+    origem:'agendamento', status:a.status, entregadorId:a.entregadorId||'', agendamentoId:a.id, pago:!!a.pago, pagamento:a.pagamento||'', valor:a.valor||0
   }));
   return daVenda.concat(avulsos).sort((a,b)=>a.hora.localeCompare(b.hora));
 }
@@ -2892,7 +2913,7 @@ function todosAgendamentosEVendas(){
   }));
   const avulsos = state.agendamentos.map(a=>({
     id:a.id, hora:a.hora, data:a.data, cliente:a.cliente, produto:a.produto_nota, tipo_entrega:a.tipo_entrega, empresa:a.empresa,
-    pagamento:a.pagamento, valor:a.valor, origem:'agendamento', status:a.status, entregadorId:a.entregadorId||'', agendamentoId:a.id
+    pagamento:a.pagamento, valor:a.valor, origem:'agendamento', status:a.status, entregadorId:a.entregadorId||'', agendamentoId:a.id, pago:!!a.pago
   }));
   return daVenda.concat(avulsos).sort((a,b)=> (b.data+b.hora).localeCompare(a.data+a.hora));
 }
@@ -2904,6 +2925,7 @@ function agendamentosTable(lista, mostrarData){
       const acao = v.origem==='agendamento' ?
         '<button class="act-link" data-edit-ag="'+v.id+'">✎ editar</button>'+
         '<button class="act-link" data-wa-ag="'+v.id+'">💬 whatsapp</button>'+
+        (v.cliente?('<button class="act-link" data-avisar-cliente="'+escapeHtmlCampanha(v.cliente)+'">📲 avisar cliente</button>'):'')+
         (v.status==='concluido' ?
           '<button class="act-link" data-reabrir-ag="'+v.id+'">↺ reabrir</button>' :
           '<button class="act-link" data-concluir-ag="'+v.id+'">✓ marcar como entregue</button>')+
@@ -2912,7 +2934,9 @@ function agendamentosTable(lista, mostrarData){
         (v.status==='concluido' ?
           '<button class="act-link" data-reabrir-venda-entrega="'+v.id+'">↺ reabrir</button>' :
           '<button class="act-link" data-finalizar-venda-entrega="'+v.id+'">✓ finalizar entrega</button>');
-      const pagtoStatus = v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber">A receber</span>' : (v.pagamento ? ' <span class="badge status-pago">Pago</span>' : '');
+      const pagtoStatus = v.origem==='agendamento'
+        ? (v.pago ? ' <span class="badge status-pago">✅ Já pago</span>' : (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber">📒 Fiado</span>' : ' <span class="badge status-receber">💰 Cobrar na entrega</span>'))
+        : (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber">A receber</span>' : (v.pagamento ? ' <span class="badge status-pago">Pago</span>' : ''));
       const entregadorTxt = v.entregadorId ? escapeHtmlCampanha(nomeEntregador(v.entregadorId)) : '<span class="hint">a definir</span>';
       const chaveAnexo = v.origem+':'+v.id;
       const anexosDoAg = anexosDoContexto(v.agendamentoId ? {agendamentoId:v.agendamentoId} : {cliente:v.cliente, data:v.data||''});
@@ -2941,6 +2965,7 @@ function iniciarEditarAgendamento(id){
   fa.tipo_entrega.value=a.tipo_entrega||''; fa.empresa.value=a.empresa||'';
   if(fa.pagamento) fa.pagamento.value=a.pagamento||PAGAMENTOS[0];
   if(fa.entregadorId) fa.entregadorId.value = a.entregadorId||'';
+  if(fa.pago) fa.pago.checked = !!a.pago;
   if(fa.valor) fa.valor.value = a.valor ? Number(a.valor).toFixed(2) : '';
   if(fa.frete) fa.frete.value=a.frete||'';
   toggleDetalhesEntregaAgendamento();
@@ -3053,6 +3078,7 @@ function viewAgendamentos(){
     '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select></div>'+
     '<div><label>Entregador</label><select name="entregadorId">'+entregadoresOptionsHtml(entregadorPrincipal()?entregadorPrincipal().id:'')+'</select></div>'+
     '</div>'+
+    '<div class="form-row"><div style="display:flex;align-items:center;gap:8px;"><input type="checkbox" name="pago" id="chk-ag-pago" style="width:auto;"><label for="chk-ag-pago" style="margin:0;">Cliente já pagou (entregador NÃO precisa cobrar)</label></div></div>'+
     '<div><label>Valor combinado (R$)</label><input type="number" name="valor" min="0" step="0.01" placeholder="0,00" style="max-width:200px;"><div class="hint">Se o produto estiver no catálogo, o valor já vem calculado — mas pode digitar outro se quiser.</div></div>'+
     '<div id="detalhes-entrega-ag" class="item-venda-row" style="display:none;margin-top:10px;">'+
     '<div class="hint" style="margin-bottom:6px;">Detalhes da entrega</div>'+
@@ -5248,6 +5274,9 @@ function attachHandlers(){
     await save('paradasRota');
     renderAll();
   });
+  document.querySelectorAll('[data-avisar-cliente]').forEach(btn=>btn.onclick=()=>{
+    avisarClienteACaminho(btn.dataset.avisarCliente);
+  });
   document.querySelectorAll('[data-rota-filtro-entregador]').forEach(btn=>btn.onclick=()=>{
     rotaFiltroEntregadorId = btn.dataset.rotaFiltroEntregador||'';
     anexoAbertoParadaKey = null;
@@ -5522,7 +5551,7 @@ function attachHandlers(){
         a.categoria=categoriaAg; a.produto=produtoAg; a.quantidade=quantidadeAg; a.produto_nota=produtoNotaAg;
         a.tipo_entrega=f.get('tipo_entrega'); a.empresa=temFrete?(f.get('empresa')||''):'';
         a.pagamento=f.get('pagamento')||''; a.valor=Number(f.get('valor'))||0; a.frete=temFrete?(Number(f.get('frete'))||0):0;
-        a.entregadorId=f.get('entregadorId')||'';
+        a.entregadorId=f.get('entregadorId')||''; a.pago=!!f.get('pago');
       }
       editAgendamentoId = null;
       fa.querySelector('button[type=submit]').textContent='Agendar';
@@ -5531,13 +5560,13 @@ function attachHandlers(){
         categoria:categoriaAg, produto:produtoAg, quantidade:quantidadeAg, produto_nota:produtoNotaAg,
         tipo_entrega:f.get('tipo_entrega'), empresa:temFrete?(f.get('empresa')||''):'',
         pagamento:f.get('pagamento')||'', valor:Number(f.get('valor'))||0, frete:temFrete?(Number(f.get('frete'))||0):0, status:'pendente',
-        entregadorId:f.get('entregadorId')||''};
+        entregadorId:f.get('entregadorId')||'', pago:!!f.get('pago')};
       state.agendamentos.push(novoAg);
       enviarWhatsAppEntregador({
         cliente: novoAg.cliente, endereco: getClienteEndereco(novoAg.cliente),
         itens: novoAg.produto_nota || '—', total: novoAg.valor, frete: novoAg.frete, pagamento: novoAg.pagamento,
         tipo_entrega: novoAg.tipo_entrega, hora: novoAg.hora, data: novoAg.data, empresa: novoAg.empresa, obs: '',
-        entregadorId: novoAg.entregadorId
+        entregadorId: novoAg.entregadorId, pago: novoAg.pago, agendamentoId: novoAg.id
       });
       notificarLocal('Novo agendamento de entrega', (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
       enviarPushServidor('Novo agendamento de entrega', (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
@@ -5600,6 +5629,9 @@ function attachHandlers(){
       anexoAgendamentoAberto = (anexoAgendamentoAberto===chave) ? null : chave;
       renderAll();
     });
+    document.querySelectorAll('[data-avisar-cliente]').forEach(btn=>btn.onclick=()=>{
+      avisarClienteACaminho(btn.dataset.avisarCliente);
+    });
     document.querySelectorAll('[data-del-anexo-entrega]').forEach(btn=>btn.onclick=async()=>{
       if(!confirm('Excluir este anexo?')) return;
       state.anexosEntrega = (state.anexosEntrega||[]).filter(a=>a.id!==btn.dataset.delAnexoEntrega);
@@ -5613,7 +5645,7 @@ function attachHandlers(){
         cliente: a.cliente, endereco: getClienteEndereco(a.cliente),
         itens: a.produto_nota || '—', total: a.valor||0, frete: a.frete||0, pagamento: a.pagamento||'—',
         tipo_entrega: a.tipo_entrega, hora: a.hora, data: a.data, empresa: a.empresa, obs: '',
-        entregadorId: a.entregadorId||''
+        entregadorId: a.entregadorId||'', pago: !!a.pago, agendamentoId: a.id
       });
     });
     document.querySelectorAll('[data-concluir-ag]').forEach(btn=>btn.onclick=async()=>{
@@ -7170,7 +7202,75 @@ function initAgenda(){
 }
 
 /* ---------- INIT ---------- */
+async function iniciarConfirmacaoEntregaPublica(agendamentoId){
+  document.body.innerHTML = '<div id="conf-entrega" style="max-width:480px;margin:30px auto;padding:20px;font-family:Arial,sans-serif;">Carregando...</div>';
+  const wrap = document.getElementById('conf-entrega');
+  let agendamentos, clientes, anexos;
+  try{
+    const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave',['agendamentos','clientes','anexosEntrega']);
+    if(error) throw error;
+    const porChave = {}; (data||[]).forEach(r=>porChave[r.chave]=r.valor);
+    agendamentos = porChave.agendamentos || [];
+    clientes = porChave.clientes || [];
+    anexos = porChave.anexosEntrega || [];
+  }catch(e){
+    wrap.innerHTML = '<h2>Erro ao carregar</h2><p>Verifique sua internet e tente abrir o link de novo.</p>';
+    return;
+  }
+  const ag = agendamentos.find(a=>a.id===agendamentoId);
+  if(!ag){ wrap.innerHTML = '<h2>Entrega não encontrada</h2><p>Esse link pode estar errado ou a entrega já foi removida.</p>'; return; }
+  const cliente = clientes.find(c=>c.nome===ag.cliente);
+  const endereco = cliente ? ((cliente.endereco||'')+(cliente.complemento?(' - '+cliente.complemento):'')) : '';
+  const statusPagto = ag.pago ? '✅ Já pago' : (ag.pagamento==='Marcou/Fiado' ? '📒 Fiado (não cobrar agora)' : '💰 Cobrar na entrega'+(ag.valor?': '+fmtMoney(ag.valor):''));
+  function render(){
+    const jaConcluido = ag.status==='concluido';
+    const anexosDele = anexos.filter(a=>a.agendamentoId===agendamentoId);
+    wrap.innerHTML = '<h2>🚚 Confirmar entrega</h2>'+
+      '<div style="background:#f5f5f5;border-radius:12px;padding:16px;margin-bottom:16px;line-height:1.6;">'+
+      '<div><strong>🙍 Cliente:</strong> '+escapeHtmlCampanha(ag.cliente||'')+'</div>'+
+      (endereco?'<div><strong>📍 Endereço:</strong> '+escapeHtmlCampanha(endereco)+'</div>':'')+
+      '<div><strong>📦 Produto:</strong> '+escapeHtmlCampanha(ag.produto_nota||'')+'</div>'+
+      '<div style="margin-top:6px;font-weight:bold;">'+statusPagto+'</div>'+
+      '</div>'+
+      (jaConcluido ? '<div style="color:#188038;font-weight:bold;margin-bottom:14px;">✅ Entrega já marcada como concluída.</div>' :
+        '<button id="btn-marcar-entregue" style="width:100%;padding:14px;font-size:16px;background:#25D366;color:#fff;border:none;border-radius:10px;margin-bottom:14px;">✅ Marcar como entregue</button>')+
+      '<div style="margin-top:10px;"><label style="display:block;margin-bottom:6px;font-weight:bold;">📷 Tirar foto do comprovante</label>'+
+      '<input type="file" id="input-foto-comprovante" accept="image/*" capture="environment" style="width:100%;"></div>'+
+      (anexosDele.length>0 ? '<div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;">'+
+        anexosDele.map(a=>'<img src="'+a.dataUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">').join('')+
+        '</div>' : '')+
+      '<div id="msg-conf" style="margin-top:12px;font-weight:bold;color:#188038;"></div>';
+    const btn = document.getElementById('btn-marcar-entregue');
+    if(btn) btn.onclick = async()=>{
+      btn.disabled = true; btn.textContent = 'Salvando...';
+      ag.status = 'concluido';
+      const { error:err2 } = await supabaseClient.from('app_data').upsert({chave:'agendamentos', valor:agendamentos, atualizado_em:new Date().toISOString()},{onConflict:'chave'});
+      if(err2){ ag.status = 'pendente'; alert('Erro ao salvar, tenta de novo.'); btn.disabled=false; btn.textContent='✅ Marcar como entregue'; return; }
+      render();
+      document.getElementById('msg-conf').textContent = '✅ Entrega marcada como concluída!';
+    };
+    const inputFoto = document.getElementById('input-foto-comprovante');
+    if(inputFoto) inputFoto.onchange = ()=>{
+      const file = inputFoto.files[0];
+      if(!file) return;
+      if(file.size > 6*1024*1024){ alert('Foto muito grande. Tenta uma foto menor.'); return; }
+      const r = new FileReader();
+      r.onload = async(ev)=>{
+        anexos.push({id:uid(), tipo:'foto', dataUrl:ev.target.result, cliente:ag.cliente||'', agendamentoId, paradaId:'', data: ag.data||todayStr(), entregadorId: ag.entregadorId||'', obs:'Comprovante de entrega', criadoEm:Date.now()});
+        const { error:err3 } = await supabaseClient.from('app_data').upsert({chave:'anexosEntrega', valor:anexos, atualizado_em:new Date().toISOString()},{onConflict:'chave'});
+        if(err3){ alert('Erro ao enviar a foto, tenta de novo.'); return; }
+        render();
+        document.getElementById('msg-conf').textContent = '📷 Foto de comprovante enviada!';
+      };
+      r.readAsDataURL(file);
+    };
+  }
+  render();
+}
 async function init(){
+  const paramsUrl = new URLSearchParams(location.search);
+  const entregaId = paramsUrl.get('entrega');
+  if(entregaId){ await iniciarConfirmacaoEntregaPublica(entregaId); return; }
   attachAuthHandlers();
   attachLogoInput();
   registerServiceWorker();
