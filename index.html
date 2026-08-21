@@ -1034,11 +1034,19 @@ function googleCardDashboardHtml(){
 }
 /* ===================== Rota do dia ===================== */
 let editParadaExtraId = null;
-function paradasDoDiaHtml(){
-  const hoje = todayStr();
-  const entregasHoje = todosAgendamentosEVendas().filter(v=>v.data===hoje && v.status!=='concluido').sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
-  const paradasEntrega = entregasHoje.map(v=>({tipo:'entrega', nome:v.cliente||'Entrega', endereco:getClienteEndereco(v.cliente), obs:(v.hora||'')+' — '+(v.produto||'')}));
-  const extras = (state.paradasRota||[]).filter(p=>p.data===hoje).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+let rotaFiltroEntregadorId = '';
+let rotaHistoricoData = '';
+let anexoAbertoParadaKey = null;
+let anexoClienteAberto = null;
+let anexoAgendamentoAberto = null;
+function paradasDoDiaHtml(dataAlvo){
+  const data = dataAlvo || todayStr();
+  const entregasDoDia = todosAgendamentosEVendas().filter(v=>v.data===data && v.status!=='concluido').sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  const paradasEntrega = entregasDoDia.map(v=>({
+    tipo:'entrega', nome:v.cliente||'Entrega', endereco:getClienteEndereco(v.cliente), obs:(v.hora||'')+' — '+(v.produto||''),
+    id:v.id, cliente:v.cliente||'', agendamentoId:v.agendamentoId, entregadorId:v.entregadorId||''
+  }));
+  const extras = (state.paradasRota||[]).filter(p=>p.data===data).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
   return {paradasEntrega, extras};
 }
 function pontoPartidaAtual(){
@@ -1055,15 +1063,65 @@ function montarUrlRotaGoogleMaps(paradas, origemEndereco){
   if(waypoints.length>0) url += '&waypoints='+waypoints.map(w=>encodeURIComponent(w)).join('|');
   return url;
 }
+function paradaKey(p){ return p.tipo+':'+p.id; }
 function viewRotaDoDia(){
   const hoje = todayStr();
-  const {paradasEntrega, extras} = paradasDoDiaHtml();
-  const todasParadas = paradasEntrega.concat(extras.map(p=>({tipo:'extra', nome:p.nome, endereco:p.endereco, obs:p.obs, id:p.id})));
+  const dataAtual = rotaHistoricoData || hoje;
+  const isHistorico = !!rotaHistoricoData && rotaHistoricoData!==hoje;
+  const {paradasEntrega, extras} = paradasDoDiaHtml(dataAtual);
+  const todasParadasBruto = paradasEntrega.concat(extras.map(p=>({
+    tipo:'extra', nome:p.nome, endereco:p.endereco, obs:p.obs, id:p.id, cliente:p.cliente||'', paradaId:p.id, entregadorId:p.entregadorId||''
+  })));
+  const filtroAtivo = rotaFiltroEntregadorId;
+  const todasParadas = filtroAtivo ? todasParadasBruto.filter(p=>(p.entregadorId||'')===filtroAtivo) : todasParadasBruto;
   const partida = pontoPartidaAtual();
   const urlRota = montarUrlRotaGoogleMaps(todasParadas, partida ? partida.endereco : '');
-  const paradaEditando = editParadaExtraId ? state.paradasRota.find(p=>p.id===editParadaExtraId) : null;
+  const paradaEditando = (editParadaExtraId && !isHistorico) ? state.paradasRota.find(p=>p.id===editParadaExtraId) : null;
 
-  return '<div class="card"><h2>📍 Ponto de partida</h2>'+
+  // agrupa por entregador só pra saber quem tem parada pendente hoje (pros botões de enviar rota)
+  const entregadoresComParada = {};
+  todasParadasBruto.forEach(p=>{ if(p.entregadorId) entregadoresComParada[p.entregadorId]=true; });
+
+  const chipsEntregador = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">'+
+    '<button type="button" class="btn small '+(filtroAtivo===''?'':'ghost')+'" data-rota-filtro-entregador="">Todos</button>'+
+    (state.entregadores||[]).map(e=>'<button type="button" class="btn small '+(filtroAtivo===e.id?'':'ghost')+'" data-rota-filtro-entregador="'+e.id+'">'+escapeHtmlCampanha(e.nome)+'</button>').join('')+
+    '</div>';
+
+  const linhasTabela = todasParadas.map((p,idx)=>{
+    const key = paradaKey(p);
+    const anexosDaParada = anexosDoContexto({paradaId: p.tipo==='extra'?p.id:null, agendamentoId: p.tipo==='entrega'?p.agendamentoId:null, cliente: (!p.agendamentoId && p.tipo==='entrega')?p.cliente:null});
+    const entregadorBadge = p.entregadorId ? '<span class="badge nota">'+escapeHtmlCampanha(nomeEntregador(p.entregadorId))+'</span>' : '<span class="hint">a definir</span>';
+    const acoesParada = p.tipo==='extra' && !isHistorico ?
+      ('<button class="act-link" data-parada-subir="'+p.id+'">↑</button><button class="act-link" data-parada-descer="'+p.id+'">↓</button><button class="act-link" data-parada-editar="'+p.id+'">✎</button><button class="del-link" data-parada-del="'+p.id+'">🗑</button>') :
+      (p.tipo==='entrega' ? '<span class="hint">vem do agendamento</span>' : '');
+    return '<tr><td>'+(idx+1)+'</td><td>'+(p.tipo==='entrega'?'<span class="badge status-receber">entrega</span>':'<span class="badge" style="background:var(--purple-tint);color:var(--purple);">extra</span>')+'</td>'+
+      '<td>'+escapeHtmlCampanha(p.nome)+'</td><td>'+(p.endereco?escapeHtmlCampanha(p.endereco):'<span class="hint">sem endereço</span>')+'</td>'+
+      '<td>'+entregadorBadge+'</td><td>'+(p.obs?escapeHtmlCampanha(p.obs):'—')+'</td>'+
+      '<td><button type="button" class="act-link" data-toggle-anexos-parada="'+key+'">📎 '+anexosDaParada.length+'</button></td>'+
+      '<td>'+acoesParada+'</td></tr>'+
+      (anexoAbertoParadaKey===key ? '<tr><td colspan="8" style="background:var(--blue-tint);"><div style="padding:10px;">'+
+        anexosGaleriaHtml(anexosDaParada)+
+        '<div style="margin-top:10px;">'+anexoFormHtml('form-anexo-'+key.replace(':','-'), {
+          cliente: p.cliente||'', agendamentoId: p.agendamentoId||'', paradaId: p.tipo==='extra'?p.id:'', data: dataAtual, entregadorId: p.entregadorId||''
+        })+'</div></div></td></tr>' : '');
+  }).join('');
+
+  const botoesEnviarRota = (state.entregadores||[]).filter(e=>!filtroAtivo || filtroAtivo===e.id).map(e=>{
+    const paradasDele = todasParadasBruto.filter(p=>(p.entregadorId||'')===e.id);
+    if(paradasDele.length===0) return '';
+    const urlDele = montarUrlRotaGoogleMaps(paradasDele, partida ? partida.endereco : '');
+    return '<button type="button" class="btn small green" data-enviar-rota-entregador="'+e.id+'" data-rota-data="'+dataAtual+'" style="margin-top:8px;margin-right:8px;">💬 Enviar rota pro '+escapeHtmlCampanha(e.nome.split(' ')[0])+'</button>';
+  }).join('');
+
+  return '<div class="card"><h2>🧑‍✈️ Entregadores</h2>'+
+    '<div class="hint">Cadastre quem faz as entregas pra poder escolher pra quem vai cada rota ou entrega, e enviar direto pro WhatsApp de cada um.</div>'+
+    '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+'</span></span><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
+    '<form id="form-entregador" class="form-row" style="margin-top:10px;">'+
+    '<div><label>Nome</label><input type="text" name="nome" placeholder="Ex: João" required></div>'+
+    '<div><label>WhatsApp (só números, com DDD e 55)</label><input type="text" name="whatsapp" placeholder="Ex: 5543999999999"></div>'+
+    '<div style="align-self:end;"><button type="submit" class="btn small ghost">+ Adicionar entregador</button></div>'+
+    '</form></div>'+
+    '<div class="card"><h2>📍 Ponto de partida</h2>'+
     '<div class="form-row"><div><label>Partir de</label><select id="sel-ponto-partida">'+
     state.pontosPartida.map(p=>'<option value="'+p.id+'"'+(partida && p.id===partida.id?' selected':'')+'>'+escapeHtmlCampanha(p.nome)+'</option>').join('')+
     '</select></div></div>'+
@@ -1076,17 +1134,18 @@ function viewRotaDoDia(){
     '<div style="align-self:end;"><button type="submit" class="btn small ghost">+ Salvar novo ponto</button></div>'+
     '</div></form>'+
     '</details></div>'+
-    '<div class="card"><h2>Rota do dia — '+fmtDate(hoje)+'</h2>'+
-    '<div class="hint">Junta as entregas agendadas de hoje com paradas extras que você adicionar (ex: buscar ovos, ir ao mecânico, ou a casa de um cliente). A ordem da lista abaixo é a ordem da rota — use subir/descer pra reorganizar. Depois é só abrir no Google Maps, que já traça o trajeto saindo do ponto de partida escolhido acima.</div>'+
-    (todasParadas.length===0 ? '<div class="empty">Nenhuma entrega agendada pra hoje e nenhuma parada extra adicionada ainda.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>#</th><th>Tipo</th><th>Nome / Motivo</th><th>Endereço</th><th>Obs.</th><th></th></tr></thead><tbody>'+
-    todasParadas.map((p,idx)=>'<tr><td>'+(idx+1)+'</td><td>'+(p.tipo==='entrega'?'<span class="badge status-receber">entrega</span>':'<span class="badge" style="background:var(--purple-tint);color:var(--purple);">extra</span>')+'</td>'+
-      '<td>'+p.nome+'</td><td>'+(p.endereco||'<span class="hint">sem endereço</span>')+'</td><td>'+(p.obs||'—')+'</td>'+
-      '<td>'+(p.tipo==='extra'?('<button class="act-link" data-parada-subir="'+p.id+'">↑</button><button class="act-link" data-parada-descer="'+p.id+'">↓</button><button class="act-link" data-parada-editar="'+p.id+'">✎</button><button class="del-link" data-parada-del="'+p.id+'">🗑</button>'):'<span class="hint">vem do agendamento</span>')+'</td></tr>').join('')+
+    '<div class="card"><h2>'+(isHistorico?'Rota — '+fmtDate(dataAtual)+' (histórico)':'Rota do dia — '+fmtDate(dataAtual))+'</h2>'+
+    (isHistorico ? '<div class="hint" style="margin-top:-4px;margin-bottom:8px;">Visualizando um dia anterior — as paradas em si não podem mais ser reordenadas, mas ainda dá pra anexar foto/vídeo/localização. <button type="button" class="link-btn" id="btn-rota-voltar-hoje">← voltar pra rota de hoje</button></div>' : '')+
+    '<div class="hint">Junta as entregas agendadas dessa data com paradas extras que você adicionar (ex: buscar ovos, ir ao mecânico, ou a casa de um cliente). A ordem da lista abaixo é a ordem da rota — use subir/descer pra reorganizar. Cada parada mostra pra qual entregador ela é e permite anexar foto, vídeo ou localização. Depois é só abrir no Google Maps ou mandar a rota pronta pro WhatsApp do entregador.</div>'+
+    chipsEntregador+
+    (todasParadas.length===0 ? '<div class="empty">Nenhuma entrega ou parada extra encontrada pra esse filtro.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>#</th><th>Tipo</th><th>Nome / Motivo</th><th>Endereço</th><th>Entregador</th><th>Obs.</th><th>Anexos</th><th></th></tr></thead><tbody>'+
+    linhasTabela+
     '</tbody></table></div>')+
     (urlRota ? '<a class="btn" href="'+urlRota+'" target="_blank" rel="noopener" style="margin-top:12px;display:inline-block;">🗺️ Abrir rota no Google Maps</a>' : '<div class="hint" style="margin-top:10px;">Adicione pelo menos um endereço pra poder abrir a rota.</div>')+
+    (botoesEnviarRota ? '<div style="margin-top:10px;">'+botoesEnviarRota+'</div>' : '')+
     '</div>'+
-    '<div class="card"><h2>'+(paradaEditando?'Editar parada':'Adicionar parada extra')+'</h2>'+
+    (isHistorico ? '' : '<div class="card"><h2>'+(paradaEditando?'Editar parada':'Adicionar parada extra')+'</h2>'+
     '<div class="hint">Escolha um cliente cadastrado pra já puxar o endereço dele, ou preencha manualmente pra outro motivo (ex: buscar ovos, ir ao mecânico).</div>'+
     '<form id="form-parada-extra"><div class="form-row">'+
     '<div><label>Cliente cadastrado (opcional)</label><input type="text" list="datalist-clientes-rota" id="input-cliente-parada" placeholder="Buscar cliente...">'+
@@ -1095,10 +1154,18 @@ function viewRotaDoDia(){
     '</div><div class="form-row">'+
     '<div><label>Endereço <span class="req">*</span></label><input type="text" name="endereco" placeholder="Ex: Rua Tal, 123 - Bairro" value="'+(paradaEditando?escapeHtmlCampanha(paradaEditando.endereco):'')+'" required></div>'+
     '<div><label>Observação</label><input type="text" name="obs" placeholder="Ex: passar antes das 11h" value="'+(paradaEditando?escapeHtmlCampanha(paradaEditando.obs||''):'')+'"></div>'+
+    '</div><div class="form-row">'+
+    '<div><label>Entregador</label><select name="entregadorId">'+entregadoresOptionsHtml(paradaEditando?paradaEditando.entregadorId:(entregadorPrincipal()?entregadorPrincipal().id:''))+'</select></div>'+
     '</div>'+
     '<button type="submit" class="btn small" style="margin-top:8px;">'+(paradaEditando?'Salvar alterações':'Adicionar parada')+'</button>'+
     (paradaEditando?'<button type="button" class="btn small ghost" id="btn-cancelar-parada-extra" style="margin-top:8px;margin-left:8px;">Cancelar</button>':'')+
-    '</form></div>';
+    '</form></div>')+
+    '<div class="card"><h2>🗓️ Histórico de Rotas</h2>'+
+    '<div class="hint">Veja como foi a rota de um dia anterior — inclusive os anexos (fotos, vídeos, localização) registrados naquele dia.</div>'+
+    '<div class="form-row" style="max-width:420px;align-items:end;margin-top:8px;">'+
+    '<div><label>Data</label><input type="date" id="input-rota-historico-data" value="'+(rotaHistoricoData||'')+'" max="'+hoje+'"></div>'+
+    '<div><button type="button" class="btn small ghost" id="btn-ver-rota-historico">Ver rota desse dia</button></div>'+
+    '</div></div>';
 }
 
 /* ===================== Fim rota / campanhas ===================== */
@@ -1444,9 +1511,21 @@ function itensDoGrupo(grupoId, vendaId){
   const v = state.vendas.find(x=>x.id===vendaId);
   return v ? [v] : [];
 }
+/* ---------- ENTREGADORES ---------- */
+function entregadorPorId(id){ return (state.entregadores||[]).find(e=>e.id===id) || null; }
+function nomeEntregador(id){ const e=entregadorPorId(id); return e ? e.nome : ''; }
+function whatsappEntregador(id){ const e=entregadorPorId(id); return e ? (e.whatsapp||'') : ''; }
+function entregadorPrincipal(){ return (state.entregadores||[])[0] || null; }
+function entregadoresOptionsHtml(valorAtual){
+  const principal = entregadorPrincipal();
+  return '<option value="">A definir</option>'+
+    (state.entregadores||[]).map(e=>'<option value="'+e.id+'"'+(valorAtual===e.id?' selected':'')+'>'+escapeHtmlCampanha(e.nome)+(principal && e.id===principal.id?' (principal)':'')+'</option>').join('');
+}
 function enviarWhatsAppEntregador(dados){
-  const numero = '5543999215981';
+  const numeroPadrao = '5543999215981';
+  const numero = (dados.entregadorId ? whatsappEntregador(dados.entregadorId) : '') || numeroPadrao;
   let msg = 'Nova entrega\n';
+  if(dados.entregadorId && nomeEntregador(dados.entregadorId)) msg += 'Entregador: '+nomeEntregador(dados.entregadorId)+'\n';
   msg += 'Cliente: '+(dados.cliente||'—')+'\n';
   if(dados.endereco && dados.endereco!=='—') msg += 'Endereço: '+dados.endereco+'\n';
   msg += 'Itens: '+(dados.itens||'—')+'\n';
@@ -1457,11 +1536,72 @@ function enviarWhatsAppEntregador(dados){
   msg += 'Entrega: '+(dados.tipo_entrega||'—')+(dados.hora?' às '+dados.hora:'')+(dados.data?' ('+fmtDate(dados.data)+')':'')+'\n';
   if(dados.empresa) msg += 'Empresa conveniada: '+dados.empresa+'\n';
   if(dados.obs) msg += 'Obs: '+dados.obs+'\n';
+  if(dados.endereco && dados.endereco!=='—'){
+    const partida = pontoPartidaAtual();
+    const urlMaps = montarUrlRotaGoogleMaps([{endereco:dados.endereco}], partida ? partida.endereco : '');
+    if(urlMaps) msg += '\nMapa (rota até o cliente):\n'+urlMaps+'\n';
+  }
   const url = 'https://wa.me/'+numero+'?text='+encodeURIComponent(msg);
   window.open(url, '_blank');
 }
+function enviarRotaCompletaWhatsApp(entregadorId, paradas, urlRota, data){
+  const numeroPadrao = '5543999215981';
+  const numero = whatsappEntregador(entregadorId) || numeroPadrao;
+  const nome = nomeEntregador(entregadorId) || 'Entregador';
+  let msg = '📍 Rota de entregas — '+fmtDate(data)+'\n';
+  msg += 'Pra: '+nome+'\n\n';
+  paradas.forEach((p,idx)=>{
+    msg += (idx+1)+'. '+p.nome+(p.endereco?' — '+p.endereco:'')+(p.obs?' ('+p.obs+')':'')+'\n';
+  });
+  if(urlRota) msg += '\n🗺️ Ver rota completa no Maps:\n'+urlRota+'\n';
+  const url = 'https://wa.me/'+numero+'?text='+encodeURIComponent(msg);
+  window.open(url, '_blank');
+}
+/* ---------- ANEXOS DE ENTREGA (foto / vídeo / localização) ---------- */
+function anexosDoContexto(filtro){
+  filtro = filtro || {};
+  return (state.anexosEntrega||[]).filter(a=>{
+    if(filtro.cliente && (a.cliente||'').toLowerCase()!==filtro.cliente.toLowerCase()) return false;
+    if(filtro.agendamentoId && a.agendamentoId!==filtro.agendamentoId) return false;
+    if(filtro.paradaId && a.paradaId!==filtro.paradaId) return false;
+    if(filtro.data && a.data!==filtro.data) return false;
+    return true;
+  }).sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+}
+function anexoThumbHtml(a){
+  const entNome = a.entregadorId ? nomeEntregador(a.entregadorId) : '';
+  const meta = '<div class="hint" style="margin-top:3px;">'+fmtDate(a.data)+(entNome?' · '+escapeHtmlCampanha(entNome):'')+(a.obs?' · '+escapeHtmlCampanha(a.obs):'')+'</div>';
+  let corpo = '';
+  if(a.tipo==='localizacao'){
+    const url = 'https://www.google.com/maps?q='+a.lat+','+a.lng;
+    corpo = '<a href="'+url+'" target="_blank" rel="noopener" class="badge nota">📍 ver localização</a>';
+  } else if(a.tipo==='video'){
+    corpo = '<video src="'+a.dataUrl+'" controls style="max-width:150px;max-height:120px;border-radius:8px;display:block;"></video>';
+  } else {
+    corpo = '<a href="'+a.dataUrl+'" target="_blank" rel="noopener"><img src="'+a.dataUrl+'" style="max-width:110px;max-height:110px;border-radius:8px;object-fit:cover;display:block;"></a>';
+  }
+  return '<div class="anexo-item" style="width:150px;">'+corpo+meta+'<button type="button" class="del-link" style="margin-top:4px;" data-del-anexo-entrega="'+a.id+'">🗑 excluir</button></div>';
+}
+function anexosGaleriaHtml(lista){
+  if(lista.length===0) return '<div class="empty">Nenhum anexo ainda.</div>';
+  return '<div style="display:flex;flex-wrap:wrap;gap:10px;">'+lista.map(anexoThumbHtml).join('')+'</div>';
+}
+function anexoFormHtml(formId, contexto){
+  contexto = contexto || {};
+  return '<form class="form-anexo-entrega" id="'+formId+'" '+
+    'data-anexo-cliente="'+escapeHtmlCampanha(contexto.cliente||'')+'" '+
+    'data-anexo-agendamento="'+(contexto.agendamentoId||'')+'" '+
+    'data-anexo-parada="'+(contexto.paradaId||'')+'" '+
+    'data-anexo-data="'+(contexto.data||todayStr())+'" '+
+    'data-anexo-entregador="'+(contexto.entregadorId||'')+'">'+
+    '<div class="form-row">'+
+    '<div><label>Tipo de anexo</label><select name="tipo" class="anexo-tipo-select"><option value="foto">📷 Foto</option><option value="video">🎬 Vídeo</option><option value="localizacao">📍 Localização atual</option></select></div>'+
+    '<div class="anexo-file-wrap"><label>Arquivo</label><input type="file" name="arquivo" accept="image/*,video/*"></div>'+
+    '<div><label>Observação</label><input type="text" name="obs" placeholder="Ex: casa amarela, portão azul"></div>'+
+    '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
+}
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -1520,6 +1660,13 @@ async function loadAll(){
   }
   if(!state.rotaConfig) state.rotaConfig = {};
   if(!state.rotaConfig.pontoPartidaId) state.rotaConfig.pontoPartidaId = state.pontosPartida[0].id;
+  if(!Array.isArray(state.entregadores)) state.entregadores = [];
+  if(state.entregadores.length===0){
+    state.entregadores.push({id:uid(), nome:'Wellington de Oliveira', whatsapp:'5543999215981'});
+    state.entregadores.push({id:uid(), nome:'Sueli de Oliveira (Suh)', whatsapp:''});
+    await save('entregadores');
+  }
+  if(!Array.isArray(state.anexosEntrega)) state.anexosEntrega = [];
   if(!state.campanhas) state.campanhas = [];
   if(!state.envioCampanhaLog) state.envioCampanhaLog = [];
   if(!state.publicos) state.publicos = [];
@@ -2588,9 +2735,14 @@ function viewClientes(){
 
 function clientesTable(list){
   if(list.length===0) return '<div class="empty">Nenhum cliente cadastrado ainda.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone/Whats</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th></th></tr></thead><tbody>'+
-  list.map(c=>'<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td>'+
-  '<td>'+botaoWhatsApp(c.telefone)+'<button class="act-link" data-edit-cliente="'+c.id+'">✎ editar</button><button class="del-link" data-del-cliente="'+c.id+'">🗑 excluir</button></td></tr>').join('')+'</tbody></table></div>';
+  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone/Whats</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Anexos</th><th></th></tr></thead><tbody>'+
+  list.map(c=>{
+    const anexosCli = anexosDoContexto({cliente:c.nome});
+    const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="7" style="background:var(--blue-tint);"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
+    return '<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td>'+
+    '<td><button type="button" class="act-link" data-ver-anexos-cliente="'+escapeHtmlCampanha(c.nome)+'">📎 '+anexosCli.length+'</button></td>'+
+    '<td>'+botaoWhatsApp(c.telefone)+'<button class="act-link" data-edit-cliente="'+c.id+'">✎ editar</button><button class="del-link" data-del-cliente="'+c.id+'">🗑 excluir</button></td></tr>'+linhaAnexos;
+  }).join('')+'</tbody></table></div>';
 }
 
 /* ---------- ESTOQUE ---------- */
@@ -2723,11 +2875,12 @@ function getClienteEndereco(nome){
 function listaAgendamentosDoDia(data){
   const daVenda = state.vendas.filter(v=>v.entrega_hora && (v.entrega_data||v.data)===data).map(v=>({
     id:v.id, hora:v.entrega_hora, cliente:v.cliente, produto:v.categoria+(v.quantidade>1?' x'+v.quantidade:''),
-    tipo_entrega:v.tipo_entrega, empresa:v.empresa, origem:'venda', status: v.entrega_status==='entregue' ? 'concluido' : 'pendente'
+    tipo_entrega:v.tipo_entrega, empresa:v.empresa, origem:'venda', status: v.entrega_status==='entregue' ? 'concluido' : 'pendente',
+    entregadorId:'', agendamentoId:null
   }));
   const avulsos = state.agendamentos.filter(a=>a.data===data).map(a=>({
     id:a.id, hora:a.hora, cliente:a.cliente, produto:a.produto_nota, tipo_entrega:a.tipo_entrega, empresa:a.empresa,
-    origem:'agendamento', status:a.status
+    origem:'agendamento', status:a.status, entregadorId:a.entregadorId||'', agendamentoId:a.id
   }));
   return daVenda.concat(avulsos).sort((a,b)=>a.hora.localeCompare(b.hora));
 }
@@ -2735,17 +2888,17 @@ function todosAgendamentosEVendas(){
   const daVenda = state.vendas.filter(v=>v.entrega_hora).map(v=>({
     id:v.id, hora:v.entrega_hora, data:v.entrega_data||v.data, cliente:v.cliente, produto:v.categoria+(v.quantidade>1?' x'+v.quantidade:''),
     tipo_entrega:v.tipo_entrega, empresa:v.empresa, pagamento:v.pagamento, valor:v.valor_total, origem:'venda',
-    status: v.entrega_status==='entregue' ? 'concluido' : 'pendente'
+    status: v.entrega_status==='entregue' ? 'concluido' : 'pendente', entregadorId:'', agendamentoId:null
   }));
   const avulsos = state.agendamentos.map(a=>({
     id:a.id, hora:a.hora, data:a.data, cliente:a.cliente, produto:a.produto_nota, tipo_entrega:a.tipo_entrega, empresa:a.empresa,
-    pagamento:a.pagamento, valor:a.valor, origem:'agendamento', status:a.status
+    pagamento:a.pagamento, valor:a.valor, origem:'agendamento', status:a.status, entregadorId:a.entregadorId||'', agendamentoId:a.id
   }));
   return daVenda.concat(avulsos).sort((a,b)=> (b.data+b.hora).localeCompare(a.data+a.hora));
 }
 function agendamentosTable(lista, mostrarData){
   if(lista.length===0) return '<div class="empty">Nenhuma entrega agendada encontrada.</div>';
-  return '<div class="table-wrap"><table><thead><tr>'+(mostrarData?'<th>Data</th>':'')+'<th>Horário</th><th>Cliente</th><th>Endereço</th><th>Produto</th><th>Entrega</th><th>Empresa</th><th>Pagamento</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><thead><tr>'+(mostrarData?'<th>Data</th>':'')+'<th>Horário</th><th>Cliente</th><th>Endereço</th><th>Entregador</th><th>Produto</th><th>Entrega</th><th>Empresa</th><th>Pagamento</th><th>Valor</th><th>Status</th><th>Anexos</th><th></th></tr></thead><tbody>'+
     lista.map(v=>{
       const statusBadge = v.status==='concluido' ? '<span class="badge pago">entregue</span>' : '<span class="badge fiado">pendente</span>';
       const acao = v.origem==='agendamento' ?
@@ -2760,10 +2913,17 @@ function agendamentosTable(lista, mostrarData){
           '<button class="act-link" data-reabrir-venda-entrega="'+v.id+'">↺ reabrir</button>' :
           '<button class="act-link" data-finalizar-venda-entrega="'+v.id+'">✓ finalizar entrega</button>');
       const pagtoStatus = v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber">A receber</span>' : (v.pagamento ? ' <span class="badge status-pago">Pago</span>' : '');
+      const entregadorTxt = v.entregadorId ? escapeHtmlCampanha(nomeEntregador(v.entregadorId)) : '<span class="hint">a definir</span>';
+      const chaveAnexo = v.origem+':'+v.id;
+      const anexosDoAg = anexosDoContexto(v.agendamentoId ? {agendamentoId:v.agendamentoId} : {cliente:v.cliente, data:v.data||''});
+      const linhaAnexos = anexoAgendamentoAberto===chaveAnexo ? '<tr><td colspan="'+(mostrarData?12:11)+'" style="background:var(--blue-tint);"><div style="padding:10px;">'+anexosGaleriaHtml(anexosDoAg)+'</div></td></tr>' : '';
       return '<tr>'+(mostrarData?'<td>'+fmtDate(v.data)+'</td>':'')+'<td>'+v.hora+'</td><td>'+(v.cliente||'—')+'</td><td>'+getClienteEndereco(v.cliente)+'</td>'+
+        '<td>'+entregadorTxt+'</td>'+
         '<td>'+(v.produto||'—')+'</td><td>'+entregaLabel(v.tipo_entrega)+'</td><td>'+(v.empresa||'—')+'</td>'+
         '<td>'+(v.pagamento||'—')+pagtoStatus+'</td><td>'+(v.valor?fmtMoney(v.valor):'—')+'</td>'+
-        '<td>'+statusBadge+'</td><td>'+acao+'</td></tr>';
+        '<td>'+statusBadge+'</td>'+
+        '<td><button type="button" class="act-link" data-ver-anexos-ag="'+chaveAnexo+'">📎 '+anexosDoAg.length+'</button></td>'+
+        '<td>'+acao+'</td></tr>'+linhaAnexos;
     }).join('')+'</tbody></table></div>';
 }
 function iniciarEditarAgendamento(id){
@@ -2780,6 +2940,7 @@ function iniciarEditarAgendamento(id){
   if(fa.quantidade) fa.quantidade.value = a.quantidade || 1;
   fa.tipo_entrega.value=a.tipo_entrega||''; fa.empresa.value=a.empresa||'';
   if(fa.pagamento) fa.pagamento.value=a.pagamento||PAGAMENTOS[0];
+  if(fa.entregadorId) fa.entregadorId.value = a.entregadorId||'';
   if(fa.valor) fa.valor.value = a.valor ? Number(a.valor).toFixed(2) : '';
   if(fa.frete) fa.frete.value=a.frete||'';
   toggleDetalhesEntregaAgendamento();
@@ -2890,6 +3051,7 @@ function viewAgendamentos(){
     '<div class="form-row">'+
     '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega-ag" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
     '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select></div>'+
+    '<div><label>Entregador</label><select name="entregadorId">'+entregadoresOptionsHtml(entregadorPrincipal()?entregadorPrincipal().id:'')+'</select></div>'+
     '</div>'+
     '<div><label>Valor combinado (R$)</label><input type="number" name="valor" min="0" step="0.01" placeholder="0,00" style="max-width:200px;"><div class="hint">Se o produto estiver no catálogo, o valor já vem calculado — mas pode digitar outro se quiser.</div></div>'+
     '<div id="detalhes-entrega-ag" class="item-venda-row" style="display:none;margin-top:10px;">'+
@@ -4456,6 +4618,17 @@ function attachHandlers(){
       const id = btn.dataset.delCliente;
       if(confirm('Excluir este cliente?')){ state.clientes = state.clientes.filter(x=>x.id!==id); await save('clientes'); renderAll(); }
     });
+    document.querySelectorAll('[data-ver-anexos-cliente]').forEach(btn=>btn.onclick=()=>{
+      const nomeCli = btn.dataset.verAnexosCliente;
+      anexoClienteAberto = (anexoClienteAberto===nomeCli) ? null : nomeCli;
+      renderAll();
+    });
+    document.querySelectorAll('[data-del-anexo-entrega]').forEach(btn=>btn.onclick=async()=>{
+      if(!confirm('Excluir este anexo?')) return;
+      state.anexosEntrega = (state.anexosEntrega||[]).filter(a=>a.id!==btn.dataset.delAnexoEntrega);
+      await save('anexosEntrega');
+      renderAll();
+    });
   };
   const attachEmpresaRowHandlers = ()=>{
     document.querySelectorAll('[data-edit-empresa]').forEach(btn=>btn.onclick=()=>{
@@ -5009,12 +5182,13 @@ function attachHandlers(){
     e.preventDefault();
     const f = new FormData(formParadaExtra);
     if(!state.paradasRota) state.paradasRota = [];
+    const clienteVinculado = (state.clientes||[]).find(x=>x.nome===(f.get('nome')||''));
     if(editParadaExtraId){
       const p = state.paradasRota.find(x=>x.id===editParadaExtraId);
-      if(p){ p.nome=f.get('nome'); p.endereco=f.get('endereco'); p.obs=f.get('obs')||''; }
+      if(p){ p.nome=f.get('nome'); p.endereco=f.get('endereco'); p.obs=f.get('obs')||''; p.entregadorId=f.get('entregadorId')||''; p.cliente=clienteVinculado?clienteVinculado.nome:(p.cliente||''); }
       editParadaExtraId = null;
     } else {
-      state.paradasRota.push({id:uid(), data:todayStr(), nome:f.get('nome'), endereco:f.get('endereco'), obs:f.get('obs')||'', ordem: state.paradasRota.filter(p=>p.data===todayStr()).length});
+      state.paradasRota.push({id:uid(), data:todayStr(), nome:f.get('nome'), endereco:f.get('endereco'), obs:f.get('obs')||'', entregadorId:f.get('entregadorId')||'', cliente:clienteVinculado?clienteVinculado.nome:'', ordem: state.paradasRota.filter(p=>p.data===todayStr()).length});
     }
     await save('paradasRota');
     formParadaExtra.reset();
@@ -5048,6 +5222,123 @@ function attachHandlers(){
   });
   document.querySelectorAll('[data-parada-descer]').forEach(btn=>btn.onclick=async()=>{
     if(moverParada(btn.dataset.paradaDescer, 1)){ await save('paradasRota'); renderAll(); }
+  });
+
+  // ---- Entregadores ----
+  const formEntregador = document.getElementById('form-entregador');
+  if(formEntregador) formEntregador.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(formEntregador);
+    const nome = (f.get('nome')||'').trim();
+    if(!nome) return;
+    if(!Array.isArray(state.entregadores)) state.entregadores=[];
+    state.entregadores.push({id:uid(), nome, whatsapp:(f.get('whatsapp')||'').replace(/\D/g,'')});
+    await save('entregadores');
+    renderAll();
+  };
+  document.querySelectorAll('[data-del-entregador]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir este entregador? Entregas já atribuídas a ele ficarão sem entregador definido.')) return;
+    const id = btn.dataset.delEntregador;
+    state.entregadores = (state.entregadores||[]).filter(x=>x.id!==id);
+    (state.agendamentos||[]).forEach(a=>{ if(a.entregadorId===id) a.entregadorId=''; });
+    (state.paradasRota||[]).forEach(p=>{ if(p.entregadorId===id) p.entregadorId=''; });
+    if(rotaFiltroEntregadorId===id) rotaFiltroEntregadorId='';
+    await save('entregadores');
+    await save('agendamentos');
+    await save('paradasRota');
+    renderAll();
+  });
+  document.querySelectorAll('[data-rota-filtro-entregador]').forEach(btn=>btn.onclick=()=>{
+    rotaFiltroEntregadorId = btn.dataset.rotaFiltroEntregador||'';
+    anexoAbertoParadaKey = null;
+    renderAll();
+  });
+  document.querySelectorAll('[data-enviar-rota-entregador]').forEach(btn=>btn.onclick=()=>{
+    const entregadorId = btn.dataset.enviarRotaEntregador;
+    const dataRota = btn.dataset.rotaData || todayStr();
+    const {paradasEntrega, extras} = paradasDoDiaHtml(dataRota);
+    const todasBruto = paradasEntrega.concat(extras.map(p=>({tipo:'extra', nome:p.nome, endereco:p.endereco, obs:p.obs, id:p.id, entregadorId:p.entregadorId||''})));
+    const paradasDele = todasBruto.filter(p=>(p.entregadorId||'')===entregadorId);
+    if(paradasDele.length===0) return;
+    const partida = pontoPartidaAtual();
+    const urlDele = montarUrlRotaGoogleMaps(paradasDele, partida ? partida.endereco : '');
+    enviarRotaCompletaWhatsApp(entregadorId, paradasDele, urlDele, dataRota);
+  });
+  const btnRotaVoltarHoje = document.getElementById('btn-rota-voltar-hoje');
+  if(btnRotaVoltarHoje) btnRotaVoltarHoje.onclick = ()=>{ rotaHistoricoData=''; anexoAbertoParadaKey=null; renderAll(); };
+  const btnVerRotaHistorico = document.getElementById('btn-ver-rota-historico');
+  if(btnVerRotaHistorico) btnVerRotaHistorico.onclick = ()=>{
+    const inp = document.getElementById('input-rota-historico-data');
+    if(inp && inp.value){ rotaHistoricoData = inp.value; anexoAbertoParadaKey=null; renderAll(); }
+  };
+
+  // ---- Anexos de entrega (foto/vídeo/localização) ----
+  document.querySelectorAll('[data-toggle-anexos-parada]').forEach(btn=>btn.onclick=()=>{
+    const key = btn.dataset.toggleAnexosParada;
+    anexoAbertoParadaKey = (anexoAbertoParadaKey===key) ? null : key;
+    renderAll();
+  });
+  document.querySelectorAll('[data-ver-anexos-cliente]').forEach(btn=>btn.onclick=()=>{
+    const nomeCli = btn.dataset.verAnexosCliente;
+    anexoClienteAberto = (anexoClienteAberto===nomeCli) ? null : nomeCli;
+    renderAll();
+  });
+  document.querySelectorAll('[data-ver-anexos-ag]').forEach(btn=>btn.onclick=()=>{
+    const chave = btn.dataset.verAnexosAg;
+    anexoAgendamentoAberto = (anexoAgendamentoAberto===chave) ? null : chave;
+    renderAll();
+  });
+  document.querySelectorAll('.anexo-tipo-select').forEach(sel=>{
+    const wrap = sel.closest('form').querySelector('.anexo-file-wrap');
+    const atualizarVisibilidadeArquivo = ()=>{ if(wrap) wrap.style.display = sel.value==='localizacao' ? 'none' : ''; };
+    sel.onchange = atualizarVisibilidadeArquivo;
+    atualizarVisibilidadeArquivo();
+  });
+  document.querySelectorAll('.form-anexo-entrega').forEach(form=>{
+    form.onsubmit = async(e)=>{
+      e.preventDefault();
+      const f = new FormData(form);
+      const tipo = f.get('tipo');
+      const base = {
+        id: uid(), tipo,
+        cliente: form.dataset.anexoCliente || '',
+        agendamentoId: form.dataset.anexoAgendamento || '',
+        paradaId: form.dataset.anexoParada || '',
+        data: form.dataset.anexoData || todayStr(),
+        entregadorId: form.dataset.anexoEntregador || '',
+        obs: f.get('obs')||'', criadoEm: Date.now()
+      };
+      if(tipo==='localizacao'){
+        if(!navigator.geolocation){ alert('Este navegador não suporta captura de localização.'); return; }
+        navigator.geolocation.getCurrentPosition(async(pos)=>{
+          base.lat = pos.coords.latitude; base.lng = pos.coords.longitude;
+          if(!Array.isArray(state.anexosEntrega)) state.anexosEntrega=[];
+          state.anexosEntrega.push(base);
+          await save('anexosEntrega');
+          renderAll();
+        }, (err)=>{ alert('Não foi possível obter a localização: '+(err.message||err)); });
+        return;
+      }
+      const file = form.querySelector('input[type=file]').files[0];
+      if(!file){ alert('Escolha um arquivo de foto ou vídeo.'); return; }
+      const limiteMB = tipo==='video' ? 15 : 6;
+      if(file.size > limiteMB*1024*1024){ alert('Arquivo maior que '+limiteMB+' MB. Escolha um arquivo menor.'); return; }
+      const r = new FileReader();
+      r.onload = async(ev)=>{
+        base.dataUrl = ev.target.result;
+        if(!Array.isArray(state.anexosEntrega)) state.anexosEntrega=[];
+        state.anexosEntrega.push(base);
+        await save('anexosEntrega');
+        renderAll();
+      };
+      r.readAsDataURL(file);
+    };
+  });
+  document.querySelectorAll('[data-del-anexo-entrega]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir este anexo?')) return;
+    state.anexosEntrega = (state.anexosEntrega||[]).filter(a=>a.id!==btn.dataset.delAnexoEntrega);
+    await save('anexosEntrega');
+    renderAll();
   });
 
   const rvFiltrar = document.getElementById('rv-filtrar'); if(rvFiltrar) rvFiltrar.onclick = renderRelatorioVendasResultado;
@@ -5231,6 +5522,7 @@ function attachHandlers(){
         a.categoria=categoriaAg; a.produto=produtoAg; a.quantidade=quantidadeAg; a.produto_nota=produtoNotaAg;
         a.tipo_entrega=f.get('tipo_entrega'); a.empresa=temFrete?(f.get('empresa')||''):'';
         a.pagamento=f.get('pagamento')||''; a.valor=Number(f.get('valor'))||0; a.frete=temFrete?(Number(f.get('frete'))||0):0;
+        a.entregadorId=f.get('entregadorId')||'';
       }
       editAgendamentoId = null;
       fa.querySelector('button[type=submit]').textContent='Agendar';
@@ -5238,12 +5530,14 @@ function attachHandlers(){
       const novoAg = {id:uid(), cliente:f.get('cliente'), data:dataForm, hora:f.get('hora'),
         categoria:categoriaAg, produto:produtoAg, quantidade:quantidadeAg, produto_nota:produtoNotaAg,
         tipo_entrega:f.get('tipo_entrega'), empresa:temFrete?(f.get('empresa')||''):'',
-        pagamento:f.get('pagamento')||'', valor:Number(f.get('valor'))||0, frete:temFrete?(Number(f.get('frete'))||0):0, status:'pendente'};
+        pagamento:f.get('pagamento')||'', valor:Number(f.get('valor'))||0, frete:temFrete?(Number(f.get('frete'))||0):0, status:'pendente',
+        entregadorId:f.get('entregadorId')||''};
       state.agendamentos.push(novoAg);
       enviarWhatsAppEntregador({
         cliente: novoAg.cliente, endereco: getClienteEndereco(novoAg.cliente),
         itens: novoAg.produto_nota || '—', total: novoAg.valor, frete: novoAg.frete, pagamento: novoAg.pagamento,
-        tipo_entrega: novoAg.tipo_entrega, hora: novoAg.hora, data: novoAg.data, empresa: novoAg.empresa, obs: ''
+        tipo_entrega: novoAg.tipo_entrega, hora: novoAg.hora, data: novoAg.data, empresa: novoAg.empresa, obs: '',
+        entregadorId: novoAg.entregadorId
       });
       notificarLocal('Novo agendamento de entrega', (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
       enviarPushServidor('Novo agendamento de entrega', (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
@@ -5301,13 +5595,25 @@ function attachHandlers(){
     document.querySelectorAll('[data-edit-ag]').forEach(btn=>btn.onclick=()=>{
       iniciarEditarAgendamento(btn.dataset.editAg);
     });
+    document.querySelectorAll('[data-ver-anexos-ag]').forEach(btn=>btn.onclick=()=>{
+      const chave = btn.dataset.verAnexosAg;
+      anexoAgendamentoAberto = (anexoAgendamentoAberto===chave) ? null : chave;
+      renderAll();
+    });
+    document.querySelectorAll('[data-del-anexo-entrega]').forEach(btn=>btn.onclick=async()=>{
+      if(!confirm('Excluir este anexo?')) return;
+      state.anexosEntrega = (state.anexosEntrega||[]).filter(a=>a.id!==btn.dataset.delAnexoEntrega);
+      await save('anexosEntrega');
+      renderAll();
+    });
     document.querySelectorAll('[data-wa-ag]').forEach(btn=>btn.onclick=()=>{
       const a = state.agendamentos.find(x=>x.id===btn.dataset.waAg);
       if(!a) return;
       enviarWhatsAppEntregador({
         cliente: a.cliente, endereco: getClienteEndereco(a.cliente),
         itens: a.produto_nota || '—', total: a.valor||0, frete: a.frete||0, pagamento: a.pagamento||'—',
-        tipo_entrega: a.tipo_entrega, hora: a.hora, data: a.data, empresa: a.empresa, obs: ''
+        tipo_entrega: a.tipo_entrega, hora: a.hora, data: a.data, empresa: a.empresa, obs: '',
+        entregadorId: a.entregadorId||''
       });
     });
     document.querySelectorAll('[data-concluir-ag]').forEach(btn=>btn.onclick=async()=>{
