@@ -623,9 +623,10 @@ const TABS = [
   {id:'despesas', label:'Despesas'},
   {id:'cadastros', label:'Cadastros'},
   {id:'estoque', label:'Estoque'},
-  {id:'entregas', label:'Entregas', filhos:['agendamentos','rota']},
+  {id:'entregas', label:'Entregas', filhos:['agendamentos','rota','tempoentrega']},
   {id:'agendamentos', label:'Agendamentos'},
   {id:'rota', label:'Rotas'},
+  {id:'tempoentrega', label:'Tempo de Entrega'},
   {id:'campanhas', label:'Campanhas'},
   {id:'checklist', label:'Checklist Diário'},
   {id:'relatorios', label:'Relatórios'},
@@ -1186,6 +1187,16 @@ function viewRotaDoDia(){
     '</div></div>';
 }
 
+function viewTempoEntrega(){
+  const lista = (state.temposEntrega||[]).slice().sort((a,b)=>new Date(b.horaConclusao)-new Date(a.horaConclusao));
+  const fmtHora = iso=> iso ? new Date(iso).toLocaleString('pt-BR') : '—';
+  const fmtDur = min=> min==null ? '—' : (min>=60 ? Math.floor(min/60)+'h '+(min%60)+'min' : min+' min');
+  const linhas = lista.map(t=>'<tr><td>'+fmtDate(t.data)+'</td><td>'+escapeHtmlCampanha(t.cliente||'')+'</td><td>'+fmtHora(t.horaPedido)+'</td><td>'+fmtHora(t.horaConclusao)+'</td><td><strong>'+fmtDur(t.duracaoMin)+'</strong></td></tr>').join('');
+  return '<div class="card"><h2>⏱ Tempo de Entrega</h2>'+ajudaHtml('tempoentrega','Assim que o entregador conclui o passo 3 (ENTREGUE) na tela pública de confirmação, o sistema grava aqui a data, o cliente, o horário em que o pedido foi feito, o horário da conclusão, e calcula sozinho quanto tempo levou.')+
+    (lista.length===0 ? '<div class="empty">Nenhuma entrega concluída registrada ainda.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Horário do pedido</th><th>Horário da conclusão</th><th>Tempo de entrega</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '</div>';
+}
 /* ===================== Fim rota / campanhas ===================== */
 function iconVasilhame(cheio, cor, tamanho){
   const c = cor || '#1E3A8A';
@@ -1642,7 +1653,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -1708,6 +1719,7 @@ async function loadAll(){
     await save('entregadores');
   }
   if(!Array.isArray(state.anexosEntrega)) state.anexosEntrega = [];
+  if(!Array.isArray(state.temposEntrega)) state.temposEntrega = [];
   if(!state.imagensStatusEntrega){
     state.imagensStatusEntrega = { saiu: IMG_PADRAO_SAIU, chegou: IMG_PADRAO_CHEGOU, concluido: IMG_PADRAO_CONCLUIDO };
     await save('imagensStatusEntrega');
@@ -2021,6 +2033,7 @@ function renderAll(){
   if(currentTab==='estoque') main.innerHTML = viewEstoque();
   if(currentTab==='agendamentos') main.innerHTML = viewAgendamentos();
   if(currentTab==='rota') main.innerHTML = viewRotaDoDia();
+  if(currentTab==='tempoentrega') main.innerHTML = viewTempoEntrega();
   if(currentTab==='campanhas') main.innerHTML = viewCampanhas();
   if(currentTab==='checklist') main.innerHTML = viewChecklist();
   if(currentTab==='relatorios') main.innerHTML = viewRelatorios();
@@ -5676,7 +5689,7 @@ function attachHandlers(){
         categoria:categoriaAg, produto:produtoAg, quantidade:quantidadeAg, produto_nota:produtoNotaAg,
         tipo_entrega:f.get('tipo_entrega'), empresa:temFrete?(f.get('empresa')||''):'',
         pagamento:f.get('pagamento')||'', valor:Number(f.get('valor'))||0, frete:temFrete?(Number(f.get('frete'))||0):0, status:'pendente',
-        entregadorId:f.get('entregadorId')||'', pago:!!f.get('pago')};
+        entregadorId:f.get('entregadorId')||'', pago:!!f.get('pago'), criadoEm:new Date().toISOString()};
       state.agendamentos.push(novoAg);
       enviarWhatsAppEntregador({
         cliente: novoAg.cliente, endereco: getClienteEndereco(novoAg.cliente),
@@ -7507,16 +7520,18 @@ function initAgenda(){
 async function iniciarConfirmacaoEntregaPublica(tipo, id){
   document.body.innerHTML = '<div id="conf-entrega" style="max-width:520px;margin:0 auto;padding:18px;font-family:Arial,sans-serif;background:#fff;min-height:100vh;box-sizing:border-box;">Carregando entrega...</div>';
   const wrap = document.getElementById('conf-entrega');
-  let registros, clientes, anexos, imagensStatus;
+  let registros, clientes, anexos, imagensStatus, temposEntrega, pendencias;
   const chaveRegistros = tipo==='venda' ? 'vendas' : 'agendamentos';
   try{
-    const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave',[chaveRegistros,'clientes','anexosEntrega','imagensStatusEntrega']);
+    const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave',[chaveRegistros,'clientes','anexosEntrega','imagensStatusEntrega','temposEntrega','pendenciasConferencia']);
     if(error) throw error;
     const porChave = {}; (data||[]).forEach(r=>porChave[r.chave]=r.valor);
     registros = porChave[chaveRegistros] || [];
     clientes = porChave.clientes || [];
     anexos = porChave.anexosEntrega || [];
     imagensStatus = porChave.imagensStatusEntrega || {};
+    temposEntrega = porChave.temposEntrega || [];
+    pendencias = porChave.pendenciasConferencia || [];
   }catch(e){
     wrap.innerHTML = '<div style="padding:22px;border-radius:16px;background:#fff3f3;border:1px solid #f3b6b6;color:#8a1c1c;"><h2 style="margin-top:0;">Não foi possível abrir a entrega</h2><p>O link chegou corretamente, mas o sistema não conseguiu carregar os dados desta entrega.</p><p style="font-size:13px;color:#666;">Verifique a internet e tente novamente. Se continuar acontecendo, o acesso público da tela de entregador precisa ser liberado no banco do sistema.</p><button onclick="location.reload()" style="width:100%;padding:14px;border:0;border-radius:10px;background:#1a73e8;color:#fff;font-weight:bold;">🔄 Tentar novamente</button></div>';
     console.error('Erro ao carregar confirmação de entrega:', e);
@@ -7535,9 +7550,14 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       jaConcluido: primeira.entrega_status==='entregue',
       notifSaiu: !!primeira.notif_saiu,
       notifChegou: !!primeira.notif_chegou,
+      pagamento: primeira.pagamento||'', pagoAntes:false, valorTotal: linhas.reduce((s,l)=>s+(Number(l.valor)||0),0),
+      criadoEm: primeira.criadoEm||null, dinheiroRecebido: !!primeira.dinheiro_recebido, atendimentoOk: primeira.atendimento_ok,
+      vendaJaLancada: true,
       marcarNotif(campo){ linhas.forEach(l=>l[campo]=true); },
       marcarConcluido(){ linhas.forEach(l=>l.entrega_status='entregue'); },
       desmarcarConcluido(){ linhas.forEach(l=>l.entrega_status='pendente'); },
+      marcarRecebido(){ linhas.forEach(l=>l.dinheiro_recebido=true); },
+      marcarAtendimento(ok,obs){ linhas.forEach(l=>{l.atendimento_ok=ok; l.atendimento_obs=obs;}); },
       async salvar(){ const { error } = await supabaseClient.from('app_data').upsert({chave:'vendas', valor:registros, atualizado_em:new Date().toISOString()},{onConflict:'chave'}); return !error; },
       anexoContexto: { vendaGrupoId: id, agendamentoId: null }
     };
@@ -7551,9 +7571,14 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       jaConcluido: ag.status==='concluido',
       notifSaiu: !!ag.notif_saiu,
       notifChegou: !!ag.notif_chegou,
+      pagamento: ag.pagamento||'', pagoAntes: !!ag.pago, valorTotal: ag.valor||0,
+      criadoEm: ag.criadoEm||null, dinheiroRecebido: !!ag.dinheiro_recebido, atendimentoOk: ag.atendimento_ok,
+      vendaJaLancada: false,
       marcarNotif(campo){ ag[campo]=true; },
       marcarConcluido(){ ag.status='concluido'; },
       desmarcarConcluido(){ ag.status='pendente'; },
+      marcarRecebido(){ ag.dinheiro_recebido=true; },
+      marcarAtendimento(ok,obs){ ag.atendimento_ok=ok; ag.atendimento_obs=obs; },
       async salvar(){ const { error } = await supabaseClient.from('app_data').upsert({chave:'agendamentos', valor:registros, atualizado_em:new Date().toISOString()},{onConflict:'chave'}); return !error; },
       anexoContexto: { agendamentoId: id, vendaGrupoId: null }
     };
@@ -7581,6 +7606,47 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
     }
     window.open(link, '_blank');
     return true;
+  }
+
+  const NUMERO_PRINCIPAL = '5543999215981';
+  function isDinheiro(){ return entrega.pagamento==='Dinheiro'; }
+  function isFiado(){ return entrega.pagamento==='Marcou/Fiado'; }
+  function statusRecebimento(){
+    if(isFiado()) return 'fiado';
+    if(entrega.pagoAntes) return 'jaPago';
+    if(entrega.dinheiroRecebido) return 'recebido';
+    if(isDinheiro()) return 'aguardaDinheiro';
+    return 'recebidoAuto';
+  }
+  async function salvarPendencias(){ const { error } = await supabaseClient.from('app_data').upsert({chave:'pendenciasConferencia',valor:pendencias,atualizado_em:new Date().toISOString()},{onConflict:'chave'}); return !error; }
+  function pendenciaDaEntrega(){
+    return pendencias.find(p=>p.tipo==='entrega' && ((entrega.anexoContexto.agendamentoId && p.agendamentoId===entrega.anexoContexto.agendamentoId) || (entrega.anexoContexto.vendaGrupoId && p.vendaGrupoId===entrega.anexoContexto.vendaGrupoId)));
+  }
+  async function registrarOuAtualizarPendencia(){
+    let p = pendenciaDaEntrega();
+    const acaoCaixa = entrega.vendaJaLancada ? 'Dar baixa no recebimento desta venda.' : 'Lançar a venda desta entrega.';
+    const detalheRecebimento = statusRecebimento()==='fiado' ? 'Fiado — nada a receber.' : statusRecebimento()==='jaPago' ? 'Já estava pago.' : statusRecebimento()==='aguardaDinheiro' ? 'Aguardando entregador entregar o dinheiro recebido em mãos.' : 'Recebido — conferir.';
+    const detalheAtendimento = entrega.atendimentoOk===true ? 'Entregador confirmou: tudo certo conforme combinado.' : entrega.atendimentoOk===false ? 'Entregador sinalizou problema na entrega.' : 'Aguardando satisfação do entregador.';
+    const detalhe = 'Entrega de '+(entrega.cliente||'cliente')+' — '+acaoCaixa+' '+detalheRecebimento+' '+detalheAtendimento;
+    if(!p){ p = {id:uid(), data:todayStr(), tipo:'entrega', campo:'recebimento', valor:entrega.valorTotal||0, detalhe, status:'pendente', agendamentoId:entrega.anexoContexto.agendamentoId||null, vendaGrupoId:entrega.anexoContexto.vendaGrupoId||null}; pendencias.push(p); }
+    else { p.detalhe = detalhe; p.valor = entrega.valorTotal||0; }
+    await salvarPendencias();
+  }
+  function avisarNumeroPrincipal(){
+    const acao = entrega.vendaJaLancada ? '💰 A venda já está lançada — precisa dar baixa no recebimento.' : '🧾 Precisa lançar a venda desse pedido.';
+    const msg = '✅ Entrega concluída!\n🙍 Cliente: '+(entrega.cliente||'')+'\n📦 '+(entrega.produtoResumo||'')+'\n'+entrega.statusPagtoTexto+'\n\n'+acao;
+    window.open('https://wa.me/'+NUMERO_PRINCIPAL+'?text='+encodeURIComponent(msg), '_blank');
+  }
+  async function registrarTempoEntrega(){
+    const agora = new Date();
+    const duracaoMin = entrega.criadoEm ? Math.max(0, Math.round((agora - new Date(entrega.criadoEm))/60000)) : null;
+    temposEntrega.push({id:uid(), data:todayStr(), cliente:entrega.cliente||'', horaPedido:entrega.criadoEm||null, horaConclusao:agora.toISOString(), duracaoMin, agendamentoId:entrega.anexoContexto.agendamentoId||null, vendaGrupoId:entrega.anexoContexto.vendaGrupoId||null});
+    await supabaseClient.from('app_data').upsert({chave:'temposEntrega',valor:temposEntrega,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
+  }
+  async function salvarAnexo(item){
+    anexos.push(Object.assign({id:uid(),cliente:entrega.cliente||'',paradaId:'',data:todayStr(),entregadorId:entrega.entregadorId||'',criadoEm:Date.now()},entrega.anexoContexto,item));
+    const { error } = await supabaseClient.from('app_data').upsert({chave:'anexosEntrega',valor:anexos,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
+    return !error;
   }
 
   function render(){
@@ -7621,7 +7687,25 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
         '</div>'+
       '</div>'+
       (concluida ? '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;"><label style="display:block;margin-bottom:7px;font-weight:bold;">📷 Foto do comprovante da entrega</label><input type="file" id="input-foto-comprovante" accept="image/*" capture="environment" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;"></div>' : '<div style="margin-top:16px;font-size:12px;color:#777;text-align:center;">A foto do comprovante será liberada depois que a entrega for concluída.</div>')+
-      (anexosDele.length>0 ? '<div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;">'+anexosDele.map(a=>'<img src="'+a.dataUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">').join('')+'</div>' : '')+
+      (concluida ? (function(){
+        const st = statusRecebimento();
+        const textos = {fiado:'📒 Fiado — nada a receber agora.', jaPago:'✅ Já estava pago antes da entrega.', recebido:'✅ Dinheiro recebido em mãos — pendência aberta pro caixa.', recebidoAuto:'✅ Pagamento recebido — não é dinheiro, baixa automática.'};
+        return '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;"><div style="font-weight:bold;margin-bottom:8px;">💵 Recebimento</div>'+
+          (st==='aguardaDinheiro' ? '<button id="btn-recebi-dinheiro" style="width:100%;padding:14px;font-size:15px;font-weight:bold;background:#f5a623;color:#fff;border:none;border-radius:10px;">💰 Recebi o dinheiro em mãos</button>' : '<div style="color:#188038;font-size:13px;">'+textos[st]+'</div>')+
+        '</div>';
+      })() : '')+
+      (concluida ? '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;"><div style="font-weight:bold;margin-bottom:8px;">🙋 Correu tudo certo, conforme combinado?</div>'+
+        (entrega.atendimentoOk===undefined || entrega.atendimentoOk===null ?
+          '<div style="display:flex;gap:8px;"><button id="btn-atend-ok" style="flex:1;padding:12px;background:#25D366;color:#fff;border:none;border-radius:10px;font-weight:bold;">✅ Sim</button><button id="btn-atend-problema" style="flex:1;padding:12px;background:#e53935;color:#fff;border:none;border-radius:10px;font-weight:bold;">⚠️ Teve problema</button></div>' :
+          '<div style="font-size:13px;color:'+(entrega.atendimentoOk?'#188038':'#c62828')+';">'+(entrega.atendimentoOk?'✅ Confirmado: tudo certo.':'⚠️ Problema sinalizado — financeiro vai conferir.')+'</div>')+
+        '</div>' : '')+
+      (anexosDele.length>0 ? '<div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;">'+anexosDele.map(a=>a.tipo==='video'?'<video src="'+a.dataUrl+'" controls style="width:90px;height:90px;border-radius:8px;"></video>':a.tipo==='localizacao'?'<a href="https://www.google.com/maps?q='+a.lat+','+a.lng+'" target="_blank" style="font-size:12px;">📍 local</a>':'<img src="'+a.dataUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">').join('')+'</div>' : '')+
+      '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;"><div style="font-weight:bold;margin-bottom:8px;">📎 Anexar foto, vídeo ou localização do local</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+        '<label class="btn-anexo-extra" style="flex:1;text-align:center;padding:10px;background:#eef3fb;border-radius:10px;font-size:13px;cursor:pointer;">📷 Foto<input type="file" id="input-anexo-foto" accept="image/*" style="display:none;"></label>'+
+        '<label class="btn-anexo-extra" style="flex:1;text-align:center;padding:10px;background:#eef3fb;border-radius:10px;font-size:13px;cursor:pointer;">🎥 Vídeo<input type="file" id="input-anexo-video" accept="video/*" style="display:none;"></label>'+
+        '<button type="button" id="btn-anexo-local" style="flex:1;padding:10px;background:#eef3fb;border:none;border-radius:10px;font-size:13px;">📍 Localização</button>'+
+        '</div></div>'+
       '<div id="msg-conf" style="margin-top:14px;font-weight:bold;color:#188038;text-align:center;"></div>';
 
     const btnSaiu = document.getElementById('btn-status-saiu');
@@ -7640,11 +7724,61 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       const okWhats = await enviarStatusWhatsApp('concluido',null);
       if(!okWhats){ btnConcluido.disabled=false; btnConcluido.textContent='✅ ENTREGUE'; return; }
       entrega.marcarConcluido();
+      if(!isFiado() && !entrega.pagoAntes && !isDinheiro()) entrega.marcarRecebido();
       const ok2=await entrega.salvar();
       if(!ok2){ entrega.desmarcarConcluido(); alert('A mensagem foi enviada, mas não foi possível salvar a conclusão. Tente novamente.'); btnConcluido.disabled=false; btnConcluido.textContent='✅ ENTREGUE'; return; }
       try{ await enviarPushServidor('Entrega concluída',(entrega.cliente||'Cliente')+' — entrega finalizada pelo entregador.'); }catch(e){ console.error('Erro ao notificar',e); }
+      await registrarTempoEntrega();
+      await registrarOuAtualizarPendencia();
+      avisarNumeroPrincipal();
       entrega.jaConcluido=true; render();
       const msg=document.getElementById('msg-conf'); if(msg) msg.textContent='✅ Entrega concluída! Mensagem com o link de avaliação enviada ao cliente.';
+    };
+    const btnRecebiDinheiro=document.getElementById('btn-recebi-dinheiro');
+    if(btnRecebiDinheiro) btnRecebiDinheiro.onclick=async()=>{
+      entrega.marcarRecebido();
+      const ok=await entrega.salvar();
+      if(!ok){ alert('Não foi possível salvar. Tente novamente.'); return; }
+      await registrarOuAtualizarPendencia();
+      render(); const msg=document.getElementById('msg-conf'); if(msg) msg.textContent='💰 Recebimento em dinheiro registrado!';
+    };
+    function responderAtendimento(ok){
+      const obs = ok ? '' : (prompt('Descreva rapidamente o que aconteceu:')||'');
+      return async()=>{
+        entrega.marcarAtendimento(ok, obs);
+        const salvou=await entrega.salvar();
+        if(!salvou){ alert('Não foi possível salvar. Tente novamente.'); return; }
+        await registrarOuAtualizarPendencia();
+        render();
+      };
+    }
+    const btnAtendOk=document.getElementById('btn-atend-ok');
+    if(btnAtendOk) btnAtendOk.onclick=responderAtendimento(true);
+    const btnAtendProblema=document.getElementById('btn-atend-problema');
+    if(btnAtendProblema) btnAtendProblema.onclick=responderAtendimento(false);
+    const inputAnexoFoto=document.getElementById('input-anexo-foto');
+    if(inputAnexoFoto) inputAnexoFoto.onchange=()=>{
+      const file=inputAnexoFoto.files[0]; if(!file)return;
+      if(file.size>8*1024*1024){alert('Arquivo muito grande.');return;}
+      const r=new FileReader();
+      r.onload=async(ev)=>{ const ok=await salvarAnexo({tipo:'foto',dataUrl:ev.target.result,obs:''}); if(!ok){alert('Erro ao salvar.');return;} render(); const msg=document.getElementById('msg-conf'); if(msg) msg.textContent='📷 Foto salva no histórico do cliente!'; };
+      r.readAsDataURL(file);
+    };
+    const inputAnexoVideo=document.getElementById('input-anexo-video');
+    if(inputAnexoVideo) inputAnexoVideo.onchange=()=>{
+      const file=inputAnexoVideo.files[0]; if(!file)return;
+      if(file.size>15*1024*1024){alert('Vídeo muito grande.');return;}
+      const r=new FileReader();
+      r.onload=async(ev)=>{ const ok=await salvarAnexo({tipo:'video',dataUrl:ev.target.result,obs:''}); if(!ok){alert('Erro ao salvar.');return;} render(); const msg=document.getElementById('msg-conf'); if(msg) msg.textContent='🎥 Vídeo salvo no histórico do cliente!'; };
+      r.readAsDataURL(file);
+    };
+    const btnAnexoLocal=document.getElementById('btn-anexo-local');
+    if(btnAnexoLocal) btnAnexoLocal.onclick=()=>{
+      if(!navigator.geolocation){ alert('Este navegador não suporta localização.'); return; }
+      navigator.geolocation.getCurrentPosition(async(pos)=>{
+        const ok=await salvarAnexo({tipo:'localizacao',lat:pos.coords.latitude,lng:pos.coords.longitude,obs:''});
+        if(!ok){alert('Erro ao salvar.');return;} render(); const msg=document.getElementById('msg-conf'); if(msg) msg.textContent='📍 Localização salva no histórico do cliente!';
+      }, (err)=>{ alert('Não foi possível obter a localização: '+(err.message||err)); });
     };
     const inputFoto=document.getElementById('input-foto-comprovante');
     if(inputFoto) inputFoto.onchange=()=>{
