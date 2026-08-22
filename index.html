@@ -51,7 +51,8 @@ header{background:var(--royal);color:#fff;padding:12px 20px;display:flex;align-i
 .brand h1{font-size:17px;font-weight:700;margin:0;letter-spacing:.2px;}
 #logo-box{display:flex;align-items:center;gap:8px;}
 
-nav{background:var(--royal-dark);display:flex;overflow-x:auto;position:sticky;top:53px;z-index:19;}
+nav{background:var(--royal-dark);display:block;overflow-x:auto;position:sticky;top:53px;z-index:19;}
+#nav-principal,#subnav{display:flex;}
 nav button{flex:1;min-width:88px;background:none;border:none;color:#C6D4F5;padding:12px 8px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
 nav button.active{color:#fff;border-bottom-color:var(--neon);background:rgba(255,255,255,.06);}
 nav button:hover{color:#fff;}
@@ -342,6 +343,7 @@ const AUTH_APP_HTML = `
     <div class="brand">
       <div class="dot"></div>
       <h1>Sistema Tom Gás</h1>
+      <span id="etiqueta-data-hoje" class="pill" style="margin-left:10px;background:rgba(255,255,255,.15);color:#fff;"></span>
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <div id="logo-box"></div>
@@ -1917,6 +1919,8 @@ function grupoDoTab(tabId){
 }
 function renderNav(){
   const nav = document.getElementById('nav');
+  const etiquetaData = document.getElementById('etiqueta-data-hoje');
+  if(etiquetaData) etiquetaData.textContent = '📅 '+fmtDate(todayStr());
   let html = '<div id="nav-principal">';
   TABS_VISIVEIS.forEach((t,i)=>{
     if(i>0) html += '<span class="nav-sep">|</span>';
@@ -7224,7 +7228,25 @@ async function afterLogin(){
 /* ---------- PWA / NOTIFICAÇÕES ---------- */
 function registerServiceWorker(){
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('sw.js').catch(e=>console.error('Erro ao registrar service worker', e));
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      reg.update();
+      setInterval(()=>reg.update(), 60*1000);
+      reg.addEventListener('updatefound', ()=>{
+        const novoSW = reg.installing;
+        if(!novoSW) return;
+        novoSW.addEventListener('statechange', ()=>{
+          if(novoSW.state==='installed' && navigator.serviceWorker.controller){
+            novoSW.postMessage({acao:'skipWaiting'});
+          }
+        });
+      });
+    }).catch(e=>console.error('Erro ao registrar service worker', e));
+    let jaRecarregouPorAtualizacao = false;
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+      if(jaRecarregouPorAtualizacao) return;
+      jaRecarregouPorAtualizacao = true;
+      window.location.reload();
+    });
   }
 }
 function statusPermissaoNotificacao(){
