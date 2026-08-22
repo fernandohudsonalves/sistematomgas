@@ -2969,7 +2969,7 @@ function listaAgendamentosDoDia(data){
   const daVenda = state.vendas.filter(v=>v.entrega_hora && (v.entrega_data||v.data)===data).map(v=>({
     id:v.id, hora:v.entrega_hora, cliente:v.cliente, produto:v.categoria+(v.quantidade>1?' x'+v.quantidade:''),
     tipo_entrega:v.tipo_entrega, empresa:v.empresa, origem:'venda', status: v.entrega_status==='entregue' ? 'concluido' : 'pendente',
-    entregadorId:'', agendamentoId:null
+    entregadorId:'', agendamentoId:null, grupoId:v.grupoId||v.id
   }));
   const avulsos = state.agendamentos.filter(a=>a.data===data).map(a=>({
     id:a.id, hora:a.hora, cliente:a.cliente, produto:a.produto_nota, tipo_entrega:a.tipo_entrega, empresa:a.empresa,
@@ -2981,7 +2981,7 @@ function todosAgendamentosEVendas(){
   const daVenda = state.vendas.filter(v=>v.entrega_hora).map(v=>({
     id:v.id, hora:v.entrega_hora, data:v.entrega_data||v.data, cliente:v.cliente, produto:v.categoria+(v.quantidade>1?' x'+v.quantidade:''),
     tipo_entrega:v.tipo_entrega, empresa:v.empresa, pagamento:v.pagamento, valor:v.valor_total, origem:'venda',
-    status: v.entrega_status==='entregue' ? 'concluido' : 'pendente', entregadorId:'', agendamentoId:null
+    status: v.entrega_status==='entregue' ? 'concluido' : 'pendente', entregadorId:'', agendamentoId:null, grupoId:v.grupoId||v.id
   }));
   const avulsos = state.agendamentos.map(a=>({
     id:a.id, hora:a.hora, data:a.data, cliente:a.cliente, produto:a.produto_nota, tipo_entrega:a.tipo_entrega, empresa:a.empresa,
@@ -2994,15 +2994,21 @@ function agendamentosTable(lista, mostrarData){
   return '<div class="table-wrap"><table><thead><tr>'+(mostrarData?'<th>Data</th>':'')+'<th>Horário</th><th>Cliente</th><th>Endereço</th><th>Entregador</th><th>Produto</th><th>Entrega</th><th>Empresa</th><th>Pagamento</th><th>Valor</th><th>Status</th><th>Anexos</th><th></th></tr></thead><tbody>'+
     lista.map(v=>{
       const statusBadge = v.status==='concluido' ? '<span class="badge pago">entregue</span>' : '<span class="badge fiado">pendente</span>';
+      const linkEstagios = v.origem==='agendamento'
+        ? (location.origin+location.pathname+'?entrega='+v.agendamentoId)
+        : (location.origin+location.pathname+'?entregaVenda='+v.grupoId);
+      const iconeEstagios = '<a class="act-link" title="Abrir passo a passo da entrega" href="'+linkEstagios+'" target="_blank" rel="noopener">🔗</a>';
       const acao = v.origem==='agendamento' ?
         '<button class="act-link" title="Editar" data-edit-ag="'+v.id+'">✎</button>'+
         '<button class="act-link" title="Enviar WhatsApp" data-wa-ag="'+v.id+'">💬</button>'+
         (v.cliente?('<button class="act-link" title="Avisar cliente" data-avisar-cliente="'+escapeHtmlCampanha(v.cliente)+'">📲</button>'):'')+
+        iconeEstagios+
         (v.status==='concluido' ?
           '<button class="act-link" title="Reabrir" data-reabrir-ag="'+v.id+'">↺</button>' :
           '<button class="act-link" title="Marcar como entregue" data-concluir-ag="'+v.id+'">✓</button>')+
         '<button class="del-link" title="Excluir" data-del-ag="'+v.id+'">🗑</button>' :
         '<button class="act-link" title="Editar venda" data-edit-venda-ag="'+v.id+'">✎</button>'+
+        iconeEstagios+
         (v.status==='concluido' ?
           '<button class="act-link" title="Reabrir" data-reabrir-venda-entrega="'+v.id+'">↺</button>' :
           '<button class="act-link" title="Finalizar entrega" data-finalizar-venda-entrega="'+v.id+'">✓</button>');
