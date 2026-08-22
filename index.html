@@ -1108,6 +1108,7 @@ function viewRotaDoDia(){
   const linhasTabela = todasParadas.map((p,idx)=>{
     const key = paradaKey(p);
     const anexosDaParada = anexosDoContexto({paradaId: p.tipo==='extra'?p.id:null, agendamentoId: p.tipo==='entrega'?p.agendamentoId:null, cliente: (!p.agendamentoId && p.tipo==='entrega')?p.cliente:null});
+    const anexosHistoricoCliente = p.cliente ? anexosDoContexto({cliente:p.cliente}).filter(a=>!(p.agendamentoId && a.agendamentoId===p.agendamentoId)) : [];
     const entregadorBadge = p.entregadorId ? '<span class="badge nota">'+escapeHtmlCampanha(nomeEntregador(p.entregadorId))+'</span>' : '<span class="hint">a definir</span>';
     const acoesParada = p.tipo==='extra' && !isHistorico ?
       ('<button class="act-link" data-parada-subir="'+p.id+'">↑</button><button class="act-link" data-parada-descer="'+p.id+'">↓</button><button class="act-link" data-parada-editar="'+p.id+'">✎</button><button class="del-link" data-parada-del="'+p.id+'">🗑</button>') :
@@ -1116,9 +1117,11 @@ function viewRotaDoDia(){
     return '<tr><td>'+(idx+1)+'</td><td>'+(p.tipo==='entrega'?'<span class="badge status-receber">entrega</span>':'<span class="badge" style="background:var(--purple-tint);color:var(--purple);">extra</span>')+'</td>'+
       '<td>'+escapeHtmlCampanha(p.nome)+'</td><td>'+(p.endereco?escapeHtmlCampanha(p.endereco):'<span class="hint">sem endereço</span>')+'</td>'+
       '<td>'+entregadorBadge+'</td><td>'+(p.obs?escapeHtmlCampanha(p.obs):'—')+'</td>'+
-      '<td class="cel-acoes"><button type="button" class="act-link" data-toggle-anexos-parada="'+key+'">📎 '+anexosDaParada.length+'</button></td>'+
+      '<td class="cel-acoes"><button type="button" class="act-link" data-toggle-anexos-parada="'+key+'">📎 hoje: '+anexosDaParada.length+(anexosHistoricoCliente.length?' · histórico: '+anexosHistoricoCliente.length:'')+'</button></td>'+
       '<td class="cel-acoes">'+acoesParada+' '+acaoAvisar+'</td></tr>'+
       (anexoAbertoParadaKey===key ? '<tr><td colspan="8" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+
+        (anexosHistoricoCliente.length>0 ? '<div style="margin-bottom:14px;"><strong>🗂 Histórico anterior desse cliente/endereço (entregas passadas):</strong>'+anexosGaleriaHtml(anexosHistoricoCliente)+'</div>' : '')+
+        '<strong>Anexos de hoje:</strong>'+
         anexosGaleriaHtml(anexosDaParada)+
         '<div style="margin-top:10px;">'+anexoFormHtml('form-anexo-'+key.replace(':','-'), {
           cliente: p.cliente||'', agendamentoId: p.agendamentoId||'', paradaId: p.tipo==='extra'?p.id:'', data: dataAtual, entregadorId: p.entregadorId||''
@@ -3269,6 +3272,7 @@ function viewConfig(){
 function viewRelatorios(){
   const subtabs = [
     {id:'vendas', label:'Vendas por período'},
+    {id:'ranking', label:'Ranking de Clientes'},
     {id:'itens', label:'Itens por categoria'},
     {id:'entregas', label:'Entregas por período'},
     {id:'despesas', label:'Despesas por período'},
@@ -3281,6 +3285,7 @@ function viewRelatorios(){
   ];
   let content = '';
   if(relatorioSub==='vendas') content = relatorioVendas();
+  else if(relatorioSub==='ranking') content = relatorioRanking();
   else if(relatorioSub==='itens') content = relatorioItens();
   else if(relatorioSub==='entregas') content = relatorioEntregas();
   else if(relatorioSub==='despesas') content = relatorioDespesas();
@@ -3499,6 +3504,16 @@ function relatorioVendas(){
     '<div><label>Até</label><input type="date" id="rv-ate" value="'+todayStr()+'"></div>'+
     '<div><label>Cliente (nome)</label><input type="text" id="rv-nome" placeholder="Buscar por nome"></div></div>'+
     '<button class="btn small ghost" id="rv-filtrar">Filtrar</button><div id="rv-resultado" style="margin-top:16px;"></div>';
+}
+function relatorioRanking(){
+  const categoriasOpts = Array.from(new Set((state.vendas||[]).map(v=>v.categoria).filter(Boolean))).sort();
+  return '<h3>Filtrar</h3><div class="hint">Veja quem mais gasta ou quem mais compra de um produto/categoria específico, num período escolhido.</div>'+
+    '<div class="form-row">'+
+    '<div><label>De</label><input type="date" id="rk-de" value="'+firstOfMonth()+'"></div>'+
+    '<div><label>Até</label><input type="date" id="rk-ate" value="'+todayStr()+'"></div>'+
+    '<div><label>Produto/Categoria</label><select id="rk-categoria"><option value="">Todos</option>'+categoriasOpts.map(c=>'<option value="'+c+'">'+c+'</option>').join('')+'</select></div>'+
+    '<div><label>Ordenar por</label><select id="rk-ordenar"><option value="valor">Quem mais gastou (R$)</option><option value="quantidade">Quem mais comprou (quantidade)</option></select></div></div>'+
+    '<button class="btn small ghost" id="rk-filtrar">Filtrar</button><div id="rk-resultado" style="margin-top:16px;"></div>';
 }
 function relatorioDespesas(){
   return '<h3>Filtrar</h3><div class="form-row">'+
@@ -3832,6 +3847,25 @@ function renderRelatorioVendasResultado(){
     '<h4 style="margin-bottom:6px;">Lançamentos individuais</h4>'+
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Valor</th><th>Pagto</th></tr></thead><tbody>'+
     filtradas.slice().sort((a,b)=> a.categoria.localeCompare(b.categoria) || b.data.localeCompare(a.data)).map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+(v.canal||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td><td>'+v.pagamento+'</td></tr>').join('')+
+    '</tbody></table></div>');
+}
+function renderRelatorioRankingResultado(){
+  const de = document.getElementById('rk-de').value, ate = document.getElementById('rk-ate').value;
+  const categoria = document.getElementById('rk-categoria').value;
+  const ordenar = document.getElementById('rk-ordenar').value;
+  const filtradas = (state.vendas||[]).filter(v=> v.data>=de && v.data<=ate && (!categoria || v.categoria===categoria) && v.cliente);
+  const porCliente = {};
+  filtradas.forEach(v=>{
+    if(!porCliente[v.cliente]) porCliente[v.cliente] = {qtd:0, valor:0, compras:0};
+    porCliente[v.cliente].qtd += (v.quantidade||0);
+    porCliente[v.cliente].valor += (v.valor_total||0);
+    porCliente[v.cliente].compras += 1;
+  });
+  const linhas = Object.entries(porCliente).map(([nome,d])=>({nome,qtd:d.qtd,valor:d.valor,compras:d.compras}))
+    .sort((a,b)=> ordenar==='quantidade' ? b.qtd-a.qtd : b.valor-a.valor);
+  document.getElementById('rk-resultado').innerHTML = (linhas.length===0?'<div class="empty">Nenhuma venda encontrada nesse filtro.</div>':
+    '<div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Qtd. comprada'+(categoria?' ('+categoria+')':'')+'</th><th>Valor total gasto</th><th>Nº de compras</th></tr></thead><tbody>'+
+    linhas.map((l,i)=>'<tr><td>'+(i+1)+'</td><td>'+l.nome+'</td><td>'+l.qtd+'</td><td>'+fmtMoney(l.valor)+'</td><td>'+l.compras+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function renderRelatorioDespesasResultado(){
@@ -5495,6 +5529,7 @@ function attachHandlers(){
   });
 
   const rvFiltrar = document.getElementById('rv-filtrar'); if(rvFiltrar) rvFiltrar.onclick = renderRelatorioVendasResultado;
+  const rkFiltrar = document.getElementById('rk-filtrar'); if(rkFiltrar) rkFiltrar.onclick = renderRelatorioRankingResultado;
   const riFiltrar = document.getElementById('ri-filtrar'); if(riFiltrar) riFiltrar.onclick = renderRelatorioItensResultado;
   const riMarcarTodas = document.getElementById('ri-marcar-todas');
   if(riMarcarTodas) riMarcarTodas.onclick = ()=>{ document.querySelectorAll('.ri-grupo').forEach(c=>c.checked=true); renderRelatorioItensResultado(); };
@@ -5563,6 +5598,7 @@ function attachHandlers(){
     btnGerarPdfConvenio.disabled = false; btnGerarPdfConvenio.textContent = '📄 Gerar PDF do convênio (vendas + anexos)';
   };
   if(relatorioSub==='vendas' && document.getElementById('rv-resultado')) renderRelatorioVendasResultado();
+  if(relatorioSub==='ranking' && document.getElementById('rk-resultado')) renderRelatorioRankingResultado();
   if(relatorioSub==='despesas' && document.getElementById('rd-resultado')) renderRelatorioDespesasResultado();
   if(relatorioSub==='entregas' && document.getElementById('rent-resultado')) renderRelatorioEntregasResultado();
   if(relatorioSub==='notas' && document.getElementById('rn-resultado')) renderRelatorioNotasResultado();
@@ -7657,6 +7693,8 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       (entrega.anexoContexto.agendamentoId && a.agendamentoId===entrega.anexoContexto.agendamentoId) ||
       (entrega.anexoContexto.vendaGrupoId && a.vendaGrupoId===entrega.anexoContexto.vendaGrupoId)
     );
+    const anexosHistorico = entrega.cliente ? anexos.filter(a=>(a.cliente||'').toLowerCase()===entrega.cliente.toLowerCase() && !anexosDele.includes(a)) : [];
+    const thumbAnexo = a=>a.tipo==='video'?'<video src="'+a.dataUrl+'" controls style="width:90px;height:90px;border-radius:8px;"></video>':a.tipo==='localizacao'?'<a href="https://www.google.com/maps?q='+a.lat+','+a.lng+'" target="_blank" style="font-size:12px;">📍 local</a>':'<img src="'+a.dataUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">';
     const imagem3 = imagensStatus && imagensStatus.concluido ? '<img src="'+imagensStatus.concluido+'" style="width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin-top:10px;">' : '';
     wrap.innerHTML =
       '<div style="text-align:center;margin-bottom:18px;">'+
@@ -7699,7 +7737,8 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
           '<div style="display:flex;gap:8px;"><button id="btn-atend-ok" style="flex:1;padding:12px;background:#25D366;color:#fff;border:none;border-radius:10px;font-weight:bold;">✅ Sim</button><button id="btn-atend-problema" style="flex:1;padding:12px;background:#e53935;color:#fff;border:none;border-radius:10px;font-weight:bold;">⚠️ Teve problema</button></div>' :
           '<div style="font-size:13px;color:'+(entrega.atendimentoOk?'#188038':'#c62828')+';">'+(entrega.atendimentoOk?'✅ Confirmado: tudo certo.':'⚠️ Problema sinalizado — financeiro vai conferir.')+'</div>')+
         '</div>' : '')+
-      (anexosDele.length>0 ? '<div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;">'+anexosDele.map(a=>a.tipo==='video'?'<video src="'+a.dataUrl+'" controls style="width:90px;height:90px;border-radius:8px;"></video>':a.tipo==='localizacao'?'<a href="https://www.google.com/maps?q='+a.lat+','+a.lng+'" target="_blank" style="font-size:12px;">📍 local</a>':'<img src="'+a.dataUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">').join('')+'</div>' : '')+
+      (anexosHistorico.length>0 ? '<div style="margin-top:14px;"><div style="font-weight:bold;font-size:13px;margin-bottom:6px;">🗂 Histórico de entregas anteriores desse cliente:</div><div style="display:flex;flex-wrap:wrap;gap:8px;">'+anexosHistorico.map(thumbAnexo).join('')+'</div></div>' : '')+
+      (anexosDele.length>0 ? '<div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;">'+anexosDele.map(thumbAnexo).join('')+'</div>' : '')+
       '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;"><div style="font-weight:bold;margin-bottom:8px;">📎 Anexar foto, vídeo ou localização do local</div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
         '<label class="btn-anexo-extra" style="flex:1;text-align:center;padding:10px;background:#eef3fb;border-radius:10px;font-size:13px;cursor:pointer;">📷 Foto<input type="file" id="input-anexo-foto" accept="image/*" style="display:none;"></label>'+
