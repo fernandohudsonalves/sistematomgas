@@ -1752,7 +1752,7 @@ async function loadAll(){
   }
   if(!state.rotaConfig) state.rotaConfig = {};
   if(!state.rotaConfig.pontoPartidaId) state.rotaConfig.pontoPartidaId = state.pontosPartida[0].id;
-  if(!Array.isArray(state.acertosEntrega)) state.acertosEntrega = [];
+  if(!Array.isArray(state.acertosEntrega)){ state.acertosEntrega = []; await save('acertosEntrega'); }
   if(!Array.isArray(state.entregadores)) state.entregadores = [];
   if(state.entregadores.length===0){
     state.entregadores.push({id:uid(), nome:'Wellington de Oliveira', whatsapp:'5543999215981'});
