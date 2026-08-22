@@ -109,6 +109,8 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .table-wrap td.cel-acoes{overflow:visible;max-width:none;white-space:nowrap;}
 .table-wrap td .badge,.table-wrap td .pill{white-space:nowrap;}
 .table-wrap td button{font-size:11.5px;padding:2px 4px;}
+.ajuda-btn{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#f0ad00;color:#fff;border:none;font-weight:bold;font-size:12px;cursor:pointer;margin-left:6px;vertical-align:middle;padding:0;line-height:1;}
+.ajuda-conteudo{background:#fff8e6;border:1px solid #f0ad00;border-radius:8px;padding:10px 12px;margin:8px 0 4px;font-size:12.5px;line-height:1.5;color:#333;}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 th{text-align:left;color:var(--text2);font-weight:600;font-size:11px;text-transform:uppercase;padding:8px 6px;border-bottom:2px solid var(--border);white-space:nowrap;}
 td{padding:9px 6px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top;}
@@ -937,7 +939,7 @@ function viewCampanhas(){
   else if(campanhaSub==='google'){ content=viewGoogleEmpresas(); }
   else if(editCampanhaId){ const ec=state.campanhas.find(x=>x.id===editCampanhaId); content=formCampanhaHtml(ec)+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml(); }
   else content=formCampanhaHtml()+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml();
-  return '<div class="card"><div class="camp-head"><div class="subtabs">'+subtabs.map(x=>'<button data-campanha-sub="'+x.id+'" class="'+(campanhaSub===x.id&&!campanhaEnviarId?'active':'')+'">'+x.label+'</button>').join('')+'</div><p>Marketing e comunicação com clientes</p></div><div id="campanha-content">'+content+'</div></div>';
+  return '<div class="card"><div class="camp-head"><div class="subtabs">'+subtabs.map(x=>'<button data-campanha-sub="'+x.id+'" class="'+(campanhaSub===x.id&&!campanhaEnviarId?'active':'')+'">'+x.label+'</button>').join('')+'</div><p>Marketing e comunicação com clientes'+ajudaHtml('campanhas','Crie campanhas com texto e mídia pra enviar pra grupos de clientes, salve públicos reutilizáveis, ou use o \'Envio rápido\' pra mandar pra poucas pessoas sem criar campanha. O envio abre o WhatsApp já com a mensagem pronta — você que anexa a mídia e aperta enviar.')+'</p></div><div id="campanha-content">'+content+'</div></div>';
 }
 /* ===================== Google Empresas (Perfil da Empresa no Google) ===================== */
 function idItemChecklistPorTexto(texto){ const it=(state.checklistRotina||[]).find(x=>x.texto===texto); return it?it.id:null; }
@@ -1124,7 +1126,7 @@ function viewRotaDoDia(){
     return '<button type="button" class="btn small green" data-enviar-rota-entregador="'+e.id+'" data-rota-data="'+dataAtual+'" style="margin-top:8px;margin-right:8px;">💬 Enviar rota pro '+escapeHtmlCampanha(e.nome.split(' ')[0])+'</button>';
   }).join('');
 
-  return '<div class="card"><h2>🚚 Entregadores</h2>'+
+  return '<div class="card"><h2>🚚 Entregadores</h2>'+ajudaHtml('entregadores','Cadastre aqui quem faz as entregas (nome e WhatsApp). Isso permite escolher pra quem vai cada entrega, mandar a rota certinha pro WhatsApp de cada um, e filtrar a Rota do dia por entregador.')+
     '<div class="hint">Cadastre quem faz as entregas pra poder escolher pra quem vai cada rota ou entrega, e enviar direto pro WhatsApp de cada um.</div>'+
     '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+'</span></span><button type="button" class="act-link" data-editar-whatsapp-entregador="'+e.id+'">✎ whatsapp</button><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
     '<form id="form-entregador" class="form-row" style="margin-top:10px;">'+
@@ -1145,7 +1147,7 @@ function viewRotaDoDia(){
     '<div style="align-self:end;"><button type="submit" class="btn small ghost">+ Salvar novo ponto</button></div>'+
     '</div></form>'+
     '</details></div>'+
-    '<div class="card"><h2>'+(isHistorico?'Rota — '+fmtDate(dataAtual)+' (histórico)':'Rotas — '+fmtDate(dataAtual))+'</h2>'+
+    '<div class="card"><h2>'+(isHistorico?'Rota — '+fmtDate(dataAtual)+' (histórico)':'Rotas — '+fmtDate(dataAtual))+'</h2>'+ajudaHtml('rota-do-dia','Aqui aparecem juntas as entregas agendadas de hoje e as paradas extras que você adicionar. Use os filtros por entregador, reordene com ↑↓, anexe foto/vídeo/localização em cada parada, e mande a rota pronta pro WhatsApp de quem for entregar.')+
     (isHistorico ? '<div class="hint" style="margin-top:-4px;margin-bottom:8px;">Visualizando um dia anterior — as paradas em si não podem mais ser reordenadas, mas ainda dá pra anexar foto/vídeo/localização. <button type="button" class="link-btn" id="btn-rota-voltar-hoje">← voltar pra rota de hoje</button></div>' : '')+
     '<div class="hint">Junta as entregas agendadas dessa data com paradas extras que você adicionar (ex: buscar ovos, ir ao mecânico, ou a casa de um cliente). A ordem da lista abaixo é a ordem da rota — use subir/descer pra reorganizar. Cada parada mostra pra qual entregador ela é e permite anexar foto, vídeo ou localização. Depois é só abrir no Google Maps ou mandar a rota pronta pro WhatsApp do entregador.</div>'+
     chipsEntregador+
@@ -2693,7 +2695,7 @@ function viewVendas(){
     '<div><label>Observação (opcional)</label><input type="text" name="obs"></div>'+
     '<div class="hint" style="margin-top:6px;">Se um horário de entrega for definido, os dados do pedido são enviados por WhatsApp para o entregador automaticamente.</div>'+
     '<button type="submit" class="btn">Registrar venda</button></form></details></div>'+
-    '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+
+    '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje)+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
     '<input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por cliente, produto, empresa, canal ou pagamento...">'+
@@ -2736,7 +2738,7 @@ function viewDespesas(){
     '<button type="button" class="btn small ghost" id="btn-add-cat-despesa">Adicionar</button></div></div>'+
     '<label>Descrição (opcional)</label><input type="text" name="descricao" placeholder="Ex: compra de vasilhames novos">'+
     '<button type="submit" class="btn">Registrar despesa</button></form></details></div>'+
-    '<div class="card"><h2>Despesas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+
+    '<div class="card"><h2>Despesas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('despesas','Registre aqui os gastos do dia (compras, contas, manutenção). Assim como as vendas, a maior parte pode vir automaticamente pela importação da planilha Excel.')+
     '<div id="lista-despesas-hoje-wrap">'+despesasTable(despesasHoje)+'</div></div>'+
     '<div class="card"><h2>Histórico de despesas</h2>'+
     '<input type="text" id="busca-despesa" class="searchbar" placeholder="Buscar por descrição ou categoria...">'+
@@ -2773,6 +2775,10 @@ function viewCadastros(){
 function gruposClienteDoCliente(c){ return Array.isArray(c.grupos) ? c.grupos : []; }
 function clientesPorGrupo(grupo){ return (state.clientes||[]).filter(c=>gruposClienteDoCliente(c).includes(grupo)); }
 function escapeHtmlCampanha(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function ajudaHtml(id, texto){
+  return '<button type="button" class="ajuda-btn" data-ajuda-toggle="'+id+'" title="Ajuda">!</button>'+
+    '<div class="ajuda-conteudo" id="ajuda-'+id+'" style="display:none;">💡 '+texto+'</div>';
+}
 function viewClientes(){
   return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'+
     '<h2 style="margin:0;">Clientes cadastrados <span class="pill">'+state.clientes.length+'</span></h2>'+
@@ -2782,7 +2788,7 @@ function viewClientes(){
     '<summary><strong>Ver lista de clientes</strong></summary>'+
     '<div id="lista-clientes-wrap" style="margin-top:10px;">'+clientesTable(state.clientes)+'</div>'+
     '</details></div>'+
-    '<div class="card"><h2>Novo cliente</h2><form id="form-cliente">'+
+    '<div class="card"><h2>Novo cliente</h2>'+ajudaHtml('clientes','Cadastre aqui nome, telefone e endereço do cliente. O endereço cadastrado aqui é usado automaticamente na Rota do dia e nos agendamentos de entrega — por isso vale a pena caprichar. Clique em \'📎 anexos\' na lista pra ver fotos, vídeos ou localização já registrados desse cliente.')+'<form id="form-cliente">'+
     '<div class="form-row"><div><label>Nome completo <span class="req">*</span></label><input type="text" name="nome" required></div>'+
     '<div><label>Telefone / WhatsApp <span class="req">*</span></label><input type="text" name="telefone" placeholder="(00) 00000-0000" required></div></div>'+
     '<div class="form-row"><div><label>Endereço</label><input type="text" name="endereco"></div>'+
@@ -2885,7 +2891,7 @@ function viewEstoque(){
       '<div class="table-wrap"><table><thead><tr><th>Item</th><th>Cheio atual</th><th>Mínimo configurado</th></tr></thead><tbody>'+
       alertas.map(al=>'<tr><td>'+al.label+'</td><td style="color:var(--danger);font-weight:700;">'+al.atual+'</td><td>'+al.min+'</td></tr>').join('')+
       '</tbody></table></div></div>' : '')+
-    '<div class="card"><h2>Estoque — Gás</h2><div class="grid cols4">'+gasBoxes+'</div></div>'+
+    '<div class="card"><h2>Estoque — Gás</h2>'+ajudaHtml('estoque','O estoque desconta sozinho quando uma venda é lançada (manual ou por planilha) e some junto quando você registra uma movimentação de entrada/saída aqui embaixo. Configure o \'Estoque mínimo\' pra receber alerta antes de faltar produto.')+'<div class="grid cols4">'+gasBoxes+'</div></div>'+
     '<div class="card"><h2>Estoque — Água</h2><div class="grid cols4">'+aguaBoxes+'</div></div>'+
     '<div class="card"><h2>Estoque mínimo (alertas)</h2>'+
     '<div class="hint">Defina a partir de quantos cheios de cada item o sistema deve avisar que está acabando. Deixe 0 pra não avisar sobre aquele item.</div>'+
@@ -3074,7 +3080,7 @@ acoes+
     '<span class="badge nota" style="margin:2px 4px 2px 0;display:inline-flex;align-items:center;gap:4px;">'+f+
     '<button type="button" class="del-link" data-del-funcionario="'+f+'" style="margin-left:2px;">✕</button></span>').join('');
 
-  return '<div class="card"><h2>Checklist Diário</h2>'+
+  return '<div class="card"><h2>Checklist Diário</h2>'+ajudaHtml('checklist','Uma lista de tarefas de rotina pra marcar como feitas todo dia (abrir caixa, conferir estoque, etc). Cada dia começa com a lista zerada — o histórico de dias anteriores fica salvo pra consulta.')+
     '<div class="checklist-nav">'+
     '<button type="button" class="btn small ghost" id="btn-checklist-anterior">← dia anterior</button>'+
     '<strong>'+fmtDate(data)+(hoje?' (hoje)':'')+'</strong>'+
@@ -3099,7 +3105,7 @@ acoes+
 }
 function viewAgendamentos(){
   const hoje = todayStr();
-  return '<div class="card"><h2>Agendar entrega (sem lançar a venda ainda)</h2>'+
+  return '<div class="card"><h2>Agendar entrega (sem lançar a venda ainda)</h2>'+ajudaHtml('agendamentos','Agende aqui uma entrega futura pra um cliente já cadastrado, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante. A venda em si (pro caixa) continua sendo lançada pela planilha do fim do dia.')+
     '<div class="hint">Use isto pra reservar um horário — por exemplo, agenda hoje pra entregar amanhã. Quando a entrega acontecer de fato, registre a venda normalmente na aba Vendas (os dois ficam juntos aqui na lista do dia).</div>'+
     '<form id="form-agendamento"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-ag" name="cliente" id="ag-cliente-input" required>'+
@@ -3177,7 +3183,7 @@ function viewConfig(){
     '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
     '</details>'+
     '</div>'+
-    '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+
+    '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+ajudaHtml('importacao','Suba aqui a planilha do modelo (abas Vendas, Despesas, Clientes, Produtos) pra lançar o dia inteiro de uma vez. Se algum produto ou cliente da planilha não bater exatamente com o cadastro, o sistema pausa e pergunta se é algo já existente (com outra grafia) ou novo, numa telinha só, antes de importar de vez.')+
     '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong> e <strong>Produtos</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos, clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
     '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e repita o mesmo número na coluna <strong>Nº da Venda</strong> — assim o sistema conta como uma venda só. Se deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, numere sempre.</div>'+
     '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
@@ -4060,6 +4066,10 @@ async function gerarPdfConvenio(empresa, de, ate, vendas, anexos){
 
 /* ---------- HANDLERS ---------- */
 function attachHandlers(){
+  document.querySelectorAll('[data-ajuda-toggle]').forEach(btn=>btn.onclick=()=>{
+    const el = document.getElementById('ajuda-'+btn.dataset.ajudaToggle);
+    if(el) el.style.display = el.style.display==='none' ? 'block' : 'none';
+  });
   seletorVendaMain = wireSeletorCategoria({
     grupoId:'sel-grupo', etiquetaWrapId:'wrap-etiqueta', etiquetaId:'sel-etiqueta',
     produtoWrapId:'wrap-produto', produtoId:'sel-produto-catalogo', categoriaHiddenId:'sel-categoria',
