@@ -7565,9 +7565,9 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       return false;
     }
     let mensagem = '';
-    if(tipoAviso==='saiu') mensagem = 'Oi, '+primeiroNomeCliente+'! 🚚 Seu pedido já saiu para entrega e está a caminho. Qualquer coisa é só chamar aqui! 💨';
-    else if(tipoAviso==='chegou') mensagem = 'Chegamos aí, '+primeiroNomeCliente+'! 📍 Estamos na sua porta.';
-    else if(tipoAviso==='concluido') mensagem = 'Prontinho, '+primeiroNomeCliente+'! ✅ Sua entrega foi concluída — muito obrigado por comprar com a Tom Gás! 🙏\n\nSe puder, deixa aquela avaliação rapidinha pra gente lá no Google, ajuda muito o nosso trabalho! ⭐⭐⭐⭐⭐\n👉 '+LINK_AVALIACAO_GOOGLE+'\n\nE de quebra, segue a gente lá no Instagram! 📸\n👉 '+LINK_INSTAGRAM;
+    if(tipoAviso==='saiu') mensagem = 'Oi, '+primeiroNomeCliente+'! -> Seu pedido já saiu para entrega e está a caminho. Qualquer coisa é só chamar aqui!';
+    else if(tipoAviso==='chegou') mensagem = 'Chegamos aí, '+primeiroNomeCliente+'! Estamos na sua porta.';
+    else if(tipoAviso==='concluido') mensagem = 'Prontinho, '+primeiroNomeCliente+'! Sua entrega foi concluída — muito obrigado por comprar com a Tom Gás!\n\nSe puder, deixa aquela avaliação rapidinha pra gente lá no Google, ajuda muito o nosso trabalho! *****\n-> '+LINK_AVALIACAO_GOOGLE+'\n\nE de quebra, segue a gente lá no Instagram!\n-> '+LINK_INSTAGRAM;
     const link = linkWhatsAppComTexto(cliente.telefone, mensagem);
     if(!link){
       alert('Telefone do cliente parece inválido — não dá para gerar o link do WhatsApp.');
