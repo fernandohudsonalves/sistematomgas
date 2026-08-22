@@ -1569,10 +1569,10 @@ function enviarWhatsAppEntregador(dados){
   }
   if(dados.agendamentoId){
     const linkConf = location.origin+location.pathname+'?entrega='+dados.agendamentoId;
-    msg += '\n🔗 Confirmar entrega (marcar entregue + foto do comprovante):\n'+linkConf+'\n';
+    msg += '\n🔗 Abrir passo a passo da entrega:\n'+linkConf+'\n';
   } else if(dados.vendaGrupoId){
     const linkConf = location.origin+location.pathname+'?entregaVenda='+dados.vendaGrupoId;
-    msg += '\n🔗 Confirmar entrega (marcar entregue + foto do comprovante):\n'+linkConf+'\n';
+    msg += '\n🔗 Abrir passo a passo da entrega:\n'+linkConf+'\n';
   }
   const url = 'https://wa.me/'+numero+'?text='+encodeURIComponent(msg);
   window.open(url, '_blank');
@@ -7499,7 +7499,7 @@ function initAgenda(){
 
 /* ---------- INIT ---------- */
 async function iniciarConfirmacaoEntregaPublica(tipo, id){
-  document.body.innerHTML = '<div id="conf-entrega" style="max-width:480px;margin:30px auto;padding:20px;font-family:Arial,sans-serif;">Carregando...</div>';
+  document.body.innerHTML = '<div id="conf-entrega" style="max-width:520px;margin:0 auto;padding:18px;font-family:Arial,sans-serif;background:#fff;min-height:100vh;box-sizing:border-box;">Carregando entrega...</div>';
   const wrap = document.getElementById('conf-entrega');
   let registros, clientes, anexos, imagensStatus;
   const chaveRegistros = tipo==='venda' ? 'vendas' : 'agendamentos';
@@ -7512,11 +7512,11 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
     anexos = porChave.anexosEntrega || [];
     imagensStatus = porChave.imagensStatusEntrega || {};
   }catch(e){
-    wrap.innerHTML = '<h2>Erro ao carregar</h2><p>Verifique sua internet e tente abrir o link de novo.</p>';
+    wrap.innerHTML = '<div style="padding:22px;border-radius:16px;background:#fff3f3;border:1px solid #f3b6b6;color:#8a1c1c;"><h2 style="margin-top:0;">Não foi possível abrir a entrega</h2><p>O link chegou corretamente, mas o sistema não conseguiu carregar os dados desta entrega.</p><p style="font-size:13px;color:#666;">Verifique a internet e tente novamente. Se continuar acontecendo, o acesso público da tela de entregador precisa ser liberado no banco do sistema.</p><button onclick="location.reload()" style="width:100%;padding:14px;border:0;border-radius:10px;background:#1a73e8;color:#fff;font-weight:bold;">🔄 Tentar novamente</button></div>';
+    console.error('Erro ao carregar confirmação de entrega:', e);
     return;
   }
 
-  // Normaliza agendamento avulso e venda com entrega (qualquer tipo: retirada, a pé, moto, carro, Strada) num objeto só
   let entrega;
   if(tipo==='venda'){
     const linhas = registros.filter(v=>(v.grupoId && v.grupoId===id) || (!v.grupoId && v.id===id));
@@ -7559,122 +7559,103 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
   const LINK_AVALIACAO_GOOGLE = 'https://g.page/r/CeY546b1lNqkEBM/review';
   const LINK_INSTAGRAM = 'https://www.instagram.com/tomgasapucarana/';
 
-  async function enviarStatusWhatsApp(tipoAviso, btn, textoBotaoOriginal){
+  function enviarStatusWhatsApp(tipoAviso, btn, textoBotaoOriginal){
     if(!cliente || !cliente.telefone){
-      alert('Este cliente não tem telefone/WhatsApp cadastrado — não dá pra mandar o aviso automático (mas você pode continuar normalmente).');
+      alert('Este cliente não tem telefone/WhatsApp cadastrado — não dá para mandar o aviso.');
       return false;
     }
     let mensagem = '';
     if(tipoAviso==='saiu') mensagem = 'Oi, '+primeiroNomeCliente+'! 🚚 Seu pedido já saiu para entrega e está a caminho. Qualquer coisa é só chamar aqui! 💨';
     else if(tipoAviso==='chegou') mensagem = 'Chegamos aí, '+primeiroNomeCliente+'! 📍 Estamos na sua porta.';
     else if(tipoAviso==='concluido') mensagem = 'Prontinho, '+primeiroNomeCliente+'! ✅ Sua entrega foi concluída — muito obrigado por comprar com a Tom Gás! 🙏\n\nSe puder, deixa aquela avaliação rapidinha pra gente lá no Google, ajuda muito o nosso trabalho! ⭐⭐⭐⭐⭐\n👉 '+LINK_AVALIACAO_GOOGLE+'\n\nE de quebra, segue a gente lá no Instagram! 📸\n👉 '+LINK_INSTAGRAM;
-    if(btn){ btn.disabled = true; btn.textContent = '⏳ enviando...'; }
-    try{
-      const payload = {
-        campanhaId: 'status-entrega-'+tipoAviso,
-        clienteId: cliente.id||'',
-        nome: entrega.cliente||'',
-        telefone: cliente.telefone,
-        mensagem,
-        imagemBase64: (imagensStatus && imagensStatus[tipoAviso]) || null,
-        videoDataUrl: null,
-        linkVideo: null
-      };
-      const {data,error} = await supabaseClient.functions.invoke('enviar-whatsapp-campanha',{body:payload});
-      if(error) throw error;
-      if(data && data.ok===false) throw new Error(data.error||'Falha no envio');
-      return true;
-    }catch(e){
-      alert('Não deu pra mandar a mensagem automática pro cliente agora ('+(e.message||e)+'), mas você pode continuar normalmente.');
+    const link = linkWhatsAppComTexto(cliente.telefone, mensagem);
+    if(!link){
+      alert('Telefone do cliente parece inválido — não dá para gerar o link do WhatsApp.');
       return false;
-    }finally{
-      if(btn){ btn.disabled = false; if(textoBotaoOriginal) btn.textContent = textoBotaoOriginal; }
     }
+    window.open(link, '_blank');
+    return true;
   }
 
   function render(){
-    const jaConcluido = entrega.jaConcluido;
+    const concluida = entrega.jaConcluido;
+    const podeChegar = entrega.notifSaiu && !concluida;
+    const podeConcluir = entrega.notifSaiu && entrega.notifChegou && !concluida;
     const anexosDele = anexos.filter(a=>
       (entrega.anexoContexto.agendamentoId && a.agendamentoId===entrega.anexoContexto.agendamentoId) ||
       (entrega.anexoContexto.vendaGrupoId && a.vendaGrupoId===entrega.anexoContexto.vendaGrupoId)
     );
-    const txtSaiu = entrega.notifSaiu ? '🚚 Aviso de saída já enviado' : '🚚 Seu pedido saiu para entrega';
-    const txtChegou = entrega.notifChegou ? '📍 Aviso de chegada já enviado' : '📍 Chegamos';
-    wrap.innerHTML = '<h2>🚚 Confirmar entrega</h2>'+
-      '<div style="background:#f5f5f5;border-radius:12px;padding:16px;margin-bottom:16px;line-height:1.6;">'+
-      '<div><strong>🙍 Cliente:</strong> '+escapeHtmlCampanha(entrega.cliente||'')+'</div>'+
-      (endereco?'<div><strong>📍 Endereço:</strong> '+escapeHtmlCampanha(endereco)+'</div>':'')+
-      '<div><strong>📦 Produto:</strong> '+escapeHtmlCampanha(entrega.produtoResumo||'')+'</div>'+
-      '<div style="margin-top:6px;font-weight:bold;">'+entrega.statusPagtoTexto+'</div>'+
+    const imagem3 = imagensStatus && imagensStatus.concluido ? '<img src="'+imagensStatus.concluido+'" style="width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin-top:10px;">' : '';
+    wrap.innerHTML =
+      '<div style="text-align:center;margin-bottom:18px;">'+
+        '<div style="font-size:30px;">🚚</div>'+
+        '<h2 style="margin:4px 0;font-size:24px;">Passo a passo da entrega</h2>'+
+        '<div style="color:#666;font-size:14px;">Siga os 3 passos na ordem</div>'+
       '</div>'+
-      '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">'+
-      '<button id="btn-status-saiu" style="width:100%;padding:14px;font-size:15px;background:#1a73e8;color:#fff;border:none;border-radius:10px;'+(entrega.notifSaiu?'opacity:0.65;':'')+'">'+txtSaiu+'</button>'+
-      '<button id="btn-status-chegou" style="width:100%;padding:14px;font-size:15px;background:#f5a623;color:#fff;border:none;border-radius:10px;'+(entrega.notifChegou?'opacity:0.65;':'')+'">'+txtChegou+'</button>'+
-      (jaConcluido ? '<div style="color:#188038;font-weight:bold;padding:6px 0;">✅ Entrega já marcada como concluída.</div>' :
-        '<button id="btn-status-concluido" style="width:100%;padding:14px;font-size:16px;background:#25D366;color:#fff;border:none;border-radius:10px;">✅ Entrega concluída</button>')+
+      '<div style="background:#f7f7f7;border-radius:14px;padding:15px;margin-bottom:16px;line-height:1.65;">'+
+        '<div><strong>🙍 Cliente:</strong> '+escapeHtmlCampanha(entrega.cliente||'')+'</div>'+
+        (endereco?'<div><strong>📍 Endereço:</strong> '+escapeHtmlCampanha(endereco)+'</div>':'')+
+        '<div><strong>📦 Pedido:</strong> '+escapeHtmlCampanha(entrega.produtoResumo||'')+'</div>'+
+        '<div style="margin-top:5px;font-weight:bold;">'+entrega.statusPagtoTexto+'</div>'+
       '</div>'+
-      '<div style="margin-top:10px;"><label style="display:block;margin-bottom:6px;font-weight:bold;">📷 Tirar foto do comprovante</label>'+
-      '<input type="file" id="input-foto-comprovante" accept="image/*" capture="environment" style="width:100%;"></div>'+
-      (anexosDele.length>0 ? '<div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;">'+
-        anexosDele.map(a=>'<img src="'+a.dataUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">').join('')+
-        '</div>' : '')+
-      '<div id="msg-conf" style="margin-top:12px;font-weight:bold;color:#188038;"></div>';
+      '<div style="display:flex;flex-direction:column;gap:12px;">'+
+        '<div style="border:1px solid #dbe7f5;border-radius:14px;padding:12px;background:#f8fbff;">'+
+          '<div style="font-weight:bold;margin-bottom:8px;">1️⃣ SAÍDA PARA ENTREGA</div>'+
+          '<button id="btn-status-saiu" style="width:100%;padding:16px;font-size:16px;font-weight:bold;background:'+(entrega.notifSaiu?'#e8f5e9':'#1a73e8')+';color:'+(entrega.notifSaiu?'#188038':'#fff')+';border:none;border-radius:10px;cursor:'+(entrega.notifSaiu?'default':'pointer')+';" '+(entrega.notifSaiu?'disabled':'')+'>'+ (entrega.notifSaiu?'✅ Cliente avisado: saiu para entrega':'🚚 INICIAR TRAJETO') +'</button>'+
+          (entrega.notifSaiu?'<div style="font-size:12px;color:#188038;margin-top:7px;">Mensagem enviada ao cliente pelo WhatsApp.</div>':'')+
+        '</div>'+
+        '<div style="border:1px solid '+(podeChegar?'#f4d9a3':'#ddd')+';border-radius:14px;padding:12px;background:'+(podeChegar?'#fffaf0':'#fafafa')+';opacity:'+(entrega.notifSaiu||entrega.notifChegou?'1':'0.65')+';">'+
+          '<div style="font-weight:bold;margin-bottom:8px;">2️⃣ CHEGADA AO CLIENTE</div>'+
+          '<button id="btn-status-chegou" style="width:100%;padding:16px;font-size:16px;font-weight:bold;background:'+(entrega.notifChegou?'#e8f5e9':'#f5a623')+';color:'+(entrega.notifChegou?'#188038':'#fff')+';border:none;border-radius:10px;cursor:'+(podeChegar?'pointer':'not-allowed')+';" '+((!podeChegar||entrega.notifChegou)?'disabled':'')+'>'+ (entrega.notifChegou?'✅ Cliente avisado: chegamos':'📍 CHEGAMOS AO LOCAL') +'</button>'+
+          (entrega.notifChegou?'<div style="font-size:12px;color:#188038;margin-top:7px;">Mensagem enviada ao cliente pelo WhatsApp.</div>':'')+
+        '</div>'+
+        '<div style="border:1px solid '+(podeConcluir?'#bde5c5':'#ddd')+';border-radius:14px;padding:12px;background:'+(podeConcluir?'#f5fff7':'#fafafa')+';opacity:'+(podeConcluir||concluida?'1':'0.65')+';">'+
+          '<div style="font-weight:bold;margin-bottom:8px;">3️⃣ ENTREGA CONCLUÍDA</div>'+
+          (concluida ? '<div style="padding:14px;background:#e8f5e9;color:#188038;border-radius:10px;font-weight:bold;text-align:center;">✅ ENTREGA FINALIZADA<br><span style="font-size:12px;font-weight:normal;">Cliente recebeu a mensagem com o link de avaliação.</span></div>'+imagem3 : '<button id="btn-status-concluido" style="width:100%;padding:16px;font-size:16px;font-weight:bold;background:#25D366;color:#fff;border:none;border-radius:10px;cursor:'+(podeConcluir?'pointer':'not-allowed')+';" '+(!podeConcluir?'disabled':'')+'>✅ ENTREGUE</button>')+
+        '</div>'+
+      '</div>'+
+      (concluida ? '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;"><label style="display:block;margin-bottom:7px;font-weight:bold;">📷 Foto do comprovante da entrega</label><input type="file" id="input-foto-comprovante" accept="image/*" capture="environment" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;"></div>' : '<div style="margin-top:16px;font-size:12px;color:#777;text-align:center;">A foto do comprovante será liberada depois que a entrega for concluída.</div>')+
+      (anexosDele.length>0 ? '<div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;">'+anexosDele.map(a=>'<img src="'+a.dataUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">').join('')+'</div>' : '')+
+      '<div id="msg-conf" style="margin-top:14px;font-weight:bold;color:#188038;text-align:center;"></div>';
 
     const btnSaiu = document.getElementById('btn-status-saiu');
-    if(btnSaiu) btnSaiu.onclick = async()=>{
-      const textoOriginal = btnSaiu.textContent;
-      const ok = await enviarStatusWhatsApp('saiu', btnSaiu, textoOriginal);
-      if(ok){
-        entrega.marcarNotif('notif_saiu');
-        entrega.notifSaiu = true;
-        await entrega.salvar();
-        render();
-        document.getElementById('msg-conf').textContent = '🚚 Cliente avisado que o pedido saiu!';
-      }
+    if(btnSaiu && !entrega.notifSaiu) btnSaiu.onclick = async()=>{
+      const ok = await enviarStatusWhatsApp('saiu',btnSaiu,'🚚 INICIAR TRAJETO');
+      if(ok){ entrega.marcarNotif('notif_saiu'); entrega.notifSaiu=true; const salvou=await entrega.salvar(); if(!salvou){ alert('O aviso foi enviado, mas não foi possível salvar o passo no sistema.'); return; } render(); }
     };
     const btnChegou = document.getElementById('btn-status-chegou');
-    if(btnChegou) btnChegou.onclick = async()=>{
-      const textoOriginal = btnChegou.textContent;
-      const ok = await enviarStatusWhatsApp('chegou', btnChegou, textoOriginal);
-      if(ok){
-        entrega.marcarNotif('notif_chegou');
-        entrega.notifChegou = true;
-        await entrega.salvar();
-        render();
-        document.getElementById('msg-conf').textContent = '📍 Cliente avisado que chegamos!';
-      }
+    if(btnChegou && podeChegar) btnChegou.onclick = async()=>{
+      const ok = await enviarStatusWhatsApp('chegou',btnChegou,'📍 CHEGAMOS AO LOCAL');
+      if(ok){ entrega.marcarNotif('notif_chegou'); entrega.notifChegou=true; const salvou=await entrega.salvar(); if(!salvou){ alert('O aviso foi enviado, mas não foi possível salvar o passo no sistema.'); return; } render(); }
     };
     const btnConcluido = document.getElementById('btn-status-concluido');
-    if(btnConcluido) btnConcluido.onclick = async()=>{
-      btnConcluido.disabled = true; btnConcluido.textContent = 'Salvando...';
-      await enviarStatusWhatsApp('concluido', null);
+    if(btnConcluido && podeConcluir) btnConcluido.onclick = async()=>{
+      btnConcluido.disabled=true; btnConcluido.textContent='⏳ Finalizando...';
+      const okWhats = await enviarStatusWhatsApp('concluido',null);
+      if(!okWhats){ btnConcluido.disabled=false; btnConcluido.textContent='✅ ENTREGUE'; return; }
       entrega.marcarConcluido();
-      const ok2 = await entrega.salvar();
-      if(!ok2){ entrega.desmarcarConcluido(); alert('Erro ao salvar, tenta de novo.'); btnConcluido.disabled=false; btnConcluido.textContent='✅ Entrega concluída'; return; }
-      try{ await enviarPushServidor('Entrega concluída', (entrega.cliente||'Cliente')+' — entrega finalizada pelo entregador.'); }catch(e){ console.error('Erro ao notificar', e); }
-      entrega.jaConcluido = true;
-      render();
-      document.getElementById('msg-conf').textContent = '✅ Entrega marcada como concluída! Cliente avisado e Tom Gás notificado.';
+      const ok2=await entrega.salvar();
+      if(!ok2){ entrega.desmarcarConcluido(); alert('A mensagem foi enviada, mas não foi possível salvar a conclusão. Tente novamente.'); btnConcluido.disabled=false; btnConcluido.textContent='✅ ENTREGUE'; return; }
+      try{ await enviarPushServidor('Entrega concluída',(entrega.cliente||'Cliente')+' — entrega finalizada pelo entregador.'); }catch(e){ console.error('Erro ao notificar',e); }
+      entrega.jaConcluido=true; render();
+      const msg=document.getElementById('msg-conf'); if(msg) msg.textContent='✅ Entrega concluída! Mensagem com o link de avaliação enviada ao cliente.';
     };
-
-    const inputFoto = document.getElementById('input-foto-comprovante');
-    if(inputFoto) inputFoto.onchange = ()=>{
-      const file = inputFoto.files[0];
-      if(!file) return;
-      if(file.size > 6*1024*1024){ alert('Foto muito grande. Tenta uma foto menor.'); return; }
-      const r = new FileReader();
-      r.onload = async(ev)=>{
-        anexos.push(Object.assign({id:uid(), tipo:'foto', dataUrl:ev.target.result, cliente:entrega.cliente||'', paradaId:'', data: todayStr(), entregadorId: '', obs:'Comprovante de entrega', criadoEm:Date.now()}, entrega.anexoContexto));
-        const { error:err3 } = await supabaseClient.from('app_data').upsert({chave:'anexosEntrega', valor:anexos, atualizado_em:new Date().toISOString()},{onConflict:'chave'});
-        if(err3){ alert('Erro ao enviar a foto, tenta de novo.'); return; }
-        render();
-        document.getElementById('msg-conf').textContent = '📷 Foto de comprovante enviada!';
-      };
-      r.readAsDataURL(file);
+    const inputFoto=document.getElementById('input-foto-comprovante');
+    if(inputFoto) inputFoto.onchange=()=>{
+      const file=inputFoto.files[0]; if(!file)return;
+      if(file.size>6*1024*1024){alert('Foto muito grande. Tente uma foto menor.');return;}
+      const r=new FileReader();
+      r.onload=async(ev)=>{
+        anexos.push(Object.assign({id:uid(),tipo:'foto',dataUrl:ev.target.result,cliente:entrega.cliente||'',paradaId:'',data:todayStr(),entregadorId:'',obs:'Comprovante de entrega',criadoEm:Date.now()},entrega.anexoContexto));
+        const {error:err3}=await supabaseClient.from('app_data').upsert({chave:'anexosEntrega',valor:anexos,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
+        if(err3){alert('Erro ao salvar a foto. Tente novamente.');return;}
+        render(); const msg=document.getElementById('msg-conf'); if(msg) msg.textContent='📷 Foto de comprovante enviada!';
+      }; r.readAsDataURL(file);
     };
   }
   render();
 }
+
 async function init(){
   const paramsUrl = new URLSearchParams(location.search);
   const entregaId = paramsUrl.get('entrega');
