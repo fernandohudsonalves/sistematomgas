@@ -646,6 +646,7 @@ function localizarItemChecklist(id){
 }
 
 function fmtMoney(v){ return (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function fmtNumBR(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDate(d){ const p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function diasEntre(dataA, dataB){
@@ -1205,7 +1206,13 @@ function viewAcertos(){
   const pendentes = lista.filter(a=>a.status==='pendente');
   const ehPresencial = a=> a.pagamento==='Dinheiro';
   const linha = a=>{
-    const linhaExcel = [a.data, a.cliente||'', a.produtoResumo||'', a.pagamento||'', fmtMoney(a.valor||0)].join('\t');
+    const itens = (a.itensExcel && a.itensExcel.length) ? a.itensExcel : [{canal:'',produto:a.produtoResumo||'',quantidade:1,valorUnit:a.valor||0,notaVenda:'',tipoEntrega:'',empresa:'',frete:0,observacao:''}];
+    const linhaExcel = itens.map(it=>[
+      fmtDate(a.data), '', a.cliente||'', a.telefoneCliente||'', a.enderecoCliente||'', a.complementoCliente||'',
+      it.canal||'', it.produto||'', it.quantidade||1, fmtNumBR(it.valorUnit),
+      a.pagamento||'', it.notaVenda||'', it.tipoEntrega||'', it.empresa||'',
+      it.frete ? fmtNumBR(it.frete) : '', it.observacao||''
+    ].join('\t')).join('\n');
     return '<tr>'+
       '<td>'+fmtDate(a.data)+'</td>'+
       '<td>'+escapeHtmlCampanha(a.cliente||'')+'</td>'+
@@ -7641,6 +7648,7 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       criadoEm: primeira.criadoEm||null, dinheiroRecebido: !!primeira.dinheiro_recebido, atendimentoOk: primeira.atendimento_ok,
       entregadorId: primeira.entregadorId||'',
       vendaJaLancada: true,
+      itensExcel: linhas.map((l,i)=>({canal:l.canal||'', produto:l.produto||l.categoria||'', quantidade:l.quantidade||1, valorUnit:Number(l.valor_unit)||0, notaVenda:l.nota||'', tipoEntrega:l.tipo_entrega||'', empresa:l.empresa||'', frete: i===0?(Number(l.frete)||0):0, observacao:l.obs||''})),
       marcarNotif(campo){ linhas.forEach(l=>l[campo]=true); },
       marcarConcluido(){ linhas.forEach(l=>l.entrega_status='entregue'); },
       desmarcarConcluido(){ linhas.forEach(l=>l.entrega_status='pendente'); },
@@ -7663,6 +7671,7 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       criadoEm: ag.criadoEm||null, dinheiroRecebido: !!ag.dinheiro_recebido, atendimentoOk: ag.atendimento_ok,
       entregadorId: ag.entregadorId||'',
       vendaJaLancada: false,
+      itensExcel: [{canal:'', produto:ag.produto||ag.produto_nota||'', quantidade:ag.quantidade||1, valorUnit: ag.quantidade ? (Number(ag.valor)||0)/ag.quantidade : (Number(ag.valor)||0), notaVenda:'', tipoEntrega:ag.tipo_entrega||'', empresa:ag.empresa||'', frete:Number(ag.frete)||0, observacao:''}],
       marcarNotif(campo){ ag[campo]=true; },
       marcarConcluido(){ ag.status='concluido'; },
       desmarcarConcluido(){ ag.status='pendente'; },
@@ -7676,6 +7685,9 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
   const cliente = clientes.find(c=>c.nome===entrega.cliente);
   const endereco = cliente ? ((cliente.endereco||'')+(cliente.complemento?(' - '+cliente.complemento):'')) : '';
   const primeiroNomeCliente = (entrega.cliente||'').split(' ')[0] || 'cliente';
+  entrega.telefoneCliente = cliente ? (cliente.telefone||'') : '';
+  entrega.enderecoCliente = cliente ? (cliente.endereco||'') : '';
+  entrega.complementoCliente = cliente ? (cliente.complemento||'') : '';
   {
     const acertoExistente = acertos.find(a=>(entrega.anexoContexto.agendamentoId && a.agendamentoId===entrega.anexoContexto.agendamentoId) || (entrega.anexoContexto.vendaGrupoId && a.vendaGrupoId===entrega.anexoContexto.vendaGrupoId));
     entrega.acertoConfirmado = !!(acertoExistente && acertoExistente.status==='confirmado');
@@ -7740,13 +7752,16 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
     const entregadorObj = (entregadoresLista||[]).find(e=>e.id===entrega.entregadorId);
     if(!a){
       a = {id:uid(), data:todayStr(), criadoEm:Date.now(), status:'pendente', confirmadoEm:null,
-        cliente:entrega.cliente||'', produtoResumo:entrega.produtoResumo||'', pagamento:entrega.pagamento||'',
-        valor:entrega.valorTotal||0, entregadorId:entrega.entregadorId||'', entregadorNome:entregadorObj?entregadorObj.nome:'',
+        cliente:entrega.cliente||'', telefoneCliente:entrega.telefoneCliente||'', enderecoCliente:entrega.enderecoCliente||'', complementoCliente:entrega.complementoCliente||'',
+        produtoResumo:entrega.produtoResumo||'', pagamento:entrega.pagamento||'',
+        valor:entrega.valorTotal||0, itensExcel:entrega.itensExcel||[],
+        entregadorId:entrega.entregadorId||'', entregadorNome:entregadorObj?entregadorObj.nome:'',
         entregadorConfirmouRecebimento:!!entrega.dinheiroRecebido,
         agendamentoId:entrega.anexoContexto.agendamentoId||null, vendaGrupoId:entrega.anexoContexto.vendaGrupoId||null};
       acertos.push(a);
     } else {
       a.valor = entrega.valorTotal||0; a.pagamento = entrega.pagamento||''; a.entregadorConfirmouRecebimento = !!entrega.dinheiroRecebido;
+      a.itensExcel = entrega.itensExcel||[]; a.telefoneCliente = entrega.telefoneCliente||''; a.enderecoCliente = entrega.enderecoCliente||''; a.complementoCliente = entrega.complementoCliente||'';
     }
     entrega.acertoConfirmado = a.status==='confirmado';
     await salvarAcertos();
