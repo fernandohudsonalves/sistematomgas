@@ -655,6 +655,7 @@ let state = {
   categoriasDespesas: CATEGORIAS_DESPESA_PADRAO.slice(),
   categoriasVeiculoExtra: [],
   logAtividades: [],
+  fechamentosCaixa: [],
   oficinasManutencao: [],
   veiculos: [
     {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
@@ -726,6 +727,7 @@ const TABS = [
   {id:'vendas', label:'Vendas'},
   {id:'despesas', label:'Despesas'},
   {id:'veiculos', label:'Veículos'},
+  {id:'caixa', label:'Fechamento de Caixa'},
   {id:'cadastros', label:'Cadastros'},
   {id:'estoque', label:'Estoque'},
   {id:'entregas', label:'Entregas', filhos:['agendamentos','rota','acertos','tempoentrega']},
@@ -1844,7 +1846,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -1907,6 +1909,7 @@ async function loadAll(){
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
   if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
+  if(!Array.isArray(state.fechamentosCaixa)) state.fechamentosCaixa = [];
   if(!Array.isArray(state.veiculos) || state.veiculos.length===0){
     state.veiculos = [
       {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
@@ -2242,6 +2245,7 @@ function renderAll(){
   if(currentTab==='vendas') main.innerHTML = viewVendas();
   if(currentTab==='despesas') main.innerHTML = viewDespesas();
   if(currentTab==='veiculos') main.innerHTML = viewVeiculos();
+  if(currentTab==='caixa') main.innerHTML = viewFechamentoCaixa();
   if(currentTab==='cadastros') main.innerHTML = viewCadastros();
   if(currentTab==='estoque') main.innerHTML = viewEstoque();
   if(currentTab==='agendamentos') main.innerHTML = viewAgendamentos();
@@ -3010,6 +3014,67 @@ function despesasTable(list){
 /* ===================== Veículos (manutenção e gastos) ===================== */
 function totalGastoVeiculo(id){ return state.despesas.filter(d=>d.veiculoId===id).reduce((s,d)=>s+d.valor,0); }
 function ultimaDespesaVeiculo(id){ const l=state.despesas.filter(d=>d.veiculoId===id).sort((a,b)=>b.data.localeCompare(a.data)); return l[0]||null; }
+/* ===================== Fechamento de caixa ===================== */
+let editFechamentoId = null;
+function resumoCaixaDoDia(data, abertura){
+  abertura = Number(abertura)||0;
+  const vendasDia = state.vendas.filter(v=>v.data===data);
+  const porFormaPagamento = {};
+  let totalVendas = 0;
+  vendasDia.forEach(v=>{
+    const p = v.pagamento || 'Outros';
+    const val = (v.valor_total||0)+(v.frete||0);
+    porFormaPagamento[p] = (porFormaPagamento[p]||0)+val;
+    if(p!=='Marcou/Fiado') totalVendas += val;
+  });
+  const despesasDia = state.despesas.filter(d=>d.data===data);
+  const totalDespesas = despesasDia.reduce((s,d)=> s + (d.formaPagamento==='parcelado' ? 0 : d.valor), 0);
+  const dinheiroVendas = porFormaPagamento['Dinheiro']||0;
+  const dinheiroEsperado = abertura + dinheiroVendas - despesasDia.filter(d=>d.formaPagamento!=='parcelado').reduce((s,d)=>s+d.valor,0);
+  return {porFormaPagamento, totalVendas, totalDespesas, dinheiroEsperado, qtdVendas: vendasDia.length};
+}
+function sugerirAberturaCaixa(data){
+  const anterior = state.fechamentosCaixa.filter(x=>x.data<data).sort((a,b)=>b.data.localeCompare(a.data))[0];
+  return anterior ? anterior.dinheiroContado : 0;
+}
+function viewFechamentoCaixa(){
+  const editando = editFechamentoId ? state.fechamentosCaixa.find(x=>x.id===editFechamentoId) : null;
+  const hoje = todayStr();
+  const dataForm = editando ? editando.data : hoje;
+  const aberturaForm = editando ? editando.abertura : sugerirAberturaCaixa(dataForm);
+  const resumo = resumoCaixaDoDia(dataForm, aberturaForm);
+  const linhasForma = Object.keys(resumo.porFormaPagamento).map(p=>
+    '<tr><td>'+p+'</td><td>'+fmtMoney(resumo.porFormaPagamento[p])+'</td></tr>'
+  ).join('') || '<tr><td colspan="2">Nenhuma venda nesse dia.</td></tr>';
+  const historico = state.fechamentosCaixa.slice().sort((a,b)=>b.data.localeCompare(a.data));
+  const linhasHist = historico.map(fc=>{
+    const dif = fc.dinheiroContado - fc.dinheiroEsperado;
+    const corDif = Math.abs(dif)<0.01 ? 'var(--text2)' : (dif<0 ? 'var(--danger)' : 'var(--green)');
+    return '<tr><td>'+fmtDate(fc.data)+'</td><td>'+fmtMoney(fc.abertura||0)+'</td><td>'+fmtMoney(fc.totalVendas)+'</td><td>'+fmtMoney(fc.totalDespesas)+'</td><td>'+fmtMoney(fc.dinheiroEsperado)+'</td><td>'+fmtMoney(fc.dinheiroContado)+'</td>'+
+      '<td style="color:'+corDif+';font-weight:700;">'+(dif>0?'+':'')+fmtMoney(dif)+'</td>'+
+      '<td class="cel-acoes"><button class="act-link" data-edit-fechamento="'+fc.id+'">✎</button><button class="del-link" data-del-fechamento="'+fc.id+'">🗑</button></td></tr>';
+  }).join('');
+  return '<div class="card"><h2>💰 Fechar caixa</h2>'+ajudaHtml('caixa','Todo dia comece informando quanto tinha na gaveta antes de vender (o troco). No fim do dia, conte o dinheiro físico e informe. O sistema calcula sozinho o esperado (abertura + vendas em dinheiro − despesas em dinheiro) e mostra se sobrou ou faltou.')+
+    '<form id="form-fechamento-caixa" data-editid="'+(editando?editando.id:'')+'">'+
+    '<div class="form-row">'+
+    '<div><label>Data</label><input type="date" name="data" value="'+dataForm+'" id="input-fechamento-data"></div>'+
+    '<div><label>Abertura do caixa hoje (troco inicial)</label><input type="text" inputmode="decimal" name="abertura" id="input-fechamento-abertura" value="'+String(aberturaForm).replace('.',',')+'"></div>'+
+    '</div>'+
+    '<div id="resumo-fechamento-caixa">'+
+    '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Forma de pagamento</th><th>Total recebido</th></tr></thead><tbody>'+linhasForma+'</tbody></table></div>'+
+    '<div class="hint" style="margin-top:8px;">Total de vendas (exceto fiado): <strong>'+fmtMoney(resumo.totalVendas)+'</strong> · Despesas pagas hoje: <strong>'+fmtMoney(resumo.totalDespesas)+'</strong></div>'+
+    '<div class="hint">💵 Dinheiro esperado no caixa (abertura + vendas em dinheiro − despesas em dinheiro): <strong>'+fmtMoney(resumo.dinheiroEsperado)+'</strong></div>'+
+    '</div>'+
+    '<label style="margin-top:10px;">Dinheiro contado no caixa (no fim do dia)</label><input type="text" inputmode="decimal" name="dinheiroContado" placeholder="0,00" value="'+(editando?String(editando.dinheiroContado).replace('.',','):'')+'" required>'+
+    '<label>Observação</label><textarea name="observacao" rows="2" placeholder="Ex: faltou troco, sobrou de gorjeta, etc">'+(editando?(editando.observacao||''):'')+'</textarea>'+
+    '<button type="submit" class="btn" style="margin-top:10px;">'+(editando?'Salvar alterações':'Fechar caixa do dia')+'</button>'+
+    (editando?' <button type="button" class="link-btn" id="btn-cancelar-fechamento">cancelar edição</button>':'')+
+    '</form></div>'+
+    '<div class="card"><h2>Histórico de fechamentos</h2>'+
+    (historico.length===0 ? '<div class="empty">Nenhum fechamento registrado ainda.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Abertura</th><th>Vendas</th><th>Despesas</th><th>Esperado</th><th>Contado</th><th>Diferença</th><th></th></tr></thead><tbody>'+linhasHist+'</tbody></table></div>')+
+    '</div>';
+}
 function viewVeiculos(){
   const cards = (state.veiculos||[]).map(v=>{
     const total = totalGastoVeiculo(v.id), ultima = ultimaDespesaVeiculo(v.id);
@@ -5186,6 +5251,52 @@ function attachHandlers(){
       editManutencaoId=null; comprovantesSelecionadosVeiculo=[];
       renderAll();
     };
+    const formCaixa = document.getElementById('form-fechamento-caixa');
+    const inputDataCaixa = document.getElementById('input-fechamento-data');
+    const inputAberturaCaixa = document.getElementById('input-fechamento-abertura');
+    const recalcularResumoCaixa = ()=>{
+      const resumo = resumoCaixaDoDia(inputDataCaixa.value, parseValorBR(inputAberturaCaixa.value));
+      const linhasForma = Object.keys(resumo.porFormaPagamento).map(p=>'<tr><td>'+p+'</td><td>'+fmtMoney(resumo.porFormaPagamento[p])+'</td></tr>').join('') || '<tr><td colspan="2">Nenhuma venda nesse dia.</td></tr>';
+      document.getElementById('resumo-fechamento-caixa').innerHTML =
+        '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Forma de pagamento</th><th>Total recebido</th></tr></thead><tbody>'+linhasForma+'</tbody></table></div>'+
+        '<div class="hint" style="margin-top:8px;">Total de vendas (exceto fiado): <strong>'+fmtMoney(resumo.totalVendas)+'</strong> · Despesas pagas hoje: <strong>'+fmtMoney(resumo.totalDespesas)+'</strong></div>'+
+        '<div class="hint">💵 Dinheiro esperado no caixa (abertura + vendas em dinheiro − despesas em dinheiro): <strong>'+fmtMoney(resumo.dinheiroEsperado)+'</strong></div>';
+    };
+    if(inputDataCaixa) inputDataCaixa.onchange = ()=>{
+      if(inputAberturaCaixa) inputAberturaCaixa.value = String(sugerirAberturaCaixa(inputDataCaixa.value)).replace('.',',');
+      recalcularResumoCaixa();
+    };
+    if(inputAberturaCaixa) inputAberturaCaixa.oninput = recalcularResumoCaixa;
+    if(formCaixa) formCaixa.onsubmit = async(e)=>{
+      e.preventDefault();
+      const f = new FormData(formCaixa);
+      const dinheiroContado = parseValorBR(f.get('dinheiroContado'));
+      const abertura = parseValorBR(f.get('abertura'));
+      if(!f.get('dinheiroContado') || isNaN(dinheiroContado)){ alert('Informe o valor contado no caixa.'); return; }
+      const data = f.get('data');
+      const resumo = resumoCaixaDoDia(data, abertura);
+      const editId = formCaixa.dataset.editid;
+      const dados = {data, abertura, totalVendas:resumo.totalVendas, totalDespesas:resumo.totalDespesas, dinheiroEsperado:resumo.dinheiroEsperado, dinheiroContado, observacao:f.get('observacao')||''};
+      if(editId){
+        const fc = state.fechamentosCaixa.find(x=>x.id===editId);
+        if(fc) Object.assign(fc, dados);
+      } else {
+        if(state.fechamentosCaixa.some(x=>x.data===data) && !confirm('Já existe um fechamento salvo para esse dia. Quer substituir?')) return;
+        state.fechamentosCaixa = state.fechamentosCaixa.filter(x=>x.data!==data);
+        state.fechamentosCaixa.push(Object.assign({id:uid(), criadoEm:Date.now()}, dados));
+      }
+      await save('fechamentosCaixa');
+      editFechamentoId = null;
+      renderAll();
+    };
+    const btnCancelarFechamento = document.getElementById('btn-cancelar-fechamento');
+    if(btnCancelarFechamento) btnCancelarFechamento.onclick = ()=>{ editFechamentoId=null; renderAll(); };
+    document.querySelectorAll('[data-edit-fechamento]').forEach(btn=>btn.onclick=()=>{ editFechamentoId = btn.dataset.editFechamento; renderAll(); });
+    document.querySelectorAll('[data-del-fechamento]').forEach(btn=>btn.onclick=async()=>{
+      if(!confirm('Excluir este fechamento de caixa?')) return;
+      state.fechamentosCaixa = state.fechamentosCaixa.filter(x=>x.id!==btn.dataset.delFechamento);
+      await save('fechamentosCaixa'); renderAll();
+    });
   };
   const attachClienteRowHandlers = ()=>{
     document.querySelectorAll('[data-edit-cliente]').forEach(btn=>btn.onclick=()=>{
