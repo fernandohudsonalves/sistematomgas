@@ -283,6 +283,21 @@ table td:last-child{min-width:180px;}
 .ws-info .ws-meta{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ws-item a.ws-whats-btn{flex-shrink:0;width:34px;height:34px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;}
 .ws-item .ws-no-phone{flex-shrink:0;font-size:10px;color:var(--text3);}
+#conferencia-overlay{position:fixed;inset:0;background:rgba(10,20,40,.45);backdrop-filter:blur(2px);z-index:9990;display:none;align-items:flex-start;justify-content:center;padding:60px 16px;}
+#conferencia-overlay.open{display:flex;}
+#conferencia-panel{background:#fff;width:100%;max-width:520px;border-radius:16px;box-shadow:0 25px 60px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;max-height:80vh;}
+.cf-head{background:linear-gradient(135deg,#b45309,#f59e0b);padding:16px 18px;display:flex;align-items:center;gap:10px;}
+.cf-head h3{margin:0;color:#fff;font-size:15px;font-weight:800;flex:1;}
+.cf-head button{background:rgba(255,255,255,.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;flex-shrink:0;}
+#cf-lista{overflow-y:auto;padding:10px 14px 14px;}
+.cf-item{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+.cf-item .cf-tipo{font-size:11px;font-weight:800;color:var(--amber);text-transform:uppercase;letter-spacing:.3px;}
+.cf-item .cf-detalhe{font-size:13px;color:var(--text);margin:4px 0 8px;}
+.cf-item .cf-valor{font-size:12px;color:var(--text2);margin-bottom:8px;}
+.cf-item .cf-acoes{display:flex;gap:8px;flex-wrap:wrap;}
+#new-ag-fab{position:fixed;right:18px;bottom:150px;z-index:500;width:56px;height:56px;border-radius:50%;background:#39FF14;border:none;box-shadow:0 6px 18px rgba(57,255,20,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:30px;font-weight:800;color:#0a2b0a;line-height:1;}
+#new-ag-fab:hover{transform:scale(1.06);}
+#new-ag-fab:active{transform:scale(.96);}
 </style>
 </head>
 <body>
@@ -399,7 +414,71 @@ function renderChecklistHoverDrawer(){
     (a.map(x=>'<div class="chk-drawer-item'+(d.marcacoes[x.id]?' done':'')+'" data-drawer-check-item="1"><span class="chk-dot">'+(d.marcacoes[x.id]?'✓':'')+'</span><span class="chk-label">'+escapeHtmlCampanha(x.text)+'</span></div>').join('')||'<div class="empty">Nenhuma tarefa hoje.</div>')+
     (a.length?'<div class="chk-drawer-hint">Toque em um item pra abrir o Checklist e marcar quem fez</div>':'');
 }
-function initConferenciaBadge(){let b=document.getElementById('conferencia-badge');if(!b){b=document.createElement('button');b.id='conferencia-badge';b.style='position:fixed;right:18px;bottom:18px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#f59e0b;color:#fff;font-weight:700;cursor:pointer';document.body.appendChild(b);b.onclick=()=>alert((state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').map(x=>'⚠ '+x.tipo+' / '+x.campo+': '+x.valor+' — '+x.detalhe).join('\n')||'Nenhuma pendência.');}const n=(state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').length;b.style.display=n?'block':'none';b.textContent='⚠ '+n+' conferência(s)';}
+function abrirPainelConferencia(){
+  let overlay = document.getElementById('conferencia-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'conferencia-overlay';
+    overlay.innerHTML = '<div id="conferencia-panel">'+
+      '<div class="cf-head"><h3>⚠ Pendências de conferência</h3><button type="button" id="cf-fechar">✕</button></div>'+
+      '<div id="cf-lista"></div>'+
+      '</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('#cf-fechar').onclick = ()=> overlay.classList.remove('open');
+    overlay.onclick = (ev)=>{ if(ev.target===overlay) overlay.classList.remove('open'); };
+  }
+  renderPainelConferenciaLista();
+  overlay.classList.add('open');
+}
+function renderPainelConferenciaLista(){
+  const el = document.getElementById('cf-lista');
+  if(!el) return;
+  const pendentes = (state.pendenciasConferencia||[]).filter(x=>x.status==='pendente');
+  if(pendentes.length===0){ el.innerHTML = '<div class="empty">Nenhuma pendência no momento. 🎉</div>'; return; }
+  el.innerHTML = pendentes.map(p=>
+    '<div class="cf-item">'+
+      '<div class="cf-tipo">'+escapeHtmlCampanha(p.tipo||'')+(p.campo?(' · '+escapeHtmlCampanha(p.campo)):'')+'</div>'+
+      '<div class="cf-detalhe">'+escapeHtmlCampanha(p.detalhe||'')+'</div>'+
+      (p.valor ? '<div class="cf-valor">Valor: '+(typeof p.valor==='number'?fmtMoney(p.valor):escapeHtmlCampanha(String(p.valor)))+'</div>' : '')+
+      '<div class="cf-acoes">'+
+        '<button type="button" class="btn small" data-cf-resolver="'+p.id+'">✓ Marcar resolvida</button>'+
+        '<button type="button" class="btn small ghost" data-cf-excluir="'+p.id+'">🗑 Excluir</button>'+
+      '</div>'+
+    '</div>'
+  ).join('');
+  el.querySelectorAll('[data-cf-resolver]').forEach(btn=>btn.onclick=async()=>{
+    const p = (state.pendenciasConferencia||[]).find(x=>x.id===btn.dataset.cfResolver);
+    if(p){ p.status='resolvida'; await save('pendenciasConferencia'); renderPainelConferenciaLista(); initConferenciaBadge(); }
+  });
+  el.querySelectorAll('[data-cf-excluir]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir esta pendencia de conferencia?')) return;
+    state.pendenciasConferencia = (state.pendenciasConferencia||[]).filter(x=>x.id!==btn.dataset.cfExcluir);
+    await save('pendenciasConferencia');
+    renderPainelConferenciaLista(); initConferenciaBadge();
+  });
+}
+function initConferenciaBadge(){let b=document.getElementById('conferencia-badge');if(!b){b=document.createElement('button');b.id='conferencia-badge';b.style='position:fixed;right:18px;bottom:18px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#f59e0b;color:#fff;font-weight:700;cursor:pointer';document.body.appendChild(b);b.onclick=abrirPainelConferencia;}const n=(state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').length;b.style.display=n?'block':'none';b.textContent='⚠ '+n+' conferência(s)';}
+function initNovoAgendamentoFab(){
+  let b = document.getElementById('new-ag-fab');
+  if(!b){
+    b = document.createElement('button');
+    b.id = 'new-ag-fab';
+    b.title = 'Novo agendamento';
+    b.textContent = '+';
+    document.body.appendChild(b);
+    b.onclick = ()=>{
+      currentTab = 'agendamentos';
+      renderAll();
+      setTimeout(()=>{
+        const form = document.getElementById('form-agendamento');
+        if(form) form.scrollIntoView({behavior:'smooth'});
+        const primeiroInput = form ? form.querySelector('input,select') : null;
+        if(primeiroInput) primeiroInput.focus();
+      },80);
+    };
+  }
+  b.style.display = (currentTab==='dashboard') ? 'flex' : 'none';
+}
 function initChecklistHoverDrawer(){
   const d=document.getElementById('checklist-hover-drawer');if(!d)return;
   d.onmouseenter=()=>d.classList.add('open');
@@ -504,7 +583,10 @@ const CATEGORIAS_OUTRAS_GRUPO_PADRAO = {'Acessórios para Gás':'gas','Acessóri
 const GRUPOS_PRODUTO = [{chave:'gas',label:'Gás'},{chave:'agua',label:'Água'},{chave:'outros',label:'Outros'}];
 function labelGrupoProduto(g){ const info = GRUPOS_PRODUTO.find(x=>x.chave===g); return info ? info.label : 'Outros'; }
 function chaveGrupoProduto(label){ const info = GRUPOS_PRODUTO.find(x=>chaveNormalizada(x.label)===chaveNormalizada(String(label||''))); return info ? info.chave : 'outros'; }
-const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Combustível','Salário','Aluguel','Manutenção','Outros'];
+const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Combustível','Salário','Aluguel','Manutenção','IPVA','Seguro do veículo','Peças / Pneus / Óleo','Outros'];
+const PALAVRAS_CHAVE_VEICULO = ['combust','manuten','ipva','seguro','pneu','oleo','peca','peça','oficina','revis','veicul','licenciamento'];
+function categoriaParaceVeiculo(cat){ const k=chaveNormalizada(cat); return PALAVRAS_CHAVE_VEICULO.some(p=>k.includes(chaveNormalizada(p))); }
+function iconeVeiculo(id){ const v=(state.veiculos||[]).find(x=>x.id===id); return v ? (v.icone+' '+v.nome) : ''; }
 
 const PESO_GAS_KG = {P5:5, P13:13, P20:20, P45:45};
 const ITENS_GAS_COMODATO = ['P5','P13','P20','P45'];
@@ -560,6 +642,12 @@ let state = {
   categoriasProdutos: CATEGORIAS_PRODUTO_PADRAO.slice(),
   categoriasProdutosGrupo: Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO),
   categoriasDespesas: CATEGORIAS_DESPESA_PADRAO.slice(),
+  veiculos: [
+    {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️'},
+    {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️'},
+    {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗'},
+    {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻'},
+  ],
   fiados: [],
   fiadoPagamentos: [],
   creditos: [],
@@ -599,6 +687,7 @@ function parseValorBR(str){
   return Number(str);
 }
 let despesaManualAberta = false;
+let veiculoSelecionado = null, editManutencaoId = null, comprovantesSelecionadosVeiculo = [];
 let backupsListaAberta = false;
 let ultimoBackupAutomaticoOk = null;
 let ultimoBackupAutomaticoQuando = null;
@@ -622,6 +711,7 @@ const TABS = [
   {id:'lancamentos', label:'Lançamentos', filhos:['vendas','despesas']},
   {id:'vendas', label:'Vendas'},
   {id:'despesas', label:'Despesas'},
+  {id:'veiculos', label:'Veículos'},
   {id:'cadastros', label:'Cadastros'},
   {id:'estoque', label:'Estoque'},
   {id:'entregas', label:'Entregas', filhos:['agendamentos','rota','acertos','tempoentrega']},
@@ -1258,6 +1348,7 @@ function viewAcertos(){
           '<button type="button" class="btn small green" data-confirmar-acerto="'+a.id+'">✅ Confirmar acerto</button>' :
           '<span class="badge pago">✅ Conferido em '+new Date(a.confirmadoEm).toLocaleString('pt-BR')+'</span> <button type="button" class="btn small ghost" data-copiar-acerto="'+a.id+'" data-linha="'+escapeHtmlCampanha(linhaExcel)+'">📋 Copiar linha</button>'
         )+
+        ' <button type="button" class="del-link" title="Excluir acerto" data-del-acerto="'+a.id+'">🗑</button>'+
       '</td></tr>';
   };
   return '<div class="card"><h2>🤝 Acertos com entregadores</h2>'+ajudaHtml('acertos','Toda vez que um entregador finaliza uma entrega recebendo pagamento na hora (dinheiro, Pix, cartão, etc — qualquer coisa que não estava paga antes), aparece aqui uma pendência de acerto. A entrega já fica marcada como concluída pro cliente, mas só entra de vez na fila do Excel depois que o financeiro conferir aqui que o valor bateu com o entregador e clicar em Confirmar acerto. Entregas já pagas antes ou fiado não geram pendência, porque não há nada pra conferir. O acerto em <strong>dinheiro</strong> é sempre presencial (o entregador precisa entregar a grana em mãos antes de confirmar); os outros meios (Pix, cartão etc.) o financeiro pode conferir à distância, olhando o extrato ou a maquininha.')+
@@ -1634,13 +1725,13 @@ function enviarWhatsAppEntregador(dados){
   const numero = (dados.entregadorId ? whatsappEntregador(dados.entregadorId) : '') || numeroPadrao;
   let msg = '🚚 Nova entrega\n';
   if(dados.entregadorId && nomeEntregador(dados.entregadorId)) msg += '🚚 Entregador: '+nomeEntregador(dados.entregadorId)+'\n';
-  msg += '🙍 Cliente: '+(dados.cliente||'—')+'\n';
+  msg += '👤 Cliente: '+(dados.cliente||'—')+'\n';
   if(dados.endereco && dados.endereco!=='—') msg += '📍 Endereço: '+dados.endereco+'\n';
   msg += '📦 Itens: '+(dados.itens||'—')+'\n';
   if(dados.total) msg += '💵 Produtos: '+fmtMoney(dados.total)+'\n';
   if(dados.frete) msg += '🚛 Frete: '+fmtMoney(dados.frete)+'\n';
   const totalCobrar = (dados.total||0)+(dados.frete||0);
-  if(dados.total || dados.frete) msg += '🔢 Total: '+fmtMoney(totalCobrar)+'\n';
+  if(dados.total || dados.frete) msg += '💲 Total: '+fmtMoney(totalCobrar)+'\n';
   msg += '⏰ Entrega: '+(dados.tipo_entrega||'—')+(dados.hora?' às '+dados.hora:'')+(dados.data?' ('+fmtDate(dados.data)+')':'')+'\n';
   if(dados.empresa) msg += '🏢 Empresa conveniada: '+dados.empresa+'\n';
   if(dados.obs) msg += '📝 Obs: '+dados.obs+'\n';
@@ -1732,7 +1823,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -1792,6 +1883,15 @@ async function loadAll(){
   if(!state.rotaConfig) state.rotaConfig = {};
   if(!state.rotaConfig.pontoPartidaId) state.rotaConfig.pontoPartidaId = state.pontosPartida[0].id;
   if(!Array.isArray(state.acertosEntrega)){ state.acertosEntrega = []; await save('acertosEntrega'); }
+  if(!Array.isArray(state.veiculos) || state.veiculos.length===0){
+    state.veiculos = [
+      {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️'},
+      {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️'},
+      {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗'},
+      {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻'},
+    ];
+    await save('veiculos');
+  }
   if(!Array.isArray(state.entregadores)) state.entregadores = [];
   if(state.entregadores.length===0){
     state.entregadores.push({id:uid(), nome:'Wellington de Oliveira', whatsapp:'5543999215981'});
@@ -2109,6 +2209,7 @@ function renderAll(){
   if(currentTab==='comunicados') main.innerHTML = viewComunicados();
   if(currentTab==='vendas') main.innerHTML = viewVendas();
   if(currentTab==='despesas') main.innerHTML = viewDespesas();
+  if(currentTab==='veiculos') main.innerHTML = viewVeiculos();
   if(currentTab==='cadastros') main.innerHTML = viewCadastros();
   if(currentTab==='estoque') main.innerHTML = viewEstoque();
   if(currentTab==='agendamentos') main.innerHTML = viewAgendamentos();
@@ -2120,6 +2221,7 @@ function renderAll(){
   if(currentTab==='relatorios') main.innerHTML = viewRelatorios();
   if(currentTab==='config') main.innerHTML = viewConfig();
   attachHandlers();
+  initNovoAgendamentoFab();
 }
 
 /* ---------- DASHBOARD ---------- */
@@ -2854,6 +2956,7 @@ function viewDespesas(){
     '<input type="text" id="nova-cat-despesa-input" placeholder="Nome da nova categoria">'+
     '<button type="button" class="btn small ghost" id="btn-add-cat-despesa">Adicionar</button></div></div>'+
     '<label>Descrição (opcional)</label><input type="text" name="descricao" placeholder="Ex: compra de vasilhames novos">'+
+    '<div id="wrap-veiculo-despesa" style="display:none;"><label>Qual veículo é essa despesa?</label><select name="veiculoId"><option value="">Não é de veículo</option>'+state.veiculos.map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></div>'+
     '<button type="submit" class="btn">Registrar despesa</button></form></details></div>'+
     '<div class="card"><h2>Despesas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('despesas','Registre aqui os gastos do dia (compras, contas, manutenção). Assim como as vendas, a maior parte pode vir automaticamente pela importação da planilha Excel.')+
     '<div id="lista-despesas-hoje-wrap">'+despesasTable(despesasHoje)+'</div></div>'+
@@ -2865,9 +2968,79 @@ function viewDespesas(){
 }
 function despesasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma despesa encontrada.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th></th></tr></thead><tbody>'+
-  list.map(d=>'<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+d.categoria+'</td><td>'+fmtMoney(d.valor)+'</td>'+
-  '<td><button class="act-link" data-edit-despesa="'+d.id+'">✎ editar</button><button class="del-link" data-del-despesa="'+d.id+'">🗑 excluir</button></td></tr>').join('')+'</tbody></table></div>';
+  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Veículo</th><th>Valor</th><th></th></tr></thead><tbody>'+
+  list.map(d=>{
+    const v = d.veiculoId ? (state.veiculos||[]).find(x=>x.id===d.veiculoId) : null;
+    return '<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+d.categoria+'</td><td>'+(v?(v.icone+' '+escapeHtmlCampanha(v.nome)):'—')+'</td><td>'+fmtMoney(d.valor)+'</td>'+
+    '<td><button class="act-link" data-edit-despesa="'+d.id+'">✎ editar</button><button class="del-link" data-del-despesa="'+d.id+'">🗑 excluir</button></td></tr>';
+  }).join('')+'</tbody></table></div>';
+}
+/* ===================== Veículos (manutenção e gastos) ===================== */
+function totalGastoVeiculo(id){ return state.despesas.filter(d=>d.veiculoId===id).reduce((s,d)=>s+d.valor,0); }
+function ultimaDespesaVeiculo(id){ const l=state.despesas.filter(d=>d.veiculoId===id).sort((a,b)=>b.data.localeCompare(a.data)); return l[0]||null; }
+function viewVeiculos(){
+  const cards = (state.veiculos||[]).map(v=>{
+    const total = totalGastoVeiculo(v.id), ultima = ultimaDespesaVeiculo(v.id);
+    return '<div class="card" style="flex:1;min-width:230px;">'+
+      '<h3 style="margin:0 0 6px;">'+v.icone+' '+escapeHtmlCampanha(v.nome)+'</h3>'+
+      '<div class="hint">Total gasto: <strong>'+fmtMoney(total)+'</strong></div>'+
+      (ultima ? '<div class="hint">Último lançamento: '+fmtDate(ultima.data)+' — '+escapeHtmlCampanha(ultima.categoria)+'</div>' : '<div class="hint">Nenhum gasto lançado ainda.</div>')+
+      '<button type="button" class="btn small" data-ver-veiculo="'+v.id+'" style="margin-top:8px;">Ver histórico / Lançar gasto</button>'+
+      '</div>';
+  }).join('');
+  let painel = '';
+  if(veiculoSelecionado){
+    const v = (state.veiculos||[]).find(x=>x.id===veiculoSelecionado);
+    if(v) painel = viewDetalheVeiculo(v);
+  }
+  return '<div class="card"><h2>🚙 Veículos</h2>'+ajudaHtml('veiculos','Registre aqui manutenção, troca de óleo, combustível, IPVA, seguro, peças etc de cada veículo, pra saber quanto cada um está custando. Escolha a categoria da despesa e vá acrescentando; use os campos de garantia e próxima troca pra não esquecer de renovar.')+
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;">'+cards+'</div></div>'+painel;
+}
+function viewDetalheVeiculo(v){
+  const editando = editManutencaoId ? state.despesas.find(d=>d.id===editManutencaoId) : null;
+  const hoje = todayStr();
+  const historico = state.despesas.filter(d=>d.veiculoId===v.id).sort((a,b)=>b.data.localeCompare(a.data)||(b.criadoEm-a.criadoEm));
+  const linhas = historico.map(d=>{
+    const comp = (d.comprovantes&&d.comprovantes.length) ? d.comprovantes.map(b=>'<a href="'+b+'" target="_blank"><img src="'+b+'" style="width:34px;height:34px;object-fit:cover;border-radius:6px;margin-right:2px;"></a>').join('') : '—';
+    return '<tr><td>'+fmtDate(d.data)+'</td><td>'+escapeHtmlCampanha(d.categoria||'')+'</td><td>'+escapeHtmlCampanha(d.oficina||'—')+'</td><td>'+escapeHtmlCampanha(d.descricao||'—')+'</td><td>'+fmtMoney(d.valor)+'</td>'+
+      '<td>'+(d.formaPagamento==='parcelado'?('Parcelado '+(d.parcelas||1)+'x'):'À vista')+'</td>'+
+      '<td>'+(d.garantiaAte?fmtDate(d.garantiaAte):'—')+'</td><td>'+(d.proximaManutencao?fmtDate(d.proximaManutencao):'—')+'</td>'+
+      '<td>'+(d.observacaoFutura?escapeHtmlCampanha(d.observacaoFutura):'—')+'</td><td>'+comp+'</td>'+
+      '<td class="cel-acoes"><button class="act-link" data-edit-manutencao="'+d.id+'">✎</button><button class="del-link" data-del-manutencao="'+d.id+'">🗑</button></td></tr>';
+  }).join('');
+  const optsCategoria = state.categoriasDespesas.map(cat=>'<option'+(editando&&editando.categoria===cat?' selected':'')+'>'+cat+'</option>').join('');
+  return '<div class="card"><h2>'+v.icone+' '+escapeHtmlCampanha(v.nome)+' — histórico</h2>'+
+    (historico.length===0 ? '<div class="empty">Nenhum gasto lançado ainda pra esse veículo.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Categoria</th><th>Oficina/Local</th><th>O que foi feito</th><th>Valor</th><th>Pagamento</th><th>Garantia até</th><th>Próxima troca</th><th>Observação futura</th><th>Comprovante</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '</div>'+
+    '<div class="card"><h2>'+(editando?'Editar gasto':'Novo gasto')+' — '+v.icone+' '+escapeHtmlCampanha(v.nome)+'</h2>'+
+    '<form id="form-manutencao" data-veiculo="'+v.id+'" data-editid="'+(editando?editando.id:'')+'">'+
+    '<div class="form-row">'+
+    '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+(editando?editando.data:hoje)+'" required></div>'+
+    '<div><label>Categoria <span class="req">*</span></label><select name="categoria" required><option value="" disabled'+(editando?'':' selected')+'>Escolha uma categoria</option>'+optsCategoria+'</select></div>'+
+    '<div><label>Valor (R$) <span class="req">*</span></label><input type="text" inputmode="decimal" name="valor" placeholder="0,00" value="'+(editando?String(editando.valor).replace('.',','):'')+'" required></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+    '<div><label>Oficina / Local</label><input type="text" name="oficina" value="'+(editando?(editando.oficina||''):'')+'" placeholder="Ex: Auto Center do João"></div>'+
+    '<div><label>Telefone da empresa</label><input type="text" name="telefoneOficina" value="'+(editando?(editando.telefoneOficina||''):'')+'"></div>'+
+    '<div><label>WhatsApp principal da empresa</label><input type="text" name="whatsOficina" value="'+(editando?(editando.whatsOficina||''):'')+'"></div>'+
+    '</div>'+
+    '<label>O que foi feito / consertado</label><input type="text" name="descricao" value="'+(editando?(editando.descricao||''):'')+'" placeholder="Ex: troca de óleo e filtro">'+
+    '<div class="form-row">'+
+    '<div><label>Forma de pagamento</label><select name="formaPagamento"><option value="avista"'+(editando&&editando.formaPagamento==='avista'?' selected':'')+'>À vista</option><option value="parcelado"'+(editando&&editando.formaPagamento==='parcelado'?' selected':'')+'>Parcelado / Crediário</option></select></div>'+
+    '<div><label>Nº de parcelas</label><input type="number" min="1" name="parcelas" value="'+(editando?(editando.parcelas||''):'')+'"></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+    '<div><label>Garantia até (opcional)</label><input type="date" name="garantiaAte" value="'+(editando?(editando.garantiaAte||''):'')+'"></div>'+
+    '<div><label>Próxima troca/revisão (opcional)</label><input type="date" name="proximaManutencao" value="'+(editando?(editando.proximaManutencao||''):'')+'"></div>'+
+    '</div>'+
+    '<label>Observação (coisas pra arrumar no futuro)</label><textarea name="observacaoFutura" rows="2" placeholder="Ex: barulho na suspensão, ver depois">'+(editando?(editando.observacaoFutura||''):'')+'</textarea>'+
+    '<label>Foto(s) do comprovante</label><input type="file" id="input-comprovantes-veiculo" accept="image/*,.pdf" multiple>'+
+    '<div id="preview-comprovantes-veiculo" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">'+((editando&&editando.comprovantes)?editando.comprovantes.map(b=>'<img src="'+b+'" style="width:44px;height:44px;object-fit:cover;border-radius:6px;">').join(''):'')+'</div>'+
+    '<div style="margin-top:10px;"><button type="submit" class="btn">'+(editando?'Salvar alterações':'Registrar gasto')+'</button>'+
+    ' <button type="button" class="link-btn" id="btn-fechar-veiculo">fechar</button>'+
+    (editando?' <button type="button" class="link-btn" id="btn-cancelar-manutencao">cancelar edição</button>':'')+
+    '</div></form></div>';
 }
 
 /* ---------- CLIENTES ---------- */
@@ -4586,6 +4759,12 @@ function attachHandlers(){
   const detalhesDespesaManual = document.getElementById('details-despesa-manual');
   if(detalhesDespesaManual) detalhesDespesaManual.ontoggle = ()=>{ despesaManualAberta = detalhesDespesaManual.open; };
   const fd = document.getElementById('form-despesa');
+  if(fd){
+    const selCatDesp = fd.querySelector('select[name=categoria]');
+    const wrapVeicDesp = document.getElementById('wrap-veiculo-despesa');
+    const toggleVeicDesp = ()=>{ if(wrapVeicDesp) wrapVeicDesp.style.display = categoriaParaceVeiculo(selCatDesp.value) ? 'block' : 'none'; };
+    if(selCatDesp){ selCatDesp.onchange = toggleVeicDesp; toggleVeicDesp(); }
+  }
   if(fd) fd.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(fd);
@@ -4594,12 +4773,13 @@ function attachHandlers(){
       alert('Digite um valor válido, por exemplo 50,00');
       return;
     }
+    const veiculoId = f.get('veiculoId') || undefined;
     if(editDespesaId){
       const d = state.despesas.find(x=>x.id===editDespesaId);
-      if(d){ d.data=f.get('data'); d.categoria=f.get('categoria'); d.valor=valorLancado; d.descricao=f.get('descricao'); }
+      if(d){ d.data=f.get('data'); d.categoria=f.get('categoria'); d.valor=valorLancado; d.descricao=f.get('descricao'); d.veiculoId=veiculoId; }
       editDespesaId = null;
     } else {
-      state.despesas.push({id:uid(), criadoEm:Date.now(), data:f.get('data'), categoria:f.get('categoria'), valor:valorLancado, descricao:f.get('descricao')});
+      state.despesas.push({id:uid(), criadoEm:Date.now(), data:f.get('data'), categoria:f.get('categoria'), valor:valorLancado, descricao:f.get('descricao'), veiculoId});
     }
     const salvouOk = await save('despesas');
     despesaManualAberta = true; // mantém o painel aberto pra não parecer que "sumiu" a tela
@@ -4852,6 +5032,59 @@ function attachHandlers(){
       const id = btn.dataset.delDespesa;
       if(confirm('Excluir esta despesa?')){ state.despesas = state.despesas.filter(x=>x.id!==id); await save('despesas'); renderAll(); }
     });
+    document.querySelectorAll('[data-ver-veiculo]').forEach(btn=>btn.onclick=()=>{
+      veiculoSelecionado = btn.dataset.verVeiculo; editManutencaoId=null; comprovantesSelecionadosVeiculo=[]; renderAll();
+    });
+    const btnFecharVeic = document.getElementById('btn-fechar-veiculo');
+    if(btnFecharVeic) btnFecharVeic.onclick = ()=>{ veiculoSelecionado=null; editManutencaoId=null; renderAll(); };
+    const btnCancelarManut = document.getElementById('btn-cancelar-manutencao');
+    if(btnCancelarManut) btnCancelarManut.onclick = ()=>{ editManutencaoId=null; comprovantesSelecionadosVeiculo=[]; renderAll(); };
+    document.querySelectorAll('[data-edit-manutencao]').forEach(btn=>btn.onclick=()=>{
+      editManutencaoId = btn.dataset.editManutencao;
+      const d = state.despesas.find(x=>x.id===editManutencaoId);
+      comprovantesSelecionadosVeiculo = (d&&d.comprovantes)?d.comprovantes.slice():[];
+      renderAll();
+    });
+    document.querySelectorAll('[data-del-manutencao]').forEach(btn=>btn.onclick=async()=>{
+      if(!confirm('Excluir este gasto do veículo?')) return;
+      state.despesas = state.despesas.filter(x=>x.id!==btn.dataset.delManutencao);
+      await save('despesas'); renderAll();
+    });
+    const inputComprovantes = document.getElementById('input-comprovantes-veiculo');
+    if(inputComprovantes) inputComprovantes.onchange = async()=>{
+      const files = Array.from(inputComprovantes.files||[]);
+      for(const file of files){ comprovantesSelecionadosVeiculo.push(await lerArquivoComoDataURL(file)); }
+      const prev = document.getElementById('preview-comprovantes-veiculo');
+      if(prev) prev.innerHTML = comprovantesSelecionadosVeiculo.map(b=>'<img src="'+b+'" style="width:44px;height:44px;object-fit:cover;border-radius:6px;">').join('');
+    };
+    const formManut = document.getElementById('form-manutencao');
+    if(formManut) formManut.onsubmit = async(e)=>{
+      e.preventDefault();
+      const f = new FormData(formManut);
+      const valor = parseValorBR(f.get('valor'));
+      if(!f.get('valor') || isNaN(valor) || valor<=0){ alert('Digite um valor válido.'); return; }
+      const veiculoId = formManut.dataset.veiculo;
+      const categoria = f.get('categoria');
+      if(!state.categoriasDespesas.includes(categoria)) state.categoriasDespesas.push(categoria);
+      const dados = {
+        data: f.get('data'), categoria, valor, descricao: f.get('descricao')||'',
+        oficina: f.get('oficina')||'', telefoneOficina: f.get('telefoneOficina')||'', whatsOficina: f.get('whatsOficina')||'',
+        formaPagamento: f.get('formaPagamento')||'avista', parcelas: f.get('parcelas')?Number(f.get('parcelas')):undefined,
+        garantiaAte: f.get('garantiaAte')||undefined, proximaManutencao: f.get('proximaManutencao')||undefined,
+        observacaoFutura: f.get('observacaoFutura')||'', comprovantes: comprovantesSelecionadosVeiculo.slice(),
+        veiculoId
+      };
+      const editId = formManut.dataset.editid;
+      if(editId){
+        const d = state.despesas.find(x=>x.id===editId);
+        if(d) Object.assign(d, dados);
+      } else {
+        state.despesas.push(Object.assign({id:uid(), criadoEm:Date.now()}, dados));
+      }
+      await save('despesas'); await save('categoriasDespesas');
+      editManutencaoId=null; comprovantesSelecionadosVeiculo=[];
+      renderAll();
+    };
   };
   const attachClienteRowHandlers = ()=>{
     document.querySelectorAll('[data-edit-cliente]').forEach(btn=>btn.onclick=()=>{
@@ -5711,6 +5944,12 @@ function attachHandlers(){
     try{ await navigator.clipboard.writeText(btn.dataset.linha||''); alert('Linha copiada! Já pode colar na planilha do Excel.'); }
     catch(e){ alert('Não foi possível copiar automaticamente. Linha:\n'+(btn.dataset.linha||'')); }
   });
+  document.querySelectorAll('[data-del-acerto]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir este acerto? Use isso só se ele ficou preso por engano (ex: agendamento excluído antes de existir esta correção).')) return;
+    state.acertosEntrega = (state.acertosEntrega||[]).filter(a=>a.id!==btn.dataset.delAcerto);
+    await save('acertosEntrega');
+    renderAll();
+  });
 
   const fMeta = document.getElementById('form-meta');
   if(fMeta) fMeta.onsubmit = async(e)=>{
@@ -5911,8 +6150,15 @@ function attachHandlers(){
     });
     document.querySelectorAll('[data-del-ag]').forEach(btn=>btn.onclick=async()=>{
       if(confirm('Excluir este agendamento?')){
-        state.agendamentos = state.agendamentos.filter(x=>x.id!==btn.dataset.delAg);
+        const idAg = btn.dataset.delAg;
+        state.agendamentos = state.agendamentos.filter(x=>x.id!==idAg);
         await save('agendamentos');
+        // limpa qualquer pendência de conferência ou acerto com entregador que tenha ficado
+        // presa apontando pra esse agendamento (senão o aviso ⚠ e a fila de Acertos nunca somem)
+        const tinhaPendencia = (state.pendenciasConferencia||[]).some(p=>p.agendamentoId===idAg);
+        const tinhaAcerto = (state.acertosEntrega||[]).some(a=>a.agendamentoId===idAg);
+        if(tinhaPendencia){ state.pendenciasConferencia = state.pendenciasConferencia.filter(p=>p.agendamentoId!==idAg); await save('pendenciasConferencia'); }
+        if(tinhaAcerto){ state.acertosEntrega = state.acertosEntrega.filter(a=>a.agendamentoId!==idAg); await save('acertosEntrega'); }
         atualizarBadgeApp();
         renderAll();
       }
@@ -7168,6 +7414,7 @@ function renderCsvDespesasMapping(){
     '<div class="mapping-row"><span>Categoria</span><select id="map-d-categoria">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Data</span><select id="map-d-data">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Descrição</span><select id="map-d-descricao">'+optsVazio+'</select></div>'+
+    '<div class="mapping-row"><span>Veículo (opcional)</span><select id="map-d-veiculo">'+optsVazio+'</select></div>'+
     '<div class="form-row" style="max-width:420px;margin-top:10px;">'+
     '<div><label>Data padrão (linhas sem data)</label><input type="date" id="input-d-data-base" value="'+todayStr()+'"></div>'+
     '<div><label>Categoria padrão (linhas sem categoria)</label><select id="input-d-categoria-base">'+opcoesComPlaceholder(state.categoriasDespesas,'Selecione')+'</select></div>'+
@@ -7184,6 +7431,7 @@ function renderCsvDespesasMapping(){
     const colCategoria = document.getElementById('map-d-categoria').value;
     const colData = document.getElementById('map-d-data').value;
     const colDescricao = document.getElementById('map-d-descricao').value;
+    const colVeiculo = document.getElementById('map-d-veiculo').value;
     const dataBase = document.getElementById('input-d-data-base').value || todayStr();
     const categoriaBase = document.getElementById('input-d-categoria-base').value || state.categoriasDespesas[0];
     if(!colValor){ alert('Selecione ao menos a coluna de valor.'); return; }
@@ -7199,7 +7447,9 @@ function renderCsvDespesasMapping(){
       if(categoriaTxt && !categoriaExistente && !state.categoriasDespesas.includes(categoria)){state.categoriasDespesas.push(categoria);adicionarPendenciaConferencia('despesa','categoria',categoriaTxt,'Categoria não encontrada exatamente no cadastro; confira.');}
       const data = colData && r[colData] ? normalizarDataImportada(r[colData], dataBase) : dataBase;
       const descricao = colDescricao ? (r[colDescricao]||'').trim() : '';
-      state.despesas.push({id:uid(), criadoEm:Date.now(), data, categoria, valor, descricao: descricao || 'Importado de planilha'});
+      const veiculoTxt = colVeiculo && r[colVeiculo] ? r[colVeiculo].trim() : '';
+      const veiculoMatch = veiculoTxt ? state.veiculos.find(vv=>chaveNormalizada(vv.nome).includes(chaveNormalizada(veiculoTxt))||chaveNormalizada(veiculoTxt).includes(chaveNormalizada(vv.nome))) : null;
+      state.despesas.push({id:uid(), criadoEm:Date.now(), data, categoria, valor, descricao: descricao || 'Importado de planilha', veiculoId: veiculoMatch?veiculoMatch.id:undefined});
       importadas++;
     });
     await save('despesas'); await save('categoriasDespesas'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia');
@@ -7393,7 +7643,7 @@ async function afterLogin(){
   aplicarFavicon();
   renderAll();
   initAgenda();
-  initChecklistHoverDrawer(); initConferenciaBadge(); setInterval(initConferenciaBadge,1500);
+  initChecklistHoverDrawer(); initConferenciaBadge(); setInterval(initConferenciaBadge,1500); initNovoAgendamentoFab();
   initWhatsFab();
   rodarBackupAutomaticoSeNecessario();
   iniciarNotificacoesRealtime();
@@ -7799,8 +8049,8 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
     await salvarAcertos();
   }
   function avisarNumeroPrincipal(){
-    const acao = entrega.vendaJaLancada ? '💰 A venda já está lançada — precisa dar baixa no recebimento.' : '🧾 Precisa lançar a venda desse pedido.';
-    const msg = '✅ Entrega concluída!\n🙍 Cliente: '+(entrega.cliente||'')+'\n📦 '+(entrega.produtoResumo||'')+'\n'+entrega.statusPagtoTexto+'\n\n'+acao;
+    const acao = entrega.vendaJaLancada ? '💰 A venda já está lançada — precisa dar baixa no recebimento.' : '📄 Precisa lançar a venda desse pedido.';
+    const msg = '✅ Entrega concluída!\n👤 Cliente: '+(entrega.cliente||'')+'\n📦 '+(entrega.produtoResumo||'')+'\n'+entrega.statusPagtoTexto+'\n\n'+acao;
     window.open('https://wa.me/'+NUMERO_PRINCIPAL+'?text='+encodeURIComponent(msg), '_blank');
   }
   async function registrarTempoEntrega(){
@@ -7833,7 +8083,7 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
         '<div style="color:#666;font-size:14px;">Siga os 3 passos na ordem</div>'+
       '</div>'+
       '<div style="background:#f7f7f7;border-radius:14px;padding:15px;margin-bottom:16px;line-height:1.65;">'+
-        '<div><strong>🙍 Cliente:</strong> '+escapeHtmlCampanha(entrega.cliente||'')+'</div>'+
+        '<div><strong>👤 Cliente:</strong> '+escapeHtmlCampanha(entrega.cliente||'')+'</div>'+
         (endereco?'<div><strong>📍 Endereço:</strong> '+escapeHtmlCampanha(endereco)+'</div>':'')+
         '<div><strong>📦 Pedido:</strong> '+escapeHtmlCampanha(entrega.produtoResumo||'')+'</div>'+
         '<div style="margin-top:5px;font-weight:bold;">'+entrega.statusPagtoTexto+'</div>'+
