@@ -438,7 +438,8 @@ function renderWsResultados(termo){
     return '<div class="ws-item">'+
       '<div class="ws-avatar">'+inicial+'</div>'+
       '<div class="ws-info"><div class="ws-nome">'+escapeHtmlCampanha(c.nome)+'</div>'+
-      '<div class="ws-meta">'+escapeHtmlCampanha(endTxt||'Sem endereço')+(c.telefone?' • '+escapeHtmlCampanha(c.telefone):'')+'</div></div>'+
+      '<div class="ws-meta">'+escapeHtmlCampanha(endTxt||'Sem endereço')+(c.telefone?' • '+escapeHtmlCampanha(c.telefone):'')+'</div>'+
+      '<div style="margin-top:3px;">'+etiquetaFrequenciaClienteHtml(c.nome,{compacta:true})+'</div></div>'+
       (link?'<a class="ws-whats-btn" href="'+link+'" target="_blank" rel="noopener" title="Abrir WhatsApp">'+iconWhatsApp('#fff',17)+'</a>':'<span class="ws-no-phone">sem tel.</span>')+
       '</div>';
   }).join('');
@@ -702,6 +703,37 @@ function linkWhatsAppComTexto(telefone, texto){
 /* ===================== Previsão de recompra ===================== */
 function historicoComprasCliente(cliente){
   return Array.from(new Set(state.vendas.filter(v=>v.cliente===cliente).map(v=>v.data))).sort();
+}
+
+/* ===================== Etiqueta de frequência do cliente (remarketing) ===================== */
+function classificarFrequenciaCliente(nome){
+  const datas = historicoComprasCliente(nome);
+  const total = datas.length;
+  if(total===0) return {cor:'vermelho', label:'Nunca comprou', dias:null, total};
+  const ultima = datas[datas.length-1];
+  const dias = diasEntre(ultima, todayStr());
+  // poucas compras no histórico (raramente compra), com um tempo já sem voltar
+  if(total<=2 && dias>45){
+    if(dias>150) return {cor:'vermelho', label:'Sumiu (compra rara)', dias, total};
+    return {cor:'roxo', label:'Compra raramente', dias, total};
+  }
+  if(dias<=30) return {cor:'verde', label:'Cliente assíduo', dias, total};
+  if(dias<=60) return {cor:'amarelo', label:'+1 mês sem comprar', dias, total};
+  if(dias<=150) return {cor:'roxo', label:'Vários meses sem comprar', dias, total};
+  return {cor:'vermelho', label:'Sumido há muito tempo', dias, total};
+}
+const CORES_FREQ_CLIENTE = {
+  verde:   {bg:'var(--green-tint)',  fg:'var(--green)'},
+  amarelo: {bg:'var(--amber-tint)',  fg:'var(--amber)'},
+  roxo:    {bg:'var(--purple-tint)', fg:'var(--purple)'},
+  vermelho:{bg:'var(--danger-tint)', fg:'var(--danger)'}
+};
+function etiquetaFrequenciaClienteHtml(nome, opts){
+  const compacta = opts && opts.compacta;
+  const info = classificarFrequenciaCliente(nome);
+  const c = CORES_FREQ_CLIENTE[info.cor];
+  const diasTxt = info.dias===null ? '' : (' · '+info.dias+'d');
+  return '<span class="badge-freq-cliente" title="'+escapeHtmlCampanha(info.total+' compra(s) no histórico')+'" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:'+(compacta?'10px':'11px')+';font-weight:700;white-space:nowrap;background:'+c.bg+';color:'+c.fg+';">'+escapeHtmlCampanha(info.label)+diasTxt+'</span>';
 }
 function previsaoRecompraClientes(){
   const nomes = Array.from(new Set(state.vendas.filter(v=>v.cliente).map(v=>v.cliente)));
@@ -2887,11 +2919,11 @@ function viewClientes(){
 
 function clientesTable(list){
   if(list.length===0) return '<div class="empty">Nenhum cliente cadastrado ainda.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone/Whats</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Anexos</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Anexos</th><th></th></tr></thead><tbody>'+
   list.map(c=>{
     const anexosCli = anexosDoContexto({cliente:c.nome});
-    const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="7" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
-    return '<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td>'+
+    const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="8" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
+    return '<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+etiquetaFrequenciaClienteHtml(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td>'+
     '<td><button type="button" class="act-link" data-ver-anexos-cliente="'+escapeHtmlCampanha(c.nome)+'">📎 '+anexosCli.length+'</button></td>'+
     '<td class="cel-acoes">'+botaoWhatsApp(c.telefone)+'<button class="act-link" data-edit-cliente="'+c.id+'">✎</button><button class="del-link" data-del-cliente="'+c.id+'">🗑</button></td></tr>'+linhaAnexos;
   }).join('')+'</tbody></table></div>';
