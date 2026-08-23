@@ -586,7 +586,14 @@ function chaveGrupoProduto(label){ const info = GRUPOS_PRODUTO.find(x=>chaveNorm
 const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Combustível','Salário','Aluguel','Manutenção','IPVA','Seguro do veículo','Peças / Pneus / Óleo','Outros'];
 const PALAVRAS_CHAVE_VEICULO = ['combust','manuten','ipva','seguro','pneu','oleo','peca','peça','oficina','revis','veicul','licenciamento'];
 function categoriaParaceVeiculo(cat){ const k=chaveNormalizada(cat); return PALAVRAS_CHAVE_VEICULO.some(p=>k.includes(chaveNormalizada(p))); }
-function iconeVeiculo(id){ const v=(state.veiculos||[]).find(x=>x.id===id); return v ? (v.icone+' '+v.nome) : ''; }
+function iconeVeiculoHtml(v, tamanho){
+  const mapa = {moto:'Entrega de moto', carro:'Entrega de carro', pickup:'Entrega de Strada'};
+  const tipoImg = mapa[v.tipo] || 'Entrega de carro';
+  const filtroVerde = v.corVerde ? 'filter:brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);' : '';
+  return '<span style="display:inline-flex;vertical-align:middle;'+filtroVerde+'">'+iconEntrega(tipoImg,'#1E3A8A',tamanho||18)+'</span>';
+}
+function iconeVeiculo(id){ const v=(state.veiculos||[]).find(x=>x.id===id); return v ? (iconeVeiculoHtml(v)+' '+v.nome) : ''; }
+function categoriasVeiculoDisponiveis(){ return state.categoriasDespesas.filter(cat=> categoriaParaceVeiculo(cat) || (state.categoriasVeiculoExtra||[]).includes(cat)); }
 
 const PESO_GAS_KG = {P5:5, P13:13, P20:20, P45:45};
 const ITENS_GAS_COMODATO = ['P5','P13','P20','P45'];
@@ -642,8 +649,9 @@ let state = {
   categoriasProdutos: CATEGORIAS_PRODUTO_PADRAO.slice(),
   categoriasProdutosGrupo: Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO),
   categoriasDespesas: CATEGORIAS_DESPESA_PADRAO.slice(),
+  categoriasVeiculoExtra: [],
   veiculos: [
-    {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️'},
+    {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corVerde:true},
     {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️'},
     {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗'},
     {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻'},
@@ -1823,7 +1831,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -1883,9 +1891,10 @@ async function loadAll(){
   if(!state.rotaConfig) state.rotaConfig = {};
   if(!state.rotaConfig.pontoPartidaId) state.rotaConfig.pontoPartidaId = state.pontosPartida[0].id;
   if(!Array.isArray(state.acertosEntrega)){ state.acertosEntrega = []; await save('acertosEntrega'); }
+  if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
   if(!Array.isArray(state.veiculos) || state.veiculos.length===0){
     state.veiculos = [
-      {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️'},
+      {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corVerde:true},
       {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️'},
       {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗'},
       {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻'},
@@ -2971,7 +2980,7 @@ function despesasTable(list){
   return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Veículo</th><th>Valor</th><th></th></tr></thead><tbody>'+
   list.map(d=>{
     const v = d.veiculoId ? (state.veiculos||[]).find(x=>x.id===d.veiculoId) : null;
-    return '<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+d.categoria+'</td><td>'+(v?(v.icone+' '+escapeHtmlCampanha(v.nome)):'—')+'</td><td>'+fmtMoney(d.valor)+'</td>'+
+    return '<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+d.categoria+'</td><td>'+(v?(iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)):'—')+'</td><td>'+fmtMoney(d.valor)+'</td>'+
     '<td><button class="act-link" data-edit-despesa="'+d.id+'">✎ editar</button><button class="del-link" data-del-despesa="'+d.id+'">🗑 excluir</button></td></tr>';
   }).join('')+'</tbody></table></div>';
 }
@@ -2982,7 +2991,7 @@ function viewVeiculos(){
   const cards = (state.veiculos||[]).map(v=>{
     const total = totalGastoVeiculo(v.id), ultima = ultimaDespesaVeiculo(v.id);
     return '<div class="card" style="flex:1;min-width:230px;">'+
-      '<h3 style="margin:0 0 6px;">'+v.icone+' '+escapeHtmlCampanha(v.nome)+'</h3>'+
+      '<h3 style="margin:0 0 6px;display:flex;align-items:center;gap:6px;">'+iconeVeiculoHtml(v,24)+' '+escapeHtmlCampanha(v.nome)+'</h3>'+
       '<div class="hint">Total gasto: <strong>'+fmtMoney(total)+'</strong></div>'+
       (ultima ? '<div class="hint">Último lançamento: '+fmtDate(ultima.data)+' — '+escapeHtmlCampanha(ultima.categoria)+'</div>' : '<div class="hint">Nenhum gasto lançado ainda.</div>')+
       '<button type="button" class="btn small" data-ver-veiculo="'+v.id+'" style="margin-top:8px;">Ver histórico / Lançar gasto</button>'+
@@ -3008,20 +3017,27 @@ function viewDetalheVeiculo(v){
       '<td>'+(d.observacaoFutura?escapeHtmlCampanha(d.observacaoFutura):'—')+'</td><td>'+comp+'</td>'+
       '<td class="cel-acoes"><button class="act-link" data-edit-manutencao="'+d.id+'">✎</button><button class="del-link" data-del-manutencao="'+d.id+'">🗑</button></td></tr>';
   }).join('');
-  const optsCategoria = state.categoriasDespesas.map(cat=>'<option'+(editando&&editando.categoria===cat?' selected':'')+'>'+cat+'</option>').join('');
-  return '<div class="card"><h2>'+v.icone+' '+escapeHtmlCampanha(v.nome)+' — histórico</h2>'+
+  const optsCategoria = categoriasVeiculoDisponiveis().map(cat=>'<option'+(editando&&editando.categoria===cat?' selected':'')+'>'+cat+'</option>').join('');
+  return '<div class="card"><h2 style="display:flex;align-items:center;gap:8px;">'+iconeVeiculoHtml(v,26)+' '+escapeHtmlCampanha(v.nome)+' — histórico</h2>'+
     (historico.length===0 ? '<div class="empty">Nenhum gasto lançado ainda pra esse veículo.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Categoria</th><th>Oficina/Local</th><th>O que foi feito</th><th>Valor</th><th>Pagamento</th><th>Garantia até</th><th>Próxima troca</th><th>Observação futura</th><th>Comprovante</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>'+
-    '<div class="card"><h2>'+(editando?'Editar gasto':'Novo gasto')+' — '+v.icone+' '+escapeHtmlCampanha(v.nome)+'</h2>'+
+    '<div class="card"><h2 style="display:flex;align-items:center;gap:8px;">'+(editando?'Editar gasto':'Novo gasto')+' — '+iconeVeiculoHtml(v,22)+' '+escapeHtmlCampanha(v.nome)+'</h2>'+
     '<form id="form-manutencao" data-veiculo="'+v.id+'" data-editid="'+(editando?editando.id:'')+'">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+(editando?editando.data:hoje)+'" required></div>'+
-    '<div><label>Categoria <span class="req">*</span></label><select name="categoria" required><option value="" disabled'+(editando?'':' selected')+'>Escolha uma categoria</option>'+optsCategoria+'</select></div>'+
+    '<div><label>Categoria <span class="req">*</span></label><select name="categoria" required><option value="" disabled'+(editando?'':' selected')+'>Escolha uma categoria</option>'+optsCategoria+'</select>'+
+    '<button type="button" class="link-btn" id="btn-nova-cat-veiculo">+ nova categoria</button></div>'+
     '<div><label>Valor (R$) <span class="req">*</span></label><input type="text" inputmode="decimal" name="valor" placeholder="0,00" value="'+(editando?String(editando.valor).replace('.',','):'')+'" required></div>'+
     '</div>'+
+    '<div id="nova-cat-veiculo-wrap" style="display:none;"><div class="inline-add">'+
+    '<input type="text" id="nova-cat-veiculo-input" placeholder="Nome da nova categoria">'+
+    '<button type="button" class="btn small ghost" id="btn-add-cat-veiculo">Adicionar</button></div></div>'+
     '<div class="form-row">'+
     '<div><label>Oficina / Local</label><input type="text" name="oficina" value="'+(editando?(editando.oficina||''):'')+'" placeholder="Ex: Auto Center do João"></div>'+
+    '<div><label>Endereço da empresa</label><input type="text" name="enderecoOficina" value="'+(editando?(editando.enderecoOficina||''):'')+'"></div>'+
+    '</div>'+
+    '<div class="form-row">'+
     '<div><label>Telefone da empresa</label><input type="text" name="telefoneOficina" value="'+(editando?(editando.telefoneOficina||''):'')+'"></div>'+
     '<div><label>WhatsApp principal da empresa</label><input type="text" name="whatsOficina" value="'+(editando?(editando.whatsOficina||''):'')+'"></div>'+
     '</div>'+
@@ -5050,6 +5066,20 @@ function attachHandlers(){
       state.despesas = state.despesas.filter(x=>x.id!==btn.dataset.delManutencao);
       await save('despesas'); renderAll();
     });
+    const btnNovaCatVeic = document.getElementById('btn-nova-cat-veiculo');
+    if(btnNovaCatVeic) btnNovaCatVeic.onclick = ()=>{
+      const w = document.getElementById('nova-cat-veiculo-wrap'); if(w) w.style.display='block';
+    };
+    const btnAddCatVeic = document.getElementById('btn-add-cat-veiculo');
+    if(btnAddCatVeic) btnAddCatVeic.onclick = async()=>{
+      const inp = document.getElementById('nova-cat-veiculo-input');
+      const val = (inp.value||'').trim();
+      if(!val) return;
+      if(!state.categoriasDespesas.includes(val)) state.categoriasDespesas.push(val);
+      if(!categoriaParaceVeiculo(val) && !state.categoriasVeiculoExtra.includes(val)) state.categoriasVeiculoExtra.push(val);
+      await save('categoriasDespesas'); await save('categoriasVeiculoExtra');
+      renderAll();
+    };
     const inputComprovantes = document.getElementById('input-comprovantes-veiculo');
     if(inputComprovantes) inputComprovantes.onchange = async()=>{
       const files = Array.from(inputComprovantes.files||[]);
@@ -5068,7 +5098,7 @@ function attachHandlers(){
       if(!state.categoriasDespesas.includes(categoria)) state.categoriasDespesas.push(categoria);
       const dados = {
         data: f.get('data'), categoria, valor, descricao: f.get('descricao')||'',
-        oficina: f.get('oficina')||'', telefoneOficina: f.get('telefoneOficina')||'', whatsOficina: f.get('whatsOficina')||'',
+        oficina: f.get('oficina')||'', enderecoOficina: f.get('enderecoOficina')||'', telefoneOficina: f.get('telefoneOficina')||'', whatsOficina: f.get('whatsOficina')||'',
         formaPagamento: f.get('formaPagamento')||'avista', parcelas: f.get('parcelas')?Number(f.get('parcelas')):undefined,
         garantiaAte: f.get('garantiaAte')||undefined, proximaManutencao: f.get('proximaManutencao')||undefined,
         observacaoFutura: f.get('observacaoFutura')||'', comprovantes: comprovantesSelecionadosVeiculo.slice(),
