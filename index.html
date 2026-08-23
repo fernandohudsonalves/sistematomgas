@@ -477,7 +477,7 @@ function initNovoAgendamentoFab(){
       },80);
     };
   }
-  b.style.display = (currentTab==='dashboard') ? 'flex' : 'none';
+  b.style.display = 'flex';
 }
 function initChecklistHoverDrawer(){
   const d=document.getElementById('checklist-hover-drawer');if(!d)return;
@@ -586,11 +586,15 @@ function chaveGrupoProduto(label){ const info = GRUPOS_PRODUTO.find(x=>chaveNorm
 const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Combustível','Salário','Aluguel','Manutenção','IPVA','Seguro do veículo','Peças / Pneus / Óleo','Outros'];
 const PALAVRAS_CHAVE_VEICULO = ['combust','manuten','ipva','seguro','pneu','oleo','peca','peça','oficina','revis','veicul','licenciamento'];
 function categoriaParaceVeiculo(cat){ const k=chaveNormalizada(cat); return PALAVRAS_CHAVE_VEICULO.some(p=>k.includes(chaveNormalizada(p))); }
+function svgMotoVeiculo(cor,t){ return '<svg width="'+t+'" height="'+t+'" viewBox="0 0 24 24" fill="none" stroke="'+cor+'" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.3" cy="17.3" r="3"/><circle cx="18.3" cy="17.3" r="3"/><path d="M5.3 17.3 H9 L11 10.8 H15.6 L18.3 17.3"/><path d="M11 10.8 L13.2 7.6 H16.4"/><path d="M9 17.3 V13.6 H12.2"/></svg>'; }
+function svgCarroVeiculo(cor,t){ return '<svg width="'+t+'" height="'+t+'" viewBox="0 0 24 24" fill="none" stroke="'+cor+'" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5 L4 10.8 Q4.5 9.3 6 9.3 H18 Q19.5 9.3 20 10.8 L21 15.5"/><path d="M2.4 15.5 H21.6 V17.6 H2.4 Z"/><circle cx="7" cy="17.6" r="1.6"/><circle cx="17" cy="17.6" r="1.6"/><path d="M7 9.3 V6.4 H17 V9.3"/></svg>'; }
+function svgPickupVeiculo(cor,t){ return '<svg width="'+t+'" height="'+t+'" viewBox="0 0 24 24" fill="none" stroke="'+cor+'" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 15.5 V11.6 Q2 10.1 3.5 10.1 H9.6 L12 6.6 H14.8 V10.1 H20.3 Q21.7 10.1 21.7 11.6 V15.5"/><path d="M1.4 15.5 H22.3 V17.6 H1.4 Z"/><circle cx="6.3" cy="17.6" r="1.6"/><circle cx="18" cy="17.6" r="1.6"/><path d="M14.8 10.1 V6.6"/></svg>'; }
 function iconeVeiculoHtml(v, tamanho){
-  const mapa = {moto:'Entrega de moto', carro:'Entrega de carro', pickup:'Entrega de Strada'};
-  const tipoImg = mapa[v.tipo] || 'Entrega de carro';
-  const filtroVerde = v.corVerde ? 'filter:brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);' : '';
-  return '<span style="display:inline-flex;vertical-align:middle;'+filtroVerde+'">'+iconEntrega(tipoImg,'#1E3A8A',tamanho||18)+'</span>';
+  const t = tamanho||18;
+  const cor = v.corIcone || (v.corVerde ? '#16a34a' : '#1E3A8A');
+  if(v.tipo==='moto') return svgMotoVeiculo(cor,t);
+  if(v.tipo==='pickup') return svgPickupVeiculo(cor,t);
+  return svgCarroVeiculo(cor,t);
 }
 function iconeVeiculo(id){ const v=(state.veiculos||[]).find(x=>x.id===id); return v ? (iconeVeiculoHtml(v)+' '+v.nome) : ''; }
 function categoriasVeiculoDisponiveis(){ return state.categoriasDespesas.filter(cat=> categoriaParaceVeiculo(cat) || (state.categoriasVeiculoExtra||[]).includes(cat)); }
@@ -650,11 +654,13 @@ let state = {
   categoriasProdutosGrupo: Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO),
   categoriasDespesas: CATEGORIAS_DESPESA_PADRAO.slice(),
   categoriasVeiculoExtra: [],
+  logAtividades: [],
+  oficinasManutencao: [],
   veiculos: [
-    {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corVerde:true},
-    {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️'},
-    {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗'},
-    {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻'},
+    {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
+    {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️', corIcone:'#2563eb'},
+    {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗', corIcone:'#374151'},
+    {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻', corIcone:'#c2410c'},
   ],
   fiados: [],
   fiadoPagamentos: [],
@@ -1754,7 +1760,14 @@ function enviarWhatsAppEntregador(dados){
   if(dados.endereco && dados.endereco!=='—'){
     const partida = pontoPartidaAtual();
     const urlMaps = montarUrlRotaGoogleMaps([{endereco:dados.endereco}], partida ? partida.endereco : '');
-    if(urlMaps) msg += '\n📍 Mapa (rota até o cliente):\n'+urlMaps+'\n';
+    if(urlMaps) msg += '\n📍 Mapa (Google Maps):\n'+urlMaps+'\n';
+    const urlWaze = 'https://waze.com/ul?q='+encodeURIComponent(dados.endereco)+'&navigate=yes';
+    msg += '\n🧭 Mapa (Waze):\n'+urlWaze+'\n';
+  }
+  const telCliente = getClienteTelefone(dados.cliente);
+  if(telCliente){
+    const linkWaCliente = linkWhatsAppComTexto(telCliente, '');
+    if(linkWaCliente) msg += '\n💬 Chamar cliente no WhatsApp (se não atender a porta):\n'+linkWaCliente+'\n';
   }
   if(dados.agendamentoId){
     const linkConf = location.origin+location.pathname+'?entrega='+dados.agendamentoId;
@@ -1831,7 +1844,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -1892,12 +1905,14 @@ async function loadAll(){
   if(!state.rotaConfig.pontoPartidaId) state.rotaConfig.pontoPartidaId = state.pontosPartida[0].id;
   if(!Array.isArray(state.acertosEntrega)){ state.acertosEntrega = []; await save('acertosEntrega'); }
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
+  if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
+  if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
   if(!Array.isArray(state.veiculos) || state.veiculos.length===0){
     state.veiculos = [
-      {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corVerde:true},
-      {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️'},
-      {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗'},
-      {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻'},
+      {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
+      {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️', corIcone:'#2563eb'},
+      {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗', corIcone:'#374151'},
+      {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻', corIcone:'#c2410c'},
     ];
     await save('veiculos');
   }
@@ -1992,8 +2007,16 @@ async function save(key){
       alert('Os dados não foram salvos no Supabase. Confira se a tabela app_data tem a política de UPDATE para usuários autenticados, além da de INSERT.');
       return false;
     }
+    if(key!=='logAtividades') registrarLogAtividade(key);
     return true;
   }catch(e){ console.error('Erro ao salvar', key, e); alert('Não foi possível salvar no Supabase: '+(e.message||e)); return false; }
+}
+const LABEL_AREA_LOG = {vendas:'Vendas',despesas:'Despesas',clientes:'Clientes',empresas:'Empresas',produtos:'Produtos',estoque:'Estoque',estoqueLancamentos:'Estoque',categoriasProdutos:'Categorias de produtos',categoriasDespesas:'Categorias de despesas',fiados:'Fiados',fiadoPagamentos:'Pagamentos de fiado',creditos:'Créditos',comodatos:'Comodatos',agendamentos:'Agendamentos',metas:'Metas',comunicados:'Comunicados',funcionarios:'Funcionários',campanhas:'Campanhas',pendenciasConferencia:'Pendências de conferência',entregadores:'Entregadores',acertosEntrega:'Acertos de entrega',veiculos:'Veículos',oficinasManutencao:'Empresas de manutenção',rotaConfig:'Configuração de rota',paradasRota:'Paradas de rota'};
+function registrarLogAtividade(key){
+  if(!Array.isArray(state.logAtividades)) state.logAtividades=[];
+  state.logAtividades.push({id:uid(), quando:Date.now(), usuario:usuarioAtualNome, area: LABEL_AREA_LOG[key]||key});
+  if(state.logAtividades.length>500) state.logAtividades = state.logAtividades.slice(-500);
+  save('logAtividades');
 }
 
 /* ---------- BACKUP ---------- */
@@ -2131,7 +2154,7 @@ function grupoDoTab(tabId){
 function renderNav(){
   const nav = document.getElementById('nav');
   const etiquetaData = document.getElementById('etiqueta-data-hoje');
-  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 22/08/2026 às 21:43';
+  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 23/08/2026 às 15:23';
   let html = '<div id="nav-principal">';
   TABS_VISIVEIS.forEach((t,i)=>{
     if(i>0) html += '<span class="nav-sep">|</span>';
@@ -3034,12 +3057,22 @@ function viewDetalheVeiculo(v){
     '<input type="text" id="nova-cat-veiculo-input" placeholder="Nome da nova categoria">'+
     '<button type="button" class="btn small ghost" id="btn-add-cat-veiculo">Adicionar</button></div></div>'+
     '<div class="form-row">'+
-    '<div><label>Oficina / Local</label><input type="text" name="oficina" value="'+(editando?(editando.oficina||''):'')+'" placeholder="Ex: Auto Center do João"></div>'+
-    '<div><label>Endereço da empresa</label><input type="text" name="enderecoOficina" value="'+(editando?(editando.enderecoOficina||''):'')+'"></div>'+
+    '<div><label>Empresa de manutenção</label><select name="oficinaId" id="sel-oficina-manutencao">'+
+      '<option value="">-- selecione --</option>'+
+      state.oficinasManutencao.map(o=>'<option value="'+o.id+'"'+(editando&&editando.oficinaId===o.id?' selected':'')+'>'+escapeHtmlCampanha(o.nome)+'</option>').join('')+
+      '</select> <button type="button" class="link-btn" id="btn-nova-oficina">+ nova empresa</button></div>'+
     '</div>'+
-    '<div class="form-row">'+
-    '<div><label>Telefone da empresa</label><input type="text" name="telefoneOficina" value="'+(editando?(editando.telefoneOficina||''):'')+'"></div>'+
-    '<div><label>WhatsApp principal da empresa</label><input type="text" name="whatsOficina" value="'+(editando?(editando.whatsOficina||''):'')+'"></div>'+
+    '<div id="info-oficina-selecionada" class="hint"></div>'+
+    '<div id="wrap-nova-oficina" style="display:none;">'+
+      '<div class="form-row">'+
+      '<div><label>Nome da empresa</label><input type="text" id="nova-oficina-nome"></div>'+
+      '<div><label>Endereço</label><input type="text" id="nova-oficina-endereco"></div>'+
+      '</div>'+
+      '<div class="form-row">'+
+      '<div><label>Telefone</label><input type="text" id="nova-oficina-telefone"></div>'+
+      '<div><label>WhatsApp principal</label><input type="text" id="nova-oficina-whats"></div>'+
+      '<div style="align-self:end;"><button type="button" class="btn small" id="btn-salvar-oficina">Salvar empresa</button></div>'+
+      '</div>'+
     '</div>'+
     '<label>O que foi feito / consertado</label><input type="text" name="descricao" value="'+(editando?(editando.descricao||''):'')+'" placeholder="Ex: troca de óleo e filtro">'+
     '<div class="form-row">'+
@@ -3531,6 +3564,16 @@ function viewConfig(){
     '<div class="hint" style="margin-top:8px;">Apaga <strong>vendas, despesas, a receber, créditos, agendamentos e histórico de estoque</strong> (volta tudo a zero). Clientes, empresas e o catálogo de produtos são mantidos.</div>'+
     '<button type="button" class="btn small" id="btn-zerar-dados" style="background:var(--danger);margin-top:10px;">Zerar todos os lançamentos</button>'+
     '</details>'+
+    '</div>'+
+    viewLogAtividades();
+}
+function viewLogAtividades(){
+  const lista = (state.logAtividades||[]).slice().reverse().slice(0,200);
+  const linhas = lista.map(l=>'<tr><td>'+new Date(l.quando).toLocaleString('pt-BR')+'</td><td>'+escapeHtmlCampanha(l.usuario||'—')+'</td><td>'+escapeHtmlCampanha(l.area||'—')+'</td></tr>').join('');
+  return '<div class="card"><h2>🗒️ Log de atividades</h2>'+
+    '<div class="hint">Mostra quem mexeu em quê e quando (últimos 200 registros).</div>'+
+    (lista.length===0 ? '<div class="empty">Nenhuma atividade registrada ainda.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Quando</th><th>Usuário</th><th>Área alterada</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
 }
 function viewRelatorios(){
@@ -5080,6 +5123,32 @@ function attachHandlers(){
       await save('categoriasDespesas'); await save('categoriasVeiculoExtra');
       renderAll();
     };
+    const selOficina = document.getElementById('sel-oficina-manutencao');
+    const infoOficina = document.getElementById('info-oficina-selecionada');
+    const atualizarInfoOficina = ()=>{
+      if(!selOficina||!infoOficina) return;
+      const o = state.oficinasManutencao.find(x=>x.id===selOficina.value);
+      infoOficina.textContent = o ? [o.endereco,o.telefone,o.whatsapp].filter(Boolean).join(' · ') : '';
+    };
+    if(selOficina){ selOficina.onchange = atualizarInfoOficina; atualizarInfoOficina(); }
+    const btnNovaOficina = document.getElementById('btn-nova-oficina');
+    if(btnNovaOficina) btnNovaOficina.onclick = ()=>{ const w=document.getElementById('wrap-nova-oficina'); if(w) w.style.display='block'; };
+    const btnSalvarOficina = document.getElementById('btn-salvar-oficina');
+    if(btnSalvarOficina) btnSalvarOficina.onclick = async()=>{
+      const nome = (document.getElementById('nova-oficina-nome').value||'').trim();
+      if(!nome){ alert('Digite o nome da empresa.'); return; }
+      const nova = {
+        id: uid(), nome,
+        endereco: document.getElementById('nova-oficina-endereco').value||'',
+        telefone: document.getElementById('nova-oficina-telefone').value||'',
+        whatsapp: document.getElementById('nova-oficina-whats').value||''
+      };
+      state.oficinasManutencao.push(nova);
+      await save('oficinasManutencao');
+      const opt = document.createElement('option'); opt.value=nova.id; opt.textContent=nova.nome;
+      selOficina.appendChild(opt); selOficina.value = nova.id; atualizarInfoOficina();
+      document.getElementById('wrap-nova-oficina').style.display='none';
+    };
     const inputComprovantes = document.getElementById('input-comprovantes-veiculo');
     if(inputComprovantes) inputComprovantes.onchange = async()=>{
       const files = Array.from(inputComprovantes.files||[]);
@@ -5096,9 +5165,11 @@ function attachHandlers(){
       const veiculoId = formManut.dataset.veiculo;
       const categoria = f.get('categoria');
       if(!state.categoriasDespesas.includes(categoria)) state.categoriasDespesas.push(categoria);
+      const oficinaSel = state.oficinasManutencao.find(o=>o.id===f.get('oficinaId'));
       const dados = {
         data: f.get('data'), categoria, valor, descricao: f.get('descricao')||'',
-        oficina: f.get('oficina')||'', enderecoOficina: f.get('enderecoOficina')||'', telefoneOficina: f.get('telefoneOficina')||'', whatsOficina: f.get('whatsOficina')||'',
+        oficinaId: oficinaSel?oficinaSel.id:undefined,
+        oficina: oficinaSel?oficinaSel.nome:'', enderecoOficina: oficinaSel?(oficinaSel.endereco||''):'', telefoneOficina: oficinaSel?(oficinaSel.telefone||''):'', whatsOficina: oficinaSel?(oficinaSel.whatsapp||''):'',
         formaPagamento: f.get('formaPagamento')||'avista', parcelas: f.get('parcelas')?Number(f.get('parcelas')):undefined,
         garantiaAte: f.get('garantiaAte')||undefined, proximaManutencao: f.get('proximaManutencao')||undefined,
         observacaoFutura: f.get('observacaoFutura')||'', comprovantes: comprovantesSelecionadosVeiculo.slice(),
@@ -7445,6 +7516,7 @@ function renderCsvDespesasMapping(){
     '<div class="mapping-row"><span>Data</span><select id="map-d-data">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Descrição</span><select id="map-d-descricao">'+optsVazio+'</select></div>'+
     '<div class="mapping-row"><span>Veículo (opcional)</span><select id="map-d-veiculo">'+optsVazio+'</select></div>'+
+    '<div class="mapping-row"><span>Empresa/Oficina (opcional)</span><select id="map-d-oficina">'+optsVazio+'</select></div>'+
     '<div class="form-row" style="max-width:420px;margin-top:10px;">'+
     '<div><label>Data padrão (linhas sem data)</label><input type="date" id="input-d-data-base" value="'+todayStr()+'"></div>'+
     '<div><label>Categoria padrão (linhas sem categoria)</label><select id="input-d-categoria-base">'+opcoesComPlaceholder(state.categoriasDespesas,'Selecione')+'</select></div>'+
@@ -7462,6 +7534,7 @@ function renderCsvDespesasMapping(){
     const colData = document.getElementById('map-d-data').value;
     const colDescricao = document.getElementById('map-d-descricao').value;
     const colVeiculo = document.getElementById('map-d-veiculo').value;
+    const colOficina = document.getElementById('map-d-oficina').value;
     const dataBase = document.getElementById('input-d-data-base').value || todayStr();
     const categoriaBase = document.getElementById('input-d-categoria-base').value || state.categoriasDespesas[0];
     if(!colValor){ alert('Selecione ao menos a coluna de valor.'); return; }
@@ -7479,7 +7552,8 @@ function renderCsvDespesasMapping(){
       const descricao = colDescricao ? (r[colDescricao]||'').trim() : '';
       const veiculoTxt = colVeiculo && r[colVeiculo] ? r[colVeiculo].trim() : '';
       const veiculoMatch = veiculoTxt ? state.veiculos.find(vv=>chaveNormalizada(vv.nome).includes(chaveNormalizada(veiculoTxt))||chaveNormalizada(veiculoTxt).includes(chaveNormalizada(vv.nome))) : null;
-      state.despesas.push({id:uid(), criadoEm:Date.now(), data, categoria, valor, descricao: descricao || 'Importado de planilha', veiculoId: veiculoMatch?veiculoMatch.id:undefined});
+      const oficinaTxt = colOficina && r[colOficina] ? r[colOficina].trim() : '';
+      state.despesas.push({id:uid(), criadoEm:Date.now(), data, categoria, valor, descricao: descricao || 'Importado de planilha', veiculoId: veiculoMatch?veiculoMatch.id:undefined, oficina: oficinaTxt||undefined});
       importadas++;
     });
     await save('despesas'); await save('categoriasDespesas'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia');
