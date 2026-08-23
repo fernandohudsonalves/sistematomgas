@@ -53,7 +53,7 @@ header{background:var(--royal);color:#fff;padding:12px 20px;display:flex;align-i
 
 nav{background:var(--royal-dark);display:block;overflow-x:auto;position:sticky;top:53px;z-index:19;}
 #nav-principal,#subnav{display:flex;}
-nav button{flex:1;min-width:88px;background:none;border:none;color:#C6D4F5;padding:12px 8px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
+nav button{flex:1;min-width:70px;background:none;border:none;color:#C6D4F5;padding:9px 5px;font-size:11.5px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
 nav button.active{color:#fff;border-bottom-color:var(--neon);background:rgba(255,255,255,.06);}
 nav button:hover{color:#fff;}
 .nav-sep{color:rgba(255,255,255,.3);display:flex;align-items:center;font-size:14px;flex-shrink:0;}
@@ -727,18 +727,18 @@ const TABS = [
   {id:'vendas', label:'Vendas'},
   {id:'despesas', label:'Despesas'},
   {id:'veiculos', label:'Veículos'},
-  {id:'caixa', label:'Fechamento de Caixa'},
+  {id:'caixa', label:'Caixa'},
   {id:'cadastros', label:'Cadastros'},
   {id:'estoque', label:'Estoque'},
   {id:'entregas', label:'Entregas', filhos:['agendamentos','rota','acertos','tempoentrega']},
   {id:'agendamentos', label:'Agendamentos'},
   {id:'rota', label:'Rotas'},
   {id:'acertos', label:'Acertos'},
-  {id:'tempoentrega', label:'Tempo de Entrega'},
+  {id:'tempoentrega', label:'Tempo Entrega'},
   {id:'campanhas', label:'Campanhas'},
-  {id:'checklist', label:'Checklist Diário'},
+  {id:'checklist', label:'Checklist'},
   {id:'relatorios', label:'Relatórios'},
-  {id:'config', label:'Configurações'},
+  {id:'config', label:'Config'},
 ];
 const TABS_VISIVEIS = TABS.filter(t=>!TABS.some(g=>g.filhos && g.filhos.includes(t.id)));
 let checklistDataAtual = null;
