@@ -661,8 +661,8 @@ let state = {
   veiculos: [
     {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
     {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️', corIcone:'#2563eb'},
-    {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗', corIcone:'#374151'},
-    {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻', corIcone:'#c2410c'},
+    {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗', corIcone:'#6b7280'},
+    {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻', corIcone:'#2563eb'},
   ],
   fiados: [],
   fiadoPagamentos: [],
@@ -704,6 +704,7 @@ function parseValorBR(str){
 }
 let despesaManualAberta = false;
 let veiculoSelecionado = null, editManutencaoId = null, comprovantesSelecionadosVeiculo = [], comissaoMesSelecionado = null;
+let simuladorReajusteDe = null, simuladorReajusteAte = null, simuladorReajusteCategoria = null, simuladorReajusteValor = null;
 let backupsListaAberta = false;
 let ultimoBackupAutomaticoOk = null;
 let ultimoBackupAutomaticoQuando = null;
@@ -1938,8 +1939,8 @@ async function loadAll(){
     state.veiculos = [
       {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
       {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️', corIcone:'#2563eb'},
-      {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗', corIcone:'#374151'},
-      {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻', corIcone:'#c2410c'},
+      {id:'v3', nome:'Celta', tipo:'carro', cor:'', icone:'🚗', corIcone:'#6b7280'},
+      {id:'v4', nome:'Strada', tipo:'pickup', cor:'', icone:'🛻', corIcone:'#2563eb'},
     ];
     await save('veiculos');
   }
@@ -3276,6 +3277,7 @@ function viewClientes(){
     '<div><label>Telefone / WhatsApp <span class="req">*</span></label><input type="text" name="telefone" placeholder="(00) 00000-0000" required></div></div>'+
     '<div class="form-row"><div><label>Endereço</label><input type="text" name="endereco"></div>'+
     '<div><label>Complemento</label><input type="text" name="complemento" placeholder="Bloco, apto, ponto de referência..."></div></div>'+
+    '<label>Indicado por (opcional)</label><input type="text" name="indicadoPor" placeholder="Nome de quem indicou esse cliente">'+
     '<label>Observações</label><input type="text" name="obs">'+
     '<label>Grupos / categorias do cliente</label><div class="cat-checklist">'+((state.categoriasClientes||[]).map(g=>'<label class="checkbox-item"><input type="checkbox" name="gruposCliente" value="'+escapeHtmlCampanha(g)+'"> '+escapeHtmlCampanha(g)+'</label>').join('')||'<span class="hint">Crie grupos abaixo.</span>')+'</div>'+
     '<button type="submit" class="btn">Adicionar cliente</button></form></div>'+
@@ -3287,11 +3289,11 @@ function viewClientes(){
 
 function clientesTable(list){
   if(list.length===0) return '<div class="empty">Nenhum cliente cadastrado ainda.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Anexos</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Indicado por</th><th>Anexos</th><th></th></tr></thead><tbody>'+
   list.map(c=>{
     const anexosCli = anexosDoContexto({cliente:c.nome});
-    const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="8" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
-    return '<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+etiquetaFrequenciaClienteHtml(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td>'+
+    const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="9" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
+    return '<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+etiquetaFrequenciaClienteHtml(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td><td>'+(c.indicadoPor?escapeHtmlCampanha(c.indicadoPor):'—')+'</td>'+
     '<td><button type="button" class="act-link" data-ver-anexos-cliente="'+escapeHtmlCampanha(c.nome)+'">📎 '+anexosCli.length+'</button></td>'+
     '<td class="cel-acoes">'+botaoWhatsApp(c.telefone)+'<button class="act-link" data-edit-cliente="'+c.id+'">✎</button><button class="del-link" data-del-cliente="'+c.id+'">🗑</button></td></tr>'+linhaAnexos;
   }).join('')+'</tbody></table></div>';
@@ -3735,6 +3737,7 @@ function viewRelatorios(){
     {id:'patrimonio', label:'Patrimônio real'},
     {id:'notas', label:'Notas para o Bling'},
     {id:'empresas', label:'Empresas conveniadas'},
+    {id:'reajuste', label:'Simulador de Reajuste'},
   ];
   let content = '';
   if(relatorioSub==='vendas') content = relatorioVendas();
@@ -3747,6 +3750,7 @@ function viewRelatorios(){
   else if(relatorioSub==='comodatos') content = relatorioComodatos();
   else if(relatorioSub==='patrimonio') content = relatorioPatrimonio();
   else if(relatorioSub==='notas') content = relatorioNotas();
+  else if(relatorioSub==='reajuste') content = relatorioSimuladorReajuste();
   else content = relatorioEmpresas();
   return '<div class="card"><div class="subtabs">'+subtabs.map(s=>'<button data-sub="'+s.id+'" class="'+(relatorioSub===s.id?'active':'')+'">'+s.label+'</button>').join('')+
     '</div><div id="relatorio-content">'+content+'</div></div>';
@@ -4217,6 +4221,45 @@ function renderEvolucaoMensalChart(){
       y1:{ beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'R$'} }
     } : { y:{beginAtZero:true} } }
   });
+}
+function extrairKgProduto(nome){
+  const s = nome||'';
+  let m = s.match(/P\s*-?\s*(\d+)/i);
+  if(m) return Number(m[1]);
+  m = s.match(/(\d+)\s*kg/i);
+  return m ? Number(m[1]) : null;
+}
+function relatorioSimuladorReajuste(){
+  const produtosComKg = state.produtos.filter(p=>extrairKgProduto(p.nome));
+  const hoje = todayStr();
+  const de = simuladorReajusteDe || monthKey(hoje)+'-01';
+  const ate = simuladorReajusteAte || hoje;
+  const catSel = simuladorReajusteCategoria || (state.produtos[0]?state.produtos[0].categoria:'');
+  const vendasPeriodo = state.vendas.filter(v=>v.data>=de && v.data<=ate && v.categoria===catSel);
+  const qtd = vendasPeriodo.reduce((s,v)=>s+(v.quantidade||0),0);
+  const receitaAtual = vendasPeriodo.reduce((s,v)=>s+(v.valor_total||0),0);
+  const aumento = Number(simuladorReajusteValor)||0;
+  const receitaProjetada = receitaAtual + qtd*aumento;
+  return '<div class="card"><h2>📈 Simulador de reajuste de preço</h2>'+
+    ajudaHtml('reajuste','Veja o impacto de aumentar o preço de um produto, com base no que já foi vendido dele no período escolhido (assume que a quantidade vendida se mantém parecida).')+
+    '<div class="form-row">'+
+    '<div><label>Categoria/produto</label><select id="sel-reajuste-categoria">'+state.categoriasProdutos.map(c=>'<option'+(c===catSel?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'+
+    '<div><label>De</label><input type="date" id="input-reajuste-de" value="'+de+'"></div>'+
+    '<div><label>Até</label><input type="date" id="input-reajuste-ate" value="'+ate+'"></div>'+
+    '<div><label>Aumento por unidade (R$)</label><input type="text" inputmode="decimal" id="input-reajuste-valor" value="'+(simuladorReajusteValor||'')+'" placeholder="Ex: 3,00"></div>'+
+    '</div>'+
+    '<div class="hint">No período, foram vendidas <strong>'+qtd+'</strong> unidade(s) de <strong>'+escapeHtmlCampanha(catSel)+'</strong>, gerando <strong>'+fmtMoney(receitaAtual)+'</strong>.</div>'+
+    '<div class="hint">Se o preço tivesse sido <strong>R$'+String(aumento).replace('.',',')+'</strong> mais caro por unidade, a receita teria sido <strong>'+fmtMoney(receitaProjetada)+'</strong> — impacto de <strong style="color:var(--green);">+'+fmtMoney(qtd*aumento)+'</strong>.</div>'+
+    '</div>'+
+    '<div class="card"><h2>⚖️ Reajuste em massa das cargas de gás (proporcional por kg)</h2>'+
+    '<div class="hint">Informe quanto vai aumentar em UM produto de referência (ex: P13). O sistema calcula o valor por kg e já reajusta todas as outras cargas de gás na mesma proporção.</div>'+
+    '<div class="form-row">'+
+    '<div><label>Produto de referência</label><select id="sel-reajuste-massa-ref">'+produtosComKg.map(p=>'<option value="'+p.id+'"'+(extrairKgProduto(p.nome)===13?' selected':'')+'>'+escapeHtmlCampanha(p.nome)+' ('+extrairKgProduto(p.nome)+'kg) — atual '+fmtMoney(p.preco)+'</option>').join('')+'</select></div>'+
+    '<div><label>Aumento nesse produto (R$)</label><input type="text" inputmode="decimal" id="input-reajuste-massa-valor" placeholder="Ex: 10,00"></div>'+
+    '<div style="align-self:end;"><button type="button" class="btn small" id="btn-calcular-reajuste-massa">Calcular</button></div>'+
+    '</div>'+
+    '<div id="preview-reajuste-massa"></div>'+
+    '</div>';
 }
 function relatorioEmpresas(){
   const deVal = relEmpresaDe || firstOfMonth();
@@ -5017,10 +5060,10 @@ function attachHandlers(){
     const f = new FormData(fc);
     if(editClienteId){
       const c = state.clientes.find(x=>x.id===editClienteId);
-      if(c){ c.nome=f.get('nome'); c.telefone=f.get('telefone')||''; c.endereco=f.get('endereco')||''; c.complemento=f.get('complemento')||''; c.obs=f.get('obs')||''; c.grupos=[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value); }
+      if(c){ c.nome=f.get('nome'); c.telefone=f.get('telefone')||''; c.endereco=f.get('endereco')||''; c.complemento=f.get('complemento')||''; c.obs=f.get('obs')||''; c.indicadoPor=f.get('indicadoPor')||''; c.grupos=[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value); }
       editClienteId = null;
     } else {
-      state.clientes.push({id:uid(), nome:f.get('nome'), telefone:f.get('telefone')||'', endereco:f.get('endereco')||'', complemento:f.get('complemento')||'', obs:f.get('obs')||'', grupos:[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value)});
+      state.clientes.push({id:uid(), nome:f.get('nome'), telefone:f.get('telefone')||'', endereco:f.get('endereco')||'', complemento:f.get('complemento')||'', obs:f.get('obs')||'', indicadoPor:f.get('indicadoPor')||'', grupos:[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value)});
     }
     await save('clientes');
     renderAll();
@@ -6262,6 +6305,46 @@ function attachHandlers(){
   });
   const inputMesComissao = document.getElementById('input-mes-comissao');
   if(inputMesComissao) inputMesComissao.onchange = ()=>{ comissaoMesSelecionado = inputMesComissao.value; renderAll(); };
+  ['sel-reajuste-categoria','input-reajuste-de','input-reajuste-ate','input-reajuste-valor'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.onchange = ()=>{
+      simuladorReajusteCategoria = document.getElementById('sel-reajuste-categoria').value;
+      simuladorReajusteDe = document.getElementById('input-reajuste-de').value;
+      simuladorReajusteAte = document.getElementById('input-reajuste-ate').value;
+      simuladorReajusteValor = parseValorBR(document.getElementById('input-reajuste-valor').value);
+      renderAll();
+    };
+  });
+  const btnCalcReajusteMassa = document.getElementById('btn-calcular-reajuste-massa');
+  if(btnCalcReajusteMassa) btnCalcReajusteMassa.onclick = ()=>{
+    const refId = document.getElementById('sel-reajuste-massa-ref').value;
+    const aumentoRef = parseValorBR(document.getElementById('input-reajuste-massa-valor').value);
+    const ref = state.produtos.find(p=>p.id===refId);
+    const prev = document.getElementById('preview-reajuste-massa');
+    if(!ref || !aumentoRef || isNaN(aumentoRef)){ prev.innerHTML = '<div class="empty">Escolha o produto de referência e o valor do aumento.</div>'; return; }
+    const kgRef = extrairKgProduto(ref.nome);
+    const valorPorKg = aumentoRef / kgRef;
+    const afetados = state.produtos.filter(p=>extrairKgProduto(p.nome));
+    const linhas = afetados.map(p=>{
+      const kg = extrairKgProduto(p.nome);
+      const aumento = valorPorKg * kg;
+      const novo = p.preco + aumento;
+      return {id:p.id, nome:p.nome, kg, precoAtual:p.preco, aumento, novo};
+    });
+    prev.innerHTML = '<div class="hint">R$ '+valorPorKg.toFixed(3).replace('.',',')+' por kg</div>'+
+      '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Kg</th><th>Preço atual</th><th>Aumento</th><th>Novo preço</th></tr></thead><tbody>'+
+      linhas.map(l=>'<tr><td>'+escapeHtmlCampanha(l.nome)+'</td><td>'+l.kg+'</td><td>'+fmtMoney(l.precoAtual)+'</td><td>+'+fmtMoney(l.aumento)+'</td><td><strong>'+fmtMoney(l.novo)+'</strong></td></tr>').join('')+
+      '</tbody></table></div>'+
+      '<button type="button" class="btn" id="btn-aplicar-reajuste-massa" style="margin-top:10px;">Aplicar esse reajuste em todas as cargas</button>';
+    document.getElementById('btn-aplicar-reajuste-massa').onclick = async()=>{
+      if(!confirm('Isso vai atualizar o preço de '+linhas.length+' produto(s) de gás. Confirmar?')) return;
+      linhas.forEach(l=>{ const p = state.produtos.find(x=>x.id===l.id); if(p) p.preco = Math.round(l.novo*100)/100; });
+      await save('produtos');
+      alert('Preços atualizados!');
+      renderAll();
+    };
+  };
   const formContaPagar = document.getElementById('form-conta-pagar');
   if(formContaPagar) formContaPagar.onsubmit = async(e)=>{
     e.preventDefault();
@@ -8532,6 +8615,7 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
         '<h2 style="margin:4px 0;font-size:24px;">Passo a passo da entrega</h2>'+
         '<div style="color:#666;font-size:14px;">Siga os 3 passos na ordem</div>'+
       '</div>'+
+      '<button type="button" id="btn-emergencia-entregador" style="width:100%;padding:12px;font-size:14px;font-weight:bold;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;cursor:pointer;margin-bottom:14px;">🚨 Problema na rota (pane, sem combustível, acidente...)</button>'+
       '<div style="background:#f7f7f7;border-radius:14px;padding:15px;margin-bottom:16px;line-height:1.65;">'+
         '<div><strong>👤 Cliente:</strong> '+escapeHtmlCampanha(entrega.cliente||'')+'</div>'+
         (endereco?'<div><strong>📍 Endereço:</strong> '+escapeHtmlCampanha(endereco)+'</div>':'')+
@@ -8589,6 +8673,12 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
     if(btnSaiu && !entrega.notifSaiu) btnSaiu.onclick = async()=>{
       const ok = await enviarStatusWhatsApp('saiu',btnSaiu,'🚚 INICIAR TRAJETO');
       if(ok){ entrega.marcarNotif('notif_saiu'); entrega.notifSaiu=true; const salvou=await entrega.salvar(); if(!salvou){ alert('O aviso foi enviado, mas não foi possível salvar o passo no sistema.'); return; } render(); }
+    };
+    const btnEmergencia = document.getElementById('btn-emergencia-entregador');
+    if(btnEmergencia) btnEmergencia.onclick = ()=>{
+      const nomeEnt = entrega.entregadorId ? nomeEntregador(entrega.entregadorId) : 'Entregador';
+      const msg = '🚨 EMERGÊNCIA NA ROTA\n👤 Entregador: '+nomeEnt+'\n📍 Cliente da entrega: '+(entrega.cliente||'—')+'\n\nPreciso de ajuda — problema com o veículo ou na rota, favor ligar.';
+      window.open('https://wa.me/'+NUMERO_PRINCIPAL+'?text='+encodeURIComponent(msg), '_blank');
     };
     const btnChegou = document.getElementById('btn-status-chegou');
     if(btnChegou && podeChegar) btnChegou.onclick = async()=>{
