@@ -656,6 +656,7 @@ let state = {
   categoriasVeiculoExtra: [],
   logAtividades: [],
   fechamentosCaixa: [],
+  contasPagar: [],
   oficinasManutencao: [],
   veiculos: [
     {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
@@ -702,7 +703,7 @@ function parseValorBR(str){
   return Number(str);
 }
 let despesaManualAberta = false;
-let veiculoSelecionado = null, editManutencaoId = null, comprovantesSelecionadosVeiculo = [];
+let veiculoSelecionado = null, editManutencaoId = null, comprovantesSelecionadosVeiculo = [], comissaoMesSelecionado = null;
 let backupsListaAberta = false;
 let ultimoBackupAutomaticoOk = null;
 let ultimoBackupAutomaticoQuando = null;
@@ -723,20 +724,21 @@ let usuarioAtualNome = 'Usuário';
 
 const TABS = [
   {id:'dashboard', label:'Painel'},
+  {id:'caixa', label:'Caixa'},
   {id:'lancamentos', label:'Lançamentos', filhos:['vendas','despesas']},
   {id:'vendas', label:'Vendas'},
   {id:'despesas', label:'Despesas'},
-  {id:'veiculos', label:'Veículos'},
-  {id:'caixa', label:'Caixa'},
-  {id:'cadastros', label:'Cadastros'},
-  {id:'estoque', label:'Estoque'},
   {id:'entregas', label:'Entregas', filhos:['agendamentos','rota','acertos','tempoentrega']},
   {id:'agendamentos', label:'Agendamentos'},
   {id:'rota', label:'Rotas'},
   {id:'acertos', label:'Acertos'},
   {id:'tempoentrega', label:'Tempo Entrega'},
-  {id:'campanhas', label:'Campanhas'},
+  {id:'veiculos', label:'Veículos'},
+  {id:'contaspagar', label:'Contas a Pagar'},
+  {id:'estoque', label:'Estoque'},
   {id:'checklist', label:'Checklist'},
+  {id:'cadastros', label:'Cadastros'},
+  {id:'campanhas', label:'Campanhas'},
   {id:'relatorios', label:'Relatórios'},
   {id:'config', label:'Config'},
 ];
@@ -1283,10 +1285,12 @@ function viewRotaDoDia(){
 
   return '<div class="card"><h2>🚚 Entregadores</h2>'+ajudaHtml('entregadores','Cadastre aqui quem faz as entregas (nome e WhatsApp). Isso permite escolher pra quem vai cada entrega, mandar a rota certinha pro WhatsApp de cada um, e filtrar a Rota do dia por entregador.')+
     '<div class="hint">Cadastre quem faz as entregas pra poder escolher pra quem vai cada rota ou entrega, e enviar direto pro WhatsApp de cada um.</div>'+
-    '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+'</span></span><button type="button" class="act-link" data-editar-whatsapp-entregador="'+e.id+'">✎ whatsapp</button><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
+    '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+' · Comissão: '+(e.tipoComissao==='percentual'?(Number(e.valorComissao||0)+'% do frete'):fmtMoney(Number(e.valorComissao||0))+' por entrega')+'</span></span><button type="button" class="act-link" data-editar-whatsapp-entregador="'+e.id+'">✎ whatsapp</button><button type="button" class="act-link" data-editar-comissao-entregador="'+e.id+'">✎ comissão</button><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
     '<form id="form-entregador" class="form-row" style="margin-top:10px;">'+
     '<div><label>Nome</label><input type="text" name="nome" placeholder="Ex: João" required></div>'+
     '<div><label>WhatsApp (só números, com DDD e 55)</label><input type="text" name="whatsapp" placeholder="Ex: 5543999999999"></div>'+
+    '<div><label>Tipo de comissão</label><select name="tipoComissao"><option value="fixo">Valor fixo por entrega</option><option value="percentual">% do frete da entrega</option></select></div>'+
+    '<div><label>Valor</label><input type="text" inputmode="decimal" name="valorComissao" placeholder="Ex: 5,00 ou 10"></div>'+
     '<div style="align-self:end;"><button type="submit" class="btn small ghost">+ Adicionar entregador</button></div>'+
     '</form></div>'+
     '<div class="card"><h2>📍 Ponto de partida</h2>'+
@@ -1371,6 +1375,25 @@ function viewAcertos(){
     (pendentes.length>0 ? '<div class="import-conferencia-alert">⚠ '+pendentes.length+' acerto(s) pendente(s) — a venda só deve ser considerada certa depois de confirmado aqui.</div>' : '')+
     (lista.length===0 ? '<div class="empty">Nenhum acerto registrado ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Entregador</th><th>Pagamento</th><th>Valor</th><th>Conferência</th><th>Entregador</th><th>Ação</th></tr></thead><tbody>'+lista.map(linha).join('')+'</tbody></table></div>')+
+    '</div>'+viewComissaoEntregadores();
+}
+function comissaoEntregadorMes(entregadorId, mk){
+  const e = entregadorPorId(entregadorId);
+  if(!e) return {qtd:0, total:0};
+  const entregas = state.vendas.filter(v=>v.entregadorId===entregadorId && monthKey(v.data)===mk);
+  const total = entregas.reduce((s,v)=> s + (e.tipoComissao==='percentual' ? (v.frete||0)*(Number(e.valorComissao||0)/100) : Number(e.valorComissao||0)), 0);
+  return {qtd: entregas.length, total};
+}
+function viewComissaoEntregadores(){
+  const mk = comissaoMesSelecionado || monthKey(todayStr());
+  const linhas = (state.entregadores||[]).map(e=>{
+    const r = comissaoEntregadorMes(e.id, mk);
+    return '<tr><td>'+escapeHtmlCampanha(e.nome)+'</td><td>'+r.qtd+'</td><td>'+(e.tipoComissao==='percentual'?(Number(e.valorComissao||0)+'% do frete'):fmtMoney(Number(e.valorComissao||0))+'/entrega')+'</td><td>'+fmtMoney(r.total)+'</td></tr>';
+  }).join('') || '<tr><td colspan="4">Nenhum entregador cadastrado.</td></tr>';
+  return '<div class="card"><h2>💵 Comissão dos entregadores</h2>'+
+    '<div class="hint">Calculada com base nas entregas já lançadas como venda no mês, usando a comissão configurada em Rotas → Entregadores.</div>'+
+    '<label style="max-width:200px;">Mês</label><input type="month" id="input-mes-comissao" value="'+mk+'">'+
+    '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Entregador</th><th>Entregas no mês</th><th>Comissão configurada</th><th>Total a pagar</th></tr></thead><tbody>'+linhas+'</tbody></table></div>'+
     '</div>';
 }
 function viewTempoEntrega(){
@@ -1846,7 +1869,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -1910,6 +1933,7 @@ async function loadAll(){
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
   if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
   if(!Array.isArray(state.fechamentosCaixa)) state.fechamentosCaixa = [];
+  if(!Array.isArray(state.contasPagar)) state.contasPagar = [];
   if(!Array.isArray(state.veiculos) || state.veiculos.length===0){
     state.veiculos = [
       {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
@@ -2246,6 +2270,7 @@ function renderAll(){
   if(currentTab==='despesas') main.innerHTML = viewDespesas();
   if(currentTab==='veiculos') main.innerHTML = viewVeiculos();
   if(currentTab==='caixa') main.innerHTML = viewFechamentoCaixa();
+  if(currentTab==='contaspagar') main.innerHTML = viewContasPagar();
   if(currentTab==='cadastros') main.innerHTML = viewCadastros();
   if(currentTab==='estoque') main.innerHTML = viewEstoque();
   if(currentTab==='agendamentos') main.innerHTML = viewAgendamentos();
@@ -3007,7 +3032,7 @@ function despesasTable(list){
   return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Veículo</th><th>Valor</th><th></th></tr></thead><tbody>'+
   list.map(d=>{
     const v = d.veiculoId ? (state.veiculos||[]).find(x=>x.id===d.veiculoId) : null;
-    return '<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+d.categoria+'</td><td>'+(v?(iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)):'—')+'</td><td>'+fmtMoney(d.valor)+'</td>'+
+    return '<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+(d.contaPagarId?' <span class="hint" title="Gerada a partir de Contas a Pagar">📑</span>':'')+'</td><td>'+d.categoria+'</td><td>'+(v?(iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)):'—')+'</td><td>'+fmtMoney(d.valor)+'</td>'+
     '<td><button class="act-link" data-edit-despesa="'+d.id+'">✎ editar</button><button class="del-link" data-del-despesa="'+d.id+'">🗑 excluir</button></td></tr>';
   }).join('')+'</tbody></table></div>';
 }
@@ -3036,6 +3061,51 @@ function resumoCaixaDoDia(data, abertura){
 function sugerirAberturaCaixa(data){
   const anterior = state.fechamentosCaixa.filter(x=>x.data<data).sort((a,b)=>b.data.localeCompare(a.data))[0];
   return anterior ? anterior.dinheiroContado : 0;
+}
+/* ===================== Contas a pagar ===================== */
+let editContaPagarId = null;
+function statusVencimento(conta){
+  if(conta.status==='pago') return {cor:'verde', label:'Pago'};
+  const dias = diasEntre(todayStr(), conta.vencimento);
+  if(dias<0) return {cor:'vermelho', label:'Vencida há '+Math.abs(dias)+'d'};
+  if(dias<=7) return {cor:'amarelo', label:dias===0?'Vence hoje':'Vence em '+dias+'d'};
+  return {cor:'azul', label:'Vence em '+dias+'d'};
+}
+const CORES_CONTA_PAGAR = Object.assign({azul:{bg:'var(--blue-tint)',fg:'#1565c0'}}, CORES_FREQ_CLIENTE);
+function etiquetaVencimentoHtml(conta){
+  const s = statusVencimento(conta);
+  const c = CORES_CONTA_PAGAR[s.cor];
+  return '<span style="display:inline-flex;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:'+c.bg+';color:'+c.fg+';">'+s.label+'</span>';
+}
+function viewContasPagar(){
+  const editando = editContaPagarId ? state.contasPagar.find(x=>x.id===editContaPagarId) : null;
+  const lista = state.contasPagar.slice().sort((a,b)=> (a.status==='pago')-(b.status==='pago') || a.vencimento.localeCompare(b.vencimento));
+  const vencidas = lista.filter(c=>c.status!=='pago' && diasEntre(todayStr(),c.vencimento)<0).length;
+  const linhas = lista.map(c=>
+    '<tr><td>'+fmtDate(c.vencimento)+'</td><td>'+escapeHtmlCampanha(c.descricao)+'</td><td>'+escapeHtmlCampanha(c.categoria||'')+'</td><td>'+fmtMoney(c.valor)+'</td><td>'+etiquetaVencimentoHtml(c)+'</td>'+
+    '<td class="cel-acoes">'+(c.status!=='pago'?'<button type="button" class="btn small green" data-pagar-conta="'+c.id+'">✅ Marcar paga</button>':'<span class="hint">pago em '+fmtDate(c.pagoEm)+'</span>')+
+    ' <button class="act-link" data-edit-conta-pagar="'+c.id+'">✎</button><button class="del-link" data-del-conta-pagar="'+c.id+'">🗑</button></td></tr>'
+  ).join('');
+  const optsCategoria = state.categoriasDespesas.map(cat=>'<option'+(editando&&editando.categoria===cat?' selected':'')+'>'+cat+'</option>').join('');
+  return '<div class="card"><h2>📑 Contas a pagar</h2>'+ajudaHtml('contaspagar','Cadastre aqui contas com data de vencimento (aluguel, salário, parcelas, fornecedores). Quando marcar como paga, o sistema já lança automaticamente como despesa do dia. Se for uma conta que se repete todo mês, marque "recorrente" e a próxima já é criada sozinha.')+
+    (vencidas>0 ? '<div class="import-conferencia-alert">⚠ '+vencidas+' conta(s) vencida(s) sem pagamento.</div>' : '')+
+    '<form id="form-conta-pagar" data-editid="'+(editando?editando.id:'')+'">'+
+    '<div class="form-row">'+
+    '<div><label>Descrição <span class="req">*</span></label><input type="text" name="descricao" value="'+(editando?escapeHtmlCampanha(editando.descricao):'')+'" placeholder="Ex: Aluguel do depósito" required></div>'+
+    '<div><label>Categoria</label><select name="categoria"><option value="">-- opcional --</option>'+optsCategoria+'</select></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+    '<div><label>Valor (R$) <span class="req">*</span></label><input type="text" inputmode="decimal" name="valor" placeholder="0,00" value="'+(editando?String(editando.valor).replace('.',','):'')+'" required></div>'+
+    '<div><label>Vencimento <span class="req">*</span></label><input type="date" name="vencimento" value="'+(editando?editando.vencimento:todayStr())+'" required></div>'+
+    '<div><label>Recorrente (repete todo mês)</label><select name="recorrente"><option value="nao">Não</option><option value="sim"'+(editando&&editando.recorrente?' selected':'')+'>Sim</option></select></div>'+
+    '</div>'+
+    '<button type="submit" class="btn" style="margin-top:8px;">'+(editando?'Salvar alterações':'Cadastrar conta')+'</button>'+
+    (editando?' <button type="button" class="link-btn" id="btn-cancelar-conta-pagar">cancelar edição</button>':'')+
+    '</form></div>'+
+    '<div class="card"><h2>Todas as contas</h2>'+
+    (lista.length===0 ? '<div class="empty">Nenhuma conta cadastrada.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '</div>';
 }
 function viewFechamentoCaixa(){
   const editando = editFechamentoId ? state.fechamentosCaixa.find(x=>x.id===editFechamentoId) : null;
@@ -3090,8 +3160,19 @@ function viewVeiculos(){
     const v = (state.veiculos||[]).find(x=>x.id===veiculoSelecionado);
     if(v) painel = viewDetalheVeiculo(v);
   }
+  const maiorGasto = Math.max(1, ...(state.veiculos||[]).map(v=>totalGastoVeiculo(v.id)));
+  const grafico = '<div class="card"><h2>📊 Comparativo de gasto entre veículos</h2>'+
+    (state.veiculos||[]).map(v=>{
+      const total = totalGastoVeiculo(v.id);
+      const pct = Math.round((total/maiorGasto)*100);
+      return '<div style="margin-bottom:10px;">'+
+        '<div style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:3px;">'+iconeVeiculoHtml(v,15)+' '+escapeHtmlCampanha(v.nome)+' <strong style="margin-left:auto;">'+fmtMoney(total)+'</strong></div>'+
+        '<div style="background:var(--border);border-radius:6px;height:10px;overflow:hidden;"><div style="width:'+pct+'%;background:'+(v.corIcone||'#1E3A8A')+';height:100%;"></div></div>'+
+        '</div>';
+    }).join('')+
+    '</div>';
   return '<div class="card"><h2>🚙 Veículos</h2>'+ajudaHtml('veiculos','Registre aqui manutenção, troca de óleo, combustível, IPVA, seguro, peças etc de cada veículo, pra saber quanto cada um está custando. Escolha a categoria da despesa e vá acrescentando; use os campos de garantia e próxima troca pra não esquecer de renovar.')+
-    '<div style="display:flex;gap:12px;flex-wrap:wrap;">'+cards+'</div></div>'+painel;
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;">'+cards+'</div></div>'+grafico+painel;
 }
 function viewDetalheVeiculo(v){
   const editando = editManutencaoId ? state.despesas.find(d=>d.id===editManutencaoId) : null;
@@ -3591,8 +3672,8 @@ function viewConfig(){
     '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
     '</details>'+
     '</div>'+
-    '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+ajudaHtml('importacao','Suba aqui a planilha do modelo (abas Vendas, Despesas, Clientes, Produtos) pra lançar o dia inteiro de uma vez. Se algum produto ou cliente da planilha não bater exatamente com o cadastro, o sistema pausa e pergunta se é algo já existente (com outra grafia) ou novo, numa telinha só, antes de importar de vez.')+
-    '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong> e <strong>Produtos</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos, clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
+    '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+ajudaHtml('importacao','Suba aqui a planilha do modelo (abas Vendas, Despesas, Clientes, Produtos, ContasPagar e FechamentoCaixa) pra lançar o dia inteiro de uma vez. Se algum produto ou cliente da planilha não bater exatamente com o cadastro, o sistema pausa e pergunta se é algo já existente (com outra grafia) ou novo, numa telinha só, antes de importar de vez.')+
+    '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong>, <strong>Produtos</strong>, <strong>ContasPagar</strong> e <strong>FechamentoCaixa</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos (incluindo gasto de veículo, se preencher a coluna Veículo); contas a pagar marcadas como "pago" já entram como despesa também; clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
     '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e repita o mesmo número na coluna <strong>Nº da Venda</strong> — assim o sistema conta como uma venda só. Se deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, numere sempre.</div>'+
     '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
     '<div id="resumo-importacao-diaria"></div>'+
@@ -3929,13 +4010,29 @@ function relatorioFiado(){
     '<div class="hint">Total em aberto: '+fmtMoney(totalFiadoAberto())+'</div>'+fiadoListaHtml();
 }
 function fiadoPorClienteHtml(){
-  const linhas = clientesComFiado().map(n=>({nome:n, saldo:saldoDoCliente(n)})).filter(x=>x.saldo>0.004).sort((a,b)=>b.saldo-a.saldo);
+  const linhas = clientesComFiado().map(n=>({nome:n, saldo:saldoDoCliente(n)})).filter(x=>x.saldo>0.004).sort((a,b)=>diasFiadoAtrasado(b.nome)-diasFiadoAtrasado(a.nome));
   if(linhas.length===0) return '<div class="empty">Nenhum cliente com saldo em aberto no momento.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Saldo devedor</th><th></th></tr></thead><tbody>'+
-    linhas.map(l=>'<tr><td>'+l.nome+'</td><td>'+fmtMoney(l.saldo)+'</td>'+
+  const muitoAtrasados = linhas.filter(l=>diasFiadoAtrasado(l.nome)>60).length;
+  return (muitoAtrasados>0 ? '<div class="import-conferencia-alert">⚠ '+muitoAtrasados+' cliente(s) com fiado há mais de 60 dias sem pagar nada — considere cobrar.</div>' : '')+
+    '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Saldo devedor</th><th>Situação</th><th></th></tr></thead><tbody>'+
+    linhas.map(l=>'<tr><td>'+l.nome+'</td><td>'+fmtMoney(l.saldo)+'</td><td>'+etiquetaAtrasoFiadoHtml(l.nome)+'</td>'+
     '<td><button class="act-link" data-ver-extrato="'+encodeURIComponent(l.nome)+'">📄 ver extrato / gerar PDF</button>'+
     '<button class="act-link" data-registrar-pagamento="'+encodeURIComponent(l.nome)+'">💵 registrar pagamento</button></td></tr>').join('')+
     '</tbody></table></div>';
+}
+function diasFiadoAtrasado(cliente){
+  const debitos = debitosDoCliente(cliente).slice().sort((a,b)=>a.data.localeCompare(b.data));
+  if(debitos.length===0) return 0;
+  return diasEntre(debitos[0].data, todayStr());
+}
+function etiquetaAtrasoFiadoHtml(cliente){
+  const dias = diasFiadoAtrasado(cliente);
+  let cor='verde', label='Recente';
+  if(dias>90){ cor='vermelho'; label='Muito atrasado'; }
+  else if(dias>60){ cor='roxo'; label='Atrasado há tempo'; }
+  else if(dias>30){ cor='amarelo'; label='Atenção'; }
+  const c = CORES_FREQ_CLIENTE[cor];
+  return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:'+c.bg+';color:'+c.fg+';">'+label+' · '+dias+'d</span>';
 }
 function extratoClienteHtml(cliente){
   const debitos = debitosDoCliente(cliente);
@@ -5154,7 +5251,14 @@ function attachHandlers(){
     });
     document.querySelectorAll('[data-del-despesa]').forEach(btn=>btn.onclick=async()=>{
       const id = btn.dataset.delDespesa;
-      if(confirm('Excluir esta despesa?')){ state.despesas = state.despesas.filter(x=>x.id!==id); await save('despesas'); renderAll(); }
+      const d = state.despesas.find(x=>x.id===id);
+      const msg = (d&&d.contaPagarId) ? 'Excluir esta despesa? A conta a pagar ligada a ela voltará para "pendente".' : 'Excluir esta despesa?';
+      if(!confirm(msg)) return;
+      if(d && d.contaPagarId){
+        const c = state.contasPagar.find(x=>x.id===d.contaPagarId);
+        if(c){ c.status='pendente'; delete c.despesaId; delete c.pagoEm; await save('contasPagar'); }
+      }
+      state.despesas = state.despesas.filter(x=>x.id!==id); await save('despesas'); renderAll();
     });
     document.querySelectorAll('[data-ver-veiculo]').forEach(btn=>btn.onclick=()=>{
       veiculoSelecionado = btn.dataset.verVeiculo; editManutencaoId=null; comprovantesSelecionadosVeiculo=[]; renderAll();
@@ -5926,10 +6030,23 @@ function attachHandlers(){
     const nome = (f.get('nome')||'').trim();
     if(!nome) return;
     if(!Array.isArray(state.entregadores)) state.entregadores=[];
-    state.entregadores.push({id:uid(), nome, whatsapp:(f.get('whatsapp')||'').replace(/\D/g,'')});
+    state.entregadores.push({id:uid(), nome, whatsapp:(f.get('whatsapp')||'').replace(/\D/g,''), tipoComissao:f.get('tipoComissao')||'fixo', valorComissao:parseValorBR(f.get('valorComissao'))||0});
     await save('entregadores');
     renderAll();
   };
+  document.querySelectorAll('[data-editar-comissao-entregador]').forEach(btn=>btn.onclick=async()=>{
+    const id = btn.dataset.editarComissaoEntregador;
+    const e = (state.entregadores||[]).find(x=>x.id===id);
+    if(!e) return;
+    const tipo = prompt('Tipo de comissão de '+e.nome+' — digite "fixo" (valor por entrega) ou "percentual" (% do frete):', e.tipoComissao||'fixo');
+    if(tipo===null) return;
+    const valor = prompt('Valor da comissão (ex: 5,00 se fixo, ou 10 se percentual):', String(e.valorComissao||0).replace('.',','));
+    if(valor===null) return;
+    e.tipoComissao = tipo.trim().toLowerCase().startsWith('perc') ? 'percentual' : 'fixo';
+    e.valorComissao = parseValorBR(valor)||0;
+    await save('entregadores');
+    renderAll();
+  });
   document.querySelectorAll('[data-editar-whatsapp-entregador]').forEach(btn=>btn.onclick=async()=>{
     const id = btn.dataset.editarWhatsappEntregador;
     const e = (state.entregadores||[]).find(x=>x.id===id);
@@ -6141,6 +6258,54 @@ function attachHandlers(){
   document.querySelectorAll('[data-ir-relatorio]').forEach(btn=>btn.onclick=()=>{
     currentTab = 'relatorios';
     relatorioSub = btn.dataset.irRelatorio;
+    renderAll();
+  });
+  const inputMesComissao = document.getElementById('input-mes-comissao');
+  if(inputMesComissao) inputMesComissao.onchange = ()=>{ comissaoMesSelecionado = inputMesComissao.value; renderAll(); };
+  const formContaPagar = document.getElementById('form-conta-pagar');
+  if(formContaPagar) formContaPagar.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(formContaPagar);
+    const valor = parseValorBR(f.get('valor'));
+    if(!f.get('valor') || isNaN(valor) || valor<=0){ alert('Digite um valor válido.'); return; }
+    const dados = {descricao:f.get('descricao'), categoria:f.get('categoria')||'', valor, vencimento:f.get('vencimento'), recorrente:f.get('recorrente')==='sim'};
+    const editId = formContaPagar.dataset.editid;
+    if(editId){
+      const c = state.contasPagar.find(x=>x.id===editId);
+      if(c) Object.assign(c, dados);
+    } else {
+      state.contasPagar.push(Object.assign({id:uid(), criadoEm:Date.now(), status:'pendente'}, dados));
+    }
+    await save('contasPagar');
+    editContaPagarId = null;
+    renderAll();
+  };
+  const btnCancelarContaPagar = document.getElementById('btn-cancelar-conta-pagar');
+  if(btnCancelarContaPagar) btnCancelarContaPagar.onclick = ()=>{ editContaPagarId=null; renderAll(); };
+  document.querySelectorAll('[data-edit-conta-pagar]').forEach(btn=>btn.onclick=()=>{ editContaPagarId = btn.dataset.editContaPagar; renderAll(); });
+  document.querySelectorAll('[data-del-conta-pagar]').forEach(btn=>btn.onclick=async()=>{
+    const c = state.contasPagar.find(x=>x.id===btn.dataset.delContaPagar);
+    if(!c) return;
+    const msg = c.despesaId ? 'Excluir esta conta? A despesa já lançada por causa dela também será excluída.' : 'Excluir esta conta?';
+    if(!confirm(msg)) return;
+    if(c.despesaId){ state.despesas = state.despesas.filter(x=>x.id!==c.despesaId); await save('despesas'); }
+    state.contasPagar = state.contasPagar.filter(x=>x.id!==c.id);
+    await save('contasPagar'); renderAll();
+  });
+  document.querySelectorAll('[data-pagar-conta]').forEach(btn=>btn.onclick=async()=>{
+    const c = state.contasPagar.find(x=>x.id===btn.dataset.pagarConta);
+    if(!c) return;
+    const dataPagto = prompt('Pagou em qual data? (AAAA-MM-DD)', todayStr());
+    if(dataPagto===null) return;
+    c.status = 'pago'; c.pagoEm = dataPagto;
+    const despesaGerada = {id:uid(), criadoEm:Date.now(), data:dataPagto, categoria:c.categoria||'Outros', valor:c.valor, descricao:c.descricao, contaPagarId:c.id};
+    state.despesas.push(despesaGerada);
+    c.despesaId = despesaGerada.id;
+    if(c.recorrente){
+      const prox = new Date(c.vencimento+'T00:00:00'); prox.setMonth(prox.getMonth()+1);
+      state.contasPagar.push({id:uid(), criadoEm:Date.now(), descricao:c.descricao, categoria:c.categoria, valor:c.valor, vencimento:prox.toISOString().slice(0,10), recorrente:true, status:'pendente'});
+    }
+    await save('contasPagar'); await save('despesas');
     renderAll();
   });
   document.querySelectorAll('[data-confirmar-acerto]').forEach(btn=>btn.onclick=async()=>{
@@ -6560,7 +6725,7 @@ function attachHandlers(){
   if(inputImportacaoDiaria) inputImportacaoDiaria.onchange = (e)=>{
     const file = e.target.files[0];
     if(!file) return;
-    if(!confirm('Isso vai importar as abas preenchidas (Vendas, Despesas, Clientes, Produtos) desse arquivo para o sistema. Continuar?')){ e.target.value=''; return; }
+    if(!confirm('Isso vai importar as abas preenchidas (Vendas, Despesas, Clientes, Produtos, ContasPagar, FechamentoCaixa) desse arquivo para o sistema. Continuar?')){ e.target.value=''; return; }
     processarImportacaoDiariaExcel(file);
     e.target.value='';
   };
@@ -6833,6 +6998,10 @@ async function gerarModeloImportacaoDiaria(){
     'Nº da Venda (Vendas): opcional, mas importante pro ticket médio. Se a mesma pessoa levou produtos de categorias diferentes numa única compra (ex.: gás + água), repita o MESMO número em todas as linhas dessa venda (ex.: 1, 1, 2, 3, 3, 3...). Se você deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho as linhas do mesmo cliente no mesmo dia. Já em venda de balcão sem nome de cliente, é importante numerar — senão cada linha vira uma venda separada no ticket médio. Preencha o Frete só numa das linhas de cada venda numerada, pra não contar em dobro.',
     'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
     'Categoria (Despesas): '+state.categoriasDespesas.join(' | '),
+    'Veículo / Oficina (Despesas): opcionais — use o nome exato do veículo (ex.: Moto Cinza, Celta, Strada) pra já lançar o gasto vinculado a ele; Oficina é só texto livre.',
+    'Forma de Pagamento / Parcelas / Garantia Até / Próxima Manutenção (Despesas): opcionais, usados só em gastos de veículo. Forma de Pagamento: avista ou parcelado.',
+    'ContasPagar: Descrição e Valor são obrigatórios. Vencimento no formato AAAA-MM-DD. Recorrente: sim ou não. Status: pendente ou pago (se pago, preencha Data Pagamento e o sistema já lança a despesa correspondente).',
+    'FechamentoCaixa: uma linha por dia. Abertura é o troco inicial daquele dia; Dinheiro Contado é o que foi contado na gaveta no fechamento. O sistema recalcula sozinho o resto a partir das vendas e despesas já lançadas naquele dia.',
     'Grupo (Produtos): '+gruposProduto.join(' | ')+' — usado só quando a Categoria da linha ainda não existe no sistema, pra saber em qual das três a nova categoria deve entrar. Se a Categoria já existir, o grupo dela é mantido do jeito que já está cadastrado.',
     'Categoria (Produtos): o "tipo" do produto (ex.: Produtos de Limpeza, Acessórios para Gás). Já vem com dropdown das categorias não controladas cadastradas — gás e água já são controlados pelo Estoque e não entram aqui.'
   ].forEach(function(linha){ wsInstr.addRow([linha]); });
@@ -6852,10 +7021,22 @@ async function gerarModeloImportacaoDiaria(){
 
   // ---- Aba Despesas ----
   const wsDespesas = wb.addWorksheet('Despesas');
-  wsDespesas.addRow(['Data','Categoria','Valor','Descrição']);
+  wsDespesas.addRow(['Data','Categoria','Valor','Descrição','Veículo','Oficina/Empresa','Forma de Pagamento','Parcelas','Garantia Até','Próxima Manutenção']);
   wsDespesas.getRow(1).font = {bold:true};
   wsDespesas.columns.forEach(c=>{ c.width = 18; });
   aplicarDropdown(wsDespesas, 'B', 'F', categoriasDespesaValidas.length, 2, ULTIMA_LINHA);
+
+  // ---- Aba ContasPagar ----
+  const wsContas = wb.addWorksheet('ContasPagar');
+  wsContas.addRow(['Descrição','Categoria','Valor','Vencimento','Recorrente','Status','Data Pagamento']);
+  wsContas.getRow(1).font = {bold:true};
+  wsContas.columns.forEach(c=>{ c.width = 18; });
+
+  // ---- Aba FechamentoCaixa ----
+  const wsCaixa = wb.addWorksheet('FechamentoCaixa');
+  wsCaixa.addRow(['Data','Abertura','Dinheiro Contado','Observação']);
+  wsCaixa.getRow(1).font = {bold:true};
+  wsCaixa.columns.forEach(c=>{ c.width = 18; });
 
   // ---- Aba Clientes ----
   const wsClientes = wb.addWorksheet('Clientes');
@@ -6904,21 +7085,24 @@ function processarImportacaoDiariaExcel(file){
     const linhasDespesas = lerAba('Despesas');
     const linhasClientes = lerAba('Clientes');
     const linhasProdutos = lerAba('Produtos');
-    if(linhasVendas.length+linhasDespesas.length+linhasClientes.length+linhasProdutos.length===0){
-      alert('Não encontrei nenhuma linha preenchida nas abas Vendas, Despesas, Clientes ou Produtos desse arquivo.');
+    const linhasContasPagar = lerAba('ContasPagar');
+    const linhasFechamentoCaixa = lerAba('FechamentoCaixa');
+    if(linhasVendas.length+linhasDespesas.length+linhasClientes.length+linhasProdutos.length+linhasContasPagar.length+linhasFechamentoCaixa.length===0){
+      alert('Não encontrei nenhuma linha preenchida nas abas desse arquivo.');
       return;
     }
     const pendentesProdutos = detectarProdutosPendentesVendas(linhasVendas);
     const pendentesClientes = detectarClientesPendentesVendas(linhasVendas);
     if(pendentesProdutos.length>0 || pendentesClientes.length>0){
-      mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos);
+      mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa);
       return;
     }
-    await continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos);
+    await continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa);
   };
   reader.readAsArrayBuffer(file);
 }
-async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos){
+async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa){
+    linhasContasPagar = linhasContasPagar||[]; linhasFechamentoCaixa = linhasFechamentoCaixa||[];
     const resumo = [];
     const hoje = todayStr();
     const nomesClientesExistentes = new Set(state.clientes.map(c=>chaveNormalizada(c.nome)));
@@ -7041,11 +7225,62 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         if(categoriaTxt && !categoriaExistente && !state.categoriasDespesas.includes(categoria)){state.categoriasDespesas.push(categoria);adicionarPendenciaConferencia('despesa','categoria',categoriaTxt,'Categoria não encontrada exatamente no cadastro; confira.');}
         const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
         const descricao = (r['Descrição']||'').trim();
-        state.despesas.push({id:uid(), criadoEm:Date.now(), data, categoria, valor, descricao: descricao || 'Importado de planilha'});
+        const veiculoTxt = (r['Veículo']||'').trim();
+        const veiculoMatch = veiculoTxt ? state.veiculos.find(vv=>chaveNormalizada(vv.nome).includes(chaveNormalizada(veiculoTxt))||chaveNormalizada(veiculoTxt).includes(chaveNormalizada(vv.nome))) : null;
+        const oficinaTxt = (r['Oficina/Empresa']||'').trim();
+        const formaPagamento = (r['Forma de Pagamento']||'').trim().toLowerCase()==='parcelado' ? 'parcelado' : (veiculoMatch?'avista':undefined);
+        const parcelas = r['Parcelas'] ? Number(r['Parcelas'])||undefined : undefined;
+        const garantiaAte = r['Garantia Até'] ? normalizarDataImportada(r['Garantia Até'], '') : undefined;
+        const proximaManutencao = r['Próxima Manutenção'] ? normalizarDataImportada(r['Próxima Manutenção'], '') : undefined;
+        state.despesas.push({id:uid(), criadoEm:Date.now(), data, categoria, valor, descricao: descricao || 'Importado de planilha',
+          veiculoId: veiculoMatch?veiculoMatch.id:undefined, oficina: oficinaTxt||undefined,
+          formaPagamento, parcelas, garantiaAte: garantiaAte||undefined, proximaManutencao: proximaManutencao||undefined});
         importadas++;
       });
       if(importadas>0){ await save('despesas'); await save('categoriasDespesas'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia'); }
       resumo.push(importadas+' despesa(s) importada(s)'+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem valor)':''));
+    }
+
+    if(linhasContasPagar.length){
+      let importadas=0, ignoradas=0, marcadasPagas=0;
+      linhasContasPagar.forEach(function(r){
+        const descricao = (r['Descrição']||'').trim();
+        const valor = Number(String(r['Valor']||'0').replace(/\./g,'').replace(',','.'))||0;
+        if(!descricao || !valor || valor<=0){ ignoradas++; return; }
+        const categoriaTxt = (r['Categoria']||'').trim();
+        const vencimento = r['Vencimento'] ? normalizarDataImportada(r['Vencimento'], hoje) : hoje;
+        const recorrente = chaveNormalizada(r['Recorrente']||'')==='sim';
+        const statusTxt = chaveNormalizada(r['Status']||'pendente');
+        const conta = {id:uid(), criadoEm:Date.now(), descricao, categoria:categoriaTxt, valor, vencimento, recorrente, status:'pendente'};
+        if(statusTxt==='pago'){
+          const dataPagto = r['Data Pagamento'] ? normalizarDataImportada(r['Data Pagamento'], hoje) : hoje;
+          conta.status = 'pago'; conta.pagoEm = dataPagto;
+          const despesaGerada = {id:uid(), criadoEm:Date.now(), data:dataPagto, categoria:categoriaTxt||'Outros', valor, descricao, contaPagarId:conta.id};
+          state.despesas.push(despesaGerada);
+          conta.despesaId = despesaGerada.id;
+          marcadasPagas++;
+        }
+        state.contasPagar.push(conta);
+        importadas++;
+      });
+      if(importadas>0){ await save('contasPagar'); await save('despesas'); }
+      resumo.push(importadas+' conta(s) a pagar importada(s)'+(marcadasPagas>0?' ('+marcadasPagas+' já marcadas como pagas, com despesa lançada)':'')+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem descrição ou valor)':''));
+    }
+
+    if(linhasFechamentoCaixa.length){
+      let importados=0;
+      linhasFechamentoCaixa.forEach(function(r){
+        const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
+        const abertura = Number(String(r['Abertura']||'0').replace(/\./g,'').replace(',','.'))||0;
+        const dinheiroContado = Number(String(r['Dinheiro Contado']||'0').replace(/\./g,'').replace(',','.'))||0;
+        const resumoDia = resumoCaixaDoDia(data, abertura);
+        const dadosFechamento = {data, abertura, totalVendas:resumoDia.totalVendas, totalDespesas:resumoDia.totalDespesas, dinheiroEsperado:resumoDia.dinheiroEsperado, dinheiroContado, observacao:(r['Observação']||'').trim()};
+        state.fechamentosCaixa = state.fechamentosCaixa.filter(x=>x.data!==data);
+        state.fechamentosCaixa.push(Object.assign({id:uid(), criadoEm:Date.now()}, dadosFechamento));
+        importados++;
+      });
+      if(importados>0) await save('fechamentosCaixa');
+      resumo.push(importados+' fechamento(s) de caixa importado(s)');
     }
 
     if(linhasClientes.length){
@@ -7421,7 +7656,7 @@ function detectarProdutosPendentesVendas(linhasVendas){
   });
   return [...distintos.entries()];
 }
-function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos){
+function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa){
   const overlay = document.createElement('div');
   overlay.id = 'overlay-resolucao-produtos';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px;';
@@ -7487,7 +7722,7 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
       }
     });
     overlay.remove();
-    await continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos);
+    await continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa);
   };
 }
 function renderCsvVendasMapping(){
