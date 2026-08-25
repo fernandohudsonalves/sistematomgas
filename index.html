@@ -77,6 +77,7 @@ html[data-theme="dark"] .meta-sem-config{background:rgba(255,255,255,.06);}
 html[data-theme="dark"] .chk-drawer-item .chk-dot{border-color:var(--border);}
 html[data-theme="dark"] ::-webkit-scrollbar-track{background:var(--bg);}
 html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px;}
+html[data-theme="dark"] #checklist-hover-drawer{background:linear-gradient(180deg,var(--card) 0%,var(--bg) 100%);border-color:var(--border);box-shadow:0 16px 40px rgba(0,0,0,.55);}
 #theme-toggle{background:rgba(255,255,255,.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
 #theme-toggle:hover{background:rgba(255,255,255,.28);}
 #auth-theme-toggle{position:fixed;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:17px;z-index:50;display:flex;align-items:center;justify-content:center;}
@@ -1636,7 +1637,7 @@ const s = tamanho || 18;
 const c = cor || '#1E3A8A';
 const imgs = {
     'Retirada': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAABDklEQVQokZ3Suy6EURQF4G/GpZHQKBRmJB5Ao6KRSOgUvIFGIvEElAoiUYln8ADiATRKCqJEJ2Eq9+uQE3uS35xJzFjJyT75s9ba+6z9l6qTWwJl7GAOyzjQBsoFSk+IK5htR5zQNVCZadw/8YI6NlDL2C1QnGAMq5jALnpzeo6iQRXDGMQ0NjN2CxQN3gv3GyxiJZf8RjdG0BengVpsZA1D2MuUP3hMazzBKNI+11GKIG9xHQ2a8/iKep4mmI/u1RA3CEu4jO2UWhikc58MruJjf9RDTEU+p9nQTSiGWI+6HeMvZOwWKBq84QNn2Md4pwbprU+4i/Be/2OQJniIf+K5U4PU+SiecoHjP9X4BvStN1F8z/edAAAAAElFTkSuQmCC',
-    'Entrega a pé': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABv0lEQVQ4jWN89enffwYKABMurZ+//GTIqlzNEJg0h+HqzecY8jCA04DnLz8ynDr/kOHxsw8Mpy48wpCHARYMEShQUxZjCPM1ZHjw+C2Dr6sOhjxBA0C2n7n4iOHHzz8MrCw4HYrdC9v2XQP7/96jtwzPXn5kWLj6NMOPn78x1IEARix8+/6bwT9hNoMgPyfDs5efGJiYGBl4uNkZ1JXFGLpr/RlY0FyD4YI9h24wvP/4jSE1xoqBkZGB4c+fvwyxIaYMx87cZ6jt2srwHy3SMcLg0Mm7DA5WKgzaahIM339AnO1sq8agoiDCcOTUPcJeePXmMwMnBxvY9qSi5Qz3Hr5hsLNQZmgq9QJ7BR1geEFMhJeBl4edYd32Swyfv/wAu+bQibsMiYXLGD5++k7YABB48eoTw+wlxxh4eTgYOqr8GMpzXBjuP3rLsHrLBQy1WA2YPO8Q2P8VOc7gUA/1MQAnrGXrzzJ8+vIDvwGgxLPzwA0GbxdtBiNdWbh4WrQVw6fPPxg27LiM34C2SbsZuDjZGHKT7FDEQQGpJCcM9hoywIhGUHQlhJsziAhxo9rExMhQmO7IsGX3FYQgAwMDANKvoVpJWu+aAAAAAElFTkSuQmCC',
+    'Entrega a pé': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABDUlEQVR42qXTPyjEcRjH8dfP30L5l7I4BkXsBtvlxHKrJMogi0QG+40kG1bJIoYro1IMFou6GFiv3KjIQGH5Dtd1d37Od3y+z/f9fD7P83yjxPi2/5y6KncduMATxmoBDCCFQUxUSmqoArjDHoZxWAsghSRa8PFXC/PB/0iwshlAsQBt2MUD3vGKOZygMQ5gBj3I4BtN2ME0jhH9Bkgji1u0ohlnmEI+ThNX8Raq32MUB1jAZRwLebxgGZ1BTRo36C5Nrm/vmyzX3AROUQjjLGAxKLuOM8at4H8Fn9gPi7UeVFUFJDGLI1wVxTPowlJxclTmNz6iF0N4LimWQ3/YlYoKclgreQxf2MB5cfAHNuQyW4DWfx4AAAAASUVORK5CYII=',
     'Entrega de carro': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA3UlEQVQYlXXRrUvDcRAG8I/zBQw6DLKk3WAXg00Em2UMRcsEBZP/hMEiJl9gZYio3WITk2VYVg06sawYxCDCODhh/Nge+Ia7+z7P3XM3Mr98LLGOXfxhAZ/o4gvneFFAKcMjNHCJGh5xhW1cIzpUi+TR8tzqGi5wiltMYwkVtPCBtxQr4xudIMfY9znyD35TdCKEMyetzPQ1bWJ/DIuZmMzXj/HiqIkdvIfnqUxs4WDI539EfTODjei8h5Pc5ixe8TSAuIJ2XiA8Hwb5Ls9xk95C+XkAOZZ4lruo46EHc4Qr2Wtma6YAAAAASUVORK5CYII=',
     'Entrega de moto': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABUElEQVQokZXSMUiVYRTG8Z8aoQ5p6mBBhYK4iYM5XA0c2gprEzEuCYng4KSDS2A6NTjp4iKOJmgUoqBYGYFItEcQFLWUIiIKQaK8t4Mp18AOfHzf+3De/3nOw1dwPfPUP+oSpnEZXfh+VtuFPOVvleF+nBr/F1CELNYxj9d5HVGFecqfuofRmJwAe6G3nAeQXA3F9w5eog8PsBS5nAKU4Aau4UoE1oT3aMA39OImvsQ7exJQiw18xcewv48KdOIxpvAL9dg8EW7Obh0+YRAjaMYKDjCGt3GxOrSf0XvsoBSTuBOBXUQ7isP+IapiyBO04lnASxPgFYaxhQmsBXw30v8dTldjSDneoQ3jCXAXBZF0N24FoAafcTvOP2KFhwHvQUcip50qcTXcJLsJmJ6kP48c0tT+cLiAR9hOgEW8wBzeIBMrzZ7xzyxjBh9yzhk4AgxjR80D8QofAAAAAElFTkSuQmCC',
     'Entrega de Strada': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAHCAYAAADXhRcnAAAAxElEQVQYlW3QIU+CYRQF4AfFTTcsjOaG3cEYxQAzaGZkk0ESP8GOhWywWdgIJIgkOhSDREfF5MZEgwp7t5ft2zdOurs7595zTqZY60rhDmV8ooQ5luhjlaQepJU4xBMeMUMH73hAIUnMood84tAZ7vGNc1zHuYIGRhhiGmyvcbLHwT784Bj/aIXPGbxhEOcbXKWUX3jGH07RDnGCOJQwxiJeDrsqjhLiCT6CVdTxust8iRya2MRML7G4HcKDW1zE5hv43QKS8CeKzldLEQAAAABJRU5ErkJggg==',
@@ -2389,7 +2390,7 @@ function grupoDoTab(tabId){
 function renderNav(){
   const nav = document.getElementById('nav');
   const etiquetaData = document.getElementById('etiqueta-data-hoje');
-  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 23/08/2026 às 15:23';
+  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 25/08/2026 às 16:54';
   let html = '<div id="nav-principal">';
   TABS_VISIVEIS.forEach((t,i)=>{
     if(i>0) html += '<span class="nav-sep">|</span>';
