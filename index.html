@@ -883,6 +883,8 @@ let state = {
 };
 let currentTab = 'dashboard';
 let relatorioSub = 'vendas';
+let resumoDiaData = null;
+let kpiMesSelecionado = null;
 let relEmpresaSel = '';
 let relEmpresaDe = '';
 let relEmpresaAte = '';
@@ -2078,7 +2080,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2138,6 +2140,7 @@ async function loadAll(){
   if(!state.rotaConfig) state.rotaConfig = {};
   if(!state.rotaConfig.pontoPartidaId) state.rotaConfig.pontoPartidaId = state.pontosPartida[0].id;
   if(!Array.isArray(state.acertosEntrega)){ state.acertosEntrega = []; await save('acertosEntrega'); }
+  if(!Array.isArray(state.recompensasIndicacao)) state.recompensasIndicacao = [];
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
   if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
@@ -2390,7 +2393,7 @@ function grupoDoTab(tabId){
 function renderNav(){
   const nav = document.getElementById('nav');
   const etiquetaData = document.getElementById('etiqueta-data-hoje');
-  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 25/08/2026 às 16:54';
+  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 26/08/2026 às 01:47';
   let html = '<div id="nav-principal">';
   TABS_VISIVEIS.forEach((t,i)=>{
     if(i>0) html += '<span class="nav-sep">|</span>';
@@ -3935,7 +3938,11 @@ function viewLogAtividades(){
 function viewRelatorios(){
   const subtabs = [
     {id:'vendas', label:'Vendas por período'},
+    {id:'resumodia', label:'Resumo do Dia'},
     {id:'ranking', label:'Ranking de Clientes'},
+    {id:'abc', label:'Curva ABC de Clientes'},
+    {id:'indicacoes', label:'Programa de Indicação'},
+    {id:'kpis', label:'Indicadores (KPIs)'},
     {id:'itens', label:'Itens por categoria'},
     {id:'entregas', label:'Entregas por período'},
     {id:'despesas', label:'Despesas por período'},
@@ -3950,6 +3957,10 @@ function viewRelatorios(){
   ];
   let content = '';
   if(relatorioSub==='vendas') content = relatorioVendas();
+  else if(relatorioSub==='resumodia') content = relatorioResumoDia();
+  else if(relatorioSub==='abc') content = relatorioABC();
+  else if(relatorioSub==='indicacoes') content = relatorioIndicacoes();
+  else if(relatorioSub==='kpis') content = relatorioKPIs();
   else if(relatorioSub==='ranking') content = relatorioRanking();
   else if(relatorioSub==='itens') content = relatorioItens();
   else if(relatorioSub==='entregas') content = relatorioEntregas();
@@ -4164,6 +4175,152 @@ function relatorioItens(){
     '<button type="button" class="btn small" id="ri-filtrar">Contar</button>'+
     '</div>'+
     '<div id="ri-resultado" style="margin-top:16px;"></div>';
+}
+function relatorioResumoDia(){
+  const data = resumoDiaData || todayStr();
+  const vendasDia = (state.vendas||[]).filter(v=>v.data===data);
+  const totalVendas = vendasDia.reduce((s,v)=>s+(v.valor_total||0)+(v.frete||0),0);
+  const porForma = {}; vendasDia.forEach(v=>{const p=v.pagamento||'—'; porForma[p]=(porForma[p]||0)+(v.valor_total||0)+(v.frete||0);});
+  const despesasDia = (state.despesas||[]).filter(d=>d.data===data);
+  const totalDespesas = despesasDia.reduce((s,d)=>s+(d.formaPagamento==='parcelado'?0:d.valor),0);
+  const agConcluidos = (state.agendamentos||[]).filter(a=>a.status==='concluido' && a.criadoEm && a.criadoEm.slice(0,10)<=data).length;
+  const temposDia = (state.temposEntrega||[]).filter(t=>t.data===data);
+  const tempoMedio = temposDia.length ? Math.round(temposDia.reduce((s,t)=>s+(t.duracaoMin||0),0)/temposDia.length) : null;
+  const acertosDia = (state.acertosEntrega||[]).filter(a=>a.data===data);
+  const acertosPendentes = acertosDia.filter(a=>a.status==='pendente').length;
+  const acertosConfirmados = acertosDia.filter(a=>a.status!=='pendente').length;
+  const fechamento = (state.fechamentosCaixa||[]).find(f=>f.data===data);
+  const contasPagasHoje = (state.contasPagar||[]).filter(c=>c.status==='pago' && c.pagoEm===data).length;
+  const alertas = itensAbaixoDoMinimo();
+  const envioCampanhasDia = (state.envioCampanhaLog||[]).filter(e=>e.data===data).length;
+  const logsHoje = (state.logAtividades||[]).filter(l=>new Date(l.quando).toISOString().slice(0,10)===data);
+  const porArea = {}; logsHoje.forEach(l=>porArea[l.area]=(porArea[l.area]||0)+1);
+  const linhasArea = Object.entries(porArea).map(([a,n])=>'<li>'+escapeHtmlCampanha(a)+': '+n+' alteração(ões)</li>').join('') || '<li>Nenhuma atividade registrada.</li>';
+  return '<h3>Escolha o dia</h3><input type="date" id="rd-data" value="'+data+'" style="max-width:200px;">'+
+    '<div style="margin-top:16px;display:grid;gap:12px;">'+
+    '<div class="card" style="margin:0;"><h3>💰 Vendas</h3>Total do dia: <strong>'+fmtMoney(totalVendas)+'</strong> em '+vendasDia.length+' venda(s)<br>'+
+      Object.entries(porForma).map(([p,v])=>p+': '+fmtMoney(v)).join(' · ')+'</div>'+
+    '<div class="card" style="margin:0;"><h3>💸 Despesas</h3>Total pago em dinheiro/à vista: <strong>'+fmtMoney(totalDespesas)+'</strong> em '+despesasDia.length+' lançamento(s)</div>'+
+    '<div class="card" style="margin:0;"><h3>🚚 Entregas</h3>'+temposDia.length+' entrega(s) concluída(s) hoje'+(tempoMedio!=null?' · tempo médio: <strong>'+tempoMedio+' min</strong>':'')+'</div>'+
+    '<div class="card" style="margin:0;"><h3>🤝 Acertos</h3>'+acertosDia.length+' gerado(s) hoje — '+acertosPendentes+' pendente(s), '+acertosConfirmados+' confirmado(s)</div>'+
+    '<div class="card" style="margin:0;"><h3>🧾 Fechamento de caixa</h3>'+(fechamento?('Esperado: '+fmtMoney(fechamento.dinheiroEsperado)+' · Contado: '+fmtMoney(fechamento.dinheiroContado)+' · Diferença: <strong>'+fmtMoney(fechamento.dinheiroContado-fechamento.dinheiroEsperado)+'</strong>'):'Caixa desse dia ainda não foi fechado.')+'</div>'+
+    '<div class="card" style="margin:0;"><h3>📑 Contas a pagar</h3>'+contasPagasHoje+' conta(s) marcada(s) como paga hoje</div>'+
+    '<div class="card" style="margin:0;"><h3>📦 Estoque</h3>'+(alertas.length? '⚠️ '+alertas.length+' item(ns) abaixo do mínimo: '+alertas.map(a=>a.label).join(', ') : '✅ Nenhum item abaixo do mínimo agora.')+'</div>'+
+    '<div class="card" style="margin:0;"><h3>📣 Campanhas</h3>'+envioCampanhasDia+' envio(s) de campanha registrado(s) hoje</div>'+
+    '<div class="card" style="margin:0;"><h3>🗒️ Atividades no sistema</h3><ul style="margin:6px 0 0 18px;">'+linhasArea+'</ul></div>'+
+    '</div>';
+}
+function relatorioABC(){
+  return '<h3>Filtrar</h3>'+ajudaHtml('abc','A Curva ABC separa seus clientes pelo quanto cada um pesa no faturamento. Classe A = os clientes que juntos somam até 80% do total gasto (poucos clientes, muito importantes — merecem atenção redobrada). Classe B = de 80% a 95% (clientes bons, intermediários). Classe C = os 5% finais (muitos clientes, mas cada um gasta pouco). Ajuda a decidir onde focar atenção, cobrança e mimos.')+
+    '<div class="form-row">'+
+    '<div><label>De</label><input type="date" id="abc-de" value="'+firstOfMonth()+'"></div>'+
+    '<div><label>Até</label><input type="date" id="abc-ate" value="'+todayStr()+'"></div></div>'+
+    '<button class="btn small ghost" id="abc-filtrar">Filtrar</button><div id="abc-resultado" style="margin-top:16px;"></div>';
+}
+function renderRelatorioABCResultado(){
+  const de = document.getElementById('abc-de').value, ate = document.getElementById('abc-ate').value;
+  const porCliente = {};
+  (state.vendas||[]).filter(v=>v.data>=de && v.data<=ate && v.cliente).forEach(v=>{
+    porCliente[v.cliente] = (porCliente[v.cliente]||0) + (v.valor_total||0) + (v.frete||0);
+  });
+  const linhas = Object.entries(porCliente).map(([nome,valor])=>({nome,valor})).sort((a,b)=>b.valor-a.valor);
+  const totalGeral = linhas.reduce((s,l)=>s+l.valor,0);
+  let acumulado = 0;
+  const contagem = {A:0,B:0,C:0};
+  const corClasse = {A:'#188038',B:'#f5a623',C:'#8a8a8a'};
+  const linhasHtml = linhas.map((l,i)=>{
+    acumulado += l.valor;
+    const pctAcum = totalGeral>0 ? (acumulado/totalGeral*100) : 0;
+    const classe = pctAcum<=80 ? 'A' : pctAcum<=95 ? 'B' : 'C';
+    contagem[classe]++;
+    return '<tr><td>'+(i+1)+'</td><td>'+escapeHtmlCampanha(l.nome)+'</td><td>'+fmtMoney(l.valor)+'</td><td>'+pctAcum.toFixed(1)+'%</td><td><span class="badge" style="background:'+corClasse[classe]+'22;color:'+corClasse[classe]+';font-weight:800;">'+classe+'</span></td></tr>';
+  }).join('');
+  document.getElementById('abc-resultado').innerHTML = (linhas.length===0 ? '<div class="empty">Nenhuma venda encontrada nesse período.</div>' :
+    '<div class="hint" style="margin-bottom:10px;">Classe A: <strong>'+contagem.A+'</strong> cliente(s) · Classe B: <strong>'+contagem.B+'</strong> cliente(s) · Classe C: <strong>'+contagem.C+'</strong> cliente(s) — total do período: <strong>'+fmtMoney(totalGeral)+'</strong></div>'+
+    '<div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Valor gasto</th><th>% acumulado</th><th>Classe</th></tr></thead><tbody>'+linhasHtml+'</tbody></table></div>');
+}
+function relatorioIndicacoes(){
+  const porIndicador = {};
+  (state.clientes||[]).forEach(c=>{
+    if(!c.indicadoPor) return;
+    if(!porIndicador[c.indicadoPor]) porIndicador[c.indicadoPor] = [];
+    porIndicador[c.indicadoPor].push(c.nome);
+  });
+  const linhas = Object.entries(porIndicador).map(([indicador,indicados])=>{
+    const totalGerado = indicados.reduce((s,nome)=>s+(state.vendas||[]).filter(v=>v.cliente===nome).reduce((s2,v)=>s2+(v.valor_total||0)+(v.frete||0),0),0);
+    return {indicador, qtd:indicados.length, indicados, totalGerado};
+  }).sort((a,b)=>b.qtd-a.qtd || b.totalGerado-a.totalGerado);
+  const recompensas = state.recompensasIndicacao||[];
+  const linhasTabela = linhas.map(l=>{
+    const ultimaRecompensa = recompensas.filter(r=>r.indicador===l.indicador).sort((a,b)=>b.criadoEm-a.criadoEm)[0];
+    return '<tr><td>'+escapeHtmlCampanha(l.indicador)+'</td><td title="'+escapeHtmlCampanha(l.indicados.join(', '))+'">'+l.qtd+' cliente(s)</td><td>'+fmtMoney(l.totalGerado)+'</td>'+
+      '<td>'+(ultimaRecompensa?('<span class="hint">última: '+fmtDate(new Date(ultimaRecompensa.criadoEm).toISOString().slice(0,10))+' — '+escapeHtmlCampanha(ultimaRecompensa.obs||'')+'</span>'):'<span class="hint">nunca recompensado</span>')+'</td>'+
+      '<td class="cel-acoes"><button type="button" class="btn small green" data-recompensar-indicador="'+escapeHtmlCampanha(l.indicador)+'">🎁 Marcar recompensa</button></td></tr>';
+  }).join('');
+  const historicoRecompensas = recompensas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).map(r=>
+    '<tr><td>'+fmtDate(new Date(r.criadoEm).toISOString().slice(0,10))+'</td><td>'+escapeHtmlCampanha(r.indicador)+'</td><td>'+escapeHtmlCampanha(r.obs||'—')+'</td><td class="cel-acoes"><button class="del-link" data-del-recompensa="'+r.id+'">🗑</button></td></tr>'
+  ).join('');
+  return '<div class="card" style="margin-bottom:14px;"><h2>🤝 Programa de Indicação</h2>'+ajudaHtml('indicacoes','Toda vez que você cadastra um cliente novo preenchendo "Indicado por" (na aba Cadastros → Clientes), ele aparece aqui, somado a quem já indicou antes. Assim você enxerga quem mais traz cliente novo pra você e quanto isso já gerou em vendas — e pode marcar quando der uma recompensa pra essa pessoa (desconto, brinde, botijão grátis etc), ficando registrado o histórico.')+
+    (linhas.length===0 ? '<div class="empty">Nenhum cliente com "Indicado por" preenchido ainda.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Quem indicou</th><th>Qtd. de clientes trazidos</th><th>Valor gerado por eles</th><th>Recompensa</th><th></th></tr></thead><tbody>'+linhasTabela+'</tbody></table></div>')+
+    '</div>'+
+    '<div class="card"><h2>🎁 Histórico de recompensas dadas</h2>'+
+    (historicoRecompensas ? '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Quem indicou</th><th>Recompensa</th><th></th></tr></thead><tbody>'+historicoRecompensas+'</tbody></table></div>' : '<div class="empty">Nenhuma recompensa registrada ainda.</div>')+
+    '</div>';
+}
+function mesAnterior(mk){ let [y,m]=mk.split('-').map(Number); m--; if(m===0){m=12;y--;} return y+'-'+String(m).padStart(2,'0'); }
+function mesAnoAnterior(mk){ let [y,m]=mk.split('-').map(Number); return (y-1)+'-'+String(m).padStart(2,'0'); }
+function faturamentoMes(mk){ return (state.vendas||[]).filter(v=>monthKey(v.data)===mk).reduce((s,v)=>s+(v.valor_total||0)+(v.frete||0),0); }
+function clientesUnicosMes(mk){ return new Set((state.vendas||[]).filter(v=>monthKey(v.data)===mk && v.cliente).map(v=>v.cliente)); }
+function pctVarHtml(atual,anterior){
+  if(!anterior) return '<span class="hint">sem comparação</span>';
+  const pct = (atual-anterior)/anterior*100;
+  const cor = pct>=0?'var(--green)':'var(--danger)';
+  return '<span style="color:'+cor+';font-weight:700;">'+(pct>=0?'+':'')+pct.toFixed(1)+'%</span>';
+}
+function relatorioKPIs(){
+  const mk = kpiMesSelecionado || monthKey(todayStr());
+  const mkAnterior = mesAnterior(mk), mkAnoPassado = mesAnoAnterior(mk);
+  const fatAtual = faturamentoMes(mk), fatAnterior = faturamentoMes(mkAnterior), fatAnoPassado = faturamentoMes(mkAnoPassado);
+  const vendasMk = (state.vendas||[]).filter(v=>monthKey(v.data)===mk);
+  const ticketMedio = vendasMk.length ? fatAtual/vendasMk.length : 0;
+  const clientesAtuais = clientesUnicosMes(mk), clientesAnteriores = clientesUnicosMes(mkAnterior);
+  const sumidos = [...clientesAnteriores].filter(c=>!clientesAtuais.has(c));
+  const taxaSumidos = clientesAnteriores.size ? (sumidos.length/clientesAnteriores.size*100) : 0;
+  const todosClientesComVenda = new Set((state.vendas||[]).map(v=>v.cliente).filter(Boolean));
+  const faturamentoTotalHistorico = (state.vendas||[]).reduce((s,v)=>s+(v.valor_total||0)+(v.frete||0),0);
+  const ltvMedio = todosClientesComVenda.size ? faturamentoTotalHistorico/todosClientesComVenda.size : 0;
+  const hoje = todayStr();
+  const porClienteRFM = {};
+  (state.vendas||[]).forEach(v=>{
+    if(!v.cliente) return;
+    if(!porClienteRFM[v.cliente]) porClienteRFM[v.cliente] = {ultima:v.data, freq:0, valor:0};
+    const r = porClienteRFM[v.cliente];
+    if(v.data>r.ultima) r.ultima = v.data;
+    r.freq++; r.valor += (v.valor_total||0)+(v.frete||0);
+  });
+  const segmentos = {'🏆 Campeão':[], '🙂 Regular':[], '⚠️ Em risco':[], '❌ Perdido':[], '🆕 Novo':[]};
+  Object.entries(porClienteRFM).forEach(([nome,r])=>{
+    const dias = diasEntre(r.ultima, hoje);
+    let seg;
+    if(r.freq===1 && dias<=30) seg='🆕 Novo';
+    else if(dias<=20) seg='🏆 Campeão';
+    else if(dias<=45) seg='🙂 Regular';
+    else if(dias<=90) seg='⚠️ Em risco';
+    else seg='❌ Perdido';
+    segmentos[seg].push(nome+' ('+dias+'d sem comprar)');
+  });
+  const linhasSeg = Object.entries(segmentos).map(([seg,lista])=>'<tr><td>'+seg+'</td><td>'+lista.length+' cliente(s)</td><td style="max-width:340px;">'+(lista.slice(0,6).join(', ')+(lista.length>6?' ...':''))+'</td></tr>').join('');
+  return '<h3>Mês de referência</h3><input type="month" id="input-mes-kpi" value="'+mk+'">'+
+    ajudaHtml('kpis','Indicadores que ajudam a enxergar a saúde do negócio além do dia a dia: quanto o faturamento cresceu ou caiu, quantos clientes deixaram de comprar, quanto cada cliente costuma valer ao longo do tempo (LTV), e em que fase cada cliente está (RFM — Recência, Frequência, Valor). A segmentação usa a última compra de cada cliente: até 20 dias sem comprar = Campeão, até 45 = Regular, até 90 = Em risco, acima disso = Perdido. Quem comprou só uma vez recentemente entra como Novo.')+
+    '<div style="display:grid;gap:12px;margin-top:14px;">'+
+    '<div class="card" style="margin:0;"><h3>💰 Faturamento do mês</h3>'+fmtMoney(fatAtual)+' — vs mês anterior: '+pctVarHtml(fatAtual,fatAnterior)+' ('+fmtMoney(fatAnterior)+') — vs mesmo mês ano passado: '+pctVarHtml(fatAtual,fatAnoPassado)+' ('+fmtMoney(fatAnoPassado)+')</div>'+
+    '<div class="card" style="margin:0;"><h3>🎟️ Ticket médio do mês</h3><strong>'+fmtMoney(ticketMedio)+'</strong> por venda ('+vendasMk.length+' venda(s))</div>'+
+    '<div class="card" style="margin:0;"><h3>👥 Clientes ativos no mês</h3>'+clientesAtuais.size+' cliente(s) compraram — mês anterior: '+clientesAnteriores.size+'</div>'+
+    '<div class="card" style="margin:0;"><h3>📉 Clientes sumidos</h3>'+sumidos.length+' cliente(s) que compraram no mês anterior e não compraram nesse mês — taxa de '+taxaSumidos.toFixed(1)+'%'+(sumidos.length?'<div class="hint" style="margin-top:4px;">'+sumidos.slice(0,10).join(', ')+(sumidos.length>10?' ...':'')+'</div>':'')+'</div>'+
+    '<div class="card" style="margin:0;"><h3>💎 LTV médio (valor histórico por cliente)</h3><strong>'+fmtMoney(ltvMedio)+'</strong>, considerando '+todosClientesComVenda.size+' cliente(s) que já compraram</div>'+
+    '<div class="card" style="margin:0;"><h3>🧭 Segmentação RFM (situação de cada cliente hoje)</h3><div class="table-wrap"><table><thead><tr><th>Segmento</th><th>Qtd.</th><th>Exemplos</th></tr></thead><tbody>'+linhasSeg+'</tbody></table></div></div>'+
+    '</div>';
 }
 function relatorioVendas(){
   return '<h3>Filtrar</h3><div class="form-row">'+
@@ -6519,6 +6676,21 @@ function attachHandlers(){
 
   const rvFiltrar = document.getElementById('rv-filtrar'); if(rvFiltrar) rvFiltrar.onclick = renderRelatorioVendasResultado;
   const rkFiltrar = document.getElementById('rk-filtrar'); if(rkFiltrar) rkFiltrar.onclick = renderRelatorioRankingResultado;
+  const rdData = document.getElementById('rd-data'); if(rdData) rdData.onchange = ()=>{ resumoDiaData = rdData.value; renderAll(); };
+  const abcFiltrar = document.getElementById('abc-filtrar'); if(abcFiltrar) abcFiltrar.onclick = renderRelatorioABCResultado;
+  const inputMesKpi = document.getElementById('input-mes-kpi'); if(inputMesKpi) inputMesKpi.onchange = ()=>{ kpiMesSelecionado = inputMesKpi.value; renderAll(); };
+  document.querySelectorAll('[data-recompensar-indicador]').forEach(btn=>btn.onclick=async()=>{
+    const obs = prompt('O que você vai dar de recompensa pra '+btn.dataset.recompensarIndicador+'? (ex: 1 botijão grátis, desconto de R$10, etc)');
+    if(obs===null) return;
+    if(!Array.isArray(state.recompensasIndicacao)) state.recompensasIndicacao=[];
+    state.recompensasIndicacao.push({id:uid(), indicador:btn.dataset.recompensarIndicador, obs, criadoEm:Date.now()});
+    await save('recompensasIndicacao'); renderAll();
+  });
+  document.querySelectorAll('[data-del-recompensa]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir esse registro de recompensa?')) return;
+    state.recompensasIndicacao = (state.recompensasIndicacao||[]).filter(r=>r.id!==btn.dataset.delRecompensa);
+    await save('recompensasIndicacao'); renderAll();
+  });
   const riFiltrar = document.getElementById('ri-filtrar'); if(riFiltrar) riFiltrar.onclick = renderRelatorioItensResultado;
   const riMarcarTodas = document.getElementById('ri-marcar-todas');
   if(riMarcarTodas) riMarcarTodas.onclick = ()=>{ document.querySelectorAll('.ri-grupo').forEach(c=>c.checked=true); renderRelatorioItensResultado(); };
@@ -6588,6 +6760,7 @@ function attachHandlers(){
   };
   if(relatorioSub==='vendas' && document.getElementById('rv-resultado')) renderRelatorioVendasResultado();
   if(relatorioSub==='ranking' && document.getElementById('rk-resultado')) renderRelatorioRankingResultado();
+  if(relatorioSub==='abc' && document.getElementById('abc-resultado')) renderRelatorioABCResultado();
   if(relatorioSub==='despesas' && document.getElementById('rd-resultado')) renderRelatorioDespesasResultado();
   if(relatorioSub==='entregas' && document.getElementById('rent-resultado')) renderRelatorioEntregasResultado();
   if(relatorioSub==='notas' && document.getElementById('rn-resultado')) renderRelatorioNotasResultado();
