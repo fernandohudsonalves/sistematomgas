@@ -927,6 +927,24 @@ let seletorVendaMain = null, seletorAgendamento = null;
 let dashCharts = {};
 let seriesEvolucaoSelecionadas = null;
 let usuarioAtualNome = 'Usuário';
+let usuarioAtualEmail = null;
+let usuarioAtualEhAdmin = true;
+let usuarioAtualAbasPermitidas = [];
+let editUsuarioId = null;
+const ABAS_SEMPRE_PERMITIDAS = ['painel','config'];
+function calcularPermissaoAtual(){
+  const lista = state.usuariosSistema||[];
+  if(lista.length===0){ usuarioAtualEhAdmin = true; usuarioAtualAbasPermitidas=[]; return; }
+  const registro = lista.find(u=>(u.email||'').toLowerCase()===(usuarioAtualEmail||'').toLowerCase());
+  if(!registro){ usuarioAtualEhAdmin = false; usuarioAtualAbasPermitidas = []; return; }
+  usuarioAtualEhAdmin = registro.papel==='admin';
+  usuarioAtualAbasPermitidas = registro.abasPermitidas||[];
+}
+function abaPermitida(tabId){
+  if(usuarioAtualEhAdmin) return true;
+  if(ABAS_SEMPRE_PERMITIDAS.includes(tabId)) return true;
+  return usuarioAtualAbasPermitidas.includes(tabId);
+}
 
 const TABS = [
   {id:'dashboard', label:'Painel'},
@@ -2188,7 +2206,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','usuariosSistema'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2250,6 +2268,7 @@ async function loadAll(){
   if(!Array.isArray(state.acertosEntrega)){ state.acertosEntrega = []; await save('acertosEntrega'); }
   if(!Array.isArray(state.recompensasIndicacao)) state.recompensasIndicacao = [];
   if(!Array.isArray(state.npsRespostas)) state.npsRespostas = [];
+  if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema = [];
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
   if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
@@ -2502,9 +2521,9 @@ function grupoDoTab(tabId){
 function renderNav(){
   const nav = document.getElementById('nav');
   const etiquetaData = document.getElementById('etiqueta-data-hoje');
-  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 26/08/2026 às 22:05';
+  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 26/08/2026 às 22:17';
   let html = '<div id="nav-principal">';
-  TABS_VISIVEIS.forEach((t,i)=>{
+  TABS_VISIVEIS.filter(t=>abaPermitida(t.id)).forEach((t,i)=>{
     if(i>0) html += '<span class="nav-sep">|</span>';
     const ativo = !t.filhos && currentTab===t.id;
     html += '<button data-tab="'+t.id+'" class="'+(ativo?'active':'')+'">'+t.label+'</button>';
@@ -2513,7 +2532,7 @@ function renderNav(){
   const grupoAberto = grupoDoTab(currentTab);
   if(grupoAberto){
     html += '<div id="subnav" style="margin-top:6px;">';
-    grupoAberto.filhos.forEach((fid,i)=>{
+    grupoAberto.filhos.filter(fid=>abaPermitida(fid)).forEach((fid,i)=>{
       const ft = TABS.find(x=>x.id===fid);
       if(i>0) html += '<span class="nav-sep">|</span>';
       html += '<button data-tab="'+ft.id+'" class="'+(currentTab===ft.id?'active':'')+'">'+ft.label+'</button>';
@@ -3962,6 +3981,24 @@ function viewAgendamentos(){
 
 /* ---------- RELATÓRIOS ---------- */
 /* ---------- CONFIGURAÇÕES ---------- */
+function cardUsuariosPermissoes(){
+  const usuarios = state.usuariosSistema||[];
+  const editando = usuarios.find(u=>u.id===editUsuarioId);
+  const linhas = usuarios.map(u=>'<tr><td>'+escapeHtmlCampanha(u.nome||u.email)+'</td><td>'+escapeHtmlCampanha(u.email)+'</td><td>'+(u.papel==='admin'?'👑 Administrador':'🔒 Restrito ('+(u.abasPermitidas||[]).length+' aba(s))')+'</td><td class="cel-acoes"><button class="act-link" data-editar-usuario="'+u.id+'">✎</button><button class="del-link" data-del-usuario="'+u.id+'">🗑</button></td></tr>').join('');
+  return '<div class="card"><h2>👥 Usuários e Permissões</h2>'+
+    ajudaHtml('usuarios','Cadastre aqui o e-mail de cada pessoa que faz login no sistema e defina o que ela pode acessar. "Administrador" vê e mexe em tudo, sem restrição. "Restrito" só vê as abas que você marcar — as outras nem aparecem no menu dela. Importante: essa é uma trava de tela (esconde o que a pessoa não deve ver), não é uma trava de banco de dados — é pensada pra organizar o acesso da equipe, não pra proteger contra alguém tentando burlar de propósito.')+
+    '<form id="form-usuario-permissao" data-edit-id="'+(editando?editando.id:'')+'">'+
+    '<div class="form-row"><div><label>Nome</label><input type="text" name="nome" value="'+escapeHtmlCampanha(editando?.nome||'')+'"></div>'+
+    '<div><label>E-mail de login <span class="req">*</span></label><input type="email" name="email" value="'+escapeHtmlCampanha(editando?.email||'')+'" required></div>'+
+    '<div><label>Nível de acesso</label><select name="papel" id="sel-papel-usuario"><option value="admin" '+(editando?.papel==='admin'?'selected':'')+'>👑 Administrador (acesso total)</option><option value="restrito" '+(editando&&editando.papel!=='admin'?'selected':'')+'>🔒 Restrito (escolher abas)</option></select></div></div>'+
+    '<div id="campo-abas-restrito" style="display:'+((editando&&editando.papel!=='admin')?'block':'none')+';margin-top:10px;"><label>Abas que essa pessoa pode ver</label>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">'+TABS_VISIVEIS.filter(t=>t.id!=='painel'&&t.id!=='config').map(t=>'<label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" name="abas" value="'+t.id+'" '+((editando?.abasPermitidas||[]).includes(t.id)?'checked':'')+'> '+t.label+'</label>').join('')+'</div>'+
+    '<div class="hint" style="margin-top:4px;">Painel e Config sempre ficam visíveis pra qualquer usuário logado.</div></div>'+
+    '<button type="submit" class="btn small" style="margin-top:14px;">'+(editando?'Salvar alterações':'Adicionar usuário')+'</button> '+(editando?'<button type="button" class="btn small ghost" id="btn-cancelar-usuario">Cancelar</button>':'')+
+    '</form>'+
+    (usuarios.length?'<div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Nível</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="empty" style="margin-top:14px;">Nenhum usuário cadastrado ainda — enquanto a lista estiver vazia, qualquer pessoa que fizer login tem acesso total.</div>')+
+    '</div>';
+}
 function viewConfig(){
   const faviconPreview = state.faviconUrl ? '<img src="'+state.faviconUrl+'" alt="Favicon" style="width:32px;height:32px;border-radius:6px;border:1px solid var(--border);">' : '<span class="hint">Nenhum favicon definido (usando o padrão do navegador).</span>';
   const permissao = statusPermissaoNotificacao();
@@ -3971,7 +4008,8 @@ function viewConfig(){
   const mkAtual = monthKey(todayStr());
   const metaMensalAtualCfg = metaMensalP13(mkAtual);
   const comunicadosAtivos = state.comunicados.filter(c=>c.ativo!==false).length;
-  return '<div class="card"><h2>🎯 Meta de vendas</h2>'+
+  return (usuarioAtualEhAdmin ? cardUsuariosPermissoes() : '')+
+    '<div class="card"><h2>🎯 Meta de vendas</h2>'+
     '<div class="hint">'+(metaMensalAtualCfg>0 ? 'Meta de '+nomeMes(mkAtual)+': '+arred1(metaMensalAtualCfg)+' cargas de P13.' : 'Nenhuma meta configurada para '+nomeMes(mkAtual)+' ainda.')+'</div>'+
     '<button type="button" class="btn small ghost" id="btn-abrir-metas" style="margin-top:10px;">Abrir Meta</button>'+
     '</div>'+
@@ -7433,6 +7471,27 @@ function attachHandlers(){
   };
 
   const btnBackupManual = document.getElementById('btn-backup-manual');
+  const formUsuarioPermissao = document.getElementById('form-usuario-permissao');
+  if(formUsuarioPermissao) formUsuarioPermissao.onsubmit = async e=>{
+    e.preventDefault();
+    const f = new FormData(formUsuarioPermissao);
+    const editId = formUsuarioPermissao.dataset.editId;
+    const abas = [...formUsuarioPermissao.querySelectorAll('input[name="abas"]:checked')].map(x=>x.value);
+    const dados = {nome:(f.get('nome')||'').trim(), email:(f.get('email')||'').trim().toLowerCase(), papel:f.get('papel')||'restrito', abasPermitidas:abas};
+    if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema=[];
+    if(editId){ const u=state.usuariosSistema.find(x=>x.id===editId); if(u) Object.assign(u,dados); editUsuarioId=null; }
+    else state.usuariosSistema.push(Object.assign({id:uid(),criadoEm:Date.now()},dados));
+    await save('usuariosSistema'); calcularPermissaoAtual(); renderAll();
+  };
+  const selPapelUsuario = document.getElementById('sel-papel-usuario');
+  if(selPapelUsuario) selPapelUsuario.onchange = ()=>{ const el=document.getElementById('campo-abas-restrito'); if(el) el.style.display = selPapelUsuario.value==='restrito'?'block':'none'; };
+  document.querySelectorAll('[data-editar-usuario]').forEach(btn=>btn.onclick=()=>{ editUsuarioId = btn.dataset.editarUsuario; renderAll(); });
+  document.querySelectorAll('[data-del-usuario]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Remover esse usuário da lista? Se a lista ficar vazia, todo mundo passa a ter acesso total de novo. Se não ficar vazia, essa pessoa passa a só ver Painel e Config até ser recadastrada.')) return;
+    state.usuariosSistema = (state.usuariosSistema||[]).filter(u=>u.id!==btn.dataset.delUsuario);
+    await save('usuariosSistema'); calcularPermissaoAtual(); renderAll();
+  });
+  const btnCancelarUsuario = document.getElementById('btn-cancelar-usuario'); if(btnCancelarUsuario) btnCancelarUsuario.onclick=()=>{ editUsuarioId=null; renderAll(); };
   if(btnBackupManual) btnBackupManual.onclick = async ()=>{
     btnBackupManual.disabled = true;
     const textoOriginal = btnBackupManual.textContent;
@@ -8820,9 +8879,12 @@ async function afterLogin(){
     if(user){
       const meta = user.user_metadata || {};
       usuarioAtualNome = meta.nome || meta.email_real || meta.usuario || meta.telefone || (user.email||'').split('@')[0] || 'Usuário';
+      usuarioAtualEmail = user.email || null;
     }
   }catch(e){ console.error('Erro ao buscar usuário logado', e); }
   await loadAll();
+  calcularPermissaoAtual();
+  if(!abaPermitida(currentTab)) currentTab = 'painel';
   renderHeaderLogo();
   aplicarFavicon();
   renderAll();
