@@ -231,6 +231,28 @@ table td:last-child{min-width:180px;}
 .comunicado-banner h3{margin:0 0 4px;font-size:15px;color:#fff;}
 .comunicado-banner p{margin:0;font-size:13px;color:#E4EAFB;white-space:pre-wrap;}
 .comunicado-banner .tag{display:inline-block;background:var(--neon);color:var(--royal-dark);font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:20px;margin-bottom:8px;}
+@media (max-width: 640px){
+  input,select,textarea{font-size:16px;} /* evita o zoom automático do iPhone ao tocar num campo */
+  main{padding:12px;}
+  .card{padding:12px 14px;margin-bottom:12px;}
+  h2{font-size:16px;}
+  h3{font-size:14px;}
+  table{font-size:12px;}
+  table th, table td{padding:6px 8px;}
+  .btn{padding:10px 14px;font-size:13px;}
+  .btn.small{padding:8px 12px;}
+  nav button{min-width:60px;font-size:11px;padding:8px 4px;}
+  .grid.cols4{grid-template-columns:repeat(auto-fit,minmax(100px,1fr));}
+  .form-row{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;}
+  .act-link, .del-link{padding:6px 4px;display:inline-block;}
+  .cel-acoes{white-space:normal;}
+  .lc-top{gap:8px;}
+}
+@media (max-width: 400px){
+  main{padding:8px;}
+  .card{padding:10px 12px;}
+  .form-row{grid-template-columns:1fr;}
+}
 @media print{
   body *{ visibility:hidden; }
   #extrato-imprimir, #extrato-imprimir *{ visibility:visible; }
@@ -2527,7 +2549,7 @@ function grupoDoTab(tabId){
 function renderNav(){
   const nav = document.getElementById('nav');
   const etiquetaData = document.getElementById('etiqueta-data-hoje');
-  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 27/08/2026 às 08:48';
+  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 27/08/2026 às 17:18';
   let html = '<div id="nav-principal">';
   TABS_VISIVEIS.filter(t=>abaPermitida(t.id)).forEach((t,i)=>{
     if(i>0) html += '<span class="nav-sep">|</span>';
