@@ -811,20 +811,30 @@ function chaveGrupoProduto(label){ const info = GRUPOS_PRODUTO.find(x=>chaveNorm
 const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Combustível','Salário','Aluguel','Manutenção','IPVA','Seguro do veículo','Peças / Pneus / Óleo','Outros'];
 const PALAVRAS_CHAVE_VEICULO = ['combust','manuten','ipva','seguro','pneu','oleo','peca','peça','oficina','revis','veicul','licenciamento'];
 function categoriaParaceVeiculo(cat){ const k=chaveNormalizada(cat); return PALAVRAS_CHAVE_VEICULO.some(p=>k.includes(chaveNormalizada(p))); }
-function svgMotoVeiculo(cor,t){ return '<svg width="'+t+'" height="'+t+'" viewBox="0 0 48 48"><circle cx="10" cy="36" r="7" fill="'+cor+'"/><circle cx="10" cy="36" r="2.8" fill="#fff"/><circle cx="38" cy="36" r="7" fill="'+cor+'"/><circle cx="38" cy="36" r="2.8" fill="#fff"/><path d="M10 36 L18 36 L22 22 L34 22 L38 36" fill="none" stroke="'+cor+'" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 22 L27 14 H33" fill="none" stroke="'+cor+'" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><rect x="15" y="28" width="12" height="4.5" rx="2.2" fill="'+cor+'"/></svg>'; }
-function svgCarroVeiculo(cor,t){ return '<svg width="'+t+'" height="'+t+'" viewBox="0 0 48 48"><path d="M4 31 L7.5 19.5 Q9 16 13 16 H35 Q39 16 40.5 19.5 L44 31" fill="'+cor+'"/><rect x="2.5" y="29" width="43" height="9" rx="4.5" fill="'+cor+'"/><rect x="12.5" y="19.5" width="23" height="8.5" rx="2" fill="#fff"/><circle cx="13" cy="38" r="4.6" fill="'+cor+'"/><circle cx="13" cy="38" r="1.9" fill="#fff"/><circle cx="35" cy="38" r="4.6" fill="'+cor+'"/><circle cx="35" cy="38" r="1.9" fill="#fff"/></svg>'; }
-function svgPickupVeiculo(cor,t){ return '<svg width="'+t+'" height="'+t+'" viewBox="0 0 48 48"><path d="M3 31 V22 Q3 18.5 6.5 18.5 H20 L25 12 H30 V18.5 H41.5 Q45 18.5 45 22 V31" fill="'+cor+'"/><rect x="1.5" y="29" width="45" height="9" rx="4.5" fill="'+cor+'"/><rect x="30.5" y="19.5" width="10" height="8" rx="1.6" fill="#fff"/><circle cx="12.5" cy="38" r="4.6" fill="'+cor+'"/><circle cx="12.5" cy="38" r="1.9" fill="#fff"/><circle cx="36" cy="38" r="4.6" fill="'+cor+'"/><circle cx="36" cy="38" r="1.9" fill="#fff"/></svg>'; }
+/* Mesmos ícones usados no "tipo de entrega" (moto/carro/Strada), reaproveitados aqui pros
+   veículos, em versão azul (padrão) e cinza (recolorida) — a cor usada depende de v.corIcone. */
+const ICONES_VEICULO_B64 = {
+  moto: {
+    azul: 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABUElEQVQokZXSMUiVYRTG8Z8aoQ5p6mBBhYK4iYM5XA0c2gprEzEuCYng4KSDS2A6NTjp4iKOJmgUoqBYGYFItEcQFLWUIiIKQaK8t4Mp18AOfHzf+3De/3nOw1dwPfPUP+oSpnEZXfh+VtuFPOVvleF+nBr/F1CELNYxj9d5HVGFecqfuofRmJwAe6G3nAeQXA3F9w5eog8PsBS5nAKU4Aau4UoE1oT3aMA39OImvsQ7exJQiw18xcewv48KdOIxpvAL9dg8EW7Obh0+YRAjaMYKDjCGt3GxOrSf0XvsoBSTuBOBXUQ7isP+IapiyBO04lnASxPgFYaxhQmsBXw30v8dTldjSDneoQ3jCXAXBZF0N24FoAafcTvOP2KFhwHvQUcip50qcTXcJLsJmJ6kP48c0tT+cLiAR9hOgEW8wBzeIBMrzZ7xzyxjBh9yzhk4AgxjR80D8QofAAAAAElFTkSuQmCC',
+    cinza: 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABbElEQVR4nI3QTYhOYRQH8N/7uom7GB8zabJQlGwt0G2YspDNeLCT1KBIWVixVYOVxSwmUrMRC4WaV26yIAxNbpK9lCIWviKap5SvhWNoeqeceuo5p3P+X60VA6d1q1TlHlzAEuypm/J1t72i6/XvWoSd8V+L/wdIVZ6HYTTo4N5cLO055jtwKpg7dVNOB/DG2Yut2RmkKhd4iHV4g08Yw2ecw0TdlHtnLKQqL8Qy/MA3bI3jxxjCJRwKGy+wPlV5uG7Ki38srOIjvMTTkJ+xFLtxHOfxFWvw3t9wFViNZziGk9iA2/iOUTyIw/6YvYvdmRBLjIfcDuZjOxbgFX6iL0hOYBOupCqPpiqXbdzFCD7gLO4H+BdMRy4F7gTJYkxhM860sQ2tuikPYz8GA2AlnmNL9G/Dwr4AP4hdRXjqTVVeHmr60IrXi2uRwxSOhMIbOICPBW7iOiYwiQGM1E151T+VqtzGLVzGk1B+9BetTWUODwA3JwAAAABJRU5ErkJggg=='
+  },
+  carro: {
+    azul: 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA3UlEQVQYlXXRrUvDcRAG8I/zBQw6DLKk3WAXg00Em2UMRcsEBZP/hMEiJl9gZYio3WITk2VYVg06sawYxCDCODhh/Nge+Ia7+z7P3XM3Mr98LLGOXfxhAZ/o4gvneFFAKcMjNHCJGh5xhW1cIzpUi+TR8tzqGi5wiltMYwkVtPCBtxQr4xudIMfY9znyD35TdCKEMyetzPQ1bWJ/DIuZmMzXj/HiqIkdvIfnqUxs4WDI539EfTODjei8h5Pc5ixe8TSAuIJ2XiA8Hwb5Ls9xk95C+XkAOZZ4lruo46EHc4Qr2Wtma6YAAAAASUVORK5CYII=',
+    cinza: 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA7ElEQVR4nHXRPyiEcRzH8dedozxlIFa7gfnHYFVXz2CRTiwUdRObzSRdykhikSTrk8Umg8d2BquFslhueSQpw/2ursOnvvXt0/fd919pfKYB0lBUsYZvTOAN72jhKMuTph6VI7iLUxxjEbc4xzIu0EhDsfALTkMxh+0I32MUn5jCCB6xj5M0FHtpKKY7cKm+tXONKj7wFf0B9EVPXGW4q+kZNiqYjMZgjG71944atYKXMoaisYT6P8Ud1VGL+XwF6zhAE2N4xt0f4CyetD/wis1KlidXaShauIy71bI8eegl01AEHGrfYjXLk5sfjhA8YYbc/r4AAAAASUVORK5CYII='
+  },
+  pickup: {
+    azul: 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAHCAYAAADXhRcnAAAAxElEQVQYlW3QIU+CYRQF4AfFTTcsjOaG3cEYxQAzaGZkk0ESP8GOhWywWdgIJIgkOhSDREfF5MZEgwp7t5ft2zdOurs7595zTqZY60rhDmV8ooQ5luhjlaQepJU4xBMeMUMH73hAIUnMood84tAZ7vGNc1zHuYIGRhhiGmyvcbLHwT784Bj/aIXPGbxhEOcbXKWUX3jGH07RDnGCOJQwxiJeDrsqjhLiCT6CVdTxust8iRya2MRML7G4HcKDW1zE5hv43QKS8CeKzldLEQAAAABJRU5ErkJggg==',
+    cinza: 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAHCAYAAADXhRcnAAAA0UlEQVR4nG3QIUhDYRTF8d/TJ7iHFrEJ2kURiwzFYnZmk8Uka2u2ha0sG2wWwWDS10zGB7MYtAhi1SQ8fC6oM/gJH7p/OuHcc+89yfx6T0yjXu1hGa9Ywj2ecZYXWRl7x/xnHEd5kXVxgw4ecdioV7OxMWm22qeYiYLmwtZ3LOAh6BUMcImLvMj6SbPVrlAbccEoBpjEF/ZTJLjDedBb2Pwz9IZjfGIaB+ikKHGFp5CcYhUT0fA1XtDHBm4F4xqmsINh+OkkFPdLiV0s+ml+Gx/fgvoyuDjTeXEAAAAASUVORK5CYII='
+  }
+};
 function iconeVeiculoHtml(v, tamanho){
   const t = tamanho||18;
   const cor = v.corIcone || (v.corVerde ? '#16a34a' : '#1E3A8A');
-  if(v.tipo==='moto'){
-    const MOTO_AZUL_B64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABQ0lEQVR42pXSP0jVYRTG8c+9/ghz6I/doQSJAmmLBnXQgoa2xNwklEtRITQ41eAi+Gd2qsUlHC3IKEKhyH9cCJH2CIKilixCoiAwankQBS/kWd7zHs77Pc95eEttNzbUiUOYwVEM4PNeTYX6cRh9yc/tF9CAKl5jDkv1ppTr1K9gMpPn8DP17v8BFBhJvolnuI1BLMSXXYCDOIlWnIhh7VjHWXzCEDrwIWd1J+A01vARbyP/F5pxFaN4gN84g687zFWgDe9wFxPoxEv8wRRW8/B4ahvp3VbQhGlcjmEH0IvGyP+LSoaM4zweBt5UxiLG8A33sRL4j7i/FaWvMuQIariIe2X0oBSnr+NCAKfwHpdy/5IVrgV+C/1FdjqGlqipBFhK/Ul8qGE4Cp/jJr4XmMdTPMYyurLSoz3+zAvM4k2U3/kH6ZNIXhin5v8AAAAASUVORK5CYII=';
-    const MOTO_CINZA_B64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABQklEQVR42pXSP0jVYRTG8c+9/RB16J93sCDCINyiwRqswKEtsbaIRBIMwaAhdGiJyuamWlykUYUURRSK/iKIiHsEgVJLJRFiECi6PISBF/Qs73kP5/2e5zy8pTv3HqoSB/ECR3AT33ZrKlSPQ7iW/Ox+AQfQhXmM4121KeUq9at4ksnjWE/9wl4ABe4n/40p9KETs/HlP0AdTuIEjsWwFiziDL6iF+ewnLNrJ+AUFrCCT5H/B0dxAw8wjL9oxs8d5ipwGp8xgEGcx2ts4ik+5mFjaj/S+09BPYZwJYbVoAO1kb+FSoY8xkWMBl5fxls8wiqe40Pga3F/I0rfZMhhzKENz8poRylOd+NSAE34gsu5f88KtwK/jetFdmrA8aipBFhKfSI+zOFuFE6jB78KzGASL/EerVlpbJc/8wojWIry/m2h0khIw/LeIwAAAABJRU5ErkJggg==';
-    const b64 = (cor.toLowerCase()==='#6b7280') ? MOTO_CINZA_B64 : MOTO_AZUL_B64;
-    return '<img src="data:image/png;base64,'+b64+'" width="'+Math.round(t*1.4)+'" style="vertical-align:middle;" alt="moto">';
-  }
-  if(v.tipo==='pickup') return svgPickupVeiculo(cor,t);
-  return svgCarroVeiculo(cor,t);
+  const tipo = v.tipo==='pickup' ? 'pickup' : (v.tipo==='moto' ? 'moto' : 'carro');
+  const set = ICONES_VEICULO_B64[tipo];
+  const b64 = (cor.toLowerCase()==='#6b7280') ? set.cinza : set.azul;
+  const larguraBase = tipo==='moto' ? Math.round(t*0.7) : Math.round(t*0.6);
+  return '<img src="data:image/png;base64,'+b64+'" width="'+larguraBase+'" style="vertical-align:middle;" alt="'+tipo+'">';
 }
 function iconeVeiculo(id){ const v=(state.veiculos||[]).find(x=>x.id===id); return v ? (iconeVeiculoHtml(v)+' '+v.nome) : ''; }
 function categoriasVeiculoDisponiveis(){ return state.categoriasDespesas.filter(cat=> categoriaParaceVeiculo(cat) || (state.categoriasVeiculoExtra||[]).includes(cat)); }
@@ -1765,10 +1775,11 @@ function viewTempoEntrega(){
   const lista = (state.temposEntrega||[]).slice().sort((a,b)=>new Date(b.horaConclusao)-new Date(a.horaConclusao));
   const fmtHora = iso=> iso ? new Date(iso).toLocaleString('pt-BR') : '—';
   const fmtDur = min=> min==null ? '—' : (min>=60 ? Math.floor(min/60)+'h '+(min%60)+'min' : min+' min');
-  const linhas = lista.map(t=>'<tr><td>'+fmtDate(t.data)+'</td><td>'+escapeHtmlCampanha(t.cliente||'')+'</td><td>'+fmtHora(t.horaPedido)+'</td><td>'+fmtHora(t.horaConclusao)+'</td><td><strong>'+fmtDur(t.duracaoMin)+'</strong></td></tr>').join('');
+  const linhas = lista.map(t=>'<tr><td>'+fmtDate(t.data)+'</td><td>'+escapeHtmlCampanha(t.cliente||'')+'</td><td>'+fmtHora(t.horaPedido)+'</td><td>'+fmtHora(t.horaConclusao)+'</td><td><strong>'+fmtDur(t.duracaoMin)+'</strong></td>'+
+    '<td class="cel-acoes"><button type="button" class="del-link" title="Excluir registro" data-del-tempo="'+t.id+'">🗑</button></td></tr>').join('');
   return '<div class="card"><h2>⏱ Tempo de Entrega</h2>'+ajudaHtml('tempoentrega','Assim que o entregador conclui o passo 3 (ENTREGUE) na tela pública de confirmação, o sistema grava aqui a data, o cliente, o horário em que o pedido foi feito, o horário da conclusão, e calcula sozinho quanto tempo levou.')+
     (lista.length===0 ? '<div class="empty">Nenhuma entrega concluída registrada ainda.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Horário do pedido</th><th>Horário da conclusão</th><th>Tempo de entrega</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Horário do pedido</th><th>Horário da conclusão</th><th>Tempo de entrega</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
 }
 /* ===================== Fim rota / campanhas ===================== */
@@ -1794,7 +1805,7 @@ const c = cor || '#1E3A8A';
 const imgs = {
     'Retirada': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAABDklEQVQokZ3Suy6EURQF4G/GpZHQKBRmJB5Ao6KRSOgUvIFGIvEElAoiUYln8ADiATRKCqJEJ2Eq9+uQE3uS35xJzFjJyT75s9ba+6z9l6qTWwJl7GAOyzjQBsoFSk+IK5htR5zQNVCZadw/8YI6NlDL2C1QnGAMq5jALnpzeo6iQRXDGMQ0NjN2CxQN3gv3GyxiJZf8RjdG0BengVpsZA1D2MuUP3hMazzBKNI+11GKIG9xHQ2a8/iKep4mmI/u1RA3CEu4jO2UWhikc58MruJjf9RDTEU+p9nQTSiGWI+6HeMvZOwWKBq84QNn2Md4pwbprU+4i/Be/2OQJniIf+K5U4PU+SiecoHjP9X4BvStN1F8z/edAAAAAElFTkSuQmCC',
     'Entrega a pé': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABDUlEQVR42qXTPyjEcRjH8dfP30L5l7I4BkXsBtvlxHKrJMogi0QG+40kG1bJIoYro1IMFou6GFiv3KjIQGH5Dtd1d37Od3y+z/f9fD7P83yjxPi2/5y6KncduMATxmoBDCCFQUxUSmqoArjDHoZxWAsghSRa8PFXC/PB/0iwshlAsQBt2MUD3vGKOZygMQ5gBj3I4BtN2ME0jhH9Bkgji1u0ohlnmEI+ThNX8Raq32MUB1jAZRwLebxgGZ1BTRo36C5Nrm/vmyzX3AROUQjjLGAxKLuOM8at4H8Fn9gPi7UeVFUFJDGLI1wVxTPowlJxclTmNz6iF0N4LimWQ3/YlYoKclgreQxf2MB5cfAHNuQyW4DWfx4AAAAASUVORK5CYII=',
-    'Entrega de carro': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA3UlEQVQYlXXRrUvDcRAG8I/zBQw6DLKk3WAXg00Em2UMRcsEBZP/hMEiJl9gZYio3WITk2VYVg06sawYxCDCODhh/Nge+Ia7+z7P3XM3Mr98LLGOXfxhAZ/o4gvneFFAKcMjNHCJGh5xhW1cIzpUi+TR8tzqGi5wiltMYwkVtPCBtxQr4xudIMfY9znyD35TdCKEMyetzPQ1bWJ/DIuZmMzXj/HiqIkdvIfnqUxs4WDI539EfTODjei8h5Pc5ixe8TSAuIJ2XiA8Hwb5Ls9xk95C+XkAOZZ4lruo46EHc4Qr2Wtma6YAAAAASUVORK5CYII=',
+    'Entrega de carro': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA7ElEQVR4nHXRPyiEcRzH8dedozxlIFa7gfnHYFVXz2CRTiwUdRObzSRdykhikSTrk8Umg8d2BquFslhueSQpw/2ursOnvvXt0/fd919pfKYB0lBUsYZvTOAN72jhKMuTph6VI7iLUxxjEbc4xzIu0EhDsfALTkMxh+0I32MUn5jCCB6xj5M0FHtpKKY7cKm+tXONKj7wFf0B9EVPXGW4q+kZNiqYjMZgjG71944atYKXMoaisYT6P8Ud1VGL+XwF6zhAE2N4xt0f4CyetD/wis1KlidXaShauIy71bI8eegl01AEHGrfYjXLk5sfjhA8YYbc/r4AAAAASUVORK5CYII=',
     'Entrega de moto': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABUElEQVQokZXSMUiVYRTG8Z8aoQ5p6mBBhYK4iYM5XA0c2gprEzEuCYng4KSDS2A6NTjp4iKOJmgUoqBYGYFItEcQFLWUIiIKQaK8t4Mp18AOfHzf+3De/3nOw1dwPfPUP+oSpnEZXfh+VtuFPOVvleF+nBr/F1CELNYxj9d5HVGFecqfuofRmJwAe6G3nAeQXA3F9w5eog8PsBS5nAKU4Aau4UoE1oT3aMA39OImvsQ7exJQiw18xcewv48KdOIxpvAL9dg8EW7Obh0+YRAjaMYKDjCGt3GxOrSf0XvsoBSTuBOBXUQ7isP+IapiyBO04lnASxPgFYaxhQmsBXw30v8dTldjSDneoQ3jCXAXBZF0N24FoAafcTvOP2KFhwHvQUcip50qcTXcJLsJmJ6kP48c0tT+cLiAR9hOgEW8wBzeIBMrzZ7xzyxjBh9yzhk4AgxjR80D8QofAAAAAElFTkSuQmCC',
     'Entrega de Strada': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAHCAYAAADXhRcnAAAAxElEQVQYlW3QIU+CYRQF4AfFTTcsjOaG3cEYxQAzaGZkk0ESP8GOhWywWdgIJIgkOhSDREfF5MZEgwp7t5ft2zdOurs7595zTqZY60rhDmV8ooQ5luhjlaQepJU4xBMeMUMH73hAIUnMood84tAZ7vGNc1zHuYIGRhhiGmyvcbLHwT784Bj/aIXPGbxhEOcbXKWUX3jGH07RDnGCOJQwxiJeDrsqjhLiCT6CVdTxust8iRya2MRML7G4HcKDW1zE5hv43QKS8CeKzldLEQAAAABJRU5ErkJggg==',
   };
@@ -2549,7 +2560,12 @@ function grupoDoTab(tabId){
 function renderNav(){
   const nav = document.getElementById('nav');
   const etiquetaData = document.getElementById('etiqueta-data-hoje');
-  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 27/08/2026 às 17:18';
+  if(etiquetaData){
+    const agora = new Date();
+    const dd = String(agora.getDate()).padStart(2,'0'), mm = String(agora.getMonth()+1).padStart(2,'0'), yyyy = agora.getFullYear();
+    const hh = String(agora.getHours()).padStart(2,'0'), mi = String(agora.getMinutes()).padStart(2,'0');
+    etiquetaData.textContent = 'Atualizado em '+dd+'/'+mm+'/'+yyyy+' às '+hh+':'+mi;
+  }
   let html = '<div id="nav-principal">';
   TABS_VISIVEIS.filter(t=>abaPermitida(t.id)).forEach((t,i)=>{
     if(i>0) html += '<span class="nav-sep">|</span>';
@@ -2796,9 +2812,9 @@ function viewDashboard(){
     '<button class="btn small ghost" id="db-filtrar">Filtrar</button>'+
     '<div class="grid cols2" style="margin-top:14px;max-width:620px;" id="db-ticket-medio"></div>'+
     '<h3>Vendas por categoria no período</h3><div id="db-vendas-categoria"></div>'+
-    '<div class="grid cols2" style="margin-top:18px;">'+
+    '<div style="margin-top:18px;">'+
     '<div class="chart-card"><h3>Despesas por categoria</h3><div class="chart-box"><canvas id="chart-despesas-pizza"></canvas></div></div>'+
-    '<div class="chart-card"><h3>Vendas por categoria de produto</h3><div class="chart-box"><canvas id="chart-vendas-pizza"></canvas></div></div>'+
+    '<div class="chart-card" style="margin-top:14px;"><h3>Vendas por categoria de produto</h3><div class="chart-box"><canvas id="chart-vendas-pizza"></canvas></div></div>'+
     '</div>'+
     '<h3 style="margin-top:22px;">Vendas por dia</h3><div class="chart-box"><canvas id="chart-vendas-dia"></canvas></div>'+
     '<h3 style="margin-top:22px;">Evolução das vendas por categoria (Gás / Água / Outros)</h3><div class="chart-box"><canvas id="chart-evolucao"></canvas></div>'+
@@ -2978,10 +2994,35 @@ function empresasOptions(){
   state.vendas.forEach(v=>{ if(v.empresa) set[v.empresa]=true; });
   return Object.keys(set).map(e=>'<option value="'+e+'">').join('');
 }
+/* Garante que uma empresa digitada em vendas/agendamentos já exista em state.empresas;
+   se não existir (comparando sem diferenciar maiúsculas/acentos/espaços), cadastra automaticamente. */
+async function garantirEmpresaCadastrada(nome){
+  const n = String(nome||'').trim();
+  if(!n) return;
+  const norm = chaveNormalizada(n);
+  const existe = (state.empresas||[]).some(e=>chaveNormalizada(e.nome||'')===norm);
+  if(existe) return;
+  state.empresas.push({id:uid(), nome:n, telefone:'', endereco:'', responsavel:'', obs:''});
+  await save('empresas');
+}
+/* Varre vendas e agendamentos em busca de nomes de empresa ainda não cadastrados e cria todos de uma vez. */
+async function importarEmpresasAutomaticamente(){
+  const nomes = {};
+  state.vendas.forEach(v=>{ if(v.empresa) nomes[v.empresa.trim()]=true; });
+  (state.agendamentos||[]).forEach(a=>{ if(a.empresa) nomes[a.empresa.trim()]=true; });
+  const existentes = new Set((state.empresas||[]).map(e=>chaveNormalizada(e.nome||'')));
+  const novas = Object.keys(nomes).filter(n=>n && !existentes.has(chaveNormalizada(n)));
+  if(novas.length===0){ alert('Nenhuma empresa nova encontrada em vendas ou agendamentos.'); return; }
+  novas.forEach(n=> state.empresas.push({id:uid(), nome:n, telefone:'', endereco:'', responsavel:'', obs:''}));
+  await save('empresas');
+  alert(novas.length+' empresa(s) importada(s) automaticamente: '+novas.join(', '));
+  renderAll();
+}
 
 /* ---------- EMPRESAS CONVENIADAS ---------- */
 function viewEmpresas(){
   return '<div class="card"><h2>Empresas conveniadas <span class="pill">'+state.empresas.length+'</span></h2>'+
+    '<button type="button" class="btn small ghost" id="btn-importar-empresas" style="margin-bottom:10px;">⬇️ Importar empresas automaticamente</button>'+
     '<input type="text" id="busca-empresa" class="searchbar" placeholder="Buscar por nome, telefone ou endereço...">'+
     '<div id="lista-empresas-wrap">'+empresasTable(state.empresas)+'</div></div>'+
     '<div class="card"><h2>Nova empresa conveniada</h2><form id="form-empresa-cad">'+
@@ -3518,7 +3559,7 @@ function viewVeiculos(){
   const cards = (state.veiculos||[]).map(v=>{
     const total = totalGastoVeiculo(v.id), ultima = ultimaDespesaVeiculo(v.id);
     return '<div class="card" style="flex:1;min-width:230px;">'+
-      '<h3 style="margin:0 0 6px;display:flex;align-items:center;gap:6px;">'+iconeVeiculoHtml(v,24)+' '+escapeHtmlCampanha(v.nome)+'</h3>'+
+      '<h3 style="margin:0 0 6px;display:flex;align-items:center;gap:6px;">'+iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)+'</h3>'+
       '<div class="hint">Total gasto: <strong>'+fmtMoney(total)+'</strong></div>'+
       (ultima ? '<div class="hint">Último lançamento: '+fmtDate(ultima.data)+' — '+escapeHtmlCampanha(ultima.categoria)+'</div>' : '<div class="hint">Nenhum gasto lançado ainda.</div>')+
       '<button type="button" class="btn small" data-ver-veiculo="'+v.id+'" style="margin-top:8px;">Ver histórico / Lançar gasto</button>'+
@@ -3556,11 +3597,11 @@ function viewDetalheVeiculo(v){
       '<td class="cel-acoes"><button class="act-link" data-edit-manutencao="'+d.id+'">✎</button><button class="del-link" data-del-manutencao="'+d.id+'">🗑</button></td></tr>';
   }).join('');
   const optsCategoria = categoriasVeiculoDisponiveis().map(cat=>'<option'+(editando&&editando.categoria===cat?' selected':'')+'>'+cat+'</option>').join('');
-  return '<div class="card"><h2 style="display:flex;align-items:center;gap:8px;">'+iconeVeiculoHtml(v,26)+' '+escapeHtmlCampanha(v.nome)+' — histórico</h2>'+
+  return '<div class="card"><h2 style="display:flex;align-items:center;gap:8px;">'+iconeVeiculoHtml(v,18)+' '+escapeHtmlCampanha(v.nome)+' — histórico</h2>'+
     (historico.length===0 ? '<div class="empty">Nenhum gasto lançado ainda pra esse veículo.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Categoria</th><th>Oficina/Local</th><th>O que foi feito</th><th>Valor</th><th>Pagamento</th><th>Garantia até</th><th>Próxima troca</th><th>Observação futura</th><th>Comprovante</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>'+
-    '<div class="card"><h2 style="display:flex;align-items:center;gap:8px;">'+(editando?'Editar gasto':'Novo gasto')+' — '+iconeVeiculoHtml(v,22)+' '+escapeHtmlCampanha(v.nome)+'</h2>'+
+    '<div class="card"><h2 style="display:flex;align-items:center;gap:8px;">'+(editando?'Editar gasto':'Novo gasto')+' — '+iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)+'</h2>'+
     '<form id="form-manutencao" data-veiculo="'+v.id+'" data-editid="'+(editando?editando.id:'')+'">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+(editando?editando.data:hoje)+'" required></div>'+
@@ -5650,6 +5691,7 @@ function attachHandlers(){
         enviarPushServidor('Nova entrega registrada', (camposComuns.cliente||'Cliente')+' — '+itens.map(i=>i.quantidade+'x '+i.produto).join(', ')+' às '+camposComuns.entrega_hora);
       }
     }
+    if(camposComuns.empresa) await garantirEmpresaCadastrada(camposComuns.empresa);
     await save('vendas'); await save('estoque');
     renderAll();
   };
@@ -6174,6 +6216,8 @@ function attachHandlers(){
       const id = btn.dataset.delEmpresa;
       if(confirm('Excluir esta empresa conveniada?')){ state.empresas = state.empresas.filter(x=>x.id!==id); await save('empresas'); renderAll(); }
     });
+    const btnImportarEmpresas = document.getElementById('btn-importar-empresas');
+    if(btnImportarEmpresas) btnImportarEmpresas.onclick = importarEmpresasAutomaticamente;
   };
   attachVendaRowHandlers();
   attachDespesaRowHandlers();
@@ -7126,6 +7170,12 @@ function attachHandlers(){
     await save('acertosEntrega');
     renderAll();
   });
+  document.querySelectorAll('[data-del-tempo]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir este registro de tempo de entrega?')) return;
+    state.temposEntrega = (state.temposEntrega||[]).filter(t=>t.id!==btn.dataset.delTempo);
+    await save('temposEntrega');
+    renderAll();
+  });
 
   const fMeta = document.getElementById('form-meta');
   if(fMeta) fMeta.onsubmit = async(e)=>{
@@ -7239,6 +7289,8 @@ function attachHandlers(){
       notificarLocal('Novo agendamento de entrega', (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
       enviarPushServidor('Novo agendamento de entrega', (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
     }
+    const empresaAg = temFrete ? (f.get('empresa')||'') : '';
+    if(empresaAg) await garantirEmpresaCadastrada(empresaAg);
     await save('agendamentos');
     atualizarBadgeApp();
     renderAll();
