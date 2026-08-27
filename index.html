@@ -124,6 +124,7 @@ label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin:10p
 input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);font-family:inherit;}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--royal-light);box-shadow:0 0 0 3px var(--blue-tint);}
 .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+.form-align-fim>div{display:flex;flex-direction:column;justify-content:flex-end;}
 .qty-stepper{display:flex;align-items:stretch;}
 .qty-stepper input[type=number]{-moz-appearance:textfield;text-align:center;border-radius:0;border-left:none;border-right:none;position:relative;z-index:1;}
 .qty-stepper input[type=number]::-webkit-outer-spin-button,.qty-stepper input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
@@ -794,7 +795,12 @@ function svgPickupVeiculo(cor,t){ return '<svg width="'+t+'" height="'+t+'" view
 function iconeVeiculoHtml(v, tamanho){
   const t = tamanho||18;
   const cor = v.corIcone || (v.corVerde ? '#16a34a' : '#1E3A8A');
-  if(v.tipo==='moto') return svgMotoVeiculo(cor,t);
+  if(v.tipo==='moto'){
+    const MOTO_AZUL_B64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABQ0lEQVR42pXSP0jVYRTG8c+9/ghz6I/doQSJAmmLBnXQgoa2xNwklEtRITQ41eAi+Gd2qsUlHC3IKEKhyH9cCJH2CIKilixCoiAwankQBS/kWd7zHs77Pc95eEttNzbUiUOYwVEM4PNeTYX6cRh9yc/tF9CAKl5jDkv1ppTr1K9gMpPn8DP17v8BFBhJvolnuI1BLMSXXYCDOIlWnIhh7VjHWXzCEDrwIWd1J+A01vARbyP/F5pxFaN4gN84g687zFWgDe9wFxPoxEv8wRRW8/B4ahvp3VbQhGlcjmEH0IvGyP+LSoaM4zweBt5UxiLG8A33sRL4j7i/FaWvMuQIariIe2X0oBSnr+NCAKfwHpdy/5IVrgV+C/1FdjqGlqipBFhK/Ul8qGE4Cp/jJr4XmMdTPMYyurLSoz3+zAvM4k2U3/kH6ZNIXhin5v8AAAAASUVORK5CYII=';
+    const MOTO_CINZA_B64 = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABQklEQVR42pXSP0jVYRTG8c+9/RB16J93sCDCINyiwRqswKEtsbaIRBIMwaAhdGiJyuamWlykUYUURRSK/iKIiHsEgVJLJRFiECi6PISBF/Qs73kP5/2e5zy8pTv3HqoSB/ECR3AT33ZrKlSPQ7iW/Ox+AQfQhXmM4121KeUq9at4ksnjWE/9wl4ABe4n/40p9KETs/HlP0AdTuIEjsWwFiziDL6iF+ewnLNrJ+AUFrCCT5H/B0dxAw8wjL9oxs8d5ipwGp8xgEGcx2ts4ik+5mFjaj/S+09BPYZwJYbVoAO1kb+FSoY8xkWMBl5fxls8wiqe40Pga3F/I0rfZMhhzKENz8poRylOd+NSAE34gsu5f88KtwK/jetFdmrA8aipBFhKfSI+zOFuFE6jB78KzGASL/EerVlpbJc/8wojWIry/m2h0khIw/LeIwAAAABJRU5ErkJggg==';
+    const b64 = (cor.toLowerCase()==='#6b7280') ? MOTO_CINZA_B64 : MOTO_AZUL_B64;
+    return '<img src="data:image/png;base64,'+b64+'" width="'+Math.round(t*1.4)+'" style="vertical-align:middle;" alt="moto">';
+  }
   if(v.tipo==='pickup') return svgPickupVeiculo(cor,t);
   return svgCarroVeiculo(cor,t);
 }
@@ -1617,13 +1623,13 @@ function viewRotaDoDia(){
   return '<div class="card"><h2>🚚 Entregadores</h2>'+ajudaHtml('entregadores','Cadastre aqui quem faz as entregas (nome e WhatsApp). Isso permite escolher pra quem vai cada entrega, mandar a rota certinha pro WhatsApp de cada um, e filtrar a Rota do dia por entregador.')+
     '<div class="hint">Cadastre quem faz as entregas pra poder escolher pra quem vai cada rota ou entrega, e enviar direto pro WhatsApp de cada um.</div>'+
     '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+' · Comissão: '+(e.tipoComissao==='percentual'?(Number(e.valorComissao||0)+'% do frete'):fmtMoney(Number(e.valorComissao||0))+' por entrega')+'</span></span><button type="button" class="act-link" data-editar-whatsapp-entregador="'+e.id+'">✎ whatsapp</button><button type="button" class="act-link" data-editar-comissao-entregador="'+e.id+'">✎ comissão</button><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
-    '<form id="form-entregador" class="form-row" style="margin-top:10px;">'+
+    '<form id="form-entregador" class="form-row form-align-fim" style="margin-top:10px;">'+
     '<div><label>Nome</label><input type="text" name="nome" placeholder="Ex: João" required></div>'+
-    '<div><label>WhatsApp (só números, com DDD e 55)</label><input type="text" name="whatsapp" placeholder="Ex: 5543999999999"></div>'+
+    '<div><label>WhatsApp (DDD + número)</label><input type="text" name="whatsapp" value="55" placeholder="Ex: 5543999999999"></div>'+
     '<div><label>Tipo de comissão</label><select name="tipoComissao"><option value="fixo">Valor fixo por entrega</option><option value="percentual">% do frete da entrega</option></select></div>'+
     '<div><label>Valor</label><input type="text" inputmode="decimal" name="valorComissao" placeholder="Ex: 5,00 ou 10"></div>'+
     '<div><label>Meta de vendas do mês (R$, opcional)</label><input type="text" inputmode="decimal" name="metaMensal" placeholder="Ex: 8000"></div>'+
-    '<div style="align-self:end;"><button type="submit" class="btn small ghost">+ Adicionar entregador</button></div>'+
+    '<div><button type="submit" class="btn small ghost">+ Adicionar entregador</button></div>'+
     '</form></div>'+
     '<div class="card"><h2>📍 Ponto de partida</h2>'+
     '<div class="form-row"><div><label>Partir de</label><select id="sel-ponto-partida">'+
@@ -2521,7 +2527,7 @@ function grupoDoTab(tabId){
 function renderNav(){
   const nav = document.getElementById('nav');
   const etiquetaData = document.getElementById('etiqueta-data-hoje');
-  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 26/08/2026 às 22:17';
+  if(etiquetaData) etiquetaData.textContent = 'Atualizado em 27/08/2026 às 11:35';
   let html = '<div id="nav-principal">';
   TABS_VISIVEIS.filter(t=>abaPermitida(t.id)).forEach((t,i)=>{
     if(i>0) html += '<span class="nav-sep">|</span>';
@@ -3645,22 +3651,21 @@ const TAMANHOS_GAS = {P5:16, P13:22, P20:28, P45:34};
 function pesoGasTotal(){
   const g = state.estoque.gas;
   let cheio=0, vazio=0;
-  const porTipoCheio={}, porTipoVazio={};
+  const porTipoCheio={}, porTipoVazioQtd={};
   ['P5','P13','P20','P45'].forEach(t=>{
     const pc = (g[t].cheio||0)*PESO_GAS_KG[t];
-    const pv = (g[t].vazio||0)*PESO_GAS_KG[t];
-    cheio += pc; vazio += pv;
-    porTipoCheio[t]=pc; porTipoVazio[t]=pv;
+    cheio += pc;
+    porTipoCheio[t]=pc;
+    porTipoVazioQtd[t]=g[t].vazio||0;
+    vazio += (g[t].vazio||0);
   });
-  return {cheio, vazio, porTipoCheio, porTipoVazio};
+  return {cheio, vazio, porTipoCheio, porTipoVazioQtd};
 }
 const CAPACIDADE_GAS_KG = 1560;
 function viewCapacidadeGas(){
   const cap = CAPACIDADE_GAS_KG;
   const p = pesoGasTotal();
-  const ocupado = p.cheio + p.vazio;
-  const pctCheio = Math.min(100, (p.cheio/cap)*100);
-  const pctVazio = Math.min(100-pctCheio, (p.vazio/cap)*100);
+  const ocupado = p.cheio;
   const pctOcupado = Math.min(100, (ocupado/cap)*100);
   const excedente = Math.max(0, ocupado-cap);
   const coresTipo = {P5:'#B45309', P13:'#1E3A8A', P20:'#0EA5E9', P45:'#7C3AED'};
@@ -3674,21 +3679,21 @@ function viewCapacidadeGas(){
     }).join('');
   }
   const legendaTipos = ['P5','P13','P20','P45'].map(t=>
-    '<span><span class="dot" style="background:'+coresTipo[t]+';"></span>'+t+' — equivale a '+(PESO_GAS_KG[t]/13).toFixed(2)+' espaço(s) de P13</span>').join('');
+    '<span><span class="dot" style="background:'+coresTipo[t]+';"></span>'+t+' — '+PESO_GAS_KG[t]+' kg quando cheio</span>').join('');
+  const vaziosResumo = ['P5','P13','P20','P45'].map(t=>p.porTipoVazioQtd[t]>0?(t+': '+p.porTipoVazioQtd[t]):null).filter(Boolean).join(' · ');
   return '<div class="card"><h2>Capacidade de estoque de gás (Categoria 2) <span class="pill">'+cap.toLocaleString('pt-BR')+' kg</span></h2>'+
-    '<div class="hint">O depósito começa com 0 kg ocupados e vai até o limite de <strong>'+cap.toLocaleString('pt-BR')+' kg</strong>. Cada casco ocupa espaço pelo peso do vasilhame — cheio ou vazio conta igual (P5=5kg, P13=13kg, P20=20kg, P45=45kg). Os cheios preenchem a barra a partir da esquerda, os vazios a partir da direita — o espaço em branco no meio é a capacidade ainda livre.</div>'+
+    '<div class="hint">O peso ocupado considera <strong>só os vasilhames cheios</strong> (P5=5kg, P13=13kg, P20=20kg, P45=45kg) — vasilhame vazio não pesa nada no estoque, quem ocupa peso é a carga de gás. Vazios ficam listados à parte, só como contagem.</div>'+
     '<div class="cap-bar-wrap"><div class="cap-bar">'+
-    '<div class="cap-lado cheio" style="width:'+pctCheio+'%;">'+segmentosHtml(p.porTipoCheio, p.cheio)+'</div>'+
-    '<div class="cap-lado vazio" style="width:'+pctVazio+'%;">'+segmentosHtml(p.porTipoVazio, p.vazio)+'</div>'+
+    '<div class="cap-lado cheio" style="width:'+pctOcupado+'%;">'+segmentosHtml(p.porTipoCheio, p.cheio)+'</div>'+
     '</div>'+
     '<div class="cap-legend">'+legendaTipos+'</div>'+
     '</div>'+
     (excedente>0 ? '<div class="hint" style="color:var(--danger);font-weight:600;margin-top:4px;">Atenção: o estoque está '+excedente.toFixed(1)+' kg acima do limite de '+cap+' kg da categoria.</div>' : '')+
     '<div class="grid cols4" style="margin-top:14px;">'+
-    '<div class="metric"><div class="label">Ocupado</div><div class="value">'+ocupado.toFixed(1)+' kg</div></div>'+
+    '<div class="metric"><div class="label">Ocupado (peso)</div><div class="value">'+ocupado.toFixed(1)+' kg</div></div>'+
     '<div class="metric"><div class="label">% da capacidade</div><div class="value">'+pctOcupado.toFixed(0)+'%</div></div>'+
     '<div class="metric"><div class="label">Cheios (equiv. P13)</div><div class="value">'+(p.cheio/13).toFixed(1)+'</div></div>'+
-    '<div class="metric"><div class="label">Vazios (equiv. P13)</div><div class="value">'+(p.vazio/13).toFixed(1)+'</div></div>'+
+    '<div class="metric"><div class="label">Vazios (unidades, sem peso)</div><div class="value" style="font-size:14px;">'+(vaziosResumo||'0')+'</div></div>'+
     '</div></div>';
 }
 function viewEstoque(){
@@ -7752,7 +7757,10 @@ async function gerarModeloImportacaoDiaria(){
     {titulo:'CategoriaProduto', valores:categoriasProdutoValidas},
     {titulo:'CategoriaDespesa', valores:categoriasDespesaValidas},
     {titulo:'CategoriaProdutoNaoControlada', valores:categoriasProdutoNaoControladas},
-    {titulo:'GrupoProduto', valores:gruposProduto}
+    {titulo:'GrupoProduto', valores:gruposProduto},
+    {titulo:'Veiculo', valores:state.veiculos.map(v=>v.nome)},
+    {titulo:'StatusConta', valores:['pendente','pago']},
+    {titulo:'SimNao', valores:['sim','não']}
   ];
   colunasListas.forEach(function(col, idx){
     const letra = String.fromCharCode(65+idx);
@@ -7790,20 +7798,22 @@ async function gerarModeloImportacaoDiaria(){
     'Categoria/Produto (Vendas): use o nome exato do produto ou categoria já cadastrado no sistema (ex.: P13, P45, Água 20L Safira, etc.) — já vem com dropdown das categorias cadastradas.',
     'Nº da Venda (Vendas): opcional, mas importante pro ticket médio. Se a mesma pessoa levou produtos de categorias diferentes numa única compra (ex.: gás + água), repita o MESMO número em todas as linhas dessa venda (ex.: 1, 1, 2, 3, 3, 3...). Se você deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho as linhas do mesmo cliente no mesmo dia. Já em venda de balcão sem nome de cliente, é importante numerar — senão cada linha vira uma venda separada no ticket médio. Preencha o Frete só numa das linhas de cada venda numerada, pra não contar em dobro.',
     'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
+    'Indicado Por (Cliente novo) / Aniversário Cliente (Cliente novo) (Vendas): opcionais, só valem quando o cliente da venda ainda não existe e vai ser criado automaticamente. Aniversário no formato AAAA-MM-DD.',
     'Categoria (Despesas): '+state.categoriasDespesas.join(' | '),
-    'Veículo / Oficina (Despesas): opcionais — use o nome exato do veículo (ex.: Moto Cinza, Celta, Strada) pra já lançar o gasto vinculado a ele; Oficina é só texto livre.',
+    'Veículo / Oficina (Despesas): opcionais — use o nome exato do veículo (ex.: Moto Cinza, Celta, Strada) pra já lançar o gasto vinculado a ele; já vem com dropdown dos veículos cadastrados. Oficina é só texto livre.',
     'Forma de Pagamento / Parcelas / Garantia Até / Próxima Manutenção (Despesas): opcionais, usados só em gastos de veículo. Forma de Pagamento: avista ou parcelado.',
-    'ContasPagar: Descrição e Valor são obrigatórios. Vencimento no formato AAAA-MM-DD. Recorrente: sim ou não. Status: pendente ou pago (se pago, preencha Data Pagamento e o sistema já lança a despesa correspondente).',
+    'ContasPagar: Descrição e Valor são obrigatórios. Vencimento no formato AAAA-MM-DD. Recorrente: sim ou não. Status: pendente ou pago (se pago, preencha Data Pagamento e o sistema já lança a despesa correspondente). Veículo: opcional, mesmo dropdown de Despesas — se preenchido, a despesa gerada (quando Status=pago) já sai vinculada àquele veículo.',
     'FechamentoCaixa: uma linha por dia. Abertura é o troco inicial daquele dia; Dinheiro Contado é o que foi contado na gaveta no fechamento. O sistema recalcula sozinho o resto a partir das vendas e despesas já lançadas naquele dia.',
     'Grupo (Produtos): '+gruposProduto.join(' | ')+' — usado só quando a Categoria da linha ainda não existe no sistema, pra saber em qual das três a nova categoria deve entrar. Se a Categoria já existir, o grupo dela é mantido do jeito que já está cadastrado.',
-    'Categoria (Produtos): o "tipo" do produto (ex.: Produtos de Limpeza, Acessórios para Gás). Já vem com dropdown das categorias não controladas cadastradas — gás e água já são controlados pelo Estoque e não entram aqui.'
+    'Categoria (Produtos): o "tipo" do produto (ex.: Produtos de Limpeza, Acessórios para Gás). Já vem com dropdown das categorias não controladas cadastradas — gás e água já são controlados pelo Estoque e não entram aqui.',
+    'Indicado Por / Aniversário (Clientes): opcionais. Indicado Por é o nome de quem indicou esse cliente (usado no Programa de Indicação). Aniversário no formato AAAA-MM-DD (usado pra campanha automática de aniversariantes).'
   ].forEach(function(linha){ wsInstr.addRow([linha]); });
 
   const ULTIMA_LINHA = 300;
 
   // ---- Aba Vendas ----
   const wsVendas = wb.addWorksheet('Vendas');
-  wsVendas.addRow(['Data','Nº da Venda','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação']);
+  wsVendas.addRow(['Data','Nº da Venda','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação','Indicado Por (Cliente novo)','Aniversário Cliente (Cliente novo)']);
   wsVendas.getRow(1).font = {bold:true};
   wsVendas.columns.forEach(c=>{ c.width = 16; });
   aplicarDropdown(wsVendas, 'G', 'A', CANAIS.length, 2, ULTIMA_LINHA);
@@ -7818,12 +7828,17 @@ async function gerarModeloImportacaoDiaria(){
   wsDespesas.getRow(1).font = {bold:true};
   wsDespesas.columns.forEach(c=>{ c.width = 18; });
   aplicarDropdown(wsDespesas, 'B', 'F', categoriasDespesaValidas.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsDespesas, 'E', 'I', state.veiculos.length, 2, ULTIMA_LINHA);
 
   // ---- Aba ContasPagar ----
   const wsContas = wb.addWorksheet('ContasPagar');
-  wsContas.addRow(['Descrição','Categoria','Valor','Vencimento','Recorrente','Status','Data Pagamento']);
+  wsContas.addRow(['Descrição','Categoria','Valor','Vencimento','Recorrente','Status','Data Pagamento','Veículo']);
   wsContas.getRow(1).font = {bold:true};
   wsContas.columns.forEach(c=>{ c.width = 18; });
+  aplicarDropdown(wsContas, 'B', 'F', categoriasDespesaValidas.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsContas, 'E', 'K', 2, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsContas, 'F', 'J', 2, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsContas, 'H', 'I', state.veiculos.length, 2, ULTIMA_LINHA);
 
   // ---- Aba FechamentoCaixa ----
   const wsCaixa = wb.addWorksheet('FechamentoCaixa');
@@ -7833,7 +7848,7 @@ async function gerarModeloImportacaoDiaria(){
 
   // ---- Aba Clientes ----
   const wsClientes = wb.addWorksheet('Clientes');
-  wsClientes.addRow(['Nome','Telefone','Endereço','Complemento','Observação']);
+  wsClientes.addRow(['Nome','Telefone','Endereço','Complemento','Observação','Indicado Por','Aniversário']);
   wsClientes.getRow(1).font = {bold:true};
   wsClientes.columns.forEach(c=>{ c.width = 18; });
 
@@ -7945,7 +7960,9 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
               telefone: (r['Telefone Cliente']||'').trim(),
               endereco: (r['Endereço Cliente']||'').trim(),
               complemento: (r['Complemento Cliente']||'').trim(),
-              obs: ''
+              obs: '',
+              indicadoPor: (r['Indicado Por (Cliente novo)']||'').trim(),
+              aniversario: r['Aniversário Cliente (Cliente novo)'] ? normalizarDataImportada(r['Aniversário Cliente (Cliente novo)'],'') : ''
             });
             clientesNovosDeVendas++;
           }
@@ -8044,11 +8061,13 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         const vencimento = r['Vencimento'] ? normalizarDataImportada(r['Vencimento'], hoje) : hoje;
         const recorrente = chaveNormalizada(r['Recorrente']||'')==='sim';
         const statusTxt = chaveNormalizada(r['Status']||'pendente');
-        const conta = {id:uid(), criadoEm:Date.now(), descricao, categoria:categoriaTxt, valor, vencimento, recorrente, status:'pendente'};
+        const veiculoTxtConta = (r['Veículo']||'').trim();
+        const veiculoMatchConta = veiculoTxtConta ? state.veiculos.find(vv=>chaveNormalizada(vv.nome).includes(chaveNormalizada(veiculoTxtConta))||chaveNormalizada(veiculoTxtConta).includes(chaveNormalizada(vv.nome))) : null;
+        const conta = {id:uid(), criadoEm:Date.now(), descricao, categoria:categoriaTxt, valor, vencimento, recorrente, status:'pendente', veiculoId: veiculoMatchConta?veiculoMatchConta.id:undefined};
         if(statusTxt==='pago'){
           const dataPagto = r['Data Pagamento'] ? normalizarDataImportada(r['Data Pagamento'], hoje) : hoje;
           conta.status = 'pago'; conta.pagoEm = dataPagto;
-          const despesaGerada = {id:uid(), criadoEm:Date.now(), data:dataPagto, categoria:categoriaTxt||'Outros', valor, descricao, contaPagarId:conta.id};
+          const despesaGerada = {id:uid(), criadoEm:Date.now(), data:dataPagto, categoria:categoriaTxt||'Outros', valor, descricao, contaPagarId:conta.id, veiculoId: veiculoMatchConta?veiculoMatchConta.id:undefined};
           state.despesas.push(despesaGerada);
           conta.despesaId = despesaGerada.id;
           marcadasPagas++;
@@ -8084,7 +8103,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         const chave = chaveNormalizada(nome);
         if(nomesClientesExistentes.has(chave)){ duplicados++; return; }
         nomesClientesExistentes.add(chave);
-        state.clientes.push({id:uid(), nome, telefone:(r['Telefone']||'').trim(), endereco:(r['Endereço']||'').trim(), complemento:(r['Complemento']||'').trim(), obs:(r['Observação']||'').trim()});
+        state.clientes.push({id:uid(), nome, telefone:(r['Telefone']||'').trim(), endereco:(r['Endereço']||'').trim(), complemento:(r['Complemento']||'').trim(), obs:(r['Observação']||'').trim(), indicadoPor:(r['Indicado Por']||'').trim(), aniversario: r['Aniversário'] ? normalizarDataImportada(r['Aniversário'],'') : ''});
         novos++;
       });
       if(novos>0) await save('clientes');
