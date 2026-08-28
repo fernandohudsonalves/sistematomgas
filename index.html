@@ -810,7 +810,8 @@ const CATEGORIAS_OUTRAS_GRUPO_PADRAO = {'Acessórios para Gás':'gas','Acessóri
 const GRUPOS_PRODUTO = [{chave:'gas',label:'Gás'},{chave:'agua',label:'Água'},{chave:'outros',label:'Outros'}];
 function labelGrupoProduto(g){ const info = GRUPOS_PRODUTO.find(x=>x.chave===g); return info ? info.label : 'Outros'; }
 function chaveGrupoProduto(label){ const info = GRUPOS_PRODUTO.find(x=>chaveNormalizada(x.label)===chaveNormalizada(String(label||''))); return info ? info.chave : 'outros'; }
-const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Combustível','Salário','Aluguel','Manutenção','IPVA','Seguro do veículo','Peças / Pneus / Óleo','Outros'];
+const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Combustível','Salário','Aluguel','Manutenção','IPVA','Seguro do veículo','Peças / Pneus / Óleo','Energia Elétrica','Água / Saneamento','Desperdício / Descarte','Outros'];
+function ehCategoriaESG(cat){ return cat==='Energia Elétrica' || cat==='Água / Saneamento' || /^Desperdício/i.test(cat||''); }
 const PALAVRAS_CHAVE_VEICULO = ['combust','manuten','ipva','seguro','pneu','oleo','peca','peça','oficina','revis','veicul','licenciamento'];
 function categoriaParaceVeiculo(cat){ const k=chaveNormalizada(cat); return PALAVRAS_CHAVE_VEICULO.some(p=>k.includes(chaveNormalizada(p))); }
 /* Mesmos ícones usados no "tipo de entrega" (moto/carro/Strada), reaproveitados aqui pros
@@ -1081,6 +1082,10 @@ function linkWhatsAppComTexto(telefone, texto){
   if(!d) return null;
   if(d.length<=11) d = '55'+d;
   return 'https://wa.me/'+d+(texto?('?text='+encodeURIComponent(texto)):'');
+}
+function telefoneDoCliente(nome){
+  const c = state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(nome||''));
+  return c ? c.telefone : '';
 }
 
 /* ===================== Previsão de recompra ===================== */
@@ -2277,6 +2282,11 @@ async function loadAll(){
   if(!state.checklistRotina) state.checklistRotina = [];
   if(!state.checklistDias) state.checklistDias = {};
   if(!state.funcionarios) state.funcionarios = [];
+  if(Array.isArray(state.categoriasDespesas)){
+    let mudouCatsESG=false;
+    ['Energia Elétrica','Água / Saneamento','Desperdício / Descarte'].forEach(c=>{ if(!state.categoriasDespesas.includes(c)){ state.categoriasDespesas.push(c); mudouCatsESG=true; } });
+    if(mudouCatsESG) save('categoriasDespesas');
+  }
   if(state.checklistRotina.length===0){
     const itensPadrao = [
       'Fazer pedido de água','Fazer pedido de carvão','Fazer pedido de gás','Fazer pedido de produtos de limpeza',
@@ -4211,6 +4221,8 @@ function viewRelatorios(){
     {id:'abc', label:'Curva ABC de Clientes'},
     {id:'indicacoes', label:'Programa de Indicação'},
     {id:'kpis', label:'Indicadores (KPIs)'},
+    {id:'painelacao', label:'Painel de Ação'},
+    {id:'esg', label:'Controle ESG'},
     {id:'compararcampanhas', label:'Comparar Campanhas'},
     {id:'itens', label:'Itens por categoria'},
     {id:'entregas', label:'Entregas por período'},
@@ -4230,6 +4242,8 @@ function viewRelatorios(){
   else if(relatorioSub==='abc') content = relatorioABC();
   else if(relatorioSub==='indicacoes') content = relatorioIndicacoes();
   else if(relatorioSub==='kpis') content = relatorioKPIs();
+  else if(relatorioSub==='painelacao') content = relatorioPainelAcao();
+  else if(relatorioSub==='esg') content = relatorioESG();
   else if(relatorioSub==='compararcampanhas') content = relatorioCompararCampanhas();
   else if(relatorioSub==='ranking') content = relatorioRanking();
   else if(relatorioSub==='itens') content = relatorioItens();
@@ -4661,6 +4675,82 @@ function relatorioDespesas(){
     '<div><label>Até</label><input type="date" id="rd-ate" value="'+todayStr()+'"></div></div>'+
     '<button class="btn small ghost" id="rd-filtrar">Filtrar</button><div id="rd-resultado" style="margin-top:16px;"></div>';
 }
+/* ---------- PAINEL DE AÇÃO (Indicador -> Meta -> Resultado -> Ação) ---------- */
+function linhaPainelAcao(indicador, meta, resultadoTxt, atingiu, acao){
+  return '<tr><td>'+indicador+'</td><td>'+meta+'</td>'+
+    '<td><span class="badge '+(atingiu?'gas':'outro')+'" style="background:'+(atingiu?'var(--green-tint)':'var(--danger-tint)')+';color:'+(atingiu?'var(--green)':'var(--danger)')+';">'+resultadoTxt+'</span></td>'+
+    '<td>'+acao+'</td></tr>';
+}
+function relatorioPainelAcao(){
+  const mk = monthKey(todayStr());
+  const mkAnt = (function(){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return d.toISOString().slice(0,7); })();
+  const vendasMes = state.vendas.filter(v=>monthKey(v.data)===mk);
+  const vendasMesAnt = state.vendas.filter(v=>monthKey(v.data)===mkAnt);
+  // Vendas por produto (categoria)
+  const porCategoria = {};
+  vendasMes.forEach(v=>{ porCategoria[v.categoria]=(porCategoria[v.categoria]||0)+(v.valor_total||0); });
+  const porCategoriaAnt = {};
+  vendasMesAnt.forEach(v=>{ porCategoriaAnt[v.categoria]=(porCategoriaAnt[v.categoria]||0)+(v.valor_total||0); });
+  const topCategorias = Object.entries(porCategoria).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const linhasVendas = topCategorias.map(([cat,valor])=>{
+    const anterior = porCategoriaAnt[cat]||0;
+    const atingiu = valor>=anterior;
+    return linhaPainelAcao('Vendas de "'+cat+'"', 'Igualar ou superar '+fmtMoney(anterior)+' (mês anterior)', fmtMoney(valor)+(atingiu?' ✓':' ✗'), atingiu,
+      atingiu ? 'Manter estratégia atual.' : 'Reforçar divulgação e abordagem de clientes desse produto.');
+  }).join('') || '<tr><td colspan="4">Nenhuma venda no mês ainda.</td></tr>';
+  // Entregas
+  const entregasMes = vendasMes.length, entregasMesAnt = vendasMesAnt.length;
+  const atingiuEntregas = entregasMes>=entregasMesAnt;
+  const linhasEntregas = linhaPainelAcao('Entregas realizadas', 'Igualar ou superar '+entregasMesAnt+' (mês anterior)', entregasMes+(atingiuEntregas?' ✓':' ✗'), atingiuEntregas,
+    atingiuEntregas ? 'Manter ritmo de rotas e prazos.' : 'Revisar rotas, prazos e capacidade de entregadores.');
+  // Inadimplência
+  const fiadoAberto = totalFiadoAberto();
+  const totalVendasMes = vendasMes.reduce((s,v)=>s+(v.valor_total||0),0);
+  const percInadimplencia = totalVendasMes>0 ? (fiadoAberto/totalVendasMes*100) : 0;
+  const atingiuInadimplencia = percInadimplencia<=15;
+  const linhasInadimplencia = linhaPainelAcao('Inadimplência (fiado em aberto)', 'Manter abaixo de 15% do faturamento do mês', fmtMoney(fiadoAberto)+' ('+percInadimplencia.toFixed(1)+'%)'+(atingiuInadimplencia?' ✓':' ✗'), atingiuInadimplencia,
+    atingiuInadimplencia ? 'Continuar cobrança normal.' : 'Priorizar cobrança dos clientes mais atrasados (ver aba Fiado).');
+  return '<div class="hint">Indicador → Meta → Resultado → Ação, comparando '+nomeMes(mk)+' com '+nomeMes(mkAnt)+'.</div>'+
+    '<div class="table-wrap" style="margin-top:12px;"><table><thead><tr><th>Indicador</th><th>Meta</th><th>Resultado</th><th>Ação sugerida</th></tr></thead><tbody>'+
+    linhasVendas+linhasEntregas+linhasInadimplencia+
+    '</tbody></table></div>';
+}
+/* ---------- CONTROLE ESG ---------- */
+function ultimosMeses(qtd){
+  const arr=[]; const d=new Date(); d.setDate(1);
+  for(let i=0;i<qtd;i++){ arr.unshift(d.toISOString().slice(0,7)); d.setMonth(d.getMonth()-1); }
+  return arr;
+}
+function relatorioESG(){
+  return '<div class="hint">Lance normalmente em Despesas usando as categorias "Energia Elétrica", "Água / Saneamento" ou qualquer categoria que comece com "Desperdício" (pode criar quantas quiser, ex: "Desperdício - Embalagens", em Configurações).</div>'+
+    '<h3 style="margin-top:14px;">Comparar quantos meses</h3>'+
+    '<div class="form-row" style="max-width:220px;"><div><select id="resg-meses"><option value="3">3 meses</option><option value="6" selected>6 meses</option><option value="12">12 meses</option></select></div></div>'+
+    '<button class="btn small ghost" id="resg-filtrar">Gerar comparativo</button>'+
+    '<div id="resg-resultado" style="margin-top:16px;"></div>';
+}
+function renderRelatorioESGResultado(){
+  const qtd = Number(document.getElementById('resg-meses').value||6);
+  const meses = ultimosMeses(qtd);
+  const despesasESG = state.despesas.filter(d=>ehCategoriaESG(d.categoria));
+  const categorias = Array.from(new Set(despesasESG.map(d=>d.categoria))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const resultDiv = document.getElementById('resg-resultado');
+  if(categorias.length===0){ resultDiv.innerHTML = '<div class="empty">Nenhum lançamento de energia, água ou desperdício ainda.</div>'; return; }
+  const porCategoriaEMes = {};
+  categorias.forEach(c=>{ porCategoriaEMes[c]={}; meses.forEach(m=>porCategoriaEMes[c][m]=0); });
+  despesasESG.forEach(d=>{ const mkD=monthKey(d.data); if(porCategoriaEMes[d.categoria] && meses.includes(mkD)) porCategoriaEMes[d.categoria][mkD]+=d.valor; });
+  const totalPorMes = {}; meses.forEach(m=>totalPorMes[m]=categorias.reduce((s,c)=>s+porCategoriaEMes[c][m],0));
+  let variacaoHtml = '';
+  if(meses.length>=2){
+    const atual=meses[meses.length-1], anterior=meses[meses.length-2];
+    const totalAtual=totalPorMes[atual], totalAnterior=totalPorMes[anterior];
+    const variacao = totalAnterior>0 ? ((totalAtual-totalAnterior)/totalAnterior*100) : (totalAtual>0?100:0);
+    variacaoHtml = '<div class="metric '+(variacao>0?'neg':'pos')+'" style="max-width:280px;margin-bottom:12px;"><div class="label">Variação '+nomeMes(anterior)+' → '+nomeMes(atual)+'</div><div class="value">'+(variacao>=0?'+':'')+variacao.toFixed(1)+'%</div></div>';
+  }
+  resultDiv.innerHTML = variacaoHtml+'<div class="table-wrap"><table><thead><tr><th>Categoria</th>'+meses.map(m=>'<th>'+nomeMes(m)+'</th>').join('')+'</tr></thead><tbody>'+
+    categorias.map(c=>'<tr><td>'+c+'</td>'+meses.map(m=>'<td>'+fmtMoney(porCategoriaEMes[c][m])+'</td>').join('')+'</tr>').join('')+
+    '<tr style="font-weight:700;"><td>Total</td>'+meses.map(m=>'<td>'+fmtMoney(totalPorMes[m])+'</td>').join('')+'</tr>'+
+    '</tbody></table></div>';
+}
 function relatorioFiado(){
   let painelPagamento = '';
   if(clienteRegistrandoPagamento){
@@ -4704,6 +4794,7 @@ function fiadoPorClienteHtml(){
     '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Saldo devedor</th><th>Situação</th><th></th></tr></thead><tbody>'+
     linhas.map(l=>'<tr><td>'+l.nome+'</td><td>'+fmtMoney(l.saldo)+'</td><td>'+etiquetaAtrasoFiadoHtml(l.nome)+'</td>'+
     '<td><button class="act-link" data-ver-extrato="'+encodeURIComponent(l.nome)+'">📄 ver extrato / gerar PDF</button>'+
+    '<button class="act-link" data-enviar-extrato-whats="'+encodeURIComponent(l.nome)+'" style="background:var(--green-tint);color:var(--green);" title="'+(telefoneDoCliente(l.nome)?'Enviar o PDF do extrato pelo WhatsApp':'Cadastre o telefone do cliente para habilitar')+'">'+iconWhatsApp('#25D366',13)+' enviar extrato</button>'+
     '<button class="act-link" data-registrar-pagamento="'+encodeURIComponent(l.nome)+'">💵 registrar pagamento</button></td></tr>').join('')+
     '</tbody></table></div>';
 }
@@ -4731,7 +4822,8 @@ function extratoClienteHtml(cliente){
     '<div class="no-print" style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px;flex-wrap:wrap;">'+
     '<button type="button" class="btn small ghost" id="btn-fechar-extrato">Fechar</button>'+
     '<button type="button" class="btn small ghost" data-registrar-pagamento="'+encodeURIComponent(cliente)+'">Registrar pagamento</button>'+
-    '<button type="button" class="btn small" id="btn-imprimir-extrato">Imprimir / Salvar PDF</button></div>'+
+    '<button type="button" class="btn small" id="btn-imprimir-extrato">Imprimir / Salvar PDF</button>'+
+    '<button type="button" class="btn small" id="btn-enviar-extrato-whats" data-enviar-extrato-whats="'+encodeURIComponent(cliente)+'" style="background:#25D366;">'+iconWhatsApp('#fff',13)+' Enviar por WhatsApp</button></div>'+
     '<h2 style="margin-top:0;">Extrato de fiado — '+cliente+'</h2>'+
     '<div class="hint">Emitido em '+fmtDate(todayStr())+'</div>'+
     '<h3 style="margin-top:16px;">Compras</h3>'+
@@ -5450,6 +5542,72 @@ async function gerarPdfConvenio(empresa, de, ate, vendas, anexos){
   URL.revokeObjectURL(url);
 }
 
+/* Gera o PDF do extrato de fiado de um cliente (compras + pagamentos + saldo) e devolve os bytes,
+   pra poder tanto baixar quanto anexar direto numa conversa de WhatsApp via Web Share API. */
+async function gerarPdfExtratoBytes(cliente){
+  const debitos = debitosDoCliente(cliente);
+  const pagamentos = pagamentosDoCliente(cliente);
+  const totalDebitos = debitos.reduce((s,d)=>s+d.valor,0);
+  const totalPagos = pagamentos.reduce((s,p)=>s+p.valor,0);
+  const saldo = Math.max(0, totalDebitos-totalPagos);
+  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  let page = pdf.addPage([595,842]);
+  let y = 800;
+  const linha = (texto, tamanho, negrito)=>{
+    if(y<50){ page = pdf.addPage([595,842]); y = 800; }
+    page.drawText(texto, {x:40, y, size:tamanho||11, font: negrito?fontBold:font, color:rgb(0.1,0.1,0.15)});
+    y -= (tamanho||11)+8;
+  };
+  linha('Extrato de fiado — '+cliente, 16, true);
+  linha('Emitido em '+fmtDate(todayStr()), 10);
+  y -= 8;
+  linha('Compras', 12, true);
+  if(debitos.length===0) linha('Nenhuma compra fiada registrada.', 10);
+  else debitos.forEach(d=>linha(fmtDate(d.data)+'  '+(d.descricao||'').slice(0,45)+'  '+fmtMoney(d.valor), 9.5));
+  y -= 6;
+  linha('Pagamentos recebidos', 12, true);
+  if(pagamentos.length===0) linha('Nenhum pagamento registrado ainda.', 10);
+  else pagamentos.forEach(p=>linha(fmtDate(p.data)+'  '+(p.forma_pagamento||'')+'  '+fmtMoney(p.valor), 9.5));
+  y -= 10;
+  linha('Total comprado (fiado): '+fmtMoney(totalDebitos), 11, true);
+  linha('Saldo devedor atual: '+fmtMoney(saldo), 13, true);
+  return pdf.save();
+}
+/* Gera o PDF do extrato e o envia pro cliente: no celular, tenta anexar o arquivo direto
+   na conversa de WhatsApp (Web Share API); se o navegador não suportar compartilhar arquivos,
+   baixa o PDF e abre a conversa com o cliente pra anexar manualmente. */
+async function enviarExtratoWhatsApp(cliente){
+  let bytes;
+  try{ bytes = await gerarPdfExtratoBytes(cliente); }
+  catch(e){ console.error(e); alert('Não foi possível gerar o PDF do extrato: '+(e.message||e)); return; }
+  const blob = new Blob([bytes], {type:'application/pdf'});
+  const nomeArquivo = 'extrato-'+cliente.replace(/\s+/g,'-')+'.pdf';
+  const telefone = telefoneDoCliente(cliente);
+  const primeiroNome = (cliente||'').split(' ')[0];
+  const textoMsg = 'Oi '+primeiroNome+'! Segue o extrato do seu fiado em anexo 📄';
+  try{
+    const file = new File([blob], nomeArquivo, {type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Extrato — '+cliente, text:textoMsg});
+      return;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; /* usuário cancelou o compartilhamento */ }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nomeArquivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  if(telefone){
+    alert('PDF baixado. Agora abra o WhatsApp que vai abrir a seguir e anexe o arquivo baixado na conversa.');
+    window.open(linkWhatsAppComTexto(telefone, textoMsg), '_blank');
+  } else {
+    alert('PDF baixado. Esse cliente não tem telefone cadastrado — cadastre o telefone dele (em Clientes) pra também abrir a conversa do WhatsApp automaticamente.');
+  }
+}
+
 /* ---------- HANDLERS ---------- */
 function attachHandlers(){
   document.querySelectorAll('[data-ajuda-toggle]').forEach(btn=>btn.onclick=()=>{
@@ -6006,6 +6164,13 @@ function attachHandlers(){
   if(btnFecharExtrato) btnFecharExtrato.onclick = ()=>{ clienteExtrato=null; renderAll(); };
   const btnImprimirExtrato = document.getElementById('btn-imprimir-extrato');
   if(btnImprimirExtrato) btnImprimirExtrato.onclick = ()=>{ window.print(); };
+  document.querySelectorAll('[data-enviar-extrato-whats]').forEach(btn=>btn.onclick=async()=>{
+    const cliente = decodeURIComponent(btn.dataset.enviarExtratoWhats);
+    const textoOriginal = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Gerando PDF...';
+    await enviarExtratoWhatsApp(cliente);
+    btn.disabled = false; btn.textContent = textoOriginal;
+  });
 
   const btnCancelarPagamentoFiado = document.getElementById('btn-cancelar-pagamento-fiado');
   if(btnCancelarPagamentoFiado) btnCancelarPagamentoFiado.onclick = ()=>{ clienteRegistrandoPagamento=null; editFiadoPagamentoId=null; renderAll(); };
@@ -7076,6 +7241,7 @@ function attachHandlers(){
     document.querySelectorAll('.ri-produto-item').forEach(l=>{ l.style.display = l.textContent.toLowerCase().includes(q)?'flex':'none'; });
   };
   const rdFiltrar = document.getElementById('rd-filtrar'); if(rdFiltrar) rdFiltrar.onclick = renderRelatorioDespesasResultado;
+  const resgFiltrar = document.getElementById('resg-filtrar'); if(resgFiltrar) resgFiltrar.onclick = renderRelatorioESGResultado;
   const rentFiltrar = document.getElementById('rent-filtrar'); if(rentFiltrar) rentFiltrar.onclick = renderRelatorioEntregasResultado;
   const rnFiltrar = document.getElementById('rn-filtrar'); if(rnFiltrar) rnFiltrar.onclick = renderRelatorioNotasResultado;
   const reFiltrar = document.getElementById('re-filtrar'); if(reFiltrar) reFiltrar.onclick = ()=>{
@@ -7131,6 +7297,7 @@ function attachHandlers(){
   if(relatorioSub==='ranking' && document.getElementById('rk-resultado')) renderRelatorioRankingResultado();
   if(relatorioSub==='abc' && document.getElementById('abc-resultado')) renderRelatorioABCResultado();
   if(relatorioSub==='despesas' && document.getElementById('rd-resultado')) renderRelatorioDespesasResultado();
+  if(relatorioSub==='esg' && document.getElementById('resg-resultado')) renderRelatorioESGResultado();
   if(relatorioSub==='entregas' && document.getElementById('rent-resultado')) renderRelatorioEntregasResultado();
   if(relatorioSub==='notas' && document.getElementById('rn-resultado')) renderRelatorioNotasResultado();
   if(relatorioSub==='empresas' && document.getElementById('re-resultado')) renderRelatorioEmpresasResultado();
