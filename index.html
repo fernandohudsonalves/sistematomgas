@@ -973,7 +973,7 @@ let agendamentoParaConcluir = null, prefillVenda = null;
 let editProdutoId = null, clienteCredito = null, editCreditoId = null, editEstoqueMovId = null, editComodatoId = null;
 let editComunicadoId = null, telaAnteriorComunicados = 'config';
 let editCategoriaProdutoNome = null, editCategoriaDespesaNome = null;
-let editProdutoFixoId = null;
+let editProdutoFixoId = null, simulacaoGasPreview = null;
 let seletorVendaMain = null, seletorAgendamento = null;
 let dashCharts = {};
 let seriesEvolucaoSelecionadas = null;
@@ -3178,6 +3178,30 @@ function viewLimpezaDuplicidades(){
     '</details>'+
     '</div>';
 }
+function viewSimulacaoPrecoGas(){
+  const opcoesAlvo = '<option value="preco"'+(simulacaoGasPreview&&simulacaoGasPreview.alvo==='preco'?' selected':'')+'>Preço normal</option>'+
+    '<option value="precoConvenio"'+(simulacaoGasPreview&&simulacaoGasPreview.alvo==='precoConvenio'?' selected':'')+'>Preço convênio</option>';
+  return '<div class="card"><h2>🧮 Simulação de reajuste — produtos de Gás</h2>'+
+    '<div class="hint">Teste um reajuste (em % ou em R$) em todos os produtos de gás antes de aplicar de verdade. Funciona tanto pro preço normal quanto pro preço de convênio — escolha qual quer simular.</div>'+
+    '<form id="form-simulacao-gas" class="form-row" style="margin-top:8px;">'+
+    '<div><label>Aplicar em</label><select name="alvo">'+opcoesAlvo+'</select></div>'+
+    '<div><label>Tipo de ajuste</label><select name="tipo"><option value="percentual">% percentual</option><option value="fixo">R$ valor fixo</option></select></div>'+
+    '<div><label>Valor do ajuste</label><input type="number" step="0.01" name="valor" placeholder="Ex: 5 ou -3,50" required></div>'+
+    '<div style="align-self:end;"><button type="submit" class="btn small">Simular</button></div>'+
+    '</form>'+
+    (simulacaoGasPreview ? simulacaoGasPreviewHtml() : '')+
+    '</div>';
+}
+function simulacaoGasPreviewHtml(){
+  const s = simulacaoGasPreview;
+  const labelAlvo = s.alvo==='precoConvenio' ? 'Preço convênio' : 'Preço normal';
+  const linhas = s.linhas.map(l=>'<tr><td>'+l.nome+'</td><td>'+fmtMoney(l.atual)+'</td><td><strong>'+fmtMoney(l.novo)+'</strong></td><td>'+(l.novo>=l.atual?'+':'')+fmtMoney(l.novo-l.atual)+'</td></tr>').join('');
+  return '<div style="margin-top:14px;"><h3>Prévia — '+labelAlvo+'</h3>'+
+    '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Atual</th><th>Novo</th><th>Diferença</th></tr></thead><tbody>'+linhas+'</tbody></table></div>'+
+    '<button type="button" class="btn small" id="btn-aplicar-simulacao-gas" style="margin-top:10px;">✅ Aplicar esse reajuste</button> '+
+    '<button type="button" class="act-link" id="btn-cancelar-simulacao-gas">cancelar</button>'+
+    '</div>';
+}
 function viewGerenciarCategorias(){
   const fixosGas = produtosFixosDoGrupo('gas');
   const fixosAgua = produtosFixosDoGrupo('agua');
@@ -3191,6 +3215,20 @@ function viewGerenciarCategorias(){
   const tabelaFixo = function(lista){
     return lista.length===0 ? '<div class="hint">Nenhum item aqui ainda — use Vendas ou Agendamento uma vez que eles reaparecem prontos pra editar o preço.</div>' :
       '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th></th></tr></thead><tbody>'+lista.map(linhaFixo).join('')+'</tbody></table></div>';
+  };
+  const linhaFixoGas = function(p){
+    if(editProdutoFixoId===p.id){
+      return '<tr><td>'+p.nome+'</td>'+
+        '<td><input type="number" id="input-edit-preco-fixo" min="0" step="0.01" value="'+Number(p.preco).toFixed(2)+'"></td>'+
+        '<td><input type="number" id="input-edit-preco-convenio-fixo" min="0" step="0.01" value="'+Number(p.precoConvenio||0).toFixed(2)+'" placeholder="0,00"></td>'+
+        '<td><button class="act-link" data-save-preco-fixo="'+p.id+'">✓ salvar</button><button class="del-link" data-cancel-preco-fixo="'+p.id+'">cancelar</button></td></tr>';
+    }
+    return '<tr><td>'+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td><td>'+(p.precoConvenio?fmtMoney(p.precoConvenio):'—')+'</td>'+
+      '<td><button class="act-link" data-edit-preco-fixo="'+p.id+'">✎ editar preço</button></td></tr>';
+  };
+  const tabelaFixoGas = function(lista){
+    return lista.length===0 ? '<div class="hint">Nenhum item aqui ainda — use Vendas ou Agendamento uma vez que eles reaparecem prontos pra editar o preço.</div>' :
+      '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th>Preço convênio</th><th></th></tr></thead><tbody>'+lista.map(linhaFixoGas).join('')+'</tbody></table></div>';
   };
 
   const subs = categoriasNaoControladas();
@@ -3215,9 +3253,12 @@ function viewGerenciarCategorias(){
   const subsOutros = subcategoriasDoGrupo('outros');
   const opcoesGrupo = '<option value="" selected disabled>Categoria (Gás/Água/Outros)</option>'+GRUPOS_PRODUTO.map(g=>'<option value="'+g.chave+'">'+g.label+'</option>').join('');
 
-  return '<div class="card"><h2>Categoria: Gás</h2>'+tabelaFixo(fixosGas)+
+  return '<div class="card"><h2>Categoria: Gás</h2>'+
+    '<div class="hint">O "Preço convênio" é o valor cobrado das empresas conveniadas — deixe em branco (0,00) se esse produto não tiver preço diferenciado.</div>'+
+    tabelaFixoGas(fixosGas)+
     (blocoSubDoGrupo(subsGas)||'<div class="hint" style="margin-top:8px;">Nenhuma subcategoria extra de gás (ex.: acessórios) cadastrada ainda.</div>')+
     '</div>'+
+    viewSimulacaoPrecoGas()+
     '<div class="card"><h2>Categoria: Água</h2>'+tabelaFixo(fixosAgua)+
     (blocoSubDoGrupo(subsAgua)||'<div class="hint" style="margin-top:8px;">Nenhuma subcategoria extra de água (ex.: acessórios) cadastrada ainda.</div>')+
     '</div>'+
@@ -3720,7 +3761,7 @@ function clientesTable(list){
 }
 
 /* ---------- ESTOQUE ---------- */
-const TAMANHOS_GAS = {P5:18, P13:20, P20:22, P45:24};
+const TAMANHOS_GAS = {P5:18, P13:24, P20:19, P45:24};
 function pesoGasTotal(){
   const g = state.estoque.gas;
   let cheio=0, vazio=0;
@@ -3781,8 +3822,8 @@ function viewEstoque(){
   const aguaBoxes = [['dfonte',"D'Fonte",'dfonte','#7C3AED'],['safira','Safira','agua','#16A34A']].map(function(p){
     var k=p[0], label=p[1], cls=p[2], cor=p[3];
     const abaixo = min.agua && min.agua[k]>0 && a[k].cheio < min.agua[k];
-    return '<div class="stock-box '+cls+'" style="'+(abaixo?'border-color:var(--danger);':'')+'"><div style="'+(abaixo?'filter:none;':'')+'">'+iconGota(true,cor,34,k)+'</div><div class="n" style="'+(abaixo?'color:var(--danger);':'')+'">'+a[k].cheio+'</div><div class="l">'+label+' — cheio'+(abaixo?' ⚠️':'')+'</div></div>'+
-    '<div class="stock-box '+cls+'">'+iconGota(false,cor,34,k)+'<div class="n">'+a[k].vazio+'</div><div class="l">'+label+' — vazio</div></div>';
+    return '<div class="stock-box '+cls+'" style="'+(abaixo?'border-color:var(--danger);':'')+'"><div style="'+(abaixo?'filter:none;':'')+'">'+iconGota(true,cor,26,k)+'</div><div class="n" style="'+(abaixo?'color:var(--danger);':'')+'">'+a[k].cheio+'</div><div class="l">'+label+' — cheio'+(abaixo?' ⚠️':'')+'</div></div>'+
+    '<div class="stock-box '+cls+'">'+iconGota(false,cor,26,k)+'<div class="n">'+a[k].vazio+'</div><div class="l">'+label+' — vazio</div></div>';
   }).join('');
   const gasInputs = ['P5','P13','P20','P45'].map(t=>
     '<div><label>'+t+' — cheio</label><input type="number" name="gas_'+t+'_cheio" value="'+g[t].cheio+'"></div>').join('') +
@@ -6408,11 +6449,49 @@ function attachHandlers(){
       const val = inp ? Number(inp.value) : NaN;
       if(isNaN(val) || val<0){ alert('Informe um preço válido.'); return; }
       const p = state.produtos.find(x=>x.id===id);
-      if(p) p.preco = val;
+      if(p){
+        p.preco = val;
+        const inpConv = document.getElementById('input-edit-preco-convenio-fixo');
+        if(inpConv){
+          const valConv = Number(inpConv.value);
+          p.precoConvenio = isNaN(valConv) ? 0 : valConv;
+        }
+      }
       await save('produtos');
       editProdutoFixoId = null;
       renderAll();
     });
+    const formSimGas = document.getElementById('form-simulacao-gas');
+    if(formSimGas) formSimGas.onsubmit = (e)=>{
+      e.preventDefault();
+      const f = new FormData(formSimGas);
+      const alvo = f.get('alvo');
+      const tipo = f.get('tipo');
+      const valor = Number(f.get('valor'))||0;
+      const linhas = produtosFixosDoGrupo('gas').map(p=>{
+        const atual = Number(p[alvo]||0);
+        let novo = tipo==='percentual' ? atual*(1+valor/100) : atual+valor;
+        novo = Math.max(0, Math.round(novo*100)/100);
+        return {id:p.id, nome:p.nome, atual, novo};
+      });
+      simulacaoGasPreview = {alvo, tipo, valor, linhas};
+      renderAll();
+    };
+    const btnCancelSim = document.getElementById('btn-cancelar-simulacao-gas');
+    if(btnCancelSim) btnCancelSim.onclick = ()=>{ simulacaoGasPreview=null; renderAll(); };
+    const btnAplicarSim = document.getElementById('btn-aplicar-simulacao-gas');
+    if(btnAplicarSim) btnAplicarSim.onclick = async()=>{
+      if(!simulacaoGasPreview) return;
+      const labelAlvo = simulacaoGasPreview.alvo==='precoConvenio' ? 'preço convênio' : 'preço normal';
+      if(!confirm('Aplicar esse reajuste no '+labelAlvo+' de '+simulacaoGasPreview.linhas.length+' produto(s) de gás? Essa ação não pode ser desfeita.')) return;
+      simulacaoGasPreview.linhas.forEach(l=>{
+        const p = state.produtos.find(x=>x.id===l.id);
+        if(p) p[simulacaoGasPreview.alvo] = l.novo;
+      });
+      await save('produtos');
+      simulacaoGasPreview = null;
+      renderAll();
+    };
   };
   attachProdutoRowHandlers();
   const fp = document.getElementById('form-produto');
