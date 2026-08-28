@@ -328,7 +328,7 @@ table td:last-child{min-width:180px;}
 #checklist-hover-drawer .empty{font-size:12px;padding:6px 4px;}
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
-#whats-fab{position:fixed;left:20px;bottom:20px;z-index:500;width:56px;height:56px;border-radius:50%;background:#25D366;border:none;box-shadow:0 6px 18px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+#whats-fab{position:fixed;right:18px;bottom:18px;z-index:500;width:56px;height:56px;border-radius:50%;background:#25D366;border:none;box-shadow:0 6px 18px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
 #whats-fab:hover{transform:scale(1.06);}
 #whats-fab:active{transform:scale(.96);}
 #whats-search-overlay{position:fixed;inset:0;background:rgba(10,20,40,.45);backdrop-filter:blur(2px);z-index:9990;display:none;align-items:flex-start;justify-content:center;padding:60px 16px;}
@@ -361,7 +361,7 @@ table td:last-child{min-width:180px;}
 .cf-item .cf-detalhe{font-size:13px;color:var(--text);margin:4px 0 8px;}
 .cf-item .cf-valor{font-size:12px;color:var(--text2);margin-bottom:8px;}
 .cf-item .cf-acoes{display:flex;gap:8px;flex-wrap:wrap;}
-#rota-fab{position:fixed;left:20px;bottom:150px;z-index:500;width:56px;height:56px;border-radius:50%;background:#F59E0B;border:none;box-shadow:0 6px 18px rgba(245,158,11,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:26px;}
+#rota-fab{position:fixed;right:18px;bottom:88px;z-index:500;width:56px;height:56px;border-radius:50%;background:#F59E0B;border:none;box-shadow:0 6px 18px rgba(245,158,11,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:26px;}
 #rota-fab:hover{transform:scale(1.06);}
 #rota-fab:active{transform:scale(.96);}
 #rota-overlay{position:fixed;inset:0;background:rgba(10,20,40,.45);backdrop-filter:blur(2px);z-index:9990;display:none;align-items:flex-start;justify-content:center;padding:60px 16px;}
@@ -382,7 +382,7 @@ table td:last-child{min-width:180px;}
 .rt-copy{background:var(--blue-tint);color:var(--royal);border:none;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:600;cursor:pointer;flex-shrink:0;}
 .rt-copy:hover{filter:brightness(0.95);}
 html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
-#new-ag-fab{position:fixed;right:18px;bottom:150px;z-index:500;width:56px;height:56px;border-radius:50%;background:#39FF14;border:none;box-shadow:0 6px 18px rgba(57,255,20,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:30px;font-weight:800;color:#0a2b0a;line-height:1;}
+#new-ag-fab{position:fixed;right:18px;bottom:158px;z-index:500;width:56px;height:56px;border-radius:50%;background:#39FF14;border:none;box-shadow:0 6px 18px rgba(57,255,20,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:30px;font-weight:800;color:#0a2b0a;line-height:1;}
 #new-ag-fab:hover{transform:scale(1.06);}
 #new-ag-fab:active{transform:scale(.96);}
 </style>
@@ -606,7 +606,7 @@ function renderPainelConferenciaLista(){
     renderPainelConferenciaLista(); initConferenciaBadge();
   });
 }
-function initConferenciaBadge(){let b=document.getElementById('conferencia-badge');if(!b){b=document.createElement('button');b.id='conferencia-badge';b.style='position:fixed;right:18px;bottom:18px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#f59e0b;color:#fff;font-weight:700;cursor:pointer';document.body.appendChild(b);b.onclick=abrirPainelConferencia;}const n=(state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').length;b.style.display=n?'block':'none';b.textContent='⚠ '+n+' conferência(s)';}
+function initConferenciaBadge(){let b=document.getElementById('conferencia-badge');if(!b){b=document.createElement('button');b.id='conferencia-badge';b.style='position:fixed;right:18px;bottom:228px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#f59e0b;color:#fff;font-weight:700;cursor:pointer';document.body.appendChild(b);b.onclick=abrirPainelConferencia;}const n=(state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').length;b.style.display=n?'block':'none';b.textContent='⚠ '+n+' conferência(s)';}
 function initNovoAgendamentoFab(){
   let b = document.getElementById('new-ag-fab');
   if(!b){
@@ -946,6 +946,7 @@ let csvRows = null, csvHeaders = null;
 let csvProdRows = null, csvProdHeaders = null;
 let csvFiadoRows = null, csvFiadoHeaders = null;
 let csvVendasRows = null, csvVendasHeaders = null;
+let csvEmpresaRows = null, csvEmpresaHeaders = null;
 function parseValorBR(str){
   str = String(str==null?'':str).trim();
   if(!str) return NaN;
@@ -2715,15 +2716,27 @@ async function renderListaBackups(){
 function grupoDoTab(tabId){
   return TABS.find(g=>g.filhos && g.filhos.includes(tabId)) || null;
 }
+function atualizarEtiquetaDataHoje(){
+  const etiquetaData = document.getElementById('etiqueta-data-hoje');
+  if(!etiquetaData) return;
+  // Usa a hora do servidor/dispositivo em UTC e aplica o fuso de Brasília (UTC-3) explicitamente,
+  // pra não depender do fuso configurado no aparelho e não travar na hora de login.
+  const agoraUTC = new Date();
+  const brasilia = new Date(agoraUTC.getTime() - 3*60*60*1000);
+  const dd = String(brasilia.getUTCDate()).padStart(2,'0'), mm = String(brasilia.getUTCMonth()+1).padStart(2,'0'), yyyy = brasilia.getUTCFullYear();
+  const hh = String(brasilia.getUTCHours()).padStart(2,'0'), mi = String(brasilia.getUTCMinutes()).padStart(2,'0');
+  etiquetaData.textContent = 'Atualizado em '+dd+'/'+mm+'/'+yyyy+' às '+hh+':'+mi;
+}
+function ajustarPosicaoNav(){
+  const header = document.querySelector('header');
+  const navEl = document.querySelector('nav');
+  if(header && navEl){ navEl.style.top = header.offsetHeight + 'px'; }
+}
+window.addEventListener('resize', ajustarPosicaoNav);
+setInterval(atualizarEtiquetaDataHoje, 30000);
 function renderNav(){
   const nav = document.getElementById('nav');
-  const etiquetaData = document.getElementById('etiqueta-data-hoje');
-  if(etiquetaData){
-    const agora = new Date();
-    const dd = String(agora.getDate()).padStart(2,'0'), mm = String(agora.getMonth()+1).padStart(2,'0'), yyyy = agora.getFullYear();
-    const hh = String(agora.getHours()).padStart(2,'0'), mi = String(agora.getMinutes()).padStart(2,'0');
-    etiquetaData.textContent = 'Atualizado em '+dd+'/'+mm+'/'+yyyy+' às '+hh+':'+mi;
-  }
+  atualizarEtiquetaDataHoje();
   let html = '<div id="nav-principal">';
   TABS_VISIVEIS.filter(t=>abaPermitida(t.id)).forEach((t,i)=>{
     if(i>0) html += '<span class="nav-sep">|</span>';
@@ -2742,6 +2755,7 @@ function renderNav(){
     html += '</div>';
   }
   nav.innerHTML = html;
+  setTimeout(ajustarPosicaoNav, 0);
   nav.querySelectorAll('button').forEach(b=>b.onclick=()=>{
     const t = TABS.find(x=>x.id===b.dataset.tab);
     currentTab = (t && t.filhos) ? t.filhos[0] : b.dataset.tab;
@@ -2833,6 +2847,7 @@ function comunicadosBannerHtml(){
   if(ativos.length===0) return '';
   return ativos.map(c=>
     '<div class="comunicado-banner"><span class="tag">Comunicado interno</span>'+
+    '<button type="button" class="act-link" data-ir-editar-comunicado="'+c.id+'" title="Editar este comunicado" style="position:absolute;top:12px;right:14px;background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:6px;padding:4px 7px;cursor:pointer;">✎</button>'+
     '<h3>'+c.titulo+'</h3>'+
     (c.texto ? '<p>'+c.texto+'</p>' : '')+
     (c.imagemUrl ? '<img src="'+c.imagemUrl+'" alt="'+c.titulo+'">' : '')+
@@ -2884,7 +2899,7 @@ function metaCardDashboardHtml(){
   const metaDiaria = metaDiariaP13(mk);
   const vendidoHoje = p13VendidosNoDia(hoje);
   const vendidoMes = p13VendidosNoMes(mk);
-  return '<div class="meta-card"><h2>🎯 Meta de cargas de P13 — '+nomeMes(mk)+'</h2>'+
+  return '<div class="meta-card" style="position:relative;"><button type="button" class="act-link" data-ir-editar-meta="1" title="Editar meta" style="position:absolute;top:12px;right:14px;background:rgba(0,0,0,.08);border:none;border-radius:6px;padding:4px 7px;cursor:pointer;">✎</button><h2>🎯 Meta de cargas de P13 — '+nomeMes(mk)+'</h2>'+
     barraMetaHtml(vendidoHoje, metaDiaria, 'Meta de hoje ('+fmtDate(hoje)+')')+
     barraMetaHtml(vendidoMes, metaMensal, 'Meta do mês ('+nomeMes(mk)+')')+
     '</div>';
@@ -3075,7 +3090,7 @@ function renderDashboardRelatorios(){
     criarChart('chart-despesas-pizza', {
       type:'pie',
       data:{ labels:Object.keys(porCategoriaDespesa), datasets:[{ data:Object.values(porCategoriaDespesa), backgroundColor:PALETA_CORES }] },
-      options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{boxWidth:11,font:{size:11}}}} }
+      options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:6,font:{size:9}}}} }
     });
   }
 
@@ -3086,7 +3101,7 @@ function renderDashboardRelatorios(){
     criarChart('chart-vendas-pizza', {
       type:'pie',
       data:{ labels:Object.keys(porCategoria), datasets:[{ data:Object.values(porCategoria), backgroundColor:PALETA_CORES }] },
-      options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{boxWidth:11,font:{size:11}}}} }
+      options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:6,font:{size:9}}}} }
     });
   }
 
@@ -3189,7 +3204,10 @@ function viewEmpresas(){
     '<div class="form-row"><div><label>Endereço</label><input type="text" name="endereco"></div>'+
     '<div><label>Responsável</label><input type="text" name="responsavel" placeholder="Nome do contato na empresa"></div></div>'+
     '<label>Observações</label><input type="text" name="obs" placeholder="Condição de pagamento, desconto combinado, etc.">'+
-    '<button type="submit" class="btn">Adicionar empresa</button></form></div>';
+    '<button type="submit" class="btn">Adicionar empresa</button></form></div>'+
+    '<div class="card"><h2>Importar empresas do Bling</h2>'+
+    '<div class="hint">Exporte a lista de contatos/clientes do Bling em CSV e importe aqui — nome, telefone e endereço já vêm preenchidos automaticamente. Empresas já cadastradas (mesmo nome) não são duplicadas.</div>'+
+    '<input type="file" id="csv-empresa-input" accept=".csv,.txt,.tsv,.xlsx,.xls" style="margin-top:10px;"><div id="csv-empresa-mapping"></div></div>';
 }
 function empresasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma empresa conveniada cadastrada ainda.</div>';
@@ -4960,7 +4978,7 @@ function fiadoPorClienteHtml(){
   const muitoAtrasados = linhas.filter(l=>diasFiadoAtrasado(l.nome)>60).length;
   return (muitoAtrasados>0 ? '<div class="import-conferencia-alert">⚠ '+muitoAtrasados+' cliente(s) com fiado há mais de 60 dias sem pagar nada — considere cobrar.</div>' : '')+
     '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Saldo devedor</th><th>Situação</th><th></th></tr></thead><tbody>'+
-    linhas.map(l=>'<tr><td>'+l.nome+'</td><td>'+fmtMoney(l.saldo)+'</td><td>'+etiquetaAtrasoFiadoHtml(l.nome)+'</td>'+
+    linhas.map(l=>'<tr><td>'+l.nome+(telefoneDoCliente(l.nome)?' <a href="'+linkWhatsApp(telefoneDoCliente(l.nome))+'" target="_blank" title="Chamar '+l.nome+' no WhatsApp" style="vertical-align:middle;">'+iconWhatsApp('#25D366',15)+'</a>':'')+'</td><td>'+fmtMoney(l.saldo)+'</td><td>'+etiquetaAtrasoFiadoHtml(l.nome)+'</td>'+
     '<td><button class="act-link" data-ver-extrato="'+encodeURIComponent(l.nome)+'">📄 ver extrato / gerar PDF</button>'+
     '<button class="act-link" data-enviar-extrato-whats="'+encodeURIComponent(l.nome)+'" style="background:var(--green-tint);color:var(--green);" title="'+(telefoneDoCliente(l.nome)?'Enviar o PDF do extrato pelo WhatsApp':'Cadastre o telefone do cliente para habilitar')+'">'+iconWhatsApp('#25D366',13)+' enviar extrato</button>'+
     '<button class="act-link" data-registrar-pagamento="'+encodeURIComponent(l.nome)+'">💵 registrar pagamento</button></td></tr>').join('')+
@@ -6705,6 +6723,16 @@ function attachHandlers(){
     }, 'csv-prod-mapping');
   };
 
+  const csvEmpresaInput = document.getElementById('csv-empresa-input');
+  if(csvEmpresaInput) csvEmpresaInput.onchange = (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    lerArquivoPlanilha(file, (headers, linhas)=>{
+      csvEmpresaHeaders = headers; csvEmpresaRows = linhas;
+      renderCsvEmpresaMapping();
+    }, 'csv-empresa-mapping');
+  };
+
   const csvFiadoInput = document.getElementById('csv-fiado-input');
   if(csvFiadoInput) csvFiadoInput.onchange = (e)=>{
     const file = e.target.files[0];
@@ -8194,6 +8222,17 @@ function attachHandlers(){
     editComunicadoId = btn.dataset.editComunicado;
     renderAll();
   });
+  document.querySelectorAll('[data-ir-editar-comunicado]').forEach(btn=>btn.onclick=()=>{
+    telaAnteriorComunicados = currentTab;
+    editComunicadoId = btn.dataset.irEditarComunicado;
+    currentTab = 'comunicados';
+    renderAll();
+  });
+  document.querySelectorAll('[data-ir-editar-meta]').forEach(btn=>btn.onclick=()=>{
+    currentTab = 'metas';
+    renderAll();
+    setTimeout(()=>{ const el=document.getElementById('form-meta'); if(el) el.scrollIntoView({behavior:'smooth'}); }, 80);
+  });
   document.querySelectorAll('[data-del-comunicado]').forEach(btn=>btn.onclick=async()=>{
     const c = state.comunicados.find(x=>x.id===btn.dataset.delComunicado);
     if(!c) return;
@@ -8889,6 +8928,52 @@ function renderCsvProdMapping(){
       (duplicados>0 ? ' '+duplicados+' já existiam e foram ignorados.' : '')+
       (ignoradosInativos>0 ? ' '+ignoradosInativos+' estavam inativos e não foram importados.' : '')+
       (ignoradosControlados>0 ? ' '+ignoradosControlados+' eram itens de gás/água (já controlados pelo estoque) e foram ignorados, pra não duplicar.' : ''));
+  };
+}
+function renderCsvEmpresaMapping(){
+  const wrap = document.getElementById('csv-empresa-mapping');
+  const opts = csvEmpresaHeaders.map(h=>'<option value="'+h+'">'+h+'</option>').join('');
+  const optsVazio = '<option value="">(nenhuma)</option>'+opts;
+  wrap.innerHTML = '<div class="hint" style="margin-top:14px;">'+csvEmpresaRows.length+' linha(s) encontradas. Confirme qual coluna corresponde a cada campo:</div>'+
+    '<div class="mapping-row"><span>Nome da empresa</span><select id="map-empresa-nome">'+opts+'</select></div>'+
+    '<div class="mapping-row"><span>Telefone</span><select id="map-empresa-telefone">'+optsVazio+'</select></div>'+
+    '<div class="mapping-row"><span>Endereço</span><select id="map-empresa-endereco">'+optsVazio+'</select></div>'+
+    '<div class="mapping-row"><span>Responsável / contato</span><select id="map-empresa-responsavel">'+optsVazio+'</select></div>'+
+    '<div class="csv-preview" style="margin-top:10px;"><table><thead><tr>'+csvEmpresaHeaders.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead>'+
+    '<tbody>'+csvEmpresaRows.slice(0,3).map(r=>'<tr>'+csvEmpresaHeaders.map(h=>'<td>'+r[h]+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'+
+    '<button class="btn green" id="btn-importar-csv-empresa" style="margin-top:8px;">Importar '+csvEmpresaRows.length+' empresas</button>';
+  document.getElementById('map-empresa-nome').value = guessHeaderPriority(csvEmpresaHeaders,[['nome fantasia','razão social','razao social','nome','empresa','cliente']]);
+  document.getElementById('map-empresa-telefone').value = guessHeaderPriority(csvEmpresaHeaders,[['telefone','celular','fone','whatsapp']]);
+  document.getElementById('map-empresa-endereco').value = guessHeaderPriority(csvEmpresaHeaders,[['endereço','endereco']]);
+  document.getElementById('map-empresa-responsavel').value = guessHeaderPriority(csvEmpresaHeaders,[['contato','responsável','responsavel']]);
+
+  document.getElementById('btn-importar-csv-empresa').onclick = async()=>{
+    const colNome = document.getElementById('map-empresa-nome').value;
+    const colTelefone = document.getElementById('map-empresa-telefone').value;
+    const colEndereco = document.getElementById('map-empresa-endereco').value;
+    const colResponsavel = document.getElementById('map-empresa-responsavel').value;
+    const existentes = new Set(state.empresas.map(e=>chaveNormalizada(e.nome||'')));
+    const vistos = new Set();
+    const novas = [];
+    let duplicadas = 0;
+    csvEmpresaRows.forEach(r=>{
+      if(!r[colNome]) return;
+      const nome = r[colNome].trim();
+      if(!nome) return;
+      const chave = chaveNormalizada(nome);
+      if(existentes.has(chave) || vistos.has(chave)){ duplicadas++; return; }
+      vistos.add(chave);
+      novas.push({id:uid(), nome,
+        telefone: colTelefone ? (r[colTelefone]||'').trim() : '',
+        endereco: colEndereco ? (r[colEndereco]||'').trim() : '',
+        responsavel: colResponsavel ? (r[colResponsavel]||'').trim() : '',
+        obs:''});
+    });
+    state.empresas = state.empresas.concat(novas);
+    await save('empresas');
+    csvEmpresaRows=null; csvEmpresaHeaders=null;
+    renderAll();
+    alert(novas.length+' empresa(s) importada(s) com sucesso.'+(duplicadas>0 ? ' '+duplicadas+' já existiam e foram ignoradas.' : ''));
   };
 }
 function renderCsvFiadoMapping(){
