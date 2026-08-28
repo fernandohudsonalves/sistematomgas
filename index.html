@@ -1163,7 +1163,6 @@ let campanhaEnviarModo='grupo';
 let editCampanhaId=null;
 let campanhaVideoSelecionado=null;
 let campanhaImagemSelecionadaGlobal=null;
-let editorialImagemSelecionada=null;
 function jaEnviouCampanha(campanhaId,cliente){ return (state.envioCampanhaLog||[]).some(l=>l.campanhaId===campanhaId&&l.cliente===cliente); }
 function destinatariosCampanha(campanha){
   if(!campanha) return [];
@@ -1202,16 +1201,23 @@ const MODELOS_MENSAGEM_CAMPANHA = {
   '🔁 Reativação': 'Oi {nome}! Faz um tempinho que você não pede gás com a gente e sentimos sua falta 🙂 Separei uma condição especial pra você voltar. Bora?',
   '🆕 Boas-vindas': 'Oi {nome}! Muito obrigado por ter comprado com a Tom Gás pela primeira vez 🙌 Ficou tudo certinho? Qualquer coisa é só chamar por aqui!'
 };
+const CALENDARIO_SEMANAL_PADRAO = [
+  {dia:1, tema:'Água', rede:'WhatsApp/Instagram', titulo:'Segunda — Água', mensagem:'Oi {nome}! Começando a semana com água mineral fresquinha, entrega no mesmo dia 💧 Chama aqui pra garantir a sua!'},
+  {dia:2, tema:'Gás', rede:'Instagram', titulo:'Terça — Gás', mensagem:'Dica de segurança: já verificou a validade do seu botijão? 🔥 Se estiver perto de acabar, chama a gente que a troca é rapidinho.'},
+  {dia:3, tema:'Promoção', rede:'WhatsApp/Instagram', titulo:'Quarta — Promoção', mensagem:'Oi {nome}! Só hoje: condição especial pra gás + água combinados 🎉 Chama aqui antes que acabe!'},
+  {dia:4, tema:'Carvão', rede:'Instagram', titulo:'Quinta — Carvão', mensagem:'Já pensando no churrasco de fim de semana? 🍖 Deixa o carvão encomendado com a gente e a entrega chega no dia certo.'},
+  {dia:5, tema:'Depoimento/Bastidor', rede:'WhatsApp/Instagram', titulo:'Sexta — Depoimento', mensagem:'Mais um cliente satisfeito com a entrega da Tom Gás! 😊 Obrigado pela confiança — sextou com entrega rápida por aqui.'},
+  {dia:6, tema:'Promoção', rede:'WhatsApp/Instagram', titulo:'Sábado — Fim de semana', mensagem:'Oi {nome}! Também entregamos no fim de semana 🚚 Precisando de gás, água ou carvão, é só chamar!'},
+  {dia:0, tema:'Institucional', rede:'Instagram', titulo:'Domingo — Institucional', mensagem:'Obrigado por fazer parte da família Tom Gás 🙏 Um domingo tranquilo pra você e sua família!'}
+];
 function gerarCalendarioSemanalPadrao(){
   const hoje=new Date();
-  const padrao = (state.padraoEditorialSemanal&&state.padraoEditorialSemanal.length===7) ? state.padraoEditorialSemanal : padraoEditorialSemanalDefault();
-  padrao.forEach(item=>{
+  CALENDARIO_SEMANAL_PADRAO.forEach(item=>{
     const d=new Date(hoje);
-    let dif=(item.diaSemana - d.getDay() + 7) % 7; if(dif===0) dif=7;
+    let dif=(item.dia - d.getDay() + 7) % 7; if(dif===0) dif=7;
     d.setDate(d.getDate()+dif);
     const dataAgendada = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    const dLabel = DIAS_SEMANA_LABEL.find(x=>x.n===item.diaSemana).l;
-    state.campanhas.push({id:uid(), criadoEm:Date.now(), titulo:dLabel+' — '+item.tema, mensagem:item.ideia, destinoTipo:'grupo', grupos:[], clienteIds:[], tema:item.tema, rede:item.rede, dataAgendada, vendasGeradas:0, codigoCupom:''});
+    state.campanhas.push({id:uid(), criadoEm:Date.now(), titulo:item.titulo, mensagem:item.mensagem, destinoTipo:'grupo', grupos:[], clienteIds:[], tema:item.tema, rede:item.rede, dataAgendada, vendasGeradas:0, codigoCupom:''});
   });
 }
 function formCampanhaHtml(c){
@@ -1508,33 +1514,6 @@ function diasComemorativosAno(ano){
     {md:'12-31',nome:'🎊 Véspera de Ano Novo',tipo:'comemorativa'}
   ].sort((a,b)=>a.md.localeCompare(b.md));
 }
-const DIAS_SEMANA_LABEL = [{n:1,l:'Segunda'},{n:2,l:'Terça'},{n:3,l:'Quarta'},{n:4,l:'Quinta'},{n:5,l:'Sexta'},{n:6,l:'Sábado'},{n:0,l:'Domingo'}];
-function padraoEditorialSemanalDefault(){
-  return [
-    {diaSemana:1,tema:'Água',rede:'WhatsApp/Instagram',ideia:'Lembrete de água mineral com entrega no mesmo dia.'},
-    {diaSemana:2,tema:'Gás',rede:'Instagram',ideia:'Dica de segurança com o botijão + chamada pra pedido.'},
-    {diaSemana:3,tema:'Promoção',rede:'WhatsApp/Instagram',ideia:'Oferta combinada só nesse dia, com preço e prazo.'},
-    {diaSemana:4,tema:'Carvão',rede:'Instagram',ideia:'Sugestão de churrasco de fim de semana + carvão.'},
-    {diaSemana:5,tema:'Depoimento/Bastidor',rede:'WhatsApp/Instagram',ideia:'Foto de cliente satisfeito ou bastidor da operação.'},
-    {diaSemana:6,tema:'Promoção',rede:'WhatsApp/Instagram',ideia:'Reforço de disponibilidade no fim de semana.'},
-    {diaSemana:0,tema:'Institucional',rede:'Instagram',ideia:'Conteúdo leve: curiosidade, enquete ou agradecimento.'}
-  ];
-}
-function viewPadraoEditorialSemanal(){
-  const padrao = (state.padraoEditorialSemanal&&state.padraoEditorialSemanal.length===7) ? state.padraoEditorialSemanal : padraoEditorialSemanalDefault();
-  const temas=['Água','Gás','Promoção','Carvão','Depoimento/Bastidor','Institucional'];
-  const redes=['WhatsApp','Instagram','WhatsApp/Instagram'];
-  const linhas = DIAS_SEMANA_LABEL.map(d=>{
-    const item = padrao.find(p=>p.diaSemana===d.n) || {tema:'',rede:'',ideia:''};
-    return '<tr data-linha-semanal="'+d.n+'"><td><strong>'+d.l+'</strong></td>'+
-      '<td><select name="tema">'+temas.map(t=>'<option value="'+t+'" '+(item.tema===t?'selected':'')+'>'+t+'</option>').join('')+'</select></td>'+
-      '<td><select name="rede">'+redes.map(r=>'<option value="'+r+'" '+(item.rede===r?'selected':'')+'>'+r+'</option>').join('')+'</select></td>'+
-      '<td><input type="text" name="ideia" value="'+escapeHtmlCampanha(item.ideia||'')+'" placeholder="Tipo de postagem / ideia"></td></tr>';
-  }).join('');
-  return '<h3>📆 Padrão semanal de postagens</h3>'+ajudaHtml('editorialsemanal','Defina o tipo de postagem de cada dia da semana — se repete toda semana, sem precisar de data. Isso serve de guia pra quem posta, e o botão "Gerar calendário semanal (modelo)" na aba Campanhas usa esse padrão pra já criar as campanhas da semana com as datas certas.')+
-    '<form id="form-padrao-semanal"><div class="table-wrap"><table><thead><tr><th>Dia</th><th>Tema</th><th>Rede</th><th>Ideia / tipo de postagem</th></tr></thead><tbody>'+linhas+'</tbody></table></div>'+
-    '<button type="submit" class="btn small" style="margin-top:12px;">Salvar padrão semanal</button></form>';
-}
 let editorialMk = null, editorialView = 'mes', editEditorialId = null, editorialAno = null, editorialDataSelecionada = null;
 function itensEditorialDoDia(dataStr){
   const md = dataStr.slice(5);
@@ -1557,7 +1536,7 @@ function viewCalendarioEditorial(){
     celulas += '<div style="min-height:78px;border:1px solid var(--border);border-radius:8px;padding:4px;background:'+(hoje?'var(--blue-tint)':'transparent')+';cursor:pointer;" data-dia-editorial="'+dataStr+'">'+
       '<div style="font-size:11px;color:#999;font-weight:'+(hoje?'bold':'normal')+';">'+d+'</div>'+
       comem.map(c=>'<div style="font-size:9px;background:var(--yellow-tint,#fff3cd);color:#8a6400;border-radius:5px;padding:2px 4px;margin-top:2px;">'+c.nome+'</div>').join('')+
-      custom.map(c=>'<div style="font-size:9px;background:var(--purple-tint);color:var(--purple);border-radius:5px;padding:2px 4px;margin-top:2px;">'+(c.imagemBase64?'📷 ':'')+escapeHtmlCampanha((c.tema?c.tema+': ':'')+c.titulo)+'</div>').join('')+
+      custom.map(c=>'<div style="font-size:9px;background:var(--purple-tint);color:var(--purple);border-radius:5px;padding:2px 4px;margin-top:2px;">'+escapeHtmlCampanha((c.tema?c.tema+': ':'')+c.titulo)+'</div>').join('')+
       '</div>';
   }
   const ei = editEditorialId ? (state.calendarioEditorial||[]).find(x=>x.id===editEditorialId) : null;
@@ -1579,7 +1558,6 @@ function viewCalendarioEditorial(){
     '</div>'+
     '<label>Título/ideia <span class="req">*</span></label><input type="text" name="titulo" value="'+(ei?escapeHtmlCampanha(ei.titulo):'')+'" placeholder="Ex: Post de aniversário da loja" required>'+
     '<label>Detalhes / rascunho do texto</label><textarea name="ideia" rows="3" placeholder="Anote a ideia, texto ou referência visual...">'+(ei?escapeHtmlCampanha(ei.ideia||''):'')+'</textarea>'+
-    '<label>Imagem (opcional)</label><input type="file" id="editorial-imagem-input" accept="image/*"><div id="editorial-imagem-preview" style="margin-top:8px;">'+(ei&&ei.imagemBase64?'<img src="'+ei.imagemBase64+'" style="max-height:120px;border-radius:8px;">':'')+'</div>'+
     '<button type="submit" class="btn small" style="margin-top:10px;">'+(ei?'Salvar alterações':'Adicionar ao calendário')+'</button> '+(ei?'<button type="button" class="btn small ghost" id="btn-cancelar-editorial">Cancelar</button> <button type="button" class="del-link" id="btn-excluir-editorial" data-id="'+ei.id+'">🗑 excluir</button>':'')+
     '</form></div>';
 }
@@ -1629,11 +1607,10 @@ function viewCalendarioCampanhas(){
     (Object.keys(porDia).length===0?'<div class="empty" style="margin-top:12px;">Nenhuma campanha agendada nesse mês.</div>':'');
 }
 function viewCampanhas(){
-  const subtabs=[{id:'campanhas',label:'📢 Campanhas'},{id:'calendario',label:'📅 Calendário'},{id:'editorialsemanal',label:'📆 Padrão semanal'},{id:'editorialdatas',label:'🗓️ Datas comemorativas'},{id:'rapido',label:'⚡ Envio rápido'},{id:'publicos',label:'👥 Públicos salvos'},{id:'recompra',label:'🔁 Previsão de recompra'},{id:'google',label:'📍 Google Empresas'}]; let content;
+  const subtabs=[{id:'campanhas',label:'📢 Campanhas'},{id:'calendario',label:'📅 Calendário'},{id:'editorial',label:'🗓️ Editorial'},{id:'rapido',label:'⚡ Envio rápido'},{id:'publicos',label:'👥 Públicos salvos'},{id:'recompra',label:'🔁 Previsão de recompra'},{id:'google',label:'📍 Google Empresas'}]; let content;
   if(campanhaEnviarId){ const c=state.campanhas.find(x=>x.id===campanhaEnviarId); content=telaEnvioCampanha(c,campanhaEnviarModo==='recompra'?previsaoRecompraClientes().filter(r=>r.atraso>0&&r.telefone):destinatariosCampanha(c)); }
   else if(campanhaSub==='calendario'){ content=viewCalendarioCampanhas(); }
-  else if(campanhaSub==='editorialsemanal'){ content=viewPadraoEditorialSemanal(); }
-  else if(campanhaSub==='editorialdatas'){ content=viewCalendarioEditorial(); }
+  else if(campanhaSub==='editorial'){ content=viewCalendarioEditorial(); }
   else if(campanhaSub==='recompra'){ const p=previsaoRecompraClientes(), a=p.filter(r=>r.atraso>0); content='<h3>Clientes com previsão de recompra</h3>'+(a.length&&state.campanhas.length?'<select id="sel-campanha-recompra">'+state.campanhas.map(c=>'<option value="'+c.id+'">'+escapeHtmlCampanha(c.titulo)+'</option>').join('')+'</select><button class="btn small" id="btn-enviar-recompra">Preparar envio</button>':'')+(p.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Última compra</th><th>Intervalo médio</th><th>Atraso</th></tr></thead><tbody>'+p.map(r=>'<tr><td>'+escapeHtmlCampanha(r.nome)+'</td><td>'+fmtDate(r.ultima)+'</td><td>'+r.media+' dias</td><td>'+r.atraso+' dias</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">Ainda não há histórico suficiente.</div>'); }
   else if(campanhaSub==='rapido'){ content=viewEnvioRapido(); }
   else if(campanhaSub==='publicos'){ const ep=state.publicos.find(x=>x.id===editPublicoId); content=formPublicoHtml(ep)+'<h3 style="margin-top:20px;">Públicos salvos</h3>'+listaPublicosHtml(); }
@@ -2420,7 +2397,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','usuariosSistema','calendarioEditorial','padraoEditorialSemanal'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','usuariosSistema','calendarioEditorial'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2488,7 +2465,6 @@ async function loadAll(){
   if(!Array.isArray(state.recompensasIndicacao)) state.recompensasIndicacao = [];
   if(!Array.isArray(state.npsRespostas)) state.npsRespostas = [];
   if(!Array.isArray(state.calendarioEditorial)) state.calendarioEditorial = [];
-  if(!Array.isArray(state.padraoEditorialSemanal) || state.padraoEditorialSemanal.length!==7) state.padraoEditorialSemanal = padraoEditorialSemanalDefault();
   if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema = [];
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
@@ -7005,19 +6981,6 @@ function attachHandlers(){
     if(!confirm('Isso cria 7 campanhas de exemplo (uma por dia da semana) já agendadas. Continuar?')) return;
     gerarCalendarioSemanalPadrao(); await save('campanhas'); renderAll();
   };
-  const formPadraoSemanal = document.getElementById('form-padrao-semanal');
-  if(formPadraoSemanal) formPadraoSemanal.onsubmit = async e=>{
-    e.preventDefault();
-    const novo = [...formPadraoSemanal.querySelectorAll('[data-linha-semanal]')].map(tr=>({
-      diaSemana: Number(tr.dataset.linhaSemanal),
-      tema: tr.querySelector('[name="tema"]').value,
-      rede: tr.querySelector('[name="rede"]').value,
-      ideia: tr.querySelector('[name="ideia"]').value
-    }));
-    state.padraoEditorialSemanal = novo;
-    await save('padraoEditorialSemanal');
-    alert('Padrão semanal salvo!'); renderAll();
-  };
   const campUsarPublico=document.getElementById('camp-usar-publico');
   if(campUsarPublico) campUsarPublico.onchange=()=>{
     const p=state.publicos.find(x=>x.id===campUsarPublico.value); if(!p) return;
@@ -7077,32 +7040,24 @@ function attachHandlers(){
     editorialDataSelecionada = el.dataset.diaEditorial;
     const {custom} = itensEditorialDoDia(editorialDataSelecionada);
     editEditorialId = custom.length===1 ? custom[0].id : null;
-    editorialImagemSelecionada = null;
     renderAll();
     setTimeout(()=>{ const f=document.getElementById('form-editorial'); if(f) f.scrollIntoView({behavior:'smooth', block:'nearest'}); },30);
   });
-  document.querySelectorAll('[data-edit-editorial-ano]').forEach(btn=>btn.onclick=()=>{ editEditorialId=btn.dataset.editEditorialAno; const it=(state.calendarioEditorial||[]).find(x=>x.id===editEditorialId); if(it){ editorialMk=monthKey(it.data); editorialView='mes'; editorialImagemSelecionada=null; renderAll(); } });
-  const btnCancelarEditorial = document.getElementById('btn-cancelar-editorial'); if(btnCancelarEditorial) btnCancelarEditorial.onclick=()=>{ editEditorialId=null; editorialDataSelecionada=null; editorialImagemSelecionada=null; renderAll(); };
+  document.querySelectorAll('[data-edit-editorial-ano]').forEach(btn=>btn.onclick=()=>{ editEditorialId=btn.dataset.editEditorialAno; const it=(state.calendarioEditorial||[]).find(x=>x.id===editEditorialId); if(it){ editorialMk=monthKey(it.data); editorialView='mes'; renderAll(); } });
+  const btnCancelarEditorial = document.getElementById('btn-cancelar-editorial'); if(btnCancelarEditorial) btnCancelarEditorial.onclick=()=>{ editEditorialId=null; editorialDataSelecionada=null; renderAll(); };
   const btnExcluirEditorial = document.getElementById('btn-excluir-editorial'); if(btnExcluirEditorial) btnExcluirEditorial.onclick=async()=>{
     if(!confirm('Excluir essa ideia do calendário?')) return;
     state.calendarioEditorial = (state.calendarioEditorial||[]).filter(x=>x.id!==btnExcluirEditorial.dataset.id);
     await save('calendarioEditorial'); editEditorialId=null; renderAll();
   };
-  const editorialImgInput = document.getElementById('editorial-imagem-input');
-  if(editorialImgInput) editorialImgInput.onchange = async()=>{
-    const file=editorialImgInput.files[0]; if(!file) return;
-    editorialImagemSelecionada = await comprimirImagemArquivo(file);
-    const prev=document.getElementById('editorial-imagem-preview'); if(prev) prev.innerHTML='<img src="'+editorialImagemSelecionada+'" style="max-height:120px;border-radius:8px;">';
-  };
   const formEditorial = document.getElementById('form-editorial');
   if(formEditorial) formEditorial.onsubmit = async e=>{
     e.preventDefault(); const f=new FormData(formEditorial); const editId=formEditorial.dataset.editId;
     const dados={data:f.get('data'), titulo:(f.get('titulo')||'').trim(), tema:f.get('tema')||'', rede:f.get('rede')||'', ideia:f.get('ideia')||''};
-    if(editorialImagemSelecionada) dados.imagemBase64 = editorialImagemSelecionada;
     if(!Array.isArray(state.calendarioEditorial)) state.calendarioEditorial=[];
     if(editId){ const it=state.calendarioEditorial.find(x=>x.id===editId); if(it) Object.assign(it,dados,{atualizadoEm:Date.now()}); }
     else state.calendarioEditorial.push(Object.assign({id:uid(),criadoEm:Date.now()},dados));
-    await save('calendarioEditorial'); editEditorialId=null; editorialDataSelecionada=null; editorialImagemSelecionada=null; renderAll();
+    await save('calendarioEditorial'); editEditorialId=null; editorialDataSelecionada=null; renderAll();
   };
 
   const btnCancelEd=document.getElementById('btn-cancelar-edicao-campanha'); if(btnCancelEd)btnCancelEd.onclick=()=>{editCampanhaId=null;renderAll();};
