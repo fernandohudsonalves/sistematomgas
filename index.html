@@ -231,6 +231,12 @@ table td:last-child{min-width:180px;}
 .comunicado-banner h3{margin:0 0 4px;font-size:15px;color:#fff;}
 .comunicado-banner p{margin:0;font-size:13px;color:#E4EAFB;white-space:pre-wrap;}
 .comunicado-banner .tag{display:inline-block;background:var(--neon);color:var(--royal-dark);font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:20px;margin-bottom:8px;}
+.btn-edit-card{position:absolute;top:10px;right:10px;width:30px;height:30px;border:none;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:transform .15s,background .15s;}
+.btn-edit-card:hover{transform:scale(1.08);}
+.btn-edit-card.on-dark{background:rgba(255,255,255,.22);color:#fff;}
+.btn-edit-card.on-dark:hover{background:rgba(255,255,255,.32);}
+.btn-edit-card.on-light{background:rgba(20,42,99,.10);color:var(--royal-dark);}
+.btn-edit-card.on-light:hover{background:rgba(20,42,99,.18);}
 @media (max-width: 640px){
   input,select,textarea{font-size:16px;} /* evita o zoom automático do iPhone ao tocar num campo */
   main{padding:12px;}
@@ -296,7 +302,7 @@ table td:last-child{min-width:180px;}
 .auth-msg.err{background:var(--danger-tint);color:var(--danger);}
 .auth-form{display:none;}
 .auth-form.active{display:block;}
-#agenda-fab{position:fixed;bottom:20px;right:20px;z-index:500;background:#142A63;color:#fff;border:none;border-radius:24px;padding:12px 18px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;}
+#agenda-fab{position:fixed;top:110px;right:16px;z-index:45;background:#142A63;color:#fff;border:none;border-radius:24px;padding:10px 16px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;font-size:13px;}
 #agenda-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;display:none;}
 #agenda-drawer{position:fixed;top:0;right:-380px;width:360px;max-width:90vw;height:100%;background:var(--card);z-index:601;box-shadow:-4px 0 20px rgba(0,0,0,.2);padding:14px;overflow-y:auto;overflow-x:hidden;transition:right .25s;}
 #agenda-drawer.open{right:0;}
@@ -2730,7 +2736,11 @@ function atualizarEtiquetaDataHoje(){
 function ajustarPosicaoNav(){
   const header = document.querySelector('header');
   const navEl = document.querySelector('nav');
-  if(header && navEl){ navEl.style.top = header.offsetHeight + 'px'; }
+  if(header && navEl){
+    navEl.style.top = header.offsetHeight + 'px';
+    const agendaFab = document.getElementById('agenda-fab');
+    if(agendaFab) agendaFab.style.top = (header.offsetHeight + navEl.offsetHeight + 10) + 'px';
+  }
 }
 window.addEventListener('resize', ajustarPosicaoNav);
 setInterval(atualizarEtiquetaDataHoje, 30000);
@@ -2847,7 +2857,7 @@ function comunicadosBannerHtml(){
   if(ativos.length===0) return '';
   return ativos.map(c=>
     '<div class="comunicado-banner"><span class="tag">Comunicado interno</span>'+
-    '<button type="button" class="act-link" data-ir-editar-comunicado="'+c.id+'" title="Editar este comunicado" style="position:absolute;top:12px;right:14px;background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:6px;padding:4px 7px;cursor:pointer;">✎</button>'+
+    '<button type="button" class="btn-edit-card on-dark" data-ir-editar-comunicado="'+c.id+'" title="Editar este comunicado">✎</button>'+
     '<h3>'+c.titulo+'</h3>'+
     (c.texto ? '<p>'+c.texto+'</p>' : '')+
     (c.imagemUrl ? '<img src="'+c.imagemUrl+'" alt="'+c.titulo+'">' : '')+
@@ -2899,7 +2909,7 @@ function metaCardDashboardHtml(){
   const metaDiaria = metaDiariaP13(mk);
   const vendidoHoje = p13VendidosNoDia(hoje);
   const vendidoMes = p13VendidosNoMes(mk);
-  return '<div class="meta-card" style="position:relative;"><button type="button" class="act-link" data-ir-editar-meta="1" title="Editar meta" style="position:absolute;top:12px;right:14px;background:rgba(0,0,0,.08);border:none;border-radius:6px;padding:4px 7px;cursor:pointer;">✎</button><h2>🎯 Meta de cargas de P13 — '+nomeMes(mk)+'</h2>'+
+  return '<div class="meta-card" style="position:relative;"><button type="button" class="btn-edit-card on-light" data-ir-editar-meta="1" title="Editar meta">✎</button><h2>🎯 Meta de cargas de P13 — '+nomeMes(mk)+'</h2>'+
     barraMetaHtml(vendidoHoje, metaDiaria, 'Meta de hoje ('+fmtDate(hoje)+')')+
     barraMetaHtml(vendidoMes, metaMensal, 'Meta do mês ('+nomeMes(mk)+')')+
     '</div>';
@@ -3030,6 +3040,15 @@ function saldoDoCliente(cliente){
   const pagos = pagamentosDoCliente(cliente).reduce((s,p)=>s+p.valor,0);
   return Math.max(0, debitos - pagos);
 }
+function verificarLimiteCreditoCliente(nomeCliente){
+  if(!nomeCliente) return;
+  const c = state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(nomeCliente));
+  if(!c || !c.limiteCredito || c.limiteCredito<=0) return;
+  const saldo = saldoDoCliente(nomeCliente);
+  if(saldo >= c.limiteCredito){
+    alert('⚠ Limite de crédito atingido!\n\n'+nomeCliente+' já está devendo '+fmtMoney(saldo)+' de fiado (limite combinado: '+fmtMoney(c.limiteCredito)+').\n\nA venda foi registrada normalmente, mas vale avisar o cliente e combinar o pagamento.'+(telefoneDoCliente(nomeCliente)?' Você pode chamar no WhatsApp na tela de Fiado.':''));
+  }
+}
 function totalFiadoAberto(){
   return clientesComFiado().reduce((s,c)=>s+saldoDoCliente(c), 0);
 }
@@ -3045,6 +3064,11 @@ function totalConveniosMes(mk){
 
 const PALETA_CORES = ['#1E3A8A','#16A34A','#7C3AED','#5BA3F5','#B45309','#DC2626','#0EA5E9','#DB2777','#B6FF3D','#94A2B8'];
 function destruirChart(id){ if(dashCharts[id]){ dashCharts[id].destroy(); delete dashCharts[id]; } }
+function truncarLabelGrafico(str, max){
+  str = String(str||'');
+  if(str.length<=max) return str;
+  return str.slice(0, max-1).trimEnd()+'…';
+}
 function criarChart(id, config){
   const el = document.getElementById(id);
   if(!el) return;
@@ -3089,8 +3113,9 @@ function renderDashboardRelatorios(){
   } else {
     criarChart('chart-despesas-pizza', {
       type:'pie',
-      data:{ labels:Object.keys(porCategoriaDespesa), datasets:[{ data:Object.values(porCategoriaDespesa), backgroundColor:PALETA_CORES }] },
-      options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:6,font:{size:9}}}} }
+      data:{ labels:Object.keys(porCategoriaDespesa).map(l=>truncarLabelGrafico(l,14)), datasets:[{ data:Object.values(porCategoriaDespesa), backgroundColor:PALETA_CORES }] },
+      options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:6,font:{size:9}}},
+        tooltip:{callbacks:{title:(items)=>Object.keys(porCategoriaDespesa)[items[0].dataIndex]}}} }
     });
   }
 
@@ -3100,8 +3125,9 @@ function renderDashboardRelatorios(){
   } else {
     criarChart('chart-vendas-pizza', {
       type:'pie',
-      data:{ labels:Object.keys(porCategoria), datasets:[{ data:Object.values(porCategoria), backgroundColor:PALETA_CORES }] },
-      options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:6,font:{size:9}}}} }
+      data:{ labels:Object.keys(porCategoria).map(l=>truncarLabelGrafico(l,14)), datasets:[{ data:Object.values(porCategoria), backgroundColor:PALETA_CORES }] },
+      options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:6,font:{size:9}}},
+        tooltip:{callbacks:{title:(items)=>Object.keys(porCategoria)[items[0].dataIndex]}}} }
     });
   }
 
@@ -3906,6 +3932,7 @@ function viewClientes(){
     '<label>Indicado por (opcional)</label><input type="text" name="indicadoPor" placeholder="Nome de quem indicou esse cliente">'+
     '<label>Aniversário (opcional)</label><input type="date" name="aniversario"><div class="hint">Usado pra mandar parabéns automaticamente e pra montar o público "Aniversariantes".</div>'+
     '<label>Observações</label><input type="text" name="obs">'+
+    '<label>Limite de crédito para fiado (opcional)</label><input type="number" name="limiteCredito" min="0" step="0.01" placeholder="Ex: 200,00"><div class="hint">Deixe em branco pra não controlar limite. Quando o cliente atingir esse valor em fiado aberto, o sistema avisa — a venda não é bloqueada, é só um aviso pra você cobrar.</div>'+
     '<label>Grupos / categorias do cliente</label><div class="cat-checklist">'+((state.categoriasClientes||[]).map(g=>'<label class="checkbox-item"><input type="checkbox" name="gruposCliente" value="'+escapeHtmlCampanha(g)+'"> '+escapeHtmlCampanha(g)+'</label>').join('')||'<span class="hint">Crie grupos abaixo.</span>')+'</div>'+
     '<button type="submit" class="btn">Adicionar cliente</button></form></div>'+
     '<div class="card"><h2>Grupos / categorias de clientes</h2><div class="hint">Crie lotes como Clientes Ativos, Amigos, VIP, Teste etc.</div><div class="inline-add"><input id="novo-grupo-cliente" placeholder="Ex: Clientes Ativos"><button type="button" class="btn small" id="btn-add-grupo-cliente">+ Criar grupo</button></div><div style="margin-top:10px;">'+((state.categoriasClientes||[]).map(g=>'<span class="pill" style="margin:3px 4px 3px 0;">'+escapeHtmlCampanha(g)+' <button type="button" class="link-btn" data-del-grupo-cliente="'+escapeHtmlCampanha(g)+'">×</button></span>').join('')||'<div class="empty">Nenhum grupo criado.</div>')+'</div></div>'+
@@ -4976,12 +5003,22 @@ function fiadoPorClienteHtml(){
   const linhas = clientesComFiado().map(n=>({nome:n, saldo:saldoDoCliente(n)})).filter(x=>x.saldo>0.004).sort((a,b)=>diasFiadoAtrasado(b.nome)-diasFiadoAtrasado(a.nome));
   if(linhas.length===0) return '<div class="empty">Nenhum cliente com saldo em aberto no momento.</div>';
   const muitoAtrasados = linhas.filter(l=>diasFiadoAtrasado(l.nome)>60).length;
+  const acimaDoLimite = linhas.filter(l=>{
+    const c = state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(l.nome));
+    return c && c.limiteCredito>0 && l.saldo>=c.limiteCredito;
+  }).length;
   return (muitoAtrasados>0 ? '<div class="import-conferencia-alert">⚠ '+muitoAtrasados+' cliente(s) com fiado há mais de 60 dias sem pagar nada — considere cobrar.</div>' : '')+
+    (acimaDoLimite>0 ? '<div class="import-conferencia-alert">🚫 '+acimaDoLimite+' cliente(s) já atingiram o limite de crédito combinado — mande uma mensagem cobrando.</div>' : '')+
     '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Saldo devedor</th><th>Situação</th><th></th></tr></thead><tbody>'+
-    linhas.map(l=>'<tr><td>'+l.nome+(telefoneDoCliente(l.nome)?' <a href="'+linkWhatsApp(telefoneDoCliente(l.nome))+'" target="_blank" title="Chamar '+l.nome+' no WhatsApp" style="vertical-align:middle;">'+iconWhatsApp('#25D366',15)+'</a>':'')+'</td><td>'+fmtMoney(l.saldo)+'</td><td>'+etiquetaAtrasoFiadoHtml(l.nome)+'</td>'+
+    linhas.map(l=>{
+      const cCli = state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(l.nome));
+      const acimaLimite = cCli && cCli.limiteCredito>0 && l.saldo>=cCli.limiteCredito;
+      const etiquetaLimite = acimaLimite ? ' <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:var(--danger-tint);color:var(--danger);">🚫 acima do limite ('+fmtMoney(cCli.limiteCredito)+')</span>' : '';
+      return '<tr><td>'+l.nome+(telefoneDoCliente(l.nome)?' <a href="'+linkWhatsApp(telefoneDoCliente(l.nome))+'" target="_blank" title="Chamar '+l.nome+' no WhatsApp" style="vertical-align:middle;">'+iconWhatsApp('#25D366',15)+'</a>':'')+'</td><td>'+fmtMoney(l.saldo)+'</td><td>'+etiquetaAtrasoFiadoHtml(l.nome)+etiquetaLimite+'</td>'+
     '<td><button class="act-link" data-ver-extrato="'+encodeURIComponent(l.nome)+'">📄 ver extrato / gerar PDF</button>'+
     '<button class="act-link" data-enviar-extrato-whats="'+encodeURIComponent(l.nome)+'" style="background:var(--green-tint);color:var(--green);" title="'+(telefoneDoCliente(l.nome)?'Enviar o PDF do extrato pelo WhatsApp':'Cadastre o telefone do cliente para habilitar')+'">'+iconWhatsApp('#25D366',13)+' enviar extrato</button>'+
-    '<button class="act-link" data-registrar-pagamento="'+encodeURIComponent(l.nome)+'">💵 registrar pagamento</button></td></tr>').join('')+
+    '<button class="act-link" data-registrar-pagamento="'+encodeURIComponent(l.nome)+'">💵 registrar pagamento</button></td></tr>';
+    }).join('')+
     '</tbody></table></div>';
 }
 function diasFiadoAtrasado(cliente){
@@ -5995,6 +6032,7 @@ function attachHandlers(){
         if(v.entrega_hora && !v.entrega_status) v.entrega_status='pendente';
         if(!v.entrega_hora) v.entrega_status='';
         ajustaEstoquePorVenda(categoria, quantidade, false);
+        if(v.cliente && (v.pagamento||'').includes('Fiado')) verificarLimiteCreditoCliente(v.cliente);
       }
       editVendaId = null;
     } else {
@@ -6085,6 +6123,9 @@ function attachHandlers(){
         });
         notificarLocal('Nova entrega registrada', (camposComuns.cliente||'Cliente')+' — '+itens.map(i=>i.quantidade+'x '+i.produto).join(', ')+' às '+camposComuns.entrega_hora);
         enviarPushServidor('Nova entrega registrada', (camposComuns.cliente||'Cliente')+' — '+itens.map(i=>i.quantidade+'x '+i.produto).join(', ')+' às '+camposComuns.entrega_hora);
+      }
+      if(camposComuns.cliente && state.vendas.filter(v=>v.grupoId===grupoId).some(v=>(v.pagamento||'').includes('Fiado'))){
+        verificarLimiteCreditoCliente(camposComuns.cliente);
       }
     }
     if(camposComuns.empresa) await garantirEmpresaCadastrada(camposComuns.empresa);
@@ -6187,10 +6228,10 @@ function attachHandlers(){
     const f = new FormData(fc);
     if(editClienteId){
       const c = state.clientes.find(x=>x.id===editClienteId);
-      if(c){ c.nome=f.get('nome'); c.telefone=f.get('telefone')||''; c.endereco=f.get('endereco')||''; c.complemento=f.get('complemento')||''; c.obs=f.get('obs')||''; c.indicadoPor=f.get('indicadoPor')||''; c.aniversario=f.get('aniversario')||''; c.grupos=[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value); }
+      if(c){ c.nome=f.get('nome'); c.telefone=f.get('telefone')||''; c.endereco=f.get('endereco')||''; c.complemento=f.get('complemento')||''; c.obs=f.get('obs')||''; c.indicadoPor=f.get('indicadoPor')||''; c.aniversario=f.get('aniversario')||''; c.limiteCredito=f.get('limiteCredito')?Number(f.get('limiteCredito')):undefined; c.grupos=[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value); }
       editClienteId = null;
     } else {
-      state.clientes.push({id:uid(), nome:f.get('nome'), telefone:f.get('telefone')||'', endereco:f.get('endereco')||'', complemento:f.get('complemento')||'', obs:f.get('obs')||'', indicadoPor:f.get('indicadoPor')||'', aniversario:f.get('aniversario')||'', grupos:[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value)});
+      state.clientes.push({id:uid(), nome:f.get('nome'), telefone:f.get('telefone')||'', endereco:f.get('endereco')||'', complemento:f.get('complemento')||'', obs:f.get('obs')||'', indicadoPor:f.get('indicadoPor')||'', aniversario:f.get('aniversario')||'', limiteCredito:f.get('limiteCredito')?Number(f.get('limiteCredito')):undefined, grupos:[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value)});
     }
     await save('clientes');
     renderAll();
@@ -6334,6 +6375,7 @@ function attachHandlers(){
       editFiadoId = null;
     } else {
       state.fiados.push({id:uid(), cliente:f.get('cliente'), valor:Number(f.get('valor')), data:f.get('data'), descricao:f.get('descricao')||'', status:'aberto'});
+      verificarLimiteCreditoCliente(f.get('cliente'));
     }
     await save('fiados');
     renderAll();
@@ -6585,7 +6627,7 @@ function attachHandlers(){
       const fcEl = document.getElementById('form-cliente');
       if(!c || !fcEl) return;
       editClienteId = c.id;
-      fcEl.nome.value=c.nome; fcEl.telefone.value=c.telefone||''; fcEl.endereco.value=c.endereco||''; fcEl.complemento.value=c.complemento||''; fcEl.obs.value=c.obs||''; fcEl.indicadoPor.value=c.indicadoPor||''; if(fcEl.aniversario) fcEl.aniversario.value=c.aniversario||''; fcEl.querySelectorAll('input[name="gruposCliente"]').forEach(x=>x.checked=gruposClienteDoCliente(c).includes(x.value));
+      fcEl.nome.value=c.nome; fcEl.telefone.value=c.telefone||''; fcEl.endereco.value=c.endereco||''; fcEl.complemento.value=c.complemento||''; fcEl.obs.value=c.obs||''; fcEl.indicadoPor.value=c.indicadoPor||''; if(fcEl.aniversario) fcEl.aniversario.value=c.aniversario||''; if(fcEl.limiteCredito) fcEl.limiteCredito.value=c.limiteCredito||''; fcEl.querySelectorAll('input[name="gruposCliente"]').forEach(x=>x.checked=gruposClienteDoCliente(c).includes(x.value));
       fcEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       fcEl.scrollIntoView({behavior:'smooth'});
     });
