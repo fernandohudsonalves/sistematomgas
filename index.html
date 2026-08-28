@@ -1201,6 +1201,25 @@ const MODELOS_MENSAGEM_CAMPANHA = {
   '🔁 Reativação': 'Oi {nome}! Faz um tempinho que você não pede gás com a gente e sentimos sua falta 🙂 Separei uma condição especial pra você voltar. Bora?',
   '🆕 Boas-vindas': 'Oi {nome}! Muito obrigado por ter comprado com a Tom Gás pela primeira vez 🙌 Ficou tudo certinho? Qualquer coisa é só chamar por aqui!'
 };
+const CALENDARIO_SEMANAL_PADRAO = [
+  {dia:1, tema:'Água', rede:'WhatsApp/Instagram', titulo:'Segunda — Água', mensagem:'Oi {nome}! Começando a semana com água mineral fresquinha, entrega no mesmo dia 💧 Chama aqui pra garantir a sua!'},
+  {dia:2, tema:'Gás', rede:'Instagram', titulo:'Terça — Gás', mensagem:'Dica de segurança: já verificou a validade do seu botijão? 🔥 Se estiver perto de acabar, chama a gente que a troca é rapidinho.'},
+  {dia:3, tema:'Promoção', rede:'WhatsApp/Instagram', titulo:'Quarta — Promoção', mensagem:'Oi {nome}! Só hoje: condição especial pra gás + água combinados 🎉 Chama aqui antes que acabe!'},
+  {dia:4, tema:'Carvão', rede:'Instagram', titulo:'Quinta — Carvão', mensagem:'Já pensando no churrasco de fim de semana? 🍖 Deixa o carvão encomendado com a gente e a entrega chega no dia certo.'},
+  {dia:5, tema:'Depoimento/Bastidor', rede:'WhatsApp/Instagram', titulo:'Sexta — Depoimento', mensagem:'Mais um cliente satisfeito com a entrega da Tom Gás! 😊 Obrigado pela confiança — sextou com entrega rápida por aqui.'},
+  {dia:6, tema:'Promoção', rede:'WhatsApp/Instagram', titulo:'Sábado — Fim de semana', mensagem:'Oi {nome}! Também entregamos no fim de semana 🚚 Precisando de gás, água ou carvão, é só chamar!'},
+  {dia:0, tema:'Institucional', rede:'Instagram', titulo:'Domingo — Institucional', mensagem:'Obrigado por fazer parte da família Tom Gás 🙏 Um domingo tranquilo pra você e sua família!'}
+];
+function gerarCalendarioSemanalPadrao(){
+  const hoje=new Date();
+  CALENDARIO_SEMANAL_PADRAO.forEach(item=>{
+    const d=new Date(hoje);
+    let dif=(item.dia - d.getDay() + 7) % 7; if(dif===0) dif=7;
+    d.setDate(d.getDate()+dif);
+    const dataAgendada = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    state.campanhas.push({id:uid(), criadoEm:Date.now(), titulo:item.titulo, mensagem:item.mensagem, destinoTipo:'grupo', grupos:[], clienteIds:[], tema:item.tema, rede:item.rede, dataAgendada, vendasGeradas:0, codigoCupom:''});
+  });
+}
 function formCampanhaHtml(c){
   const grupos=state.categoriasClientes||[], sg=c?.grupos||[], sc=c?.clienteIds||[];
   const dt=c?.destinoTipo||'grupo';
@@ -1215,6 +1234,9 @@ function formCampanhaHtml(c){
   '<label>Texto que o cliente vai receber <span class="req">*</span></label><textarea name="mensagem" rows="4" required>'+escapeHtmlCampanha(c?.mensagem||'')+'</textarea><div class="hint">Use {nome} no texto pra personalizar com o nome de cada cliente automaticamente.</div>'+
   '<label>Código do cupom (opcional)</label><input type="text" name="codigoCupom" value="'+escapeHtmlCampanha(c?.codigoCupom||'')+'" placeholder="Ex: TOMGAS10" style="text-transform:uppercase;max-width:220px;"><div class="hint">Se preencher, dá pra usar {cupom} no texto e depois medir quantas vendas usaram esse código na aba Relatórios → Conversão de Cupons.</div>'+
   '<label>Data agendada (opcional)</label><input type="date" name="dataAgendada" value="'+(c?.dataAgendada||'')+'" style="max-width:200px;"><div class="hint">Só pra te lembrar quando enviar — aparece no Calendário de Campanhas abaixo. O envio continua sendo manual, clicando em "preparar envio".</div>'+
+  '<div class="form-row"><div><label>Tema</label><select name="tema"><option value="">—</option>'+['Água','Gás','Promoção','Carvão','Depoimento/Bastidor','Institucional'].map(t=>'<option value="'+t+'" '+(c?.tema===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
+  '<div><label>Rede</label><select name="rede"><option value="">—</option>'+['WhatsApp','Instagram','WhatsApp/Instagram'].map(r=>'<option value="'+r+'" '+(c?.rede===r?'selected':'')+'>'+r+'</option>').join('')+'</select></div>'+
+  '<div><label>Vendas geradas por essa campanha</label><input type="number" name="vendasGeradas" min="0" step="1" value="'+(c?.vendasGeradas!=null?c.vendasGeradas:'')+'" placeholder="0"></div></div>'+
 
   '<h3>2. Público — quem vai receber</h3>'+
   '<div class="hint" style="margin:-4px 0 10px;">O envio é sempre individual: pra cada cliente da lista o sistema gera um link do WhatsApp com o texto pronto, e você clica em "abrir whats" um por um. O público aqui só define quem entra nessa lista.</div>'+
@@ -1235,11 +1257,21 @@ function formCampanhaHtml(c){
 
   '<button type="submit" class="btn small" style="margin-top:20px;">'+(c?'Salvar alterações':'Salvar campanha')+'</button> '+(c?'<button type="button" class="btn small ghost" id="btn-cancelar-edicao-campanha">Cancelar</button>':'')+'</form>';
 }
+function resumoVendasPorTemaHtml(){
+  const temas=['Água','Gás','Promoção','Carvão','Depoimento/Bastidor','Institucional'];
+  const linhas=temas.map(t=>{
+    const total=(state.campanhas||[]).filter(c=>c.tema===t).reduce((s,c)=>s+(c.vendasGeradas||0),0);
+    return total>0 ? '<tr><td>'+t+'</td><td>'+total+' venda(s)</td></tr>' : '';
+  }).join('');
+  if(!linhas) return '';
+  return '<div class="card" style="margin:0 0 14px;"><h3>🛒 Vendas geradas por tema</h3><div class="table-wrap"><table><thead><tr><th>Tema</th><th>Vendas</th></tr></thead><tbody>'+linhas+'</tbody></table></div></div>';
+}
 function listaCampanhasHtml(){
   if(!(state.campanhas||[]).length) return '<div class="empty">Nenhuma campanha criada ainda.</div>';
   return '<div class="lc-grid">'+state.campanhas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).map(c=>{
     const p=c.destinoTipo==='grupo'?((c.grupos||[]).join(', ')||'Nenhum grupo'):c.destinoTipo==='teste'?'1 cliente (teste)':c.destinoTipo==='clientes'?((c.clienteIds||[]).length+' cliente(s)'):'Todos os clientes';
     return '<div class="lc-card"><div class="lc-top" style="align-items:flex-start;">'+campanhaThumbHtml(c)+'<div style="flex:1;min-width:0;"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;"><strong>'+escapeHtmlCampanha(c.titulo)+'</strong><span class="badge roxo">'+escapeHtmlCampanha(p)+'</span></div>'+
+    (c.tema||c.rede?'<div class="hint" style="margin-top:2px;">'+(c.tema?'🏷️ '+escapeHtmlCampanha(c.tema):'')+(c.tema&&c.rede?' · ':'')+(c.rede?'📱 '+escapeHtmlCampanha(c.rede):'')+' · 🛒 '+(c.vendasGeradas||0)+' venda(s) geradas</div>':'')+
     '<div class="lc-msg">'+escapeHtmlCampanha((c.mensagem||'').slice(0,110))+((c.mensagem||'').length>110?'…':'')+'</div>'+
     '<div class="lc-meta">'+campanhaMidiaHtml(c)+'</div></div></div>'+
     '<div class="lc-acoes"><button class="act-link" data-enviar-campanha="'+c.id+'">📢 preparar envio</button><button class="act-link" data-edit-campanha="'+c.id+'">✎ editar</button><button class="del-link" data-del-campanha="'+c.id+'">🗑 excluir</button></div></div>';
@@ -1438,6 +1470,110 @@ function telaEnvioCampanha(campanha,destinatarios){
   (destinatarios.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Status</th><th></th></tr></thead><tbody>'+destinatarios.map(d=>{const enviado=jaEnviouCampanha(campanha.id,d.nome); let msg=aplicarPlaceholdersMensagem(campanha.mensagem,{nome:d.nome,cupom:campanha.codigoCupom||''}); if(campanha.linkVideo) msg+='\n'+campanha.linkVideo; return '<tr><td>'+escapeHtmlCampanha(d.nome)+'</td><td>'+escapeHtmlCampanha(d.telefone)+'</td><td>'+(enviado?'<span class="badge status-pago">enviado</span>':'<span class="badge status-receber">pendente</span>')+'</td><td><a class="act-link" href="'+linkWhatsAppComTexto(d.telefone,msg)+'" target="_blank" rel="noopener" data-marcar-enviado-campanha="'+campanha.id+'" data-marcar-enviado-cliente="'+escapeHtmlCampanha(d.nome)+'">'+iconWhatsApp('#25D366',13)+' abrir whats</a></td></tr>';}).join('')+'</tbody></table></div>':'<div class="empty">Nenhum cliente com telefone cadastrado nesse público.</div>')+
   '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);"><button type="button" class="link-btn" id="btn-enviar-campanha-automatico">🚀 Prefere enviar tudo automático? (requer API paga do WhatsApp Business)</button></div>';
 }
+/* ===================== Calendário Editorial ===================== */
+function calcularPascoa(ano){
+  const a=ano%19,b=Math.floor(ano/100),c=ano%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;
+  return new Date(ano, mes-1, dia);
+}
+function addDiasData(data,n){ const d=new Date(data); d.setDate(d.getDate()+n); return d; }
+function fmtMD(d){ return String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function nthDiaSemanaMes(ano,mesIdx,diaSemana,n){
+  const d=new Date(ano,mesIdx,1); let count=0;
+  while(d.getMonth()===mesIdx){ if(d.getDay()===diaSemana){ count++; if(count===n) return new Date(d); } d.setDate(d.getDate()+1); }
+  return new Date(ano,mesIdx,1);
+}
+function ultimoDiaSemanaMes(ano,mesIdx,diaSemana){
+  const d=new Date(ano,mesIdx+1,0); while(d.getDay()!==diaSemana) d.setDate(d.getDate()-1); return d;
+}
+function diasComemorativosAno(ano){
+  const pascoa=calcularPascoa(ano);
+  return [
+    {md:'01-01',nome:'🎊 Confraternização Universal',tipo:'feriado'},
+    {md:fmtMD(addDiasData(pascoa,-48)),nome:'🎭 Carnaval (segunda)',tipo:'feriado'},
+    {md:fmtMD(addDiasData(pascoa,-47)),nome:'🎭 Carnaval (terça)',tipo:'feriado'},
+    {md:fmtMD(addDiasData(pascoa,-2)),nome:'✝️ Sexta-feira Santa',tipo:'feriado'},
+    {md:fmtMD(pascoa),nome:'🐰 Páscoa',tipo:'comemorativa'},
+    {md:'03-15',nome:'🛒 Dia do Consumidor',tipo:'comemorativa'},
+    {md:'03-22',nome:'💧 Dia Mundial da Água',tipo:'comemorativa'},
+    {md:'04-21',nome:'🇧🇷 Tiradentes',tipo:'feriado'},
+    {md:fmtMD(nthDiaSemanaMes(ano,4,0,2)),nome:'🌸 Dia das Mães',tipo:'comemorativa'},
+    {md:'05-01',nome:'👷 Dia do Trabalho',tipo:'feriado'},
+    {md:fmtMD(addDiasData(pascoa,60)),nome:'⛪ Corpus Christi',tipo:'feriado'},
+    {md:'06-12',nome:'❤️ Dia dos Namorados',tipo:'comemorativa'},
+    {md:'06-24',nome:'🌽 São João / Festa Junina',tipo:'comemorativa'},
+    {md:fmtMD(nthDiaSemanaMes(ano,7,0,2)),nome:'👨 Dia dos Pais',tipo:'comemorativa'},
+    {md:'09-07',nome:'🇧🇷 Independência do Brasil',tipo:'feriado'},
+    {md:'09-15',nome:'🙋 Dia do Cliente',tipo:'comemorativa'},
+    {md:'10-12',nome:'🙏 N. Sra. Aparecida / Crianças',tipo:'feriado'},
+    {md:'10-15',nome:'📚 Dia do Professor',tipo:'comemorativa'},
+    {md:'11-02',nome:'🕯️ Finados',tipo:'feriado'},
+    {md:'11-15',nome:'🇧🇷 Proclamação da República',tipo:'feriado'},
+    {md:'11-20',nome:'✊ Consciência Negra',tipo:'feriado'},
+    {md:fmtMD(ultimoDiaSemanaMes(ano,10,5)),nome:'🛍️ Black Friday',tipo:'comemorativa'},
+    {md:'12-25',nome:'🎄 Natal',tipo:'feriado'},
+    {md:'12-31',nome:'🎊 Véspera de Ano Novo',tipo:'comemorativa'}
+  ].sort((a,b)=>a.md.localeCompare(b.md));
+}
+let editorialMk = null, editorialView = 'mes', editEditorialId = null, editorialAno = null, editorialDataSelecionada = null;
+function itensEditorialDoDia(dataStr){
+  const md = dataStr.slice(5);
+  const comem = diasComemorativosAno(Number(dataStr.slice(0,4))).filter(x=>x.md===md);
+  const custom = (state.calendarioEditorial||[]).filter(x=>x.data===dataStr);
+  return {comem, custom};
+}
+function viewCalendarioEditorial(){
+  if(editorialView==='ano') return viewCalendarioEditorialAno();
+  const mk = editorialMk || monthKey(todayStr());
+  const [ano,mes] = mk.split('-').map(Number);
+  const diasNoMes = new Date(ano,mes,0).getDate();
+  const offset = new Date(ano,mes-1,1).getDay();
+  let celulas='';
+  for(let i=0;i<offset;i++) celulas+='<div style="min-height:78px;"></div>';
+  for(let d=1;d<=diasNoMes;d++){
+    const dataStr = ano+'-'+String(mes).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const {comem,custom} = itensEditorialDoDia(dataStr);
+    const hoje = todayStr()===dataStr;
+    celulas += '<div style="min-height:78px;border:1px solid var(--border);border-radius:8px;padding:4px;background:'+(hoje?'var(--blue-tint)':'transparent')+';cursor:pointer;" data-dia-editorial="'+dataStr+'">'+
+      '<div style="font-size:11px;color:#999;font-weight:'+(hoje?'bold':'normal')+';">'+d+'</div>'+
+      comem.map(c=>'<div style="font-size:9px;background:var(--yellow-tint,#fff3cd);color:#8a6400;border-radius:5px;padding:2px 4px;margin-top:2px;">'+c.nome+'</div>').join('')+
+      custom.map(c=>'<div style="font-size:9px;background:var(--purple-tint);color:var(--purple);border-radius:5px;padding:2px 4px;margin-top:2px;">'+escapeHtmlCampanha((c.tema?c.tema+': ':'')+c.titulo)+'</div>').join('')+
+      '</div>';
+  }
+  const ei = editEditorialId ? (state.calendarioEditorial||[]).find(x=>x.id===editEditorialId) : null;
+  return '<h3>🗓️ Calendário Editorial</h3>'+ajudaHtml('editorial','Planeje as postagens da semana e do ano: datas comemorativas e feriados já vêm preenchidos automaticamente (atualizam sozinhos todo ano); clique em qualquer dia pra anotar sua própria ideia de post nele.')+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">'+
+    '<button type="button" class="btn small ghost" id="btn-editorial-mes-anterior">◀</button>'+
+    '<input type="month" id="input-editorial-mes" value="'+mk+'">'+
+    '<button type="button" class="btn small ghost" id="btn-editorial-mes-proximo">▶</button>'+
+    '<button type="button" class="btn small ghost" id="btn-editorial-ver-ano" style="margin-left:auto;">Ver ano inteiro →</button>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px;text-align:center;color:#999;margin-bottom:4px;">'+['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d=>'<div>'+d+'</div>').join('')+'</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">'+celulas+'</div>'+
+    '<div class="card" style="margin-top:16px;"><h3 style="margin-top:0;">'+(ei?'Editar ideia':'Nova ideia de post')+'</h3>'+
+    '<form id="form-editorial" data-edit-id="'+(ei?ei.id:'')+'">'+
+    '<div class="form-row">'+
+    '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+(ei?ei.data:(editorialDataSelecionada||''))+'" required></div>'+
+    '<div><label>Tema</label><select name="tema"><option value="">—</option>'+['Água','Gás','Promoção','Carvão','Depoimento/Bastidor','Institucional','Data comemorativa'].map(t=>'<option value="'+t+'" '+(ei&&ei.tema===t?'selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
+    '<div><label>Rede</label><select name="rede"><option value="">—</option>'+['WhatsApp','Instagram','WhatsApp/Instagram'].map(r=>'<option value="'+r+'" '+(ei&&ei.rede===r?'selected':'')+'>'+r+'</option>').join('')+'</select></div>'+
+    '</div>'+
+    '<label>Título/ideia <span class="req">*</span></label><input type="text" name="titulo" value="'+(ei?escapeHtmlCampanha(ei.titulo):'')+'" placeholder="Ex: Post de aniversário da loja" required>'+
+    '<label>Detalhes / rascunho do texto</label><textarea name="ideia" rows="3" placeholder="Anote a ideia, texto ou referência visual...">'+(ei?escapeHtmlCampanha(ei.ideia||''):'')+'</textarea>'+
+    '<button type="submit" class="btn small" style="margin-top:10px;">'+(ei?'Salvar alterações':'Adicionar ao calendário')+'</button> '+(ei?'<button type="button" class="btn small ghost" id="btn-cancelar-editorial">Cancelar</button> <button type="button" class="del-link" id="btn-excluir-editorial" data-id="'+ei.id+'">🗑 excluir</button>':'')+
+    '</form></div>';
+}
+function viewCalendarioEditorialAno(){
+  const ano = editorialAno || Number(todayStr().slice(0,4));
+  const comem = diasComemorativosAno(ano).map(c=>({data:ano+'-'+c.md, nome:c.nome, tipo:c.tipo}));
+  const custom = (state.calendarioEditorial||[]).filter(x=>x.data && x.data.startsWith(ano+'-')).map(c=>({data:c.data, nome:(c.tema?c.tema+': ':'')+c.titulo, tipo:'ideia', id:c.id}));
+  const todos = comem.concat(custom).sort((a,b)=>a.data.localeCompare(b.data));
+  const linhas = todos.map(x=>'<tr><td>'+fmtDate(x.data)+'</td><td>'+(x.tipo==='feriado'?'🟡 Feriado':x.tipo==='comemorativa'?'🟠 Comemorativa':'🟣 Sua ideia')+'</td><td>'+escapeHtmlCampanha(x.nome)+'</td>'+(x.id?'<td><button type="button" class="act-link" data-edit-editorial-ano="'+x.id+'">✎</button></td>':'<td></td>')+'</tr>').join('');
+  return '<h3>🗓️ Calendário Editorial — Ano '+ano+'</h3>'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'+
+    '<button type="button" class="btn small ghost" id="btn-editorial-ano-anterior">◀</button><strong>'+ano+'</strong><button type="button" class="btn small ghost" id="btn-editorial-ano-proximo">▶</button>'+
+    '<button type="button" class="btn small ghost" id="btn-editorial-ver-mes" style="margin-left:auto;">← Ver por mês</button>'+
+    '</div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>O quê</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
+}
 function viewCalendarioCampanhas(){
   const mk = calendarioCampanhaMes || monthKey(todayStr());
   const [ano,mes] = mk.split('-').map(Number);
@@ -1471,15 +1607,16 @@ function viewCalendarioCampanhas(){
     (Object.keys(porDia).length===0?'<div class="empty" style="margin-top:12px;">Nenhuma campanha agendada nesse mês.</div>':'');
 }
 function viewCampanhas(){
-  const subtabs=[{id:'campanhas',label:'📢 Campanhas'},{id:'calendario',label:'📅 Calendário'},{id:'rapido',label:'⚡ Envio rápido'},{id:'publicos',label:'👥 Públicos salvos'},{id:'recompra',label:'🔁 Previsão de recompra'},{id:'google',label:'📍 Google Empresas'}]; let content;
+  const subtabs=[{id:'campanhas',label:'📢 Campanhas'},{id:'calendario',label:'📅 Calendário'},{id:'editorial',label:'🗓️ Editorial'},{id:'rapido',label:'⚡ Envio rápido'},{id:'publicos',label:'👥 Públicos salvos'},{id:'recompra',label:'🔁 Previsão de recompra'},{id:'google',label:'📍 Google Empresas'}]; let content;
   if(campanhaEnviarId){ const c=state.campanhas.find(x=>x.id===campanhaEnviarId); content=telaEnvioCampanha(c,campanhaEnviarModo==='recompra'?previsaoRecompraClientes().filter(r=>r.atraso>0&&r.telefone):destinatariosCampanha(c)); }
   else if(campanhaSub==='calendario'){ content=viewCalendarioCampanhas(); }
+  else if(campanhaSub==='editorial'){ content=viewCalendarioEditorial(); }
   else if(campanhaSub==='recompra'){ const p=previsaoRecompraClientes(), a=p.filter(r=>r.atraso>0); content='<h3>Clientes com previsão de recompra</h3>'+(a.length&&state.campanhas.length?'<select id="sel-campanha-recompra">'+state.campanhas.map(c=>'<option value="'+c.id+'">'+escapeHtmlCampanha(c.titulo)+'</option>').join('')+'</select><button class="btn small" id="btn-enviar-recompra">Preparar envio</button>':'')+(p.length?'<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Última compra</th><th>Intervalo médio</th><th>Atraso</th></tr></thead><tbody>'+p.map(r=>'<tr><td>'+escapeHtmlCampanha(r.nome)+'</td><td>'+fmtDate(r.ultima)+'</td><td>'+r.media+' dias</td><td>'+r.atraso+' dias</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">Ainda não há histórico suficiente.</div>'); }
   else if(campanhaSub==='rapido'){ content=viewEnvioRapido(); }
   else if(campanhaSub==='publicos'){ const ep=state.publicos.find(x=>x.id===editPublicoId); content=formPublicoHtml(ep)+'<h3 style="margin-top:20px;">Públicos salvos</h3>'+listaPublicosHtml(); }
   else if(campanhaSub==='google'){ content=viewGoogleEmpresas(); }
   else if(editCampanhaId){ const ec=state.campanhas.find(x=>x.id===editCampanhaId); content=formCampanhaHtml(ec)+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml(); }
-  else content=formCampanhaHtml()+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml();
+  else content='<div class="hint" style="margin-bottom:10px;">📅 Sem tempo pra pensar nos posts da semana? <button type="button" class="btn small ghost" id="btn-calendario-semanal-padrao">Gerar calendário semanal (modelo)</button> — cria 7 campanhas de exemplo (água, gás, promoção, carvão...) já agendadas nos próximos 7 dias, pra você editar o texto e mandar.</div>'+resumoVendasPorTemaHtml()+formCampanhaHtml()+'<h3 style="margin-top:20px;">Campanhas salvas</h3>'+listaCampanhasHtml();
   return '<div class="card"><div class="camp-head"><div class="subtabs">'+subtabs.map(x=>'<button data-campanha-sub="'+x.id+'" class="'+(campanhaSub===x.id&&!campanhaEnviarId?'active':'')+'">'+x.label+'</button>').join('')+'</div><p>Marketing e comunicação com clientes'+ajudaHtml('campanhas','Crie campanhas com texto e mídia pra enviar pra grupos de clientes, salve públicos reutilizáveis, ou use o \'Envio rápido\' pra mandar pra poucas pessoas sem criar campanha. O envio abre o WhatsApp já com a mensagem pronta — você que anexa a mídia e aperta enviar.')+'</p></div><div id="campanha-content">'+content+'</div></div>';
 }
 /* ===================== Google Empresas (Perfil da Empresa no Google) ===================== */
@@ -2260,7 +2397,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','usuariosSistema'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','usuariosSistema','calendarioEditorial'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2327,6 +2464,7 @@ async function loadAll(){
   if(!Array.isArray(state.acertosEntrega)){ state.acertosEntrega = []; await save('acertosEntrega'); }
   if(!Array.isArray(state.recompensasIndicacao)) state.recompensasIndicacao = [];
   if(!Array.isArray(state.npsRespostas)) state.npsRespostas = [];
+  if(!Array.isArray(state.calendarioEditorial)) state.calendarioEditorial = [];
   if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema = [];
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
@@ -4202,7 +4340,30 @@ function viewConfig(){
     '<button type="button" class="btn small" id="btn-zerar-dados" style="background:var(--danger);margin-top:10px;">Zerar todos os lançamentos</button>'+
     '</details>'+
     '</div>'+
+    viewLGPD()+
     viewLogAtividades();
+}
+function viewLGPD(){
+  return '<div class="card"><h2>🔒 LGPD — Privacidade dos clientes</h2>'+
+    '<div class="hint">Documentos de referência para o cadastro de clientes e atendimento a pedidos de dados.</div>'+
+    '<details style="margin-top:12px;"><summary><strong>Política de Privacidade</strong></summary><div class="hint" style="margin-top:8px;line-height:1.6;">'+
+    'A Tom Gás coleta nome, telefone, endereço de entrega, histórico de compras e fiado, e localização aproximada quando usada para roteirização — com a finalidade de realizar entregas, cobrança e comunicação (WhatsApp) sobre pedidos, promoções e pesquisas de satisfação.<br><br>'+
+    'Os dados não são vendidos. Só são compartilhados com entregadores da própria empresa (para executar a entrega) e prestadores essenciais (ex.: hospedagem do sistema). Ficam armazenados em banco de dados com acesso restrito, protegido por login e senha.<br><br>'+
+    'O cliente pode, a qualquer momento, pedir acesso, correção ou exclusão dos seus dados pelo WhatsApp da Tom Gás.'+
+    '</div></details>'+
+    '<details style="margin-top:10px;"><summary><strong>Termo de Consentimento — Cadastro de Clientes</strong></summary><div class="hint" style="margin-top:8px;line-height:1.6;">'+
+    'Ao se cadastrar, o cliente concorda com a coleta de nome, telefone/WhatsApp, endereço de entrega e histórico de pedidos/pagamentos (incluindo fiado), e autoriza o envio de mensagens via WhatsApp sobre pedidos, cobranças, promoções e pesquisas de satisfação.<br><br>'+
+    'O cliente pode revogar esse consentimento e pedir a exclusão dos dados a qualquer momento, seguindo o procedimento abaixo.'+
+    '</div></details>'+
+    '<details style="margin-top:10px;"><summary><strong>Procedimento — Pedido de Exclusão de Dados</strong></summary><div class="hint" style="margin-top:8px;line-height:1.7;">'+
+    '<strong>1. Confirmar identidade</strong> — nome completo e telefone cadastrado.<br>'+
+    '<strong>2. Verificar pendências</strong> — se houver fiado em aberto ou entrega agendada, manter os dados financeiros até a quitação (obrigação legal/contábil), mas excluir os dados de marketing na hora.<br>'+
+    '<strong>3. Executar</strong> — remover o cadastro em Cadastros, remover histórico de comunicação/marketing, manter só o mínimo financeiro exigido por lei.<br>'+
+    '<strong>4. Confirmar ao cliente</strong> — em até 15 dias corridos.<br>'+
+    '<strong>5. Registrar</strong> — anotar data do pedido e da exclusão para eventual comprovação futura.'+
+    '</div></details>'+
+    '<div class="hint" style="margin-top:12px;">📄 Versão completa em Word disponível para download separadamente, se precisar imprimir ou enviar por e-mail.</div>'+
+    '</div>';
 }
 function viewLogAtividades(){
   const lista = (state.logAtividades||[]).slice().reverse().slice(0,200);
@@ -4600,6 +4761,8 @@ function relatorioKPIs(){
   const promotores = npsTodas.filter(n=>n.nota>=9).length, neutros = npsTodas.filter(n=>n.nota>=7&&n.nota<=8).length, detratores = npsTodas.filter(n=>n.nota<=6).length;
   const npsScore = npsTodas.length ? Math.round((promotores/npsTodas.length - detratores/npsTodas.length)*100) : null;
   const comentariosNps = npsTodas.filter(n=>n.comentario).sort((a,b)=>b.criadoEm-a.criadoEm).slice(0,5);
+  function pctSim(chave){ const respondidas=npsTodas.filter(n=>n[chave]!=null); if(!respondidas.length) return null; return Math.round(respondidas.filter(n=>n[chave]===true).length/respondidas.length*100); }
+  const pctPrazo=pctSim('prazo'), pctEntregador=pctSim('entregador'), pctIndicaria=pctSim('indicaria');
   return '<h3>Mês de referência</h3><input type="month" id="input-mes-kpi" value="'+mk+'">'+
     ajudaHtml('kpis','Indicadores que ajudam a enxergar a saúde do negócio além do dia a dia: quanto o faturamento cresceu ou caiu, quantos clientes deixaram de comprar, quanto cada cliente costuma valer ao longo do tempo (LTV), e em que fase cada cliente está (RFM — Recência, Frequência, Valor). A segmentação usa a última compra de cada cliente: até 20 dias sem comprar = Campeão, até 45 = Regular, até 90 = Em risco, acima disso = Perdido. Quem comprou só uma vez recentemente entra como Novo.')+
     '<div style="display:grid;gap:12px;margin-top:14px;">'+
@@ -4611,6 +4774,11 @@ function relatorioKPIs(){
     '<div class="card" style="margin:0;"><h3>🧭 Segmentação RFM (situação de cada cliente hoje)</h3><div class="table-wrap"><table><thead><tr><th>Segmento</th><th>Qtd.</th><th>Exemplos</th></tr></thead><tbody>'+linhasSeg+'</tbody></table></div></div>'+
     '<div class="card" style="margin:0;"><h3>😊 NPS pós-entrega</h3>'+(npsTodas.length===0 ? '<div class="hint">Ainda sem respostas — o link é enviado automaticamente pro cliente junto com o aviso de entrega concluída.</div>' :
       '<strong>NPS: '+npsScore+'</strong> ('+npsTodas.length+' resposta(s)) — 🟢 '+promotores+' promotor(es) · 🟡 '+neutros+' neutro(s) · 🔴 '+detratores+' detrator(es)'+
+      '<div class="hint" style="margin-top:6px;">'+
+        '⏱️ No prazo: '+(pctPrazo!=null?pctPrazo+'% sim':'—')+' · '+
+        '🚚 Entregador nota boa: '+(pctEntregador!=null?pctEntregador+'% sim':'—')+' · '+
+        '📣 Indicaria: '+(pctIndicaria!=null?pctIndicaria+'% sim':'—')+
+      '</div>'+
       (comentariosNps.length?'<div class="hint" style="margin-top:8px;">'+comentariosNps.map(c=>'"'+escapeHtmlCampanha(c.comentario)+'" ('+c.nota+' — '+escapeHtmlCampanha(c.cliente||'')+')').join('<br>')+'</div>':''))+
     '</div>'+
     '<div class="card" style="margin:0;"><h3>🎟️ Conversão de cupons de campanha</h3>'+cupomConversaoHtml()+'</div>'+
@@ -6808,6 +6976,11 @@ function attachHandlers(){
 
   // ---- Campanhas ----
   document.querySelectorAll('[data-campanha-sub]').forEach(btn=>btn.onclick=()=>{campanhaSub=btn.dataset.campanhaSub; campanhaEnviarId=null; editPublicoId=null; renderAll();});
+  const btnCalSemanalPadrao=document.getElementById('btn-calendario-semanal-padrao');
+  if(btnCalSemanalPadrao) btnCalSemanalPadrao.onclick=async()=>{
+    if(!confirm('Isso cria 7 campanhas de exemplo (uma por dia da semana) já agendadas. Continuar?')) return;
+    gerarCalendarioSemanalPadrao(); await save('campanhas'); renderAll();
+  };
   const campUsarPublico=document.getElementById('camp-usar-publico');
   if(campUsarPublico) campUsarPublico.onchange=()=>{
     const p=state.publicos.find(x=>x.id===campUsarPublico.value); if(!p) return;
@@ -6845,7 +7018,7 @@ function attachHandlers(){
   const campanhaVideoInput=document.getElementById('campanha-video-input');
   if(campanhaVideoInput) campanhaVideoInput.onchange=()=>{const file=campanhaVideoInput.files[0]; if(!file)return; if(file.size>12*1024*1024){alert('O vídeo selecionado tem mais de 12 MB. Use um vídeo menor ou informe um link.'); campanhaVideoInput.value=''; return;} const r=new FileReader(); r.onload=e=>{campanhaVideoSelecionado=e.target.result; const prev=document.getElementById('campanha-video-preview'); if(prev)prev.innerHTML='<video src="'+campanhaVideoSelecionado+'" controls style="max-width:100%;max-height:220px;border-radius:8px;"></video>';}; r.readAsDataURL(file);};
   const formCampanha=document.getElementById('form-campanha');
-  if(formCampanha) formCampanha.onsubmit=async e=>{e.preventDefault(); const f=new FormData(formCampanha); const editId=formCampanha.dataset.editId; const grupos=[...formCampanha.querySelectorAll('[name="grupos"] option:checked')].map(o=>o.value); const clienteIds=[...formCampanha.querySelectorAll('[name="clienteIds"] option:checked')].map(o=>o.value); const dados={titulo:(f.get('titulo')||'').trim(),mensagem:f.get('mensagem')||'',destinoTipo:f.get('destinoTipo')||'grupo',grupos,clienteIds,clienteTesteId:f.get('clienteTesteId')||'',linkVideo:f.get('link_video')||'',codigoCupom:(f.get('codigoCupom')||'').trim().toUpperCase(),dataAgendada:f.get('dataAgendada')||''}; if(campanhaImagemSelecionadaGlobal)dados.imagemBase64=campanhaImagemSelecionadaGlobal; if(campanhaVideoSelecionado)dados.videoDataUrl=campanhaVideoSelecionado; if(editId){const c=state.campanhas.find(x=>x.id===editId); if(c)Object.assign(c,dados,{atualizadoEm:Date.now()});}else state.campanhas.push(Object.assign({id:uid(),criadoEm:Date.now()},dados)); campanhaImagemSelecionadaGlobal=null; campanhaVideoSelecionado=null; await save('campanhas'); editCampanhaId=null; renderAll();};
+  if(formCampanha) formCampanha.onsubmit=async e=>{e.preventDefault(); const f=new FormData(formCampanha); const editId=formCampanha.dataset.editId; const grupos=[...formCampanha.querySelectorAll('[name="grupos"] option:checked')].map(o=>o.value); const clienteIds=[...formCampanha.querySelectorAll('[name="clienteIds"] option:checked')].map(o=>o.value); const dados={titulo:(f.get('titulo')||'').trim(),mensagem:f.get('mensagem')||'',destinoTipo:f.get('destinoTipo')||'grupo',grupos,clienteIds,clienteTesteId:f.get('clienteTesteId')||'',linkVideo:f.get('link_video')||'',codigoCupom:(f.get('codigoCupom')||'').trim().toUpperCase(),dataAgendada:f.get('dataAgendada')||'',tema:f.get('tema')||'',rede:f.get('rede')||'',vendasGeradas:f.get('vendasGeradas')!==''?Number(f.get('vendasGeradas')):0}; if(campanhaImagemSelecionadaGlobal)dados.imagemBase64=campanhaImagemSelecionadaGlobal; if(campanhaVideoSelecionado)dados.videoDataUrl=campanhaVideoSelecionado; if(editId){const c=state.campanhas.find(x=>x.id===editId); if(c)Object.assign(c,dados,{atualizadoEm:Date.now()});}else state.campanhas.push(Object.assign({id:uid(),criadoEm:Date.now()},dados)); campanhaImagemSelecionadaGlobal=null; campanhaVideoSelecionado=null; await save('campanhas'); editCampanhaId=null; renderAll();};
   document.querySelectorAll('.btn-modelo-campanha').forEach(btn=>btn.onclick=()=>{
     const ta = formCampanha ? formCampanha.querySelector('textarea[name="mensagem"]') : null;
     if(ta) ta.value = MODELOS_MENSAGEM_CAMPANHA[btn.dataset.modelo]||'';
@@ -6854,6 +7027,39 @@ function attachHandlers(){
   const btnMesAnteriorCal = document.getElementById('btn-mes-anterior-cal'); if(btnMesAnteriorCal) btnMesAnteriorCal.onclick = ()=>{ calendarioCampanhaMes = mesAnterior(calendarioCampanhaMes||monthKey(todayStr())); renderAll(); };
   const btnMesProximoCal = document.getElementById('btn-mes-proximo-cal'); if(btnMesProximoCal) btnMesProximoCal.onclick = ()=>{ const mk=calendarioCampanhaMes||monthKey(todayStr()); let [y,m]=mk.split('-').map(Number); m++; if(m===13){m=1;y++;} calendarioCampanhaMes = y+'-'+String(m).padStart(2,'0'); renderAll(); };
   document.querySelectorAll('[data-abrir-campanha-calendario]').forEach(el=>el.onclick=()=>{ editCampanhaId = el.dataset.abrirCampanhaCalendario; campanhaSub='campanhas'; renderAll(); });
+
+  // ---- Calendário Editorial ----
+  const inputEditorialMes = document.getElementById('input-editorial-mes'); if(inputEditorialMes) inputEditorialMes.onchange = ()=>{ editorialMk = inputEditorialMes.value; renderAll(); };
+  const btnEditorialMesAnterior = document.getElementById('btn-editorial-mes-anterior'); if(btnEditorialMesAnterior) btnEditorialMesAnterior.onclick = ()=>{ editorialMk = mesAnterior(editorialMk||monthKey(todayStr())); renderAll(); };
+  const btnEditorialMesProximo = document.getElementById('btn-editorial-mes-proximo'); if(btnEditorialMesProximo) btnEditorialMesProximo.onclick = ()=>{ const mk=editorialMk||monthKey(todayStr()); let [y,m]=mk.split('-').map(Number); m++; if(m===13){m=1;y++;} editorialMk = y+'-'+String(m).padStart(2,'0'); renderAll(); };
+  const btnEditorialVerAno = document.getElementById('btn-editorial-ver-ano'); if(btnEditorialVerAno) btnEditorialVerAno.onclick = ()=>{ editorialAno = Number((editorialMk||monthKey(todayStr())).slice(0,4)); editorialView='ano'; renderAll(); };
+  const btnEditorialVerMes = document.getElementById('btn-editorial-ver-mes'); if(btnEditorialVerMes) btnEditorialVerMes.onclick = ()=>{ editorialView='mes'; renderAll(); };
+  const btnEditorialAnoAnterior = document.getElementById('btn-editorial-ano-anterior'); if(btnEditorialAnoAnterior) btnEditorialAnoAnterior.onclick = ()=>{ editorialAno=(editorialAno||Number(todayStr().slice(0,4)))-1; renderAll(); };
+  const btnEditorialAnoProximo = document.getElementById('btn-editorial-ano-proximo'); if(btnEditorialAnoProximo) btnEditorialAnoProximo.onclick = ()=>{ editorialAno=(editorialAno||Number(todayStr().slice(0,4)))+1; renderAll(); };
+  document.querySelectorAll('[data-dia-editorial]').forEach(el=>el.onclick=()=>{
+    editorialDataSelecionada = el.dataset.diaEditorial;
+    const {custom} = itensEditorialDoDia(editorialDataSelecionada);
+    editEditorialId = custom.length===1 ? custom[0].id : null;
+    renderAll();
+    setTimeout(()=>{ const f=document.getElementById('form-editorial'); if(f) f.scrollIntoView({behavior:'smooth', block:'nearest'}); },30);
+  });
+  document.querySelectorAll('[data-edit-editorial-ano]').forEach(btn=>btn.onclick=()=>{ editEditorialId=btn.dataset.editEditorialAno; const it=(state.calendarioEditorial||[]).find(x=>x.id===editEditorialId); if(it){ editorialMk=monthKey(it.data); editorialView='mes'; renderAll(); } });
+  const btnCancelarEditorial = document.getElementById('btn-cancelar-editorial'); if(btnCancelarEditorial) btnCancelarEditorial.onclick=()=>{ editEditorialId=null; editorialDataSelecionada=null; renderAll(); };
+  const btnExcluirEditorial = document.getElementById('btn-excluir-editorial'); if(btnExcluirEditorial) btnExcluirEditorial.onclick=async()=>{
+    if(!confirm('Excluir essa ideia do calendário?')) return;
+    state.calendarioEditorial = (state.calendarioEditorial||[]).filter(x=>x.id!==btnExcluirEditorial.dataset.id);
+    await save('calendarioEditorial'); editEditorialId=null; renderAll();
+  };
+  const formEditorial = document.getElementById('form-editorial');
+  if(formEditorial) formEditorial.onsubmit = async e=>{
+    e.preventDefault(); const f=new FormData(formEditorial); const editId=formEditorial.dataset.editId;
+    const dados={data:f.get('data'), titulo:(f.get('titulo')||'').trim(), tema:f.get('tema')||'', rede:f.get('rede')||'', ideia:f.get('ideia')||''};
+    if(!Array.isArray(state.calendarioEditorial)) state.calendarioEditorial=[];
+    if(editId){ const it=state.calendarioEditorial.find(x=>x.id===editId); if(it) Object.assign(it,dados,{atualizadoEm:Date.now()}); }
+    else state.calendarioEditorial.push(Object.assign({id:uid(),criadoEm:Date.now()},dados));
+    await save('calendarioEditorial'); editEditorialId=null; editorialDataSelecionada=null; renderAll();
+  };
+
   const btnCancelEd=document.getElementById('btn-cancelar-edicao-campanha'); if(btnCancelEd)btnCancelEd.onclick=()=>{editCampanhaId=null;renderAll();};
   document.querySelectorAll('[data-edit-campanha]').forEach(btn=>btn.onclick=()=>{editCampanhaId=btn.dataset.editCampanha; campanhaImagemSelecionadaGlobal=null; campanhaVideoSelecionado=null; campanhaSub='campanhas'; renderAll();});
   document.querySelectorAll('[data-enviar-campanha]').forEach(btn=>btn.onclick=()=>{campanhaEnviarId=btn.dataset.enviarCampanha; campanhaEnviarModo='grupo'; renderAll();});
@@ -9870,18 +10076,32 @@ async function iniciarNPSPublico(tipo, id){
     cliente = achado ? (achado.cliente||'') : '';
   }catch(e){ /* segue mesmo sem achar o nome */ }
   let notaEscolhida = null;
+  const extras = { prazo:null, entregador:null, indicaria:null };
+  function simNaoGrupo(chave, pergunta){
+    return '<div style="margin-bottom:14px;"><div style="font-size:14px;margin-bottom:6px;">'+pergunta+'</div>'+
+      '<div style="display:flex;gap:8px;">'+
+      ['sim','nao'].map(v=>{
+        const ativo = extras[chave]===(v==='sim');
+        return '<button type="button" data-extra="'+chave+'" data-valor="'+v+'" style="flex:1;padding:10px 0;border-radius:8px;border:2px solid '+(ativo?'#25D366':'#ddd')+';background:'+(ativo?'#25D366':'#fff')+';color:'+(ativo?'#fff':'#333')+';font-weight:bold;">'+(v==='sim'?'Sim':'Não')+'</button>';
+      }).join('')+
+      '</div></div>';
+  }
   function render(){
     wrap.innerHTML =
       '<div style="text-align:center;margin-bottom:18px;"><h2 style="margin:0;">Tom Gás</h2><div style="color:#777;font-size:13px;">Sua opinião é rápida e importante</div></div>'+
-      '<div style="text-align:center;font-weight:bold;font-size:16px;margin-bottom:16px;">'+(cliente?('Oi, '+cliente.split(' ')[0]+'! '):'')+'De 0 a 10, o quanto você indicaria a Tom Gás pra um amigo?</div>'+
+      '<div style="text-align:center;font-weight:bold;font-size:16px;margin-bottom:16px;">'+(cliente?('Oi, '+cliente.split(' ')[0]+'! '):'')+'De 0 a 10, como você avalia essa entrega?</div>'+
       '<div id="nps-botoes" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:16px;">'+
       Array.from({length:11},(_,n)=>'<button type="button" data-nota="'+n+'" style="padding:10px 0;border-radius:8px;border:2px solid '+(notaEscolhida===n?'#25D366':'#ddd')+';background:'+(notaEscolhida===n?'#25D366':'#fff')+';color:'+(notaEscolhida===n?'#fff':'#333')+';font-weight:bold;">'+n+'</button>').join('')+
       '</div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:11px;color:#999;margin-top:-10px;margin-bottom:16px;"><span>0 = nunca indicaria</span><span>10 = com certeza</span></div>'+
-      '<textarea id="nps-comentario" placeholder="Quer contar mais alguma coisa? (opcional)" style="width:100%;min-height:70px;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;"></textarea>'+
+      '<div style="display:flex;justify-content:space-between;font-size:11px;color:#999;margin-top:-10px;margin-bottom:20px;"><span>0 = muito ruim</span><span>10 = excelente</span></div>'+
+      simNaoGrupo('prazo','O produto chegou no prazo combinado?')+
+      simNaoGrupo('entregador','O entregador foi educado e cuidadoso?')+
+      simNaoGrupo('indicaria','Indicaria a Tom Gás para amigos/vizinhos?')+
+      '<textarea id="nps-comentario" placeholder="O que podemos melhorar? (opcional)" style="width:100%;min-height:70px;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;"></textarea>'+
       '<button id="nps-enviar" style="width:100%;padding:14px;font-size:15px;font-weight:bold;background:#25D366;color:#fff;border:none;border-radius:10px;" '+(notaEscolhida===null?'disabled':'')+'>Enviar</button>'+
       '<div id="nps-msg" style="margin-top:12px;text-align:center;font-weight:bold;color:#188038;"></div>';
     wrap.querySelectorAll('[data-nota]').forEach(btn=>btn.onclick=()=>{ notaEscolhida=Number(btn.dataset.nota); render(); });
+    wrap.querySelectorAll('[data-extra]').forEach(btn=>btn.onclick=()=>{ extras[btn.dataset.extra]=(btn.dataset.valor==='sim'); render(); });
     const btnEnviar = document.getElementById('nps-enviar');
     if(btnEnviar) btnEnviar.onclick = async()=>{
       if(notaEscolhida===null) return;
@@ -9891,7 +10111,7 @@ async function iniciarNPSPublico(tipo, id){
         if(error) throw error;
         const porChave={}; (data||[]).forEach(r=>porChave[r.chave]=r.valor);
         const respostas = porChave.npsRespostas || [];
-        respostas.push({id:uid(), tipo, refId:id, cliente, nota:notaEscolhida, comentario:document.getElementById('nps-comentario').value||'', data:todayStr(), criadoEm:Date.now()});
+        respostas.push({id:uid(), tipo, refId:id, cliente, nota:notaEscolhida, prazo:extras.prazo, entregador:extras.entregador, indicaria:extras.indicaria, comentario:document.getElementById('nps-comentario').value||'', data:todayStr(), criadoEm:Date.now()});
         const { error:err2 } = await supabaseClient.from('app_data').upsert({chave:'npsRespostas',valor:respostas,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
         if(err2) throw err2;
         wrap.innerHTML = '<div style="text-align:center;padding:40px 10px;"><div style="font-size:40px;">🙏</div><h3>Muito obrigado!</h3><div style="color:#666;">Sua resposta foi registrada.</div></div>';
