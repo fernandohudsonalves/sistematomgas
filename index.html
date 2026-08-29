@@ -94,15 +94,44 @@ header{background:var(--royal);color:#fff;padding:12px 20px;display:flex;align-i
 
 nav{background:var(--royal-dark);display:block;overflow-x:auto;position:sticky;top:53px;z-index:19;}
 #nav-principal,#subnav{display:flex;}
-nav button{flex:1;min-width:70px;background:none;border:none;color:#C6D4F5;padding:9px 5px;font-size:11.5px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
+nav button{flex:1;min-width:88px;background:none;border:none;color:#C6D4F5;padding:11px 6px;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
 nav button.active{color:var(--neon);border-bottom-color:var(--neon);background:rgba(255,255,255,.06);}
 nav button:hover{color:#fff;}
 .nav-sep{color:rgba(255,255,255,.3);display:flex;align-items:center;font-size:14px;flex-shrink:0;}
 
+/* Menu mobile (hambúrguer + gaveta lateral) — some no desktop, substitui as abas horizontais no celular */
+#menu-toggle{display:none;background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:17px;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
+#menu-toggle:hover{background:rgba(255,255,255,.28);}
+#mobile-nav-overlay{display:none;position:fixed;inset:0;background:rgba(8,14,30,.5);z-index:98;opacity:0;transition:opacity .2s ease;}
+#mobile-nav-overlay.open{display:block;opacity:1;}
+#mobile-nav-drawer{position:fixed;top:0;left:0;bottom:0;width:82%;max-width:310px;background:var(--royal-dark);z-index:99;transform:translateX(-100%);transition:transform .22s ease;overflow-y:auto;box-shadow:6px 0 24px rgba(0,0,0,.35);-webkit-overflow-scrolling:touch;}
+#mobile-nav-drawer.open{transform:translateX(0);}
+.mnd-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.12);position:sticky;top:0;background:var(--royal-dark);}
+.mnd-head strong{color:#fff;font-size:15px;letter-spacing:.2px;}
+.mnd-close{background:none;border:none;color:#C6D4F5;font-size:20px;cursor:pointer;line-height:1;padding:4px;}
+.mnd-close:hover{color:#fff;}
+#mobile-nav-drawer button{display:block;width:100%;text-align:left;background:none;border:none;color:#C6D4F5;padding:13px 18px;font-size:14.5px;font-weight:600;cursor:pointer;}
+#mobile-nav-drawer button.active{color:var(--neon);background:rgba(255,255,255,.07);}
+#mobile-nav-drawer button:active{background:rgba(255,255,255,.1);}
+#mobile-nav-drawer details summary{list-style:none;padding:13px 18px;color:#C6D4F5;font-weight:700;font-size:14.5px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;}
+#mobile-nav-drawer details summary::-webkit-details-marker{display:none;}
+#mobile-nav-drawer details summary::after{content:'▸';font-size:12px;color:var(--text3);transition:transform .15s;}
+#mobile-nav-drawer details[open] summary::after{transform:rotate(90deg);}
+#mobile-nav-drawer details summary.active-group{color:var(--neon);}
+#mobile-nav-drawer details button{padding-left:34px;font-weight:500;font-size:13.5px;}
+
 main{flex:1;padding:18px;max-width:980px;width:100%;margin:0 auto;}
 
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;box-shadow:0 1px 3px rgba(16,32,62,.05);}
 .card h2{font-size:15px;margin:0 0 14px;color:var(--royal);font-weight:700;}
+details.card{padding:16px 18px;}
+details.card summary{list-style:none;cursor:pointer;font-size:15px;font-weight:700;color:var(--royal);display:flex;align-items:center;gap:6px;}
+details.card summary::-webkit-details-marker{display:none;}
+details.card summary::before{content:'▸';font-size:12px;color:var(--text3);display:inline-block;transition:transform .15s;flex-shrink:0;}
+details.card[open] summary::before{transform:rotate(90deg);}
+details.card:not([open]) summary{margin:0;}
+details.card[open] summary{margin:0 0 4px;}
+details.card .pill{font-size:11px;font-weight:600;}
 .card h3{font-size:13px;margin:18px 0 8px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
 .grid{display:grid;gap:12px;align-items:stretch;}
 .grid.cols2{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
@@ -209,6 +238,8 @@ table td:last-child{min-width:180px;}
 .pill{display:inline-block;background:var(--blue-tint);color:var(--royal);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;margin-left:6px;}
 .searchbar{margin-bottom:12px;}
 .hint{font-size:12px;color:var(--text3);margin-top:4px;}
+.config-group-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:26px 0 10px;padding-top:14px;border-top:1px solid var(--border);}
+.config-group-title:first-child{margin-top:0;padding-top:0;border-top:none;}
 .subtabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
 .checklist-nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .checklist-lista{margin-top:8px;display:flex;flex-direction:column;gap:3px;}
@@ -247,7 +278,8 @@ table td:last-child{min-width:180px;}
   table th, table td{padding:6px 8px;}
   .btn{padding:10px 14px;font-size:13px;}
   .btn.small{padding:8px 12px;}
-  nav button{min-width:60px;font-size:11px;padding:8px 4px;}
+  nav{display:none;}
+  #menu-toggle{display:flex;}
   .grid.cols4{grid-template-columns:repeat(auto-fit,minmax(128px,1fr));}
   .metric .label{font-size:10.5px;}
   .metric .value{font-size:19px;}
@@ -474,6 +506,7 @@ const APP_BUILD_HORARIO = "18/08/2026 21:40";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
+      <button id="menu-toggle" title="Abrir menu" aria-label="Abrir menu">☰</button>
       <div class="dot"></div>
       <h1>Sistema Tom Gás</h1>
       <span id="etiqueta-data-hoje" class="pill" style="margin-left:10px;background:rgba(255,255,255,.15);color:#fff;"></span>
@@ -490,6 +523,11 @@ const AUTH_APP_HTML = `
     <input type="file" id="logo-file-input" accept="image/*" style="display:none;">
   </header>
   <nav id="nav"></nav>
+  <div id="mobile-nav-overlay"></div>
+  <aside id="mobile-nav-drawer">
+    <div class="mnd-head"><strong>Menu</strong><button type="button" class="mnd-close" id="mnd-close" aria-label="Fechar menu">✕</button></div>
+    <div id="mnd-lista"></div>
+  </aside>
   <main id="main"></main>
   <button id="agenda-fab">📋 Agenda</button>
   <div id="agenda-overlay"></div>
@@ -535,6 +573,18 @@ function alternarTema(){
 document.getElementById('theme-toggle').addEventListener('click', alternarTema);
 document.getElementById('auth-theme-toggle').addEventListener('click', alternarTema);
 aplicarTemaVisual();
+function abrirMenuMobile(){
+  document.getElementById('mobile-nav-drawer').classList.add('open');
+  document.getElementById('mobile-nav-overlay').classList.add('open');
+}
+function fecharMenuMobile(){
+  document.getElementById('mobile-nav-drawer').classList.remove('open');
+  document.getElementById('mobile-nav-overlay').classList.remove('open');
+}
+document.getElementById('menu-toggle').addEventListener('click', abrirMenuMobile);
+document.getElementById('mnd-close').addEventListener('click', fecharMenuMobile);
+document.getElementById('mobile-nav-overlay').addEventListener('click', fecharMenuMobile);
+window.addEventListener('resize', ()=>{ if(window.innerWidth>640) fecharMenuMobile(); });
 document.getElementById('app').insertAdjacentHTML('beforeend','<aside id="checklist-hover-drawer"><div id="checklist-hover-tab">☑ Checklist<span class="chk-tab-dot" id="chk-tab-dot"></span></div><div id="checklist-hover-content"></div></aside>');
 document.getElementById('app').insertAdjacentHTML('beforeend',`
 <button id="whats-fab" title="Buscar cliente no WhatsApp">${iconWhatsApp('#fff',28)}</button>
@@ -1186,21 +1236,22 @@ function abaPermitida(tabId){
 
 const TABS = [
   {id:'dashboard', label:'Painel'},
+  {id:'financeiro', label:'Financeiro', filhos:['caixa','vendas','despesas','contaspagar']},
   {id:'caixa', label:'Caixa'},
-  {id:'lancamentos', label:'Lançamentos', filhos:['vendas','despesas']},
   {id:'vendas', label:'Vendas'},
   {id:'despesas', label:'Despesas'},
+  {id:'contaspagar', label:'Contas a Pagar'},
   {id:'entregas', label:'Entregas', filhos:['agendamentos','rota','acertos','tempoentrega']},
   {id:'agendamentos', label:'Agendamentos'},
   {id:'rota', label:'Rotas'},
   {id:'acertos', label:'Acertos'},
   {id:'tempoentrega', label:'Tempo Entrega'},
-  {id:'veiculos', label:'Veículos'},
-  {id:'contaspagar', label:'Contas a Pagar'},
   {id:'estoque', label:'Estoque'},
-  {id:'checklist', label:'Checklist'},
+  {id:'veiculos', label:'Veículos'},
+  {id:'clientesmkt', label:'Clientes & Marketing', filhos:['cadastros','campanhas']},
   {id:'cadastros', label:'Cadastros'},
   {id:'campanhas', label:'Campanhas'},
+  {id:'checklist', label:'Checklist'},
   {id:'relatorios', label:'Relatórios'},
   {id:'config', label:'Config'},
 ];
@@ -1913,6 +1964,8 @@ let editParadaExtraId = null;
 let rotaFiltroEntregadorId = '';
 let rotaHistoricoData = '';
 let anexoAbertoParadaKey = null;
+let entregadoresCadastroAberto = false;
+let pontoPartidaAberto = false;
 let anexoClienteAberto = null;
 let anexoAgendamentoAberto = null;
 function paradasDoDiaHtml(dataAlvo){
@@ -1993,8 +2046,8 @@ function viewRotaDoDia(){
     return '<button type="button" class="btn small green" data-enviar-rota-entregador="'+e.id+'" data-rota-data="'+dataAtual+'" style="margin-top:8px;margin-right:8px;">💬 Enviar rota pro '+escapeHtmlCampanha(e.nome.split(' ')[0])+'</button>';
   }).join('');
 
-  return '<div class="card"><h2>🚚 Entregadores</h2>'+ajudaHtml('entregadores','Cadastre aqui quem faz as entregas (nome e WhatsApp). Isso permite escolher pra quem vai cada entrega, mandar a rota certinha pro WhatsApp de cada um, e filtrar a Rota do dia por entregador.')+
-    '<div class="hint">Cadastre quem faz as entregas pra poder escolher pra quem vai cada rota ou entrega, e enviar direto pro WhatsApp de cada um.</div>'+
+  return '<details class="card" id="details-entregadores-cadastro"'+(entregadoresCadastroAberto?' open':'')+'><summary>🚚 Entregadores <span class="pill">'+(state.entregadores||[]).length+'</span> '+ajudaHtml('entregadores','Cadastre aqui quem faz as entregas (nome e WhatsApp). Isso permite escolher pra quem vai cada entrega, mandar a rota certinha pro WhatsApp de cada um, e filtrar a Rota do dia por entregador.')+'</summary>'+
+    '<div class="hint" style="margin-top:10px;">Cadastre quem faz as entregas pra poder escolher pra quem vai cada rota ou entrega, e enviar direto pro WhatsApp de cada um.</div>'+
     '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+' · Comissão: '+(e.tipoComissao==='percentual'?(Number(e.valorComissao||0)+'% do frete'):fmtMoney(Number(e.valorComissao||0))+' por entrega')+'</span></span><button type="button" class="act-link" data-editar-whatsapp-entregador="'+e.id+'">✎ whatsapp</button><button type="button" class="act-link" data-editar-comissao-entregador="'+e.id+'">✎ comissão</button><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
     '<form id="form-entregador" class="form-row form-align-fim" style="margin-top:10px;">'+
     '<div><label>Nome</label><input type="text" name="nome" placeholder="Ex: João" required></div>'+
@@ -2003,9 +2056,10 @@ function viewRotaDoDia(){
     '<div><label>Valor</label><input type="text" inputmode="decimal" name="valorComissao" placeholder="Ex: 5,00 ou 10"></div>'+
     '<div><label>Meta de vendas do mês (R$, opcional)</label><input type="text" inputmode="decimal" name="metaMensal" placeholder="Ex: 8000"></div>'+
     '<div><button type="submit" class="btn small ghost">+ Adicionar entregador</button></div>'+
-    '</form></div>'+
+    '</form></details>'+
     localizacaoEntregadoresHtml()+
-    '<div class="card"><h2>📍 Ponto de partida</h2>'+
+    '<details class="card" id="details-ponto-partida"'+(pontoPartidaAberto?' open':'')+'><summary>📍 Ponto de partida — '+(partida?escapeHtmlCampanha(partida.nome):'não definido')+'</summary>'+
+    '<div style="margin-top:10px;">'+
     '<div class="form-row"><div><label>Partir de</label><select id="sel-ponto-partida">'+
     state.pontosPartida.map(p=>'<option value="'+p.id+'"'+(partida && p.id===partida.id?' selected':'')+'>'+escapeHtmlCampanha(p.nome)+'</option>').join('')+
     '</select></div></div>'+
@@ -2017,7 +2071,7 @@ function viewRotaDoDia(){
     '<div><label>Endereço</label><input type="text" name="endereco" placeholder="Rua, número - Bairro - Cidade" required></div>'+
     '<div style="align-self:end;"><button type="submit" class="btn small ghost">+ Salvar novo ponto</button></div>'+
     '</div></form>'+
-    '</details></div>'+
+    '</details></div></details>'+
     '<div class="card"><h2>'+(isHistorico?'Rota — '+fmtDate(dataAtual)+' (histórico)':'Rotas — '+fmtDate(dataAtual))+'</h2>'+ajudaHtml('rota-do-dia','Aqui aparecem juntas as entregas agendadas de hoje e as paradas extras que você adicionar. Use os filtros por entregador, reordene com ↑↓, anexe foto/vídeo/localização em cada parada, e mande a rota pronta pro WhatsApp de quem for entregar.')+
     (isHistorico ? '<div class="hint" style="margin-top:-4px;margin-bottom:8px;">Visualizando um dia anterior — as paradas em si não podem mais ser reordenadas, mas ainda dá pra anexar foto/vídeo/localização. <button type="button" class="link-btn" id="btn-rota-voltar-hoje">← voltar pra rota de hoje</button></div>' : '')+
     '<div class="hint">Junta as entregas agendadas dessa data com paradas extras que você adicionar (ex: buscar ovos, ir ao mecânico, ou a casa de um cliente). A ordem da lista abaixo é a ordem da rota — use subir/descer pra reorganizar. Cada parada mostra pra qual entregador ela é e permite anexar foto, vídeo ou localização. Depois é só abrir no Google Maps ou mandar a rota pronta pro WhatsApp do entregador.</div>'+
@@ -3006,6 +3060,32 @@ function renderNav(){
   nav.querySelectorAll('button').forEach(b=>b.onclick=()=>{
     const t = TABS.find(x=>x.id===b.dataset.tab);
     currentTab = (t && t.filhos) ? t.filhos[0] : b.dataset.tab;
+    renderAll();
+  });
+  renderMenuMobile();
+}
+function renderMenuMobile(){
+  const lista = document.getElementById('mnd-lista');
+  if(!lista) return;
+  let html = '';
+  TABS_VISIVEIS.filter(t=>abaPermitida(t.id)).forEach(t=>{
+    if(t.filhos){
+      const filhosVisiveis = t.filhos.filter(fid=>abaPermitida(fid));
+      const grupoAtivo = filhosVisiveis.includes(currentTab);
+      html += '<details'+(grupoAtivo?' open':'')+'><summary class="'+(grupoAtivo?'active-group':'')+'">'+t.label+'</summary>';
+      filhosVisiveis.forEach(fid=>{
+        const ft = TABS.find(x=>x.id===fid);
+        html += '<button data-tab="'+ft.id+'" class="'+(currentTab===ft.id?'active':'')+'">'+ft.label+'</button>';
+      });
+      html += '</details>';
+    } else {
+      html += '<button data-tab="'+t.id+'" class="'+(currentTab===t.id?'active':'')+'">'+t.label+'</button>';
+    }
+  });
+  lista.innerHTML = html;
+  lista.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    currentTab = b.dataset.tab;
+    fecharMenuMobile();
     renderAll();
   });
 }
@@ -4559,7 +4639,8 @@ function viewConfig(){
   const mkAtual = monthKey(todayStr());
   const metaMensalAtualCfg = metaMensalP13(mkAtual);
   const comunicadosAtivos = state.comunicados.filter(c=>c.ativo!==false).length;
-  return (usuarioAtualEhAdmin ? cardUsuariosPermissoes() : '')+
+  return (usuarioAtualEhAdmin ? '<div class="config-group-title">Usuários e permissões</div>'+cardUsuariosPermissoes() : '')+
+    '<div class="config-group-title">Geral</div>'+
     '<div class="card"><h2>🎯 Meta de vendas</h2>'+
     '<div class="hint">'+(metaMensalAtualCfg>0 ? 'Meta de '+nomeMes(mkAtual)+': '+arred1(metaMensalAtualCfg)+' cargas de P13.' : 'Nenhuma meta configurada para '+nomeMes(mkAtual)+' ainda.')+'</div>'+
     '<button type="button" class="btn small ghost" id="btn-abrir-metas" style="margin-top:10px;">Abrir Meta</button>'+
@@ -4568,6 +4649,11 @@ function viewConfig(){
     '<div class="hint">'+comunicadosAtivos+' comunicado(s) ativo(s), aparecendo no banner da página inicial pra equipe.</div>'+
     '<button type="button" class="btn small ghost" id="btn-abrir-comunicados" style="margin-top:10px;">Abrir Comunicados</button>'+
     '</div>'+
+    '<div class="card"><h2>Ícone da aba (favicon)</h2>'+
+    '<div style="display:flex;align-items:center;gap:14px;">'+faviconPreview+
+    '<div><input type="file" id="favicon-file-input" accept="image/*"><div class="hint" style="margin-top:4px;">Imagem quadrada funciona melhor.</div></div></div>'+
+    '</div>'+
+    '<div class="config-group-title">App, notificações e mensagens</div>'+
     '<div class="card"><h2>App no celular e notificações</h2>'+
     '<div class="hint">Instale o sistema como app na tela inicial e receba avisos de novos agendamentos.</div>'+
     '<details style="margin-top:8px;"><summary>Como instalar na tela inicial</summary>'+
@@ -4576,20 +4662,6 @@ function viewConfig(){
     (permissao==='granted' ? '<button type="button" class="btn small ghost" id="btn-testar-notificacao">Testar agora</button>' : '<button type="button" class="btn small" id="btn-ativar-notificacao">Ativar neste aparelho</button>')+
     '</div>'+
     (permissao==='granted' ? '<details style="margin-top:8px;"><summary>Não chegou nenhuma notificação?</summary><div class="hint" style="margin-top:6px;">Confira em <strong>Configurações do celular → Apps → Tom Gás (ou Chrome) → Notificações</strong> — é uma permissão separada da do navegador.</div></details>' : '')+
-    '</div>'+
-    '<div class="card"><h2>Backup</h2>'+
-    '<div class="hint">Todo dia, na primeira vez que alguém abre o sistema, é feito um backup automático com o <strong>fechamento do dia anterior</strong> — guardado no próprio Supabase, mantendo os últimos 30. Você também pode clicar em "Fazer backup agora" quantas vezes quiser, na hora que quiser (por exemplo, ao fechar o caixa do dia) — cada um fica salvo com data <strong>e hora exatas</strong>, e também baixa um arquivo no seu aparelho.</div>'+
-    (ultimoBackupAutomaticoQuando ? ('<div class="hint" style="margin-top:6px;">Última tentativa de backup automático nesta sessão: '+(ultimoBackupAutomaticoOk?'✅ deu certo':'❌ falhou')+' às '+ultimoBackupAutomaticoQuando.toLocaleTimeString()+'.</div>') : '<div class="hint" style="margin-top:6px;">Ainda não rodou o backup automático nesta sessão — abra essa tela de novo depois de recarregar a página.</div>')+
-    '<button type="button" class="btn small" id="btn-backup-manual" style="margin-top:10px;">Fazer backup agora</button>'+
-    '<details style="margin-top:18px;" id="details-lista-backups"'+(backupsListaAberta?' open':'')+'><summary><strong>Backups salvos</strong></summary>'+
-    '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
-    '</details>'+
-    '</div>'+
-    '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+ajudaHtml('importacao','Suba aqui a planilha do modelo (abas Vendas, Despesas, Clientes, Produtos, ContasPagar e FechamentoCaixa) pra lançar o dia inteiro de uma vez. Se algum produto ou cliente da planilha não bater exatamente com o cadastro, o sistema pausa e pergunta se é algo já existente (com outra grafia) ou novo, numa telinha só, antes de importar de vez.')+
-    '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong>, <strong>Produtos</strong>, <strong>ContasPagar</strong> e <strong>FechamentoCaixa</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos (incluindo gasto de veículo, se preencher a coluna Veículo); contas a pagar marcadas como "pago" já entram como despesa também; clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
-    '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e repita o mesmo número na coluna <strong>Nº da Venda</strong> — assim o sistema conta como uma venda só. Se deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, numere sempre.</div>'+
-    '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
-    '<div id="resumo-importacao-diaria"></div>'+
     '</div>'+
     '<div class="card"><h2>📲 Avisos automáticos pro cliente (WhatsApp)</h2>'+
     '<div class="hint">Suba aqui as imagens que vão junto com cada mensagem que o entregador manda pro cliente (pela tela de confirmação de entrega). Cada botão que ele clica manda a imagem + o texto automaticamente pelo WhatsApp do cliente.</div>'+
@@ -4606,10 +4678,22 @@ function viewConfig(){
     ).join('')+
     '</div>'+
     '</div>'+
-    '<div class="card"><h2>Ícone da aba (favicon)</h2>'+
-    '<div style="display:flex;align-items:center;gap:14px;">'+faviconPreview+
-    '<div><input type="file" id="favicon-file-input" accept="image/*"><div class="hint" style="margin-top:4px;">Imagem quadrada funciona melhor.</div></div></div>'+
+    '<div class="config-group-title">Dados e importação</div>'+
+    '<div class="card"><h2>Backup</h2>'+
+    '<div class="hint">Todo dia, na primeira vez que alguém abre o sistema, é feito um backup automático com o <strong>fechamento do dia anterior</strong> — guardado no próprio Supabase, mantendo os últimos 30. Você também pode clicar em "Fazer backup agora" quantas vezes quiser, na hora que quiser (por exemplo, ao fechar o caixa do dia) — cada um fica salvo com data <strong>e hora exatas</strong>, e também baixa um arquivo no seu aparelho.</div>'+
+    (ultimoBackupAutomaticoQuando ? ('<div class="hint" style="margin-top:6px;">Última tentativa de backup automático nesta sessão: '+(ultimoBackupAutomaticoOk?'✅ deu certo':'❌ falhou')+' às '+ultimoBackupAutomaticoQuando.toLocaleTimeString()+'.</div>') : '<div class="hint" style="margin-top:6px;">Ainda não rodou o backup automático nesta sessão — abra essa tela de novo depois de recarregar a página.</div>')+
+    '<button type="button" class="btn small" id="btn-backup-manual" style="margin-top:10px;">Fazer backup agora</button>'+
+    '<details style="margin-top:18px;" id="details-lista-backups"'+(backupsListaAberta?' open':'')+'><summary><strong>Backups salvos</strong></summary>'+
+    '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
+    '</details>'+
     '</div>'+
+    '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+ajudaHtml('importacao','Suba aqui a planilha do modelo (abas Vendas, Despesas, Clientes, Produtos, ContasPagar e FechamentoCaixa) pra lançar o dia inteiro de uma vez. Se algum produto ou cliente da planilha não bater exatamente com o cadastro, o sistema pausa e pergunta se é algo já existente (com outra grafia) ou novo, numa telinha só, antes de importar de vez.')+
+    '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong>, <strong>Produtos</strong>, <strong>ContasPagar</strong> e <strong>FechamentoCaixa</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos (incluindo gasto de veículo, se preencher a coluna Veículo); contas a pagar marcadas como "pago" já entram como despesa também; clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
+    '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e repita o mesmo número na coluna <strong>Nº da Venda</strong> — assim o sistema conta como uma venda só. Se deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, numere sempre.</div>'+
+    '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
+    '<div id="resumo-importacao-diaria"></div>'+
+    '</div>'+
+    '<div class="config-group-title">Avançado e segurança</div>'+
     '<div class="card"><h2 style="color:var(--danger);">Ferramentas avançadas</h2>'+
     '<details><summary>Zerar catálogo de produtos e categorias</summary>'+
     '<div class="hint" style="margin-top:8px;">Use isto antes de importar um catálogo novo. Apaga todos os produtos e categorias cadastrados, <strong>mantendo apenas gás e água</strong>. Clientes e empresas não são afetados.</div>'+
@@ -6135,7 +6219,8 @@ async function enviarExtratoWhatsApp(cliente){
 
 /* ---------- HANDLERS ---------- */
 function attachHandlers(){
-  document.querySelectorAll('[data-ajuda-toggle]').forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll('[data-ajuda-toggle]').forEach(btn=>btn.onclick=(e)=>{
+    e.preventDefault();
     const el = document.getElementById('ajuda-'+btn.dataset.ajudaToggle);
     if(el) el.style.display = el.style.display==='none' ? 'block' : 'none';
   });
@@ -7644,6 +7729,10 @@ function attachHandlers(){
   });
 
   // ---- Entregadores ----
+  const detEntregadoresCadastro = document.getElementById('details-entregadores-cadastro');
+  if(detEntregadoresCadastro) detEntregadoresCadastro.ontoggle = ()=>{ entregadoresCadastroAberto = detEntregadoresCadastro.open; };
+  const detPontoPartida = document.getElementById('details-ponto-partida');
+  if(detPontoPartida) detPontoPartida.ontoggle = ()=>{ pontoPartidaAberto = detPontoPartida.open; };
   const formEntregador = document.getElementById('form-entregador');
   if(formEntregador) formEntregador.onsubmit = async(e)=>{
     e.preventDefault();
