@@ -10503,14 +10503,28 @@ async function iniciarRastreioPublico(entregadorId){
     if(achado) nomeEnt = achado.nome;
   }catch(e){ /* segue com nome padrão mesmo se não achar */ }
 
-  let ativo = false, watchId = null, ultimoEnvio = 0;
+  let ativo = false, watchId = null, ultimoEnvio = 0, wakeLock = null;
+
+  async function pedirWakeLock(){
+    try{
+      if('wakeLock' in navigator){
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
+      }
+    }catch(e){ /* alguns navegadores negam se a página não estiver em foco - sem problema, só não trava a tela */ }
+  }
+
+  document.addEventListener('visibilitychange', async ()=>{
+    if(ativo && document.visibilityState==='visible' && wakeLock===null){ await pedirWakeLock(); }
+  });
 
   function render(status){
     wrap.innerHTML =
       '<div style="text-align:center;margin-bottom:6px;"><h2 style="margin:0;">Tom Gás</h2>'+
       '<div style="color:#777;font-size:13px;">Compartilhamento de localização</div></div>'+
       '<div style="font-size:15px;margin:18px 0 6px;">Olá, <strong>'+nomeEnt+'</strong>!</div>'+
-      '<div style="color:#666;font-size:13px;margin-bottom:22px;">Deixe esta página aberta no seu celular enquanto estiver fazendo as entregas. O escritório vai conseguir ver sua localização aproximada.</div>'+
+      '<div style="color:#666;font-size:13px;margin-bottom:16px;">Deixe esta página aberta no seu celular enquanto estiver fazendo as entregas. O escritório vai conseguir ver sua localização aproximada.</div>'+
+      (ativo ? '<div style="background:#eef7ee;color:#1a6b1a;font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:16px;">🔒 A tela vai ficar travada ligada enquanto o compartilhamento estiver ativo, pra não parar de enviar. Se você trocar de app ou bloquear a tela na mão, o envio para.</div>' : '')+
       '<button id="btn-rastreio-toggle" style="width:100%;padding:16px;font-size:16px;font-weight:bold;border:none;border-radius:12px;background:'+(ativo?'#c62828':'#25D366')+';color:#fff;">'+(ativo?'⏹ Parar de compartilhar':'▶️ Começar a compartilhar')+'</button>'+
       '<div id="rastreio-status" style="margin-top:16px;font-size:13px;color:#666;">'+(status||'')+'</div>';
     document.getElementById('btn-rastreio-toggle').onclick = toggle;
@@ -10531,7 +10545,7 @@ async function iniciarRastreioPublico(entregadorId){
     }catch(e){ console.error('Erro ao enviar localização', e); }
   }
 
-  function toggle(){
+  async function toggle(){
     if(!ativo){
       if(!navigator.geolocation){ alert('Este celular/navegador não suporta compartilhar localização.'); return; }
       watchId = navigator.geolocation.watchPosition(enviarPosicao, function(err){
@@ -10539,11 +10553,13 @@ async function iniciarRastreioPublico(entregadorId){
         if(st) st.textContent = '⚠️ Não foi possível acessar sua localização: '+err.message;
       }, {enableHighAccuracy:true, maximumAge:10000, timeout:20000});
       ativo = true;
+      await pedirWakeLock();
       render('Ativando GPS...');
     } else {
       if(watchId!==null) navigator.geolocation.clearWatch(watchId);
       watchId = null;
       ativo = false;
+      if(wakeLock){ try{ await wakeLock.release(); }catch(e){} wakeLock = null; }
       render('Compartilhamento parado.');
     }
   }
