@@ -255,6 +255,10 @@ table td:last-child{min-width:180px;}
   .act-link, .del-link{padding:6px 4px;display:inline-block;}
   .cel-acoes{white-space:normal;}
   .lc-top{gap:8px;}
+  #busca-sistema-wrap{max-width:34px;overflow:visible;}
+  #busca-sistema-input{width:34px;padding:8px;text-overflow:clip;}
+  #busca-sistema-input:focus{width:180px;}
+  #busca-sistema-input::placeholder{color:transparent;}
 }
 @media (max-width: 400px){
   main{padding:8px;}
@@ -367,7 +371,7 @@ table td:last-child{min-width:180px;}
 .cf-item .cf-detalhe{font-size:13px;color:var(--text);margin:4px 0 8px;}
 .cf-item .cf-valor{font-size:12px;color:var(--text2);margin-bottom:8px;}
 .cf-item .cf-acoes{display:flex;gap:8px;flex-wrap:wrap;}
-#rota-fab{position:fixed;right:18px;bottom:88px;z-index:500;width:56px;height:56px;border-radius:50%;background:#F59E0B;border:none;box-shadow:0 6px 18px rgba(245,158,11,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:26px;}
+#rota-fab{position:fixed;right:18px;bottom:158px;z-index:500;width:56px;height:56px;border-radius:50%;background:#F59E0B;border:none;box-shadow:0 6px 18px rgba(245,158,11,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:26px;}
 #rota-fab:hover{transform:scale(1.06);}
 #rota-fab:active{transform:scale(.96);}
 #rota-overlay{position:fixed;inset:0;background:rgba(10,20,40,.45);backdrop-filter:blur(2px);z-index:9990;display:none;align-items:flex-start;justify-content:center;padding:60px 16px;}
@@ -388,7 +392,7 @@ table td:last-child{min-width:180px;}
 .rt-copy{background:var(--blue-tint);color:var(--royal);border:none;border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:600;cursor:pointer;flex-shrink:0;}
 .rt-copy:hover{filter:brightness(0.95);}
 html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
-#new-ag-fab{position:fixed;right:18px;bottom:158px;z-index:500;width:56px;height:56px;border-radius:50%;background:#39FF14;border:none;box-shadow:0 6px 18px rgba(57,255,20,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:30px;font-weight:800;color:#0a2b0a;line-height:1;}
+#new-ag-fab{position:fixed;right:18px;bottom:88px;z-index:500;width:56px;height:56px;border-radius:50%;background:#39FF14;border:none;box-shadow:0 6px 18px rgba(57,255,20,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:30px;font-weight:800;color:#0a2b0a;line-height:1;}
 #new-ag-fab:hover{transform:scale(1.06);}
 #new-ag-fab:active{transform:scale(.96);}
 </style>
@@ -461,6 +465,10 @@ const AUTH_APP_HTML = `
       <div class="dot"></div>
       <h1>Sistema Tom Gás</h1>
       <span id="etiqueta-data-hoje" class="pill" style="margin-left:10px;background:rgba(255,255,255,.15);color:#fff;"></span>
+    </div>
+    <div id="busca-sistema-wrap" style="position:relative;flex:1;max-width:260px;margin:0 12px;">
+      <input type="text" id="busca-sistema-input" placeholder="🔎 Buscar no sistema (ex: nps, estoque)" style="width:100%;padding:8px 12px;border-radius:8px;border:none;font-size:13px;">
+      <div id="busca-sistema-resultados" style="display:none;position:absolute;top:110%;left:0;right:0;background:#fff;color:#222;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.3);max-height:320px;overflow:auto;z-index:2000;"></div>
     </div>
     <div style="display:flex;align-items:center;gap:16px;">
       <div id="logo-box"></div>
@@ -613,6 +621,75 @@ function renderPainelConferenciaLista(){
   });
 }
 function initConferenciaBadge(){let b=document.getElementById('conferencia-badge');if(!b){b=document.createElement('button');b.id='conferencia-badge';b.style='position:fixed;right:18px;bottom:228px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#f59e0b;color:#fff;font-weight:700;cursor:pointer';document.body.appendChild(b);b.onclick=abrirPainelConferencia;}const n=(state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').length;b.style.display=n?'block':'none';b.textContent='⚠ '+n+' conferência(s)';}
+const BUSCA_SISTEMA_INDEX = [
+  {label:'Painel', kw:'painel dashboard inicio', tab:'dashboard'},
+  {label:'Metas', kw:'metas objetivo vendas mes', tab:'metas'},
+  {label:'Comunicados / Avisos', kw:'comunicados avisos banner recado', tab:'comunicados'},
+  {label:'Vendas', kw:'vendas lancar venda', tab:'vendas'},
+  {label:'Despesas', kw:'despesas gastos categoria desperdicio esg energia agua', tab:'despesas'},
+  {label:'Veículos', kw:'veiculos moto carro manutencao', tab:'veiculos'},
+  {label:'Fechamento de Caixa', kw:'caixa fechamento', tab:'caixa'},
+  {label:'Contas a Pagar', kw:'contas a pagar boleto vencimento', tab:'contaspagar'},
+  {label:'Cadastros (Clientes/Empresas/Produtos)', kw:'cadastros clientes empresas conveniadas produtos', tab:'cadastros'},
+  {label:'Estoque', kw:'estoque gas agua garrafa vasilhame', tab:'estoque'},
+  {label:'Agendamentos', kw:'agendamentos agenda entrega novo agendamento', tab:'agendamentos'},
+  {label:'Rotas', kw:'rota do dia entregador rota rapida mapa', tab:'rota'},
+  {label:'Acertos de Entrega', kw:'acertos entrega dinheiro pendencia', tab:'acertos'},
+  {label:'Tempo de Entrega', kw:'tempo de entrega confirmacao publica entregador', tab:'tempoentrega'},
+  {label:'Campanhas', kw:'campanhas marketing whatsapp publico calendario cupom', tab:'campanhas'},
+  {label:'Checklist', kw:'checklist rotina diario', tab:'checklist'},
+  {label:'Importação diária de planilha', kw:'importar planilha excel importacao diaria', tab:'checklist'},
+  {label:'Relatórios: Vendas por período', kw:'relatorio vendas periodo', tab:'relatorios', sub:'vendas'},
+  {label:'Relatórios: Resumo do Dia', kw:'resumo do dia relatorio', tab:'relatorios', sub:'resumodia'},
+  {label:'Relatórios: Ranking de Clientes', kw:'ranking clientes quem mais compra', tab:'relatorios', sub:'ranking'},
+  {label:'Relatórios: Curva ABC de Clientes', kw:'curva abc clientes', tab:'relatorios', sub:'abc'},
+  {label:'Relatórios: Programa de Indicação', kw:'indicacao indique e ganhe recompensa', tab:'relatorios', sub:'indicacoes'},
+  {label:'Relatórios: Indicadores (KPIs) e NPS', kw:'kpi indicadores nps pesquisa satisfacao nota rfm ltv sumidos', tab:'relatorios', sub:'kpis'},
+  {label:'Relatórios: Pesquisa de Clientes (sugestão/crítica)', kw:'pesquisa clientes sugestao critica melhoria', tab:'relatorios', sub:'pesquisa'},
+  {label:'Relatórios: Painel de Ação', kw:'painel de acao alertas', tab:'relatorios', sub:'painelacao'},
+  {label:'Relatórios: Controle ESG', kw:'esg desperdicio energia agua sustentabilidade', tab:'relatorios', sub:'esg'},
+  {label:'Relatórios: Comparar Campanhas', kw:'comparar campanhas conversao', tab:'relatorios', sub:'compararcampanhas'},
+  {label:'Relatórios: Itens por categoria', kw:'itens por categoria produtos vendidos', tab:'relatorios', sub:'itens'},
+  {label:'Relatórios: Entregas por período', kw:'entregas por periodo relatorio', tab:'relatorios', sub:'entregas'},
+  {label:'Relatórios: Despesas por período', kw:'despesas por periodo relatorio', tab:'relatorios', sub:'despesas'},
+  {label:'Relatórios: Fiado / A receber', kw:'fiado a receber relatorio', tab:'relatorios', sub:'fiado'},
+  {label:'Relatórios: Créditos em haver', kw:'creditos em haver relatorio', tab:'relatorios', sub:'creditos'},
+  {label:'Relatórios: Comodatos / Empréstimos', kw:'comodatos emprestimos relatorio', tab:'relatorios', sub:'comodatos'},
+  {label:'Relatórios: Patrimônio real', kw:'patrimonio real relatorio', tab:'relatorios', sub:'patrimonio'},
+  {label:'Relatórios: Notas para o Bling', kw:'notas bling relatorio', tab:'relatorios', sub:'notas'},
+  {label:'Relatórios: Empresas conveniadas', kw:'empresas conveniadas relatorio editar valor convenio', tab:'relatorios', sub:'empresas'},
+  {label:'Relatórios: Simulador de Reajuste', kw:'simulador de reajuste preco', tab:'relatorios', sub:'reajuste'},
+  {label:'Relatórios: Análises e Gráficos', kw:'analises graficos relatorio', tab:'relatorios', sub:'analises'},
+  {label:'Configurações', kw:'config configuracoes categorias produtos backup usuarios permissoes google negocio', tab:'config'},
+];
+function initBuscaSistema(){
+  const input = document.getElementById('busca-sistema-input');
+  const resDiv = document.getElementById('busca-sistema-resultados');
+  if(!input || input.dataset.bound) return;
+  input.dataset.bound = '1';
+  function chaveBusca(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+  function renderResultados(){
+    const termo = chaveBusca(input.value.trim());
+    if(!termo){ resDiv.style.display='none'; resDiv.innerHTML=''; return; }
+    const achados = BUSCA_SISTEMA_INDEX.filter(item=>chaveBusca(item.label+' '+item.kw).includes(termo)).slice(0,10);
+    if(achados.length===0){ resDiv.innerHTML = '<div style="padding:10px;font-size:13px;color:#777;">Nada encontrado.</div>'; resDiv.style.display='block'; return; }
+    resDiv.innerHTML = achados.map(item=>'<div class="busca-sistema-item" data-busca-tab="'+item.tab+'" data-busca-sub="'+(item.sub||'')+'" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;">'+item.label+'</div>').join('');
+    resDiv.style.display='block';
+    resDiv.querySelectorAll('[data-busca-tab]').forEach(el=>{
+      el.onmouseenter=()=>{ el.style.background='#f2f2f2'; };
+      el.onmouseleave=()=>{ el.style.background=''; };
+      el.onclick=()=>{
+        currentTab = el.dataset.buscaTab;
+        if(el.dataset.buscaSub) relatorioSub = el.dataset.buscaSub;
+        input.value=''; resDiv.style.display='none';
+        renderAll();
+      };
+    });
+  }
+  input.oninput = renderResultados;
+  input.onfocus = renderResultados;
+  document.addEventListener('click', (ev)=>{ if(ev.target!==input && !resDiv.contains(ev.target)) resDiv.style.display='none'; });
+}
 function initNovoAgendamentoFab(){
   let b = document.getElementById('new-ag-fab');
   if(!b){
@@ -2404,7 +2481,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','usuariosSistema','calendarioEditorial'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','usuariosSistema','calendarioEditorial'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2471,6 +2548,7 @@ async function loadAll(){
   if(!Array.isArray(state.acertosEntrega)){ state.acertosEntrega = []; await save('acertosEntrega'); }
   if(!Array.isArray(state.recompensasIndicacao)) state.recompensasIndicacao = [];
   if(!Array.isArray(state.npsRespostas)) state.npsRespostas = [];
+  if(!Array.isArray(state.pesquisaClientes)) state.pesquisaClientes = [];
   if(!Array.isArray(state.calendarioEditorial)) state.calendarioEditorial = [];
   if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema = [];
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
@@ -2849,6 +2927,7 @@ function renderAll(){
   if(currentTab==='config') main.innerHTML = viewConfig();
   attachHandlers();
   initNovoAgendamentoFab();
+  initBuscaSistema();
 }
 
 /* ---------- DASHBOARD ---------- */
@@ -2858,6 +2937,7 @@ function comunicadosBannerHtml(){
   return ativos.map(c=>
     '<div class="comunicado-banner"><span class="tag">Comunicado interno</span>'+
     '<button type="button" class="btn-edit-card on-dark" data-ir-editar-comunicado="'+c.id+'" title="Editar este comunicado">✎</button>'+
+    '<button type="button" class="btn-edit-card on-dark" data-del-comunicado="'+c.id+'" title="Excluir este comunicado" style="right:38px;">🗑</button>'+
     '<h3>'+c.titulo+'</h3>'+
     (c.texto ? '<p>'+c.texto+'</p>' : '')+
     (c.imagemUrl ? '<img src="'+c.imagemUrl+'" alt="'+c.titulo+'">' : '')+
@@ -4427,6 +4507,7 @@ function viewRelatorios(){
     {id:'abc', label:'Curva ABC de Clientes'},
     {id:'indicacoes', label:'Programa de Indicação'},
     {id:'kpis', label:'Indicadores (KPIs)'},
+    {id:'pesquisa', label:'Pesquisa de Clientes'},
     {id:'painelacao', label:'Painel de Ação'},
     {id:'esg', label:'Controle ESG'},
     {id:'compararcampanhas', label:'Comparar Campanhas'},
@@ -4448,6 +4529,7 @@ function viewRelatorios(){
   else if(relatorioSub==='abc') content = relatorioABC();
   else if(relatorioSub==='indicacoes') content = relatorioIndicacoes();
   else if(relatorioSub==='kpis') content = relatorioKPIs();
+  else if(relatorioSub==='pesquisa') content = relatorioPesquisaClientes();
   else if(relatorioSub==='painelacao') content = relatorioPainelAcao();
   else if(relatorioSub==='esg') content = relatorioESG();
   else if(relatorioSub==='compararcampanhas') content = relatorioCompararCampanhas();
@@ -4769,6 +4851,23 @@ function pctVarHtml(atual,anterior){
   const cor = pct>=0?'var(--green)':'var(--danger)';
   return '<span style="color:'+cor+';font-weight:700;">'+(pct>=0?'+':'')+pct.toFixed(1)+'%</span>';
 }
+function relatorioPesquisaClientes(){
+  const lista = (state.pesquisaClientes||[]).slice().sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+  const linhas = lista.map(r=>'<tr>'+
+    '<td>'+escapeHtmlCampanha(r.cliente||'—')+'</td>'+
+    '<td>'+escapeHtmlCampanha(r.telefone||'—')+'</td>'+
+    '<td>'+escapeHtmlCampanha(r.endereco||'—')+'</td>'+
+    '<td>'+(r.campo==='melhoria'?'Melhoria':'Sugestão')+'</td>'+
+    '<td>'+escapeHtmlCampanha(r.texto||'')+'</td>'+
+    '<td>'+(r.tipo==='critica'?'🔴 Crítica':'💡 Sugestão')+'</td>'+
+    '<td>'+(r.data||'')+'</td>'+
+    '</tr>').join('');
+  return '<div class="card"><h2>📋 Pesquisa de Clientes</h2>'+
+    '<div class="hint">Respostas do link de sugestão/melhoria enviado junto com a pesquisa de satisfação (NPS) pós-entrega. O próprio cliente marca se cada resposta é crítica ou sugestão.</div>'+
+    (lista.length===0 ? '<div class="empty">Nenhuma resposta ainda.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Campo</th><th>O que o cliente disse</th><th>Tipo</th><th>Data</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '</div>';
+}
 function relatorioKPIs(){
   const mk = kpiMesSelecionado || monthKey(todayStr());
   const mkAnterior = mesAnterior(mk), mkAnoPassado = mesAnoAnterior(mk);
@@ -4824,7 +4923,16 @@ function relatorioKPIs(){
         '🚚 Entregador nota boa: '+(pctEntregador!=null?pctEntregador+'% sim':'—')+' · '+
         '📣 Indicaria: '+(pctIndicaria!=null?pctIndicaria+'% sim':'—')+
       '</div>'+
-      (comentariosNps.length?'<div class="hint" style="margin-top:8px;">'+comentariosNps.map(c=>'"'+escapeHtmlCampanha(c.comentario)+'" ('+c.nota+' — '+escapeHtmlCampanha(c.cliente||'')+')').join('<br>')+'</div>':''))+
+      (comentariosNps.length?'<div class="hint" style="margin-top:8px;">'+comentariosNps.map(c=>'"'+escapeHtmlCampanha(c.comentario)+'" ('+c.nota+' — '+escapeHtmlCampanha(c.cliente||'')+')').join('<br>')+'</div>':'')+
+      '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Endereço</th><th>Nota</th><th>No prazo</th><th>Entregador</th><th>Indicaria</th><th>Comentário</th><th>Sugestão/Crítica</th></tr></thead><tbody>'+
+      npsTodas.slice().sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0)).map(function(n){
+        const relacionadas = (state.pesquisaClientes||[]).filter(p=>p.refId===n.refId && p.origem===n.tipo);
+        const opinioesTxt = relacionadas.map(p=>(p.campo==='melhoria'?'Melhoria':'Sugestão')+': "'+escapeHtmlCampanha(p.texto)+'" ('+(p.tipo==='critica'?'🔴 crítica':'💡 sugestão')+')').join('<br>');
+        return '<tr><td>'+fmtDate(n.data)+'</td><td>'+escapeHtmlCampanha(n.cliente||'—')+'</td><td>'+escapeHtmlCampanha(n.telefone||'—')+'</td><td>'+escapeHtmlCampanha(n.endereco||'—')+'</td><td>'+n.nota+'</td>'+
+          '<td>'+(n.prazo===true?'Sim':n.prazo===false?'Não':'—')+'</td><td>'+(n.entregador===true?'Sim':n.entregador===false?'Não':'—')+'</td><td>'+(n.indicaria===true?'Sim':n.indicaria===false?'Não':'—')+'</td>'+
+          '<td>'+escapeHtmlCampanha(n.comentario||'—')+'</td><td>'+(opinioesTxt||'—')+'</td></tr>';
+      }).join('')+
+      '</tbody></table></div>')+
     '</div>'+
     '<div class="card" style="margin:0;"><h3>🎟️ Conversão de cupons de campanha</h3>'+cupomConversaoHtml()+'</div>'+
     '</div>';
@@ -5537,7 +5645,8 @@ function renderRelatorioEmpresasResultado(){
   const saldo = total - totalPago;
   const mesRef = monthKey(de);
   const empresaObj = state.empresas.find(e=>e.nome===empresaSel);
-  const linhasVendas = vendasEmpresa.map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td><td></td></tr>');
+  const linhasVendas = vendasEmpresa.map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td>'+
+    '<td><button class="act-link" data-edit-venda-emp="'+v.id+'">✎ editar</button></td></tr>');
   const linhasLanc = lancEmpresa.map(c=>'<tr><td>'+fmtDate(c.data)+'</td><td>'+(c.descricao||'Lançamento manual')+'</td><td>—</td><td>'+fmtMoney(c.valor)+'</td>'+
     '<td><button class="act-link" data-edit-convenio="'+c.id+'">✎ editar</button><button class="del-link" data-del-convenio="'+c.id+'">🗑 excluir</button></td></tr>');
   const todasLinhas = linhasVendas.concat(linhasLanc);
@@ -5611,6 +5720,11 @@ function attachConvenioHandlers(){
     if(!ok) return;
     renderAll();
   };
+  document.querySelectorAll('[data-edit-venda-emp]').forEach(btn=>btn.onclick=()=>{
+    pendingEditVendaId = btn.dataset.editVendaEmp;
+    currentTab = 'vendas';
+    renderAll();
+  });
   document.querySelectorAll('[data-edit-convenio]').forEach(btn=>btn.onclick=()=>{
     const ci = state.convenioLancamentos.find(x=>x.id===btn.dataset.editConvenio);
     if(!ci) return;
@@ -9595,7 +9709,7 @@ async function afterLogin(){
   aplicarFavicon();
   renderAll();
   initAgenda();
-  initChecklistHoverDrawer(); initConferenciaBadge(); setInterval(initConferenciaBadge,1500); initNovoAgendamentoFab();
+  initChecklistHoverDrawer(); initConferenciaBadge(); setInterval(initConferenciaBadge,1500); initNovoAgendamentoFab(); initBuscaSistema();
   initWhatsFab();
   initRotaFab();
   rodarBackupAutomaticoSeNecessario();
@@ -10192,16 +10306,19 @@ async function iniciarNPSPublico(tipo, id){
   wrap.style.cssText = 'max-width:480px;margin:40px auto;padding:24px;font-family:system-ui,sans-serif;';
   document.body.innerHTML=''; document.body.appendChild(wrap);
   wrap.innerHTML = '<div style="text-align:center;">⏳ Carregando...</div>';
-  let cliente='';
+  let cliente='', telefoneCliente='', enderecoCliente='';
   try{
     const chaveRegistros = tipo==='venda' ? 'vendas' : 'agendamentos';
-    const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave',[chaveRegistros]);
+    const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave',[chaveRegistros,'clientes']);
     if(error) throw error;
     const porChave = {}; (data||[]).forEach(r=>porChave[r.chave]=r.valor);
     const registros = porChave[chaveRegistros] || [];
     const achado = tipo==='venda' ? registros.find(v=>v.grupoId===id) : registros.find(a=>a.id===id);
     cliente = achado ? (achado.cliente||'') : '';
+    const clienteObj = (porChave.clientes||[]).find(c=>c.nome===cliente);
+    if(clienteObj){ telefoneCliente = clienteObj.telefone||''; enderecoCliente = ((clienteObj.endereco||'')+' '+(clienteObj.complemento||'')).trim(); }
   }catch(e){ /* segue mesmo sem achar o nome */ }
+  const opinioes = { sugestao:{texto:'', tipo:'sugestao'}, melhoria:{texto:'', tipo:'sugestao'} };
   let notaEscolhida = null;
   const extras = { prazo:null, entregador:null, indicaria:null };
   function simNaoGrupo(chave, pergunta){
@@ -10212,6 +10329,15 @@ async function iniciarNPSPublico(tipo, id){
         return '<button type="button" data-extra="'+chave+'" data-valor="'+v+'" style="flex:1;padding:10px 0;border-radius:8px;border:2px solid '+(ativo?'#25D366':'#ddd')+';background:'+(ativo?'#25D366':'#fff')+';color:'+(ativo?'#fff':'#333')+';font-weight:bold;">'+(v==='sim'?'Sim':'Não')+'</button>';
       }).join('')+
       '</div></div>';
+  }
+  function campoOpiniao(chave, placeholder){
+    return '<textarea data-opiniao-texto="'+chave+'" placeholder="'+placeholder+'" style="width:100%;min-height:50px;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:6px;">'+escapeHtmlCampanha(opinioes[chave].texto)+'</textarea>'+
+      '<div style="display:flex;gap:8px;margin-bottom:14px;">'+
+      ['sugestao','critica'].map(v=>{
+        const ativo = opinioes[chave].tipo===v;
+        return '<button type="button" data-opiniao-tipo="'+chave+'" data-valor="'+v+'" style="flex:1;padding:8px 0;border-radius:8px;border:2px solid '+(ativo?'#25D366':'#ddd')+';background:'+(ativo?'#25D366':'#fff')+';color:'+(ativo?'#fff':'#333')+';font-weight:bold;font-size:13px;">'+(v==='critica'?'🔴 Crítica':'💡 Sugestão')+'</button>';
+      }).join('')+
+      '</div>';
   }
   function render(){
     wrap.innerHTML =
@@ -10225,22 +10351,36 @@ async function iniciarNPSPublico(tipo, id){
       simNaoGrupo('entregador','O entregador foi educado e cuidadoso?')+
       simNaoGrupo('indicaria','Indicaria a Tom Gás para amigos/vizinhos?')+
       '<textarea id="nps-comentario" placeholder="O que podemos melhorar? (opcional)" style="width:100%;min-height:70px;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;"></textarea>'+
+      campoOpiniao('sugestao','Alguma ideia de sugestão pra gente? (opcional)')+
+      campoOpiniao('melhoria','Alguma melhoria que você gostaria de ver? (opcional)')+
       '<button id="nps-enviar" style="width:100%;padding:14px;font-size:15px;font-weight:bold;background:#25D366;color:#fff;border:none;border-radius:10px;" '+(notaEscolhida===null?'disabled':'')+'>Enviar</button>'+
       '<div id="nps-msg" style="margin-top:12px;text-align:center;font-weight:bold;color:#188038;"></div>';
     wrap.querySelectorAll('[data-nota]').forEach(btn=>btn.onclick=()=>{ notaEscolhida=Number(btn.dataset.nota); render(); });
     wrap.querySelectorAll('[data-extra]').forEach(btn=>btn.onclick=()=>{ extras[btn.dataset.extra]=(btn.dataset.valor==='sim'); render(); });
+    wrap.querySelectorAll('[data-opiniao-texto]').forEach(ta=>ta.oninput=()=>{ opinioes[ta.dataset.opiniaoTexto].texto=ta.value; });
+    wrap.querySelectorAll('[data-opiniao-tipo]').forEach(btn=>btn.onclick=()=>{ opinioes[btn.dataset.opiniaoTipo].tipo=btn.dataset.valor; render(); });
     const btnEnviar = document.getElementById('nps-enviar');
     if(btnEnviar) btnEnviar.onclick = async()=>{
       if(notaEscolhida===null) return;
       btnEnviar.disabled=true; btnEnviar.textContent='Enviando...';
       try{
-        const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave',['npsRespostas']);
+        const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave',['npsRespostas','pesquisaClientes']);
         if(error) throw error;
         const porChave={}; (data||[]).forEach(r=>porChave[r.chave]=r.valor);
         const respostas = porChave.npsRespostas || [];
-        respostas.push({id:uid(), tipo, refId:id, cliente, nota:notaEscolhida, prazo:extras.prazo, entregador:extras.entregador, indicaria:extras.indicaria, comentario:document.getElementById('nps-comentario').value||'', data:todayStr(), criadoEm:Date.now()});
+        respostas.push({id:uid(), tipo, refId:id, cliente, telefone:telefoneCliente, endereco:enderecoCliente, nota:notaEscolhida, prazo:extras.prazo, entregador:extras.entregador, indicaria:extras.indicaria, comentario:document.getElementById('nps-comentario').value||'', data:todayStr(), criadoEm:Date.now()});
         const { error:err2 } = await supabaseClient.from('app_data').upsert({chave:'npsRespostas',valor:respostas,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
         if(err2) throw err2;
+        const pesquisas = porChave.pesquisaClientes || [];
+        ['sugestao','melhoria'].forEach(campo=>{
+          if((opinioes[campo].texto||'').trim()){
+            pesquisas.push({id:uid(), origem:tipo, refId:id, cliente, telefone:telefoneCliente, endereco:enderecoCliente, campo, texto:opinioes[campo].texto.trim(), tipo:opinioes[campo].tipo, data:todayStr(), criadoEm:Date.now()});
+          }
+        });
+        if(pesquisas.length!==(porChave.pesquisaClientes||[]).length){
+          const { error:err3 } = await supabaseClient.from('app_data').upsert({chave:'pesquisaClientes',valor:pesquisas,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
+          if(err3) throw err3;
+        }
         wrap.innerHTML = '<div style="text-align:center;padding:40px 10px;"><div style="font-size:40px;">🙏</div><h3>Muito obrigado!</h3><div style="color:#666;">Sua resposta foi registrada.</div></div>';
       }catch(e){ btnEnviar.disabled=false; btnEnviar.textContent='Enviar'; alert('Não foi possível enviar. Tente novamente.'); }
     };
