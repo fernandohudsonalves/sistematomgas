@@ -660,6 +660,7 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Estoque', kw:'estoque gas agua garrafa vasilhame', tab:'estoque'},
   {label:'Agendamentos', kw:'agendamentos agenda entrega novo agendamento', tab:'agendamentos'},
   {label:'Rotas', kw:'rota do dia entregador rota rapida mapa', tab:'rota'},
+  {label:'Localização dos Entregadores', kw:'localizacao entregador onde esta rastreio gps mapa ao vivo', tab:'rota'},
   {label:'Acertos de Entrega', kw:'acertos entrega dinheiro pendencia', tab:'acertos'},
   {label:'Tempo de Entrega', kw:'tempo de entrega confirmacao publica entregador', tab:'tempoentrega'},
   {label:'Campanhas', kw:'campanhas marketing whatsapp publico calendario cupom', tab:'campanhas'},
@@ -2003,6 +2004,7 @@ function viewRotaDoDia(){
     '<div><label>Meta de vendas do mês (R$, opcional)</label><input type="text" inputmode="decimal" name="metaMensal" placeholder="Ex: 8000"></div>'+
     '<div><button type="submit" class="btn small ghost">+ Adicionar entregador</button></div>'+
     '</form></div>'+
+    localizacaoEntregadoresHtml()+
     '<div class="card"><h2>📍 Ponto de partida</h2>'+
     '<div class="form-row"><div><label>Partir de</label><select id="sel-ponto-partida">'+
     state.pontosPartida.map(p=>'<option value="'+p.id+'"'+(partida && p.id===partida.id?' selected':'')+'>'+escapeHtmlCampanha(p.nome)+'</option>').join('')+
@@ -2525,6 +2527,60 @@ function avisarClienteACaminho(nomeCliente){
   const link = linkWhatsAppComTexto(tel, msg);
   if(link) window.open(link, '_blank');
 }
+function localizacaoEntregadoresHtml(){
+  const locs = state.localizacaoEntregadores || {};
+  const linhas = (state.entregadores||[]).map(e=>{
+    const loc = locs[e.id];
+    const linkRastreio = location.origin+location.pathname+'?rastrear='+e.id;
+    let statusHtml, acaoMapa='';
+    if(loc && loc.atualizadoEm){
+      const diffMin = Math.max(0, Math.round((Date.now()-loc.atualizadoEm)/60000));
+      const cor = diffMin<=3 ? '#25D366' : (diffMin<=15 ? '#f59e0b' : '#999');
+      const txtTempo = diffMin<1 ? 'agora mesmo' : (diffMin===1 ? 'há 1 min' : (diffMin<60 ? 'há '+diffMin+' min' : 'há '+Math.round(diffMin/60)+'h'));
+      statusHtml = '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+cor+';margin-right:6px;"></span>'+txtTempo+' · precisão ~'+(loc.precisao||'?')+'m';
+      acaoMapa = '<button type="button" class="btn small" data-ver-localizacao-entregador="'+e.id+'">🗺 Ver no mapa</button>';
+    } else {
+      statusHtml = '<span class="hint">Ainda não compartilhou a localização</span>';
+    }
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">'+
+      '<span style="flex:1;min-width:170px;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br>'+statusHtml+'</span>'+
+      acaoMapa+
+      '<button type="button" class="act-link" data-pedir-localizacao-entregador="'+e.id+'" data-link-rastreio="'+linkRastreio+'">📲 Pedir p/ compartilhar</button>'+
+      '</div>';
+  }).join('') || '<div class="hint">Cadastre um entregador acima para acompanhar a localização.</div>';
+  return '<div class="card" id="card-localizacao-entregadores"><h2>📍 Onde estão os entregadores</h2>'+
+    ajudaHtml('localizacao-entregadores','Clique em "Pedir p/ compartilhar" pra mandar um link pro WhatsApp do entregador. Ele abre no navegador do celular dele (sem instalar nada) e, enquanto deixar a página aberta com o GPS ligado, a localização aproximada aparece aqui, atualizada a cada ~15-20 segundos.')+
+    '<div class="hint">Funciona direto pelo navegador do celular do entregador — não precisa instalar app nenhum, só manter a página do link aberta durante as entregas.</div>'+
+    '<div style="margin-top:10px;">'+linhas+'</div>'+
+    '<button type="button" class="btn small ghost" id="btn-atualizar-localizacoes" style="margin-top:10px;">🔄 Atualizar agora</button>'+
+    '</div>';
+}
+async function refrescarCardLocalizacaoEntregadores(){
+  try{
+    const { data, error } = await supabaseClient.from('app_data').select('valor').eq('chave','localizacaoEntregadores');
+    if(error) throw error;
+    state.localizacaoEntregadores = (data && data[0] && data[0].valor) || {};
+  }catch(e){ console.error('Erro ao atualizar localizações dos entregadores', e); }
+  const cardEl = document.getElementById('card-localizacao-entregadores');
+  if(cardEl){ cardEl.outerHTML = localizacaoEntregadoresHtml(); bindLocalizacaoEntregadoresHandlers(); }
+}
+function bindLocalizacaoEntregadoresHandlers(){
+  document.querySelectorAll('[data-ver-localizacao-entregador]').forEach(btn=>btn.onclick=()=>{
+    const id = btn.dataset.verLocalizacaoEntregador;
+    const loc = (state.localizacaoEntregadores||{})[id];
+    if(loc) window.open('https://www.google.com/maps?q='+loc.lat+','+loc.lng, '_blank');
+  });
+  document.querySelectorAll('[data-pedir-localizacao-entregador]').forEach(btn=>btn.onclick=()=>{
+    const id = btn.dataset.pedirLocalizacaoEntregador;
+    const link = btn.dataset.linkRastreio;
+    const numero = whatsappEntregador(id) || '5543999215981';
+    const nome = nomeEntregador(id) || 'Entregador';
+    const msg = 'Oi, '+nome.split(' ')[0]+'! Pode abrir esse link e deixar a página aberta enquanto estiver fazendo as entregas? Assim a gente consegue acompanhar onde você está:\n\n'+link;
+    window.open('https://wa.me/'+numero+'?text='+encodeURIComponent(msg), '_blank');
+  });
+  const btnAtualizarLocalizacoes = document.getElementById('btn-atualizar-localizacoes');
+  if(btnAtualizarLocalizacoes) btnAtualizarLocalizacoes.onclick = refrescarCardLocalizacaoEntregadores;
+}
 function enviarRotaCompletaWhatsApp(entregadorId, paradas, urlRota, data){
   const numeroPadrao = '5543999215981';
   const numero = whatsappEntregador(entregadorId) || numeroPadrao;
@@ -2582,7 +2638,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','usuariosSistema','calendarioEditorial'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','usuariosSistema','calendarioEditorial','localizacaoEntregadores'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2590,6 +2646,7 @@ async function loadAll(){
     (data||[]).forEach(row=>{ state[row.chave] = row.valor; });
     if(!Array.isArray(state.categoriasClientes)) state.categoriasClientes=['Clientes Ativos','Amigos'];
     if(!Array.isArray(state.pendenciasConferencia)) state.pendenciasConferencia=[];
+    if(!state.localizacaoEntregadores || typeof state.localizacaoEntregadores!=='object' || Array.isArray(state.localizacaoEntregadores)) state.localizacaoEntregadores={};
     (state.clientes||[]).forEach(c=>{ if(!Array.isArray(c.grupos)) c.grupos=[]; });
   }catch(e){ console.error('Erro ao carregar dados', e); alert('Não foi possível carregar os dados do Supabase. Verifique a tabela app_data e as permissões.'); }
   if(!state.estoque || !state.estoque.gas || !state.estoque.agua){ state.estoque = defaultEstoque(); }
@@ -2923,6 +2980,7 @@ function ajustarPosicaoNav(){
 }
 window.addEventListener('resize', ajustarPosicaoNav);
 setInterval(atualizarEtiquetaDataHoje, 30000);
+setInterval(()=>{ if(currentTab==='rota' && document.getElementById('card-localizacao-entregadores')) refrescarCardLocalizacaoEntregadores(); }, 20000);
 function renderNav(){
   const nav = document.getElementById('nav');
   atualizarEtiquetaDataHoje();
@@ -7635,6 +7693,7 @@ function attachHandlers(){
   document.querySelectorAll('[data-avisar-cliente]').forEach(btn=>btn.onclick=()=>{
     avisarClienteACaminho(btn.dataset.avisarCliente);
   });
+  bindLocalizacaoEntregadoresHandlers();
   document.querySelectorAll('[data-rota-filtro-entregador]').forEach(btn=>btn.onclick=()=>{
     rotaFiltroEntregadorId = btn.dataset.rotaFiltroEntregador||'';
     anexoAbertoParadaKey = null;
@@ -10432,6 +10491,65 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
   render();
 }
 
+async function iniciarRastreioPublico(entregadorId){
+  document.body.innerHTML = '<div id="rastreio-wrap" style="max-width:420px;margin:0 auto;padding:24px 18px;font-family:Arial,sans-serif;background:#fff;min-height:100vh;box-sizing:border-box;text-align:center;">Carregando...</div>';
+  const wrap = document.getElementById('rastreio-wrap');
+  let nomeEnt = 'Entregador';
+  try{
+    const { data, error } = await supabaseClient.from('app_data').select('valor').eq('chave','entregadores');
+    if(error) throw error;
+    const lista = (data && data[0] && data[0].valor) || [];
+    const achado = lista.find(x=>x.id===entregadorId);
+    if(achado) nomeEnt = achado.nome;
+  }catch(e){ /* segue com nome padrão mesmo se não achar */ }
+
+  let ativo = false, watchId = null, ultimoEnvio = 0;
+
+  function render(status){
+    wrap.innerHTML =
+      '<div style="text-align:center;margin-bottom:6px;"><h2 style="margin:0;">Tom Gás</h2>'+
+      '<div style="color:#777;font-size:13px;">Compartilhamento de localização</div></div>'+
+      '<div style="font-size:15px;margin:18px 0 6px;">Olá, <strong>'+nomeEnt+'</strong>!</div>'+
+      '<div style="color:#666;font-size:13px;margin-bottom:22px;">Deixe esta página aberta no seu celular enquanto estiver fazendo as entregas. O escritório vai conseguir ver sua localização aproximada.</div>'+
+      '<button id="btn-rastreio-toggle" style="width:100%;padding:16px;font-size:16px;font-weight:bold;border:none;border-radius:12px;background:'+(ativo?'#c62828':'#25D366')+';color:#fff;">'+(ativo?'⏹ Parar de compartilhar':'▶️ Começar a compartilhar')+'</button>'+
+      '<div id="rastreio-status" style="margin-top:16px;font-size:13px;color:#666;">'+(status||'')+'</div>';
+    document.getElementById('btn-rastreio-toggle').onclick = toggle;
+  }
+
+  async function enviarPosicao(pos){
+    const agora = Date.now();
+    if(agora - ultimoEnvio < 15000) return;
+    ultimoEnvio = agora;
+    const lat = pos.coords.latitude, lng = pos.coords.longitude, precisao = Math.round(pos.coords.accuracy||0);
+    try{
+      const { data } = await supabaseClient.from('app_data').select('valor').eq('chave','localizacaoEntregadores');
+      const atual = (data && data[0] && data[0].valor) || {};
+      atual[entregadorId] = { lat, lng, precisao, atualizadoEm: agora };
+      await supabaseClient.from('app_data').upsert({chave:'localizacaoEntregadores', valor:atual, atualizado_em:new Date().toISOString()},{onConflict:'chave'});
+      const st = document.getElementById('rastreio-status');
+      if(st) st.textContent = '📡 Última localização enviada às '+new Date(agora).toLocaleTimeString('pt-BR').slice(0,5)+' (precisão ~'+precisao+'m)';
+    }catch(e){ console.error('Erro ao enviar localização', e); }
+  }
+
+  function toggle(){
+    if(!ativo){
+      if(!navigator.geolocation){ alert('Este celular/navegador não suporta compartilhar localização.'); return; }
+      watchId = navigator.geolocation.watchPosition(enviarPosicao, function(err){
+        const st = document.getElementById('rastreio-status');
+        if(st) st.textContent = '⚠️ Não foi possível acessar sua localização: '+err.message;
+      }, {enableHighAccuracy:true, maximumAge:10000, timeout:20000});
+      ativo = true;
+      render('Ativando GPS...');
+    } else {
+      if(watchId!==null) navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      ativo = false;
+      render('Compartilhamento parado.');
+    }
+  }
+
+  render('');
+}
 async function iniciarNPSPublico(tipo, id){
   const wrap = document.createElement('div');
   wrap.style.cssText = 'max-width:480px;margin:40px auto;padding:24px;font-family:system-ui,sans-serif;';
@@ -10526,6 +10644,8 @@ async function init(){
   if(entregaVendaId){ await iniciarConfirmacaoEntregaPublica('venda', entregaVendaId); return; }
   const npsParam = paramsUrl.get('nps');
   if(npsParam){ const [tipoNps,idNps] = npsParam.split(':'); await iniciarNPSPublico(tipoNps==='ag'?'agendamento':'venda', idNps); return; }
+  const rastrearId = paramsUrl.get('rastrear');
+  if(rastrearId){ await iniciarRastreioPublico(rastrearId); return; }
   attachAuthHandlers();
   attachLogoInput();
   registerServiceWorker();
