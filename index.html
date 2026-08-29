@@ -339,6 +339,18 @@ table td:last-child{min-width:180px;}
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
 #whats-fab{position:fixed;right:18px;bottom:18px;z-index:500;width:56px;height:56px;border-radius:50%;background:#25D366;border:none;box-shadow:0 6px 18px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+#calc-fab{position:fixed;right:18px;bottom:228px;z-index:500;width:56px;height:56px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 6px 18px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:24px;}
+#calc-fab:hover{transform:scale(1.06);}
+#calc-fab:active{transform:scale(.96);}
+#calc-panel{position:fixed;right:18px;bottom:294px;z-index:2500;width:230px;background:var(--card,#fff);color:var(--text,#222);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden;display:none;}
+#calc-panel.open{display:block;}
+#calc-head{background:#2563EB;color:#fff;padding:8px 12px;font-weight:700;cursor:move;display:flex;justify-content:space-between;align-items:center;user-select:none;font-size:13px;}
+#calc-head button{background:transparent;border:none;color:#fff;font-size:15px;cursor:pointer;padding:0 4px;}
+#calc-body{padding:10px;}
+#calc-display{width:100%;box-sizing:border-box;padding:10px;font-size:18px;text-align:right;margin-bottom:8px;border-radius:8px;border:1px solid #ddd;}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.calc-grid button{padding:10px 0;border-radius:8px;border:none;background:#f0f0f0;font-weight:700;cursor:pointer;font-size:15px;}
+.calc-grid button:hover{background:#e2e2e2;}
 #whats-fab:hover{transform:scale(1.06);}
 #whats-fab:active{transform:scale(.96);}
 #whats-search-overlay{position:fixed;inset:0;background:rgba(10,20,40,.45);backdrop-filter:blur(2px);z-index:9990;display:none;align-items:flex-start;justify-content:center;padding:60px 16px;}
@@ -534,6 +546,20 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
   </div>
 </div>
 <button id="rota-fab" title="Gerar rota rápida">🗺️</button>
+<button id="calc-fab" title="Calculadora">🧮</button>
+<div id="calc-panel">
+  <div id="calc-head">🧮 Calculadora <button type="button" id="calc-fechar">✕</button></div>
+  <div id="calc-body">
+    <input type="text" id="calc-display" readonly value="0">
+    <div class="calc-grid">
+      <button type="button" data-calc="C">C</button><button type="button" data-calc="(">(</button><button type="button" data-calc=")">)</button><button type="button" data-calc="/">÷</button>
+      <button type="button" data-calc="7">7</button><button type="button" data-calc="8">8</button><button type="button" data-calc="9">9</button><button type="button" data-calc="*">×</button>
+      <button type="button" data-calc="4">4</button><button type="button" data-calc="5">5</button><button type="button" data-calc="6">6</button><button type="button" data-calc="-">−</button>
+      <button type="button" data-calc="1">1</button><button type="button" data-calc="2">2</button><button type="button" data-calc="3">3</button><button type="button" data-calc="+">+</button>
+      <button type="button" data-calc="0">0</button><button type="button" data-calc=".">,</button><button type="button" data-calc="del">⌫</button><button type="button" data-calc="=">=</button>
+    </div>
+  </div>
+</div>
 <div id="rota-overlay">
   <div id="rota-panel">
     <div class="rt-head"><h3>🗺️ Rota rápida</h3><button type="button" id="rt-fechar">✕</button></div>
@@ -620,7 +646,7 @@ function renderPainelConferenciaLista(){
     renderPainelConferenciaLista(); initConferenciaBadge();
   });
 }
-function initConferenciaBadge(){let b=document.getElementById('conferencia-badge');if(!b){b=document.createElement('button');b.id='conferencia-badge';b.style='position:fixed;right:18px;bottom:228px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#f59e0b;color:#fff;font-weight:700;cursor:pointer';document.body.appendChild(b);b.onclick=abrirPainelConferencia;}const n=(state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').length;b.style.display=n?'block':'none';b.textContent='⚠ '+n+' conferência(s)';}
+function initConferenciaBadge(){let b=document.getElementById('conferencia-badge');if(!b){b=document.createElement('button');b.id='conferencia-badge';b.style='position:fixed;right:18px;bottom:300px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#f59e0b;color:#fff;font-weight:700;cursor:pointer';document.body.appendChild(b);b.onclick=abrirPainelConferencia;}const n=(state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').length;b.style.display=n?'block':'none';b.textContent='⚠ '+n+' conferência(s)';}
 const BUSCA_SISTEMA_INDEX = [
   {label:'Painel', kw:'painel dashboard inicio', tab:'dashboard'},
   {label:'Metas', kw:'metas objetivo vendas mes', tab:'metas'},
@@ -668,21 +694,50 @@ function initBuscaSistema(){
   if(!input || input.dataset.bound) return;
   input.dataset.bound = '1';
   function chaveBusca(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+  function irParaDado(tipo, valor){
+    input.value=''; resDiv.style.display='none';
+    if(tipo==='cliente'){ currentTab='cadastros'; cadastroSub='clientes'; }
+    else if(tipo==='empresa'){ currentTab='cadastros'; cadastroSub='empresas'; }
+    else if(tipo==='produto'){ currentTab='cadastros'; cadastroSub='produtos'; }
+    else if(tipo==='entregador'){ currentTab='rota'; }
+    else if(tipo==='veiculo'){ currentTab='veiculos'; }
+    renderAll();
+    setTimeout(()=>{
+      const mapaCampo = {cliente:'busca-cliente', empresa:'busca-empresa', produto:'busca-produto'};
+      const campoId = mapaCampo[tipo];
+      if(campoId){
+        const campo = document.getElementById(campoId);
+        if(campo){ campo.value = valor; campo.dispatchEvent(new Event('input')); campo.scrollIntoView({behavior:'smooth'}); }
+      }
+    },100);
+  }
   function renderResultados(){
     const termo = chaveBusca(input.value.trim());
     if(!termo){ resDiv.style.display='none'; resDiv.innerHTML=''; return; }
-    const achados = BUSCA_SISTEMA_INDEX.filter(item=>chaveBusca(item.label+' '+item.kw).includes(termo)).slice(0,10);
+    const achadosMenu = BUSCA_SISTEMA_INDEX.filter(item=>chaveBusca(item.label+' '+item.kw).includes(termo)).slice(0,6);
+    const achadosDados = [];
+    (state.clientes||[]).forEach(c=>{ if(achadosDados.length<8 && chaveBusca((c.nome||'')+' '+(c.telefone||'')+' '+(c.endereco||'')).includes(termo)) achadosDados.push({label:'👤 Cliente: '+c.nome, tipo:'cliente', valor:c.nome}); });
+    (state.empresas||[]).forEach(e=>{ if(achadosDados.length<10 && chaveBusca(e.nome||'').includes(termo)) achadosDados.push({label:'🏢 Empresa conveniada: '+e.nome, tipo:'empresa', valor:e.nome}); });
+    (state.produtos||[]).forEach(p=>{ if(achadosDados.length<12 && chaveBusca(p.nome||'').includes(termo)) achadosDados.push({label:'📦 Produto: '+p.nome, tipo:'produto', valor:p.nome}); });
+    (state.entregadores||[]).forEach(en=>{ if(achadosDados.length<14 && chaveBusca(en.nome||'').includes(termo)) achadosDados.push({label:'🛵 Entregador: '+en.nome, tipo:'entregador', valor:en.nome}); });
+    (state.veiculos||[]).forEach(v=>{ if(achadosDados.length<16 && chaveBusca(v.nome||'').includes(termo)) achadosDados.push({label:'🚗 Veículo: '+v.nome, tipo:'veiculo', valor:v.nome}); });
+    const achados = achadosMenu.concat(achadosDados).slice(0,16);
     if(achados.length===0){ resDiv.innerHTML = '<div style="padding:10px;font-size:13px;color:#777;">Nada encontrado.</div>'; resDiv.style.display='block'; return; }
-    resDiv.innerHTML = achados.map(item=>'<div class="busca-sistema-item" data-busca-tab="'+item.tab+'" data-busca-sub="'+(item.sub||'')+'" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;">'+item.label+'</div>').join('');
+    resDiv.innerHTML = achados.map((item,i)=>'<div class="busca-sistema-item" data-idx="'+i+'" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;">'+item.label+'</div>').join('');
     resDiv.style.display='block';
-    resDiv.querySelectorAll('[data-busca-tab]').forEach(el=>{
+    resDiv.querySelectorAll('[data-idx]').forEach(el=>{
+      const item = achados[Number(el.dataset.idx)];
       el.onmouseenter=()=>{ el.style.background='#f2f2f2'; };
       el.onmouseleave=()=>{ el.style.background=''; };
       el.onclick=()=>{
-        currentTab = el.dataset.buscaTab;
-        if(el.dataset.buscaSub) relatorioSub = el.dataset.buscaSub;
-        input.value=''; resDiv.style.display='none';
-        renderAll();
+        if(item.tab){
+          currentTab = item.tab;
+          if(item.sub) relatorioSub = item.sub;
+          input.value=''; resDiv.style.display='none';
+          renderAll();
+        } else {
+          irParaDado(item.tipo, item.valor);
+        }
       };
     });
   }
@@ -727,6 +782,52 @@ function initChecklistHoverDrawer(){
   renderChecklistHoverDrawer();
 }
 let rotaOrigemCoords = null;
+function initCalculadora(){
+  const fab=document.getElementById('calc-fab'), panel=document.getElementById('calc-panel'), head=document.getElementById('calc-head'), display=document.getElementById('calc-display');
+  if(!fab||!panel) return;
+  fab.onclick=()=>{ panel.classList.toggle('open'); };
+  document.getElementById('calc-fechar').onclick=()=>panel.classList.remove('open');
+  let expressao = '';
+  function atualizar(){ display.value = expressao || '0'; }
+  panel.querySelectorAll('[data-calc]').forEach(btn=>btn.onclick=()=>{
+    const v = btn.dataset.calc;
+    if(v==='C'){ expressao=''; }
+    else if(v==='del'){ expressao = expressao.slice(0,-1); }
+    else if(v==='='){
+      try{
+        const limpo = expressao.replace(/,/g,'.');
+        if(!/^[0-9+\-*/().\s]+$/.test(limpo)) throw new Error('inválido');
+        const resultado = Function('"use strict";return ('+limpo+')')();
+        expressao = String(resultado).replace('.',',');
+      }catch(e){ expressao = 'Erro'; }
+    } else { expressao += v; }
+    atualizar();
+  });
+  atualizar();
+  // arrastar o painel pelo cabeçalho (mouse e touch)
+  let arrastando=false, offX=0, offY=0;
+  function iniciar(x,y){
+    arrastando=true;
+    const r = panel.getBoundingClientRect();
+    offX = x - r.left; offY = y - r.top;
+    panel.style.right='auto'; panel.style.bottom='auto';
+    panel.style.left=r.left+'px'; panel.style.top=r.top+'px';
+  }
+  function mover(x,y){
+    if(!arrastando) return;
+    let nx = x-offX, ny = y-offY;
+    nx = Math.max(4, Math.min(window.innerWidth-panel.offsetWidth-4, nx));
+    ny = Math.max(4, Math.min(window.innerHeight-panel.offsetHeight-4, ny));
+    panel.style.left=nx+'px'; panel.style.top=ny+'px';
+  }
+  function soltar(){ arrastando=false; }
+  head.addEventListener('mousedown', e=>{ iniciar(e.clientX,e.clientY); });
+  document.addEventListener('mousemove', e=>{ mover(e.clientX,e.clientY); });
+  document.addEventListener('mouseup', soltar);
+  head.addEventListener('touchstart', e=>{ const t=e.touches[0]; iniciar(t.clientX,t.clientY); }, {passive:true});
+  document.addEventListener('touchmove', e=>{ const t=e.touches[0]; mover(t.clientX,t.clientY); }, {passive:true});
+  document.addEventListener('touchend', soltar);
+}
 function initRotaFab(){
   const fab=document.getElementById('rota-fab'), overlay=document.getElementById('rota-overlay');
   if(!fab||!overlay) return;
@@ -5664,6 +5765,13 @@ function renderRelatorioEmpresasResultado(){
     '<div class="metric pos"><div class="label">Pago no período</div><div class="value">'+fmtMoney(totalPago)+'</div></div>'+
     '<div class="metric '+(saldo>0?'neg':'pos')+'"><div class="label">Saldo <span class="badge '+(saldo>0?'status-receber':'status-pago')+'">'+(saldo>0?'a receber':'quitado')+'</span></div><div class="value">'+fmtMoney(saldo)+'</div></div>'+
     '</div>'+
+    '<div class="card" style="margin:0 0 14px;background:rgba(245,158,11,.08);">'+
+    '<h3 style="margin-top:0;">🧮 Corrigir saldo devedor</h3>'+
+    '<div class="hint">Use se você calculou o valor certo por fora e o saldo acima ('+fmtMoney(saldo)+') está errado. O sistema lança a diferença automaticamente como um ajuste.</div>'+
+    '<form id="form-ajuste-saldo-convenio" style="margin-top:8px;"><div class="form-row">'+
+    '<div><label>Saldo devedor correto (R$)</label><input type="text" inputmode="decimal" name="saldoCorreto" placeholder="0,00" required></div>'+
+    '</div><button type="submit" class="btn small">Corrigir saldo</button></form>'+
+    '</div>'+
     (empresaObj && empresaObj.telefone ? '<div style="margin-bottom:14px;">'+botaoWhatsApp(empresaObj.telefone)+'</div>' : '<div class="hint" style="margin-bottom:14px;">Esta empresa não tem WhatsApp cadastrado — edite a empresa em "Empresas conveniadas" para adicionar.</div>')+
     '<h3>Lançar valor manualmente (sem gerar venda)</h3>'+
     '<div class="hint">Use para lançar um valor retroativo do convênio, sem precisar registrar uma venda como é feito no fiado.</div>'+
@@ -5716,6 +5824,28 @@ function attachConvenioHandlers(){
     } else {
       state.convenioLancamentos.push({id:uid(), empresa:empresaSel, valor:valorConvenio, data:f.get('data'), descricao:f.get('descricao')||''});
     }
+    const ok = await save('convenioLancamentos');
+    if(!ok) return;
+    renderAll();
+  };
+  const fAjusteSaldo = document.getElementById('form-ajuste-saldo-convenio');
+  if(fAjusteSaldo) fAjusteSaldo.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(fAjusteSaldo);
+    const empresaSel = document.getElementById('re-empresa').value;
+    relEmpresaSel = empresaSel;
+    relEmpresaDe = document.getElementById('re-de').value;
+    relEmpresaAte = document.getElementById('re-ate').value;
+    const novoSaldo = parseValorBR(f.get('saldoCorreto'));
+    if(!f.get('saldoCorreto') || isNaN(novoSaldo)){ alert('Digite um valor válido, por exemplo 350,00'); return; }
+    const de = relEmpresaDe, ate = relEmpresaAte;
+    const vendasEmp = state.vendas.filter(v=>v.data>=de && v.data<=ate && v.empresa===empresaSel).reduce((s,v)=>s+v.valor_total,0);
+    const lancEmp = state.convenioLancamentos.filter(c=>c.empresa===empresaSel && c.data>=de && c.data<=ate).reduce((s,c)=>s+c.valor,0);
+    const pagEmp = (state.convenioPagamentos||[]).filter(p=>p.empresa===empresaSel && p.data>=de && p.data<=ate).reduce((s,p)=>s+p.valor,0);
+    const saldoAtual = vendasEmp + lancEmp - pagEmp;
+    const diferenca = novoSaldo - saldoAtual;
+    if(Math.abs(diferenca) < 0.01){ alert('O saldo já está com esse valor.'); return; }
+    state.convenioLancamentos.push({id:uid(), empresa:empresaSel, valor:diferenca, data:ate, descricao:'Correção de saldo (ajuste manual)'});
     const ok = await save('convenioLancamentos');
     if(!ok) return;
     renderAll();
@@ -9712,6 +9842,7 @@ async function afterLogin(){
   initChecklistHoverDrawer(); initConferenciaBadge(); setInterval(initConferenciaBadge,1500); initNovoAgendamentoFab(); initBuscaSistema();
   initWhatsFab();
   initRotaFab();
+  initCalculadora();
   rodarBackupAutomaticoSeNecessario();
   iniciarNotificacoesRealtime();
   atualizarBadgeApp();
