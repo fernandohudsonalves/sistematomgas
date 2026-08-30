@@ -3071,6 +3071,20 @@ function ajustarPosicaoNav(){
 window.addEventListener('resize', ajustarPosicaoNav);
 setInterval(atualizarEtiquetaDataHoje, 30000);
 setInterval(()=>{ if(currentTab==='rota' && document.getElementById('card-localizacao-entregadores')) refrescarCardLocalizacaoEntregadores(); }, 20000);
+let ultimoAvisoFechamentoCaixaData = null;
+setInterval(()=>{
+  const agora = new Date();
+  const hh = agora.getHours(), mm = agora.getMinutes();
+  const hoje = todayStr();
+  if(hh===19 && mm>=30 && ultimoAvisoFechamentoCaixaData!==hoje){
+    const jaFechou = (state.fechamentosCaixa||[]).some(f=>f.data===hoje);
+    if(!jaFechou){
+      ultimoAvisoFechamentoCaixaData = hoje;
+      try{const C=window.AudioContext||window.webkitAudioContext;if(C){const ac=new C(),o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.45);}}catch(err){}
+      alert('💰 São 19:30 — hora de começar a fechar o caixa! Conte o dinheiro físico da gaveta e confira se todas as entregas em dinheiro já foram acertadas antes de lançar o fechamento.');
+    }
+  }
+}, 60000);
 function renderNav(){
   const nav = document.getElementById('nav');
   atualizarEtiquetaDataHoje();
@@ -4888,7 +4902,7 @@ function viewConfig(){
     '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
     '</details>'+
     '</div>'+
-    '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+ajudaHtml('importacao','Suba aqui a planilha do modelo (abas Vendas, Despesas, Clientes, Produtos, ContasPagar e FechamentoCaixa) pra lançar o dia inteiro de uma vez. Se algum produto ou cliente da planilha não bater exatamente com o cadastro, o sistema pausa e pergunta se é algo já existente (com outra grafia) ou novo, numa telinha só, antes de importar de vez.')+
+    '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+ajudaHtml('importacao','Suba aqui a planilha do modelo (abas Vendas, Despesas, Clientes, Produtos, ContasPagar e FechamentoCaixa) pra lançar o dia inteiro de uma vez. Se algum produto ou cliente da planilha não bater exatamente com o cadastro, o sistema pausa e pergunta se é algo já existente (com outra grafia) ou novo, numa telinha só, antes de importar de vez. Vendas com cliente identificado que baterem exatamente com uma venda já lançada (mesma data, cliente, produto, quantidade, valor e forma de pagamento) são ignoradas automaticamente pra não duplicar — então pode reimportar a mesma planilha com segurança, ou subir só a venda nova do fim do dia sem medo de duplicar o que já foi lançado antes.')+
     '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong>, <strong>Produtos</strong>, <strong>ContasPagar</strong> e <strong>FechamentoCaixa</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos (incluindo gasto de veículo, se preencher a coluna Veículo); contas a pagar marcadas como "pago" já entram como despesa também; clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
     '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e repita o mesmo número na coluna <strong>Nº da Venda</strong> — assim o sistema conta como uma venda só. Se deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, numere sempre.</div>'+
     '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
@@ -6886,7 +6900,22 @@ function attachHandlers(){
       if(d){ d.data=f.get('data'); d.categoria=f.get('categoria'); d.valor=valorLancado; d.descricao=f.get('descricao'); d.veiculoId=veiculoId; }
       editDespesaId = null;
     } else {
-      state.despesas.push({id:uid(), criadoEm:Date.now(), data:f.get('data'), categoria:f.get('categoria'), valor:valorLancado, descricao:f.get('descricao'), veiculoId});
+      const novaDespesa = {id:uid(), criadoEm:Date.now(), data:f.get('data'), categoria:f.get('categoria'), valor:valorLancado, descricao:f.get('descricao'), veiculoId};
+      // Tenta casar com uma conta a pagar pendente (mesmo com nome digitado diferente/errado)
+      const pendentes = (state.contasPagar||[]).filter(c=>c.status==='pendente');
+      let melhor=null, melhorScore=0;
+      pendentes.forEach(c=>{
+        const score = similaridadeTexto(novaDespesa.descricao||'', c.descricao||'');
+        if(score>melhorScore){ melhorScore=score; melhor=c; }
+      });
+      const valorBate = melhor && Math.abs(melhor.valor - valorLancado) < 0.01;
+      if(melhor && melhorScore>=0.55 && valorBate &&
+         confirm('Essa despesa parece ser a conta a pagar "'+melhor.descricao+'" ('+fmtMoney(melhor.valor)+', vence '+fmtDate(melhor.vencimento)+') — '+Math.round(melhorScore*100)+'% parecido.\n\nMarcar essa conta como paga e vincular a esta despesa?')){
+        melhor.status='pago'; melhor.pagoEm=novaDespesa.data; melhor.despesaId=novaDespesa.id;
+        novaDespesa.contaPagarId = melhor.id;
+        await save('contasPagar');
+      }
+      state.despesas.push(novaDespesa);
     }
     const salvouOk = await save('despesas');
     despesaManualAberta = true; // mantém o painel aberto pra não parecer que "sumiu" a tela
@@ -9332,8 +9361,13 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
     const nomesClientesExistentes = new Set(state.clientes.map(c=>chaveNormalizada(c.nome)));
 
     if(linhasVendas.length){
-      let importadas=0, ignoradas=0, clientesNovosDeVendas=0, creditosAlterados=false, fiadosGeradosPorAbate=0;
+      let importadas=0, ignoradas=0, duplicadas=0, clientesNovosDeVendas=0, creditosAlterados=false, fiadosGeradosPorAbate=0;
       const gruposPorChaveVenda = new Map();
+      // Fingerprint de vendas já existentes (só as que têm cliente identificado) pra não lançar
+      // a mesma venda duas vezes se a planilha for reimportada por engano.
+      const fingerprintsVendas = new Set();
+      const chaveVendaFingerprint = (v)=> v.cliente ? [v.data, chaveNormalizada(v.cliente), chaveNormalizada(v.categoria), chaveNormalizada(v.produto), v.quantidade, v.valor_unit, v.pagamento].join('|') : null;
+      state.vendas.forEach(v=>{ const fp = chaveVendaFingerprint(v); if(fp) fingerprintsVendas.add(fp); });
       linhasVendas.forEach(function(r){
         const textoCategoria = (r['Categoria/Produto']||'').trim();
         if(!textoCategoria){ ignoradas++; return; }
@@ -9408,6 +9442,9 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           pagamento, nota, tipo_entrega, empresa, frete,
           entrega_data:'', entrega_hora:'', entrega_status:'', obs: obs || 'Importado de planilha'
         };
+        const fpVenda = chaveVendaFingerprint(venda);
+        if(fpVenda && fingerprintsVendas.has(fpVenda)){ duplicadas++; return; }
+        if(fpVenda) fingerprintsVendas.add(fpVenda);
         state.vendas.push(venda);
         ajustaEstoquePorVenda(categoria, quantidade, false);
         importadas++;
@@ -9435,7 +9472,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
       if(clientesNovosDeVendas>0) await save('clientes');
       if(creditosAlterados) await save('creditos');
       if(fiadosGeradosPorAbate>0) await save('fiados');
-      resumo.push(importadas+' venda(s) importada(s)'+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem categoria/produto válido)':''));
+      resumo.push(importadas+' venda(s) importada(s)'+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem categoria/produto válido)':'')+(duplicadas>0?' — '+duplicadas+' ignorada(s) por já existir (venda repetida com mesmo cliente/produto/valor/data)':''));
       if(clientesNovosDeVendas>0) resumo.push(clientesNovosDeVendas+' cliente(s) novo(s) cadastrado(s) a partir da aba Vendas');
       if(creditosAlterados) resumo.push('Crédito em haver abatido automaticamente nas vendas marcadas como "Abateu"'+(fiadosGeradosPorAbate>0?' ('+fiadosGeradosPorAbate+' com diferença lançada de fiado)':''));
     }
@@ -9452,7 +9489,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
         const descricao = (r['Descrição']||'').trim();
         const veiculoTxt = (r['Veículo']||'').trim();
-        const veiculoMatch = veiculoTxt ? state.veiculos.find(vv=>chaveNormalizada(vv.nome).includes(chaveNormalizada(veiculoTxt))||chaveNormalizada(veiculoTxt).includes(chaveNormalizada(vv.nome))) : null;
+        const veiculoMatch = veiculoTxt ? (sugerirVeiculoSimilar(veiculoTxt).score>=0.55 ? sugerirVeiculoSimilar(veiculoTxt).veiculo : null) : null;
         const oficinaTxt = (r['Oficina/Empresa']||'').trim();
         const formaPagamento = (r['Forma de Pagamento']||'').trim().toLowerCase()==='parcelado' ? 'parcelado' : (veiculoMatch?'avista':undefined);
         const parcelas = r['Parcelas'] ? Number(r['Parcelas'])||undefined : undefined;
@@ -9915,6 +9952,14 @@ function sugerirCategoriaSimilar(texto){
   });
   return {categoria:melhor, score:melhorScore};
 }
+function sugerirVeiculoSimilar(texto){
+  let melhor=null, melhorScore=0;
+  (state.veiculos||[]).forEach(v=>{
+    const score = similaridadeTexto(texto, v.nome);
+    if(score>melhorScore){ melhorScore=score; melhor=v; }
+  });
+  return {veiculo:melhor, score:melhorScore};
+}
 function detectarProdutosPendentesVendas(linhasVendas){
   const distintos = new Map();
   linhasVendas.forEach(function(r){
@@ -10171,7 +10216,7 @@ function renderCsvDespesasMapping(){
       const data = colData && r[colData] ? normalizarDataImportada(r[colData], dataBase) : dataBase;
       const descricao = colDescricao ? (r[colDescricao]||'').trim() : '';
       const veiculoTxt = colVeiculo && r[colVeiculo] ? r[colVeiculo].trim() : '';
-      const veiculoMatch = veiculoTxt ? state.veiculos.find(vv=>chaveNormalizada(vv.nome).includes(chaveNormalizada(veiculoTxt))||chaveNormalizada(veiculoTxt).includes(chaveNormalizada(vv.nome))) : null;
+      const veiculoMatch = veiculoTxt ? (sugerirVeiculoSimilar(veiculoTxt).score>=0.55 ? sugerirVeiculoSimilar(veiculoTxt).veiculo : null) : null;
       const oficinaTxt = colOficina && r[colOficina] ? r[colOficina].trim() : '';
       state.despesas.push({id:uid(), criadoEm:Date.now(), data, categoria, valor, descricao: descricao || 'Importado de planilha', veiculoId: veiculoMatch?veiculoMatch.id:undefined, oficina: oficinaTxt||undefined});
       importadas++;
