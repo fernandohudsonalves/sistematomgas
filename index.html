@@ -1234,6 +1234,7 @@ let clientesListaAberta = false;
 let csvDespesasRows = null, csvDespesasHeaders = null;
 let editDespesaId = null, editClienteId = null, editVendaId = null, editFiadoId = null, editConvenioId = null, editConvenioPagamentoId = null;
 let editEmpresaId = null, editAgendamentoId = null, pendingEditVendaId = null;
+let editPesquisaManualId = null;
 let clienteExtrato = null, clienteRegistrandoPagamento = null, editFiadoPagamentoId = null;
 let agendamentoParaConcluir = null, prefillVenda = null;
 let editProdutoId = null, clienteCredito = null, editCreditoId = null, editEstoqueMovId = null, editComodatoId = null;
@@ -1268,7 +1269,7 @@ const TABS = [
   {id:'financeiro', label:'Financeiro', filhos:['caixa','vendas','faltaretirar']},
   {id:'caixa', label:'Caixa'},
   {id:'vendas', label:'Vendas'},
-  {id:'faltaretirar', label:'📦 Falta retirar'},
+  {id:'faltaretirar', label:iconVasilhame(true,null,15,'P13')+' Falta retirar'},
   {id:'gastos', label:'Despesas & Contas', filhos:['despesas','contaspagar','veiculos']},
   {id:'despesas', label:'Despesas'},
   {id:'contaspagar', label:'Contas a Pagar'},
@@ -2726,7 +2727,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','usuariosSistema','calendarioEditorial','localizacaoEntregadores'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','localizacaoEntregadores'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2795,6 +2796,7 @@ async function loadAll(){
   if(!Array.isArray(state.recompensasIndicacao)) state.recompensasIndicacao = [];
   if(!Array.isArray(state.npsRespostas)) state.npsRespostas = [];
   if(!Array.isArray(state.pesquisaClientes)) state.pesquisaClientes = [];
+  if(!Array.isArray(state.respostasPesquisaManual)) state.respostasPesquisaManual = [];
   if(!Array.isArray(state.calendarioEditorial)) state.calendarioEditorial = [];
   if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema = [];
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
@@ -3345,8 +3347,8 @@ function viewDashboard(){
   return comunicadosBannerHtml()+
     (alertasEstoque.length>0 ? '<div class="card" style="border-left:4px solid var(--danger);cursor:pointer;" data-ir-relatorio-estoque="1"><h2 style="color:var(--danger);">⚠️ Estoque baixo — '+alertasEstoque.length+' item(ns)</h2>'+
       '<div class="hint">'+alertasEstoque.map(al=>al.label+' ('+al.atual+'/'+al.min+')').join(' · ')+' — toque para ver na aba Estoque.</div></div>' : '')+
-    (pendenciasRetiradaDash.length>0 ? '<div class="card" style="border-left:4px solid var(--warning,#f59e0b);cursor:pointer;" data-ir-falta-retirar="1"><h2>📦 Falta retirar — '+pendenciasRetiradaDash.length+' pendência(s)</h2>'+
-      '<div class="hint">Gás já vendido/recebido que ainda falta o cliente retirar ou vocês entregarem. Toque para abrir.</div></div>' : '')+
+    '<div class="card" style="border-left:4px solid '+(pendenciasRetiradaDash.length>0?'var(--warning,#f59e0b)':'var(--border)')+';cursor:pointer;" data-ir-falta-retirar="1"><h2>'+iconVasilhame(true,null,20,'P13')+' Falta retirar'+(pendenciasRetiradaDash.length>0?' — '+pendenciasRetiradaDash.length+' pendência(s)':'')+'</h2>'+
+      '<div class="hint">'+(pendenciasRetiradaDash.length>0?'Gás já vendido/recebido que ainda falta o cliente retirar ou vocês entregarem.':'Nenhuma pendência agora.')+' Toque para abrir.</div></div>'+
     metaCardDashboardHtml()+googleCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div></div>'+
     '<div class="metric neg"><div class="label">Despesas do dia</div><div class="value">'+fmtMoney(totalDespesasHoje)+'</div></div>'+
@@ -3562,10 +3564,11 @@ function ajustaEstoquePorVenda(categoria, qtd, reverter){
 /* Resolve uma pendência de "Falta retirar": só agora o estoque é descontado (ele ficava
    reservado, sem sair do estoque, enquanto o cliente não retirava/não era entregue).
    forma: 'Cliente retirou' ou 'Entregamos - <meio>'. */
-async function resolverFaltaRetirar(id, forma, freteValor, freteForma){
+async function resolverFaltaRetirar(id, forma, freteValor, freteForma, darBaixa){
   const v = (state.vendas||[]).find(x=>x.id===id);
   if(!v) return;
-  if(!v.estoqueBaixado){
+  if(darBaixa===undefined) darBaixa = true;
+  if(darBaixa && !v.estoqueBaixado){
     ajustaEstoquePorVenda(v.categoria, v.quantidade, false);
     v.estoqueBaixado = true;
   }
@@ -4043,8 +4046,7 @@ function pendenciasRetiradaTable(list){
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
       return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
         '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+'</td><td>'+fmtMoney(v.valor_total)+'</td>'+
-        '<td><button class="btn small" data-retirou-cliente="'+v.id+'">🙋 Cliente retirou</button>'+
-        '<button class="btn small ghost" data-retirou-entregamos="'+v.id+'">🛵 Nós entregamos</button>'+
+        '<td><button class="btn small" data-resolver-pendencia="'+v.id+'">✅ Resolver pendência</button>'+
         '<button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
         '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>';
     }).join('')+'</tbody></table></div>';
@@ -4078,7 +4080,7 @@ function viewFaltaRetirar(){
   const hoje = todayStr();
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
-  return '<div class="card"><h2>📦 Falta retirar</h2>'+ajudaHtml('falta-retirar','Use esta tela pra gás que já foi vendido/recebido (às vezes de antes do sistema novo, às vezes é só alguém que aproveitou o preço e vai retirar quando o gás dela acabar) mas que ainda falta o cliente retirar ou vocês entregarem. O estoque só sai quando você resolve a pendência aqui embaixo ("Cliente retirou" ou "Nós entregamos") — até lá, o produto continua reservado, sem descontar do estoque disponível, e sem contar como uma venda nova nas métricas.')+'</div>'+
+  return '<div class="card"><h2>'+iconVasilhame(true,null,20,'P13')+' Falta retirar</h2>'+ajudaHtml('falta-retirar','Use esta tela pra gás que já foi vendido/recebido (às vezes de antes do sistema novo, às vezes é só alguém que aproveitou o preço e vai retirar quando o gás dela acabar) mas que ainda falta o cliente retirar ou vocês entregarem. O estoque só sai quando você clica em "✅ Resolver pendência" aqui embaixo e escolhe se deu baixa no estoque — até lá, o produto continua reservado, sem descontar do estoque disponível, e sem contar como uma venda nova nas métricas.')+'</div>'+
     '<div class="card"><details><summary><strong>Registrar novo "falta retirar" (clique para abrir)</strong></summary>'+
     '<div class="hint" style="margin-top:8px;">Cliente novo ou já cadastrado, tanto faz. Não lança valor do gás aqui (já foi recebido) — só o valor do frete, se houver, é perguntado depois, na hora de dar baixa.</div>'+
     '<form id="form-falta-retirar-novo" style="margin-top:10px;">'+
@@ -5067,6 +5069,7 @@ function viewRelatorios(){
     {id:'indicacoes', label:'Programa de Indicação'},
     {id:'kpis', label:'Indicadores (KPIs)'},
     {id:'pesquisa', label:'Pesquisa de Clientes'},
+    {id:'pesquisasmanuais', label:'Pesquisas Manuais'},
     {id:'painelacao', label:'Painel de Ação'},
     {id:'esg', label:'Controle ESG'},
     {id:'compararcampanhas', label:'Comparar Campanhas'},
@@ -5090,6 +5093,7 @@ function viewRelatorios(){
   else if(relatorioSub==='indicacoes') content = relatorioIndicacoes();
   else if(relatorioSub==='kpis') content = relatorioKPIs();
   else if(relatorioSub==='pesquisa') content = relatorioPesquisaClientes();
+  else if(relatorioSub==='pesquisasmanuais') content = relatorioPesquisasManuais();
   else if(relatorioSub==='painelacao') content = relatorioPainelAcao();
   else if(relatorioSub==='esg') content = relatorioESG();
   else if(relatorioSub==='compararcampanhas') content = relatorioCompararCampanhas();
@@ -5427,6 +5431,53 @@ function relatorioPesquisaClientes(){
     '<div class="hint">Respostas do link de sugestão/melhoria enviado junto com a pesquisa de satisfação (NPS) pós-entrega. O próprio cliente marca se cada resposta é crítica ou sugestão.</div>'+
     (lista.length===0 ? '<div class="empty">Nenhuma resposta ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Campo</th><th>O que o cliente disse</th><th>Tipo</th><th>Data</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '</div>';
+}
+function relatorioPesquisasManuais(){
+  const lista = (state.respostasPesquisaManual||[]).slice().sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+  const linkPesquisa = location.origin+location.pathname+'?pesquisamanual=1';
+  const totalRespostas = lista.length;
+  const mediaNota = totalRespostas ? (lista.reduce((s,r)=>s+(Number(r.nota)||0),0)/totalRespostas) : null;
+  const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
+  const hoje = todayStr();
+  const linhas = lista.map(r=>'<tr>'+
+    '<td>'+fmtDate(r.data)+'</td>'+
+    '<td>'+escapeHtmlCampanha(r.cliente||'—')+'</td>'+
+    '<td>'+escapeHtmlCampanha(r.telefone||'—')+'</td>'+
+    '<td><strong>'+(r.nota!=null?r.nota:'—')+'</strong></td>'+
+    '<td>'+escapeHtmlCampanha(r.comentario||'—')+'</td>'+
+    '<td>'+(r.origem==='Link'?'🔗 Pelo link':'✍️ Lançada manualmente')+'</td>'+
+    '<td><button class="act-link" data-edit-pesquisa-manual="'+r.id+'">✎ editar</button><button class="del-link" data-del-pesquisa-manual="'+r.id+'">🗑 excluir</button></td>'+
+    '</tr>').join('');
+  return '<div class="card"><h2>📝 Pesquisas Manuais</h2>'+
+    '<div class="hint">Use esta pesquisa pra quando você quer perguntar a opinião do cliente sem estar amarrado a uma entrega específica (ex: uma pesquisa geral de satisfação). Envie o link abaixo pro cliente responder sozinho, ou, se ele te responder por telefone/pessoalmente, lance a resposta manualmente aqui embaixo que ela entra na mesma pesquisa.</div>'+
+    '<div class="form-row" style="margin-top:10px;align-items:flex-end;">'+
+    '<div style="flex:1;"><label>Link da pesquisa (envie pro cliente)</label><input type="text" id="link-pesquisa-manual" value="'+linkPesquisa+'" readonly></div>'+
+    '<div><button type="button" class="btn small ghost" id="btn-copiar-link-pesquisa">📋 Copiar link</button></div>'+
+    '<div><button type="button" class="btn small" id="btn-whatsapp-link-pesquisa">💬 Enviar por WhatsApp</button></div>'+
+    '</div>'+
+    '</div>'+
+    '<div class="card"><div class="grid cols2">'+
+    '<div class="metric"><div class="label">Total de respostas</div><div class="value">'+totalRespostas+'</div></div>'+
+    '<div class="metric"><div class="label">Nota média</div><div class="value">'+(mediaNota!=null?mediaNota.toFixed(1):'—')+'</div></div>'+
+    '</div></div>'+
+    '<div class="card"><details><summary><strong>Lançar resposta manualmente (clique para abrir)</strong></summary>'+
+    '<div class="hint" style="margin-top:8px;">Use quando o cliente te responder por telefone, WhatsApp ou pessoalmente, sem usar o link.</div>'+
+    '<form id="form-pesquisa-manual" style="margin-top:10px;">'+
+    '<div class="form-row">'+
+    '<div><label>Cliente</label><input list="lista-clientes-pesquisa-manual" name="cliente" placeholder="Nome do cliente"><datalist id="lista-clientes-pesquisa-manual">'+clienteOpts+'</datalist></div>'+
+    '<div><label>Telefone (opcional)</label><input type="text" name="telefone" placeholder="Ex: 43999999999"></div>'+
+    '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+    '<div><label>Nota (0 a 10) <span class="req">*</span></label><select name="nota" required>'+opcoesComPlaceholder(Array.from({length:11},(_,n)=>String(n)),'Selecione a nota')+'</select></div>'+
+    '</div>'+
+    '<div><label>Comentário (opcional)</label><input type="text" name="comentario" placeholder="O que o cliente disse"></div>'+
+    '<button type="submit" class="btn" style="margin-top:10px;">Lançar resposta</button>'+
+    '</form></details></div>'+
+    '<div class="card"><h2>Respostas ('+totalRespostas+')</h2>'+
+    (lista.length===0 ? '<div class="empty">Nenhuma resposta ainda.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Nota</th><th>Comentário</th><th>Origem</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
 }
 function relatorioKPIs(){
@@ -6266,7 +6317,7 @@ function renderRelatorioEmpresasResultado(){
   const mesRef = monthKey(de);
   const empresaObj = state.empresas.find(e=>e.nome===empresaSel);
   const linhasVendas = vendasEmpresa.map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td>'+
-    '<td><button class="act-link" data-edit-venda-emp="'+v.id+'">✎ editar</button></td></tr>');
+    '<td><button class="act-link" data-edit-venda-emp="'+v.id+'">✎ editar</button><button class="del-link" data-del-venda-emp="'+v.id+'">🗑 excluir</button></td></tr>');
   const linhasLanc = lancEmpresa.map(c=>'<tr><td>'+fmtDate(c.data)+'</td><td>'+(c.descricao||'Lançamento manual')+'</td><td>—</td><td>'+fmtMoney(c.valor)+'</td>'+
     '<td><button class="act-link" data-edit-convenio="'+c.id+'">✎ editar</button><button class="del-link" data-del-convenio="'+c.id+'">🗑 excluir</button></td></tr>');
   const todasLinhas = linhasVendas.concat(linhasLanc);
@@ -6373,6 +6424,16 @@ function attachConvenioHandlers(){
     pendingEditVendaId = btn.dataset.editVendaEmp;
     currentTab = 'vendas';
     renderAll();
+  });
+  document.querySelectorAll('[data-del-venda-emp]').forEach(btn=>btn.onclick=async()=>{
+    const id = btn.dataset.delVendaEmp;
+    const v = state.vendas.find(x=>x.id===id);
+    if(v && confirm('Excluir esta venda?'+(v.estoqueBaixado?' O estoque será revertido.':' (essa venda ainda não tinha descontado o estoque — nada a reverter)'))){
+      if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
+      state.vendas = state.vendas.filter(x=>x.id!==id);
+      await save('vendas'); await save('estoque');
+      renderAll();
+    }
   });
   document.querySelectorAll('[data-edit-convenio]').forEach(btn=>btn.onclick=()=>{
     const ci = state.convenioLancamentos.find(x=>x.id===btn.dataset.editConvenio);
@@ -7370,19 +7431,20 @@ function attachHandlers(){
         renderAll();
       }
     });
-    document.querySelectorAll('[data-retirou-cliente]').forEach(btn=>btn.onclick=()=>{
-      resolverFaltaRetirar(btn.dataset.retirouCliente, 'Cliente retirou');
-    });
-    document.querySelectorAll('[data-retirou-entregamos]').forEach(btn=>btn.onclick=()=>{
-      const meios = ['Entrega a pé','Entrega de moto','Entrega de carro','Entrega de Strada'];
-      const escolha = prompt('Qual foi o meio de entrega?\n1 - A pé\n2 - Moto\n3 - Carro\n4 - Strada\n\nDigite o número:');
+    document.querySelectorAll('[data-resolver-pendencia]').forEach(btn=>btn.onclick=()=>{
+      const id = btn.dataset.resolverPendencia;
+      const opcoesForma = ['Cliente retirou','Entrega a pé'].concat((state.veiculos||[]).map(vc=>'Entrega de '+vc.nome));
+      const listaTexto = opcoesForma.map((o,i)=>(i+1)+' - '+o).join('\n');
+      const escolha = prompt('Qual foi a forma de entrega?\n'+listaTexto+'\n\nDigite o número:');
       const idx = Number(escolha)-1;
-      if(idx<0 || idx>=meios.length) return;
-      const freteStr = prompt('Vai cobrar frete nessa entrega? Digite o valor em R$ (ou deixe em branco se não vai cobrar):');
+      if(!(idx>=0 && idx<opcoesForma.length)) return;
+      const forma = opcoesForma[idx];
+      const freteStr = prompt('Ganhou algo com o frete dessa entrega/retirada? Digite o valor em R$ (ou deixe em branco se não):');
       const freteValor = freteStr ? (Number(String(freteStr).replace(',','.'))||0) : 0;
       let freteForma = '';
       if(freteValor>0) freteForma = prompt('Forma de pagamento do frete (ex: Dinheiro, Pix, Cartão):') || '';
-      resolverFaltaRetirar(btn.dataset.retirouEntregamos, 'Entregamos - '+meios[idx], freteValor, freteForma);
+      const darBaixa = confirm('Dar baixa no estoque agora?\n\nOK = Sim, descontar do estoque\nCancelar = Não descontar agora');
+      resolverFaltaRetirar(id, forma, freteValor, freteForma, darBaixa);
     });
     document.querySelectorAll('[data-edit-venda-ag]').forEach(btn=>btn.onclick=()=>{
       pendingEditVendaId = btn.dataset.editVendaAg;
@@ -7633,6 +7695,60 @@ function attachHandlers(){
   attachDespesaRowHandlers();
   attachClienteRowHandlers();
   attachEmpresaRowHandlers();
+
+  const fPesquisaManual = document.getElementById('form-pesquisa-manual');
+  if(fPesquisaManual) fPesquisaManual.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(fPesquisaManual);
+    if(!Array.isArray(state.respostasPesquisaManual)) state.respostasPesquisaManual = [];
+    if(editPesquisaManualId){
+      const r = state.respostasPesquisaManual.find(x=>x.id===editPesquisaManualId);
+      if(r){
+        r.cliente = (f.get('cliente')||'').trim(); r.telefone = (f.get('telefone')||'').trim();
+        r.data = f.get('data'); r.nota = Number(f.get('nota')); r.comentario = (f.get('comentario')||'').trim();
+      }
+      editPesquisaManualId = null;
+    } else {
+      state.respostasPesquisaManual.push({
+        id:uid(), cliente:(f.get('cliente')||'').trim(), telefone:(f.get('telefone')||'').trim(),
+        data:f.get('data'), nota:Number(f.get('nota')), comentario:(f.get('comentario')||'').trim(),
+        origem:'Manual', criadoEm:Date.now()
+      });
+    }
+    const ok = await save('respostasPesquisaManual');
+    if(!ok) return;
+    renderAll();
+  };
+  document.querySelectorAll('[data-edit-pesquisa-manual]').forEach(btn=>btn.onclick=()=>{
+    const r = (state.respostasPesquisaManual||[]).find(x=>x.id===btn.dataset.editPesquisaManual);
+    const fpm = document.getElementById('form-pesquisa-manual');
+    if(!r || !fpm) return;
+    editPesquisaManualId = r.id;
+    fpm.cliente.value=r.cliente||''; fpm.telefone.value=r.telefone||''; fpm.data.value=r.data||todayStr();
+    fpm.nota.value=String(r.nota!=null?r.nota:''); fpm.comentario.value=r.comentario||'';
+    fpm.querySelector('button[type=submit]').textContent='Salvar alterações';
+    const det = fpm.closest('details'); if(det) det.open = true;
+    fpm.scrollIntoView({behavior:'smooth'});
+  });
+  document.querySelectorAll('[data-del-pesquisa-manual]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir esta resposta?')) return;
+    state.respostasPesquisaManual = (state.respostasPesquisaManual||[]).filter(x=>x.id!==btn.dataset.delPesquisaManual);
+    const ok = await save('respostasPesquisaManual');
+    if(!ok) return;
+    renderAll();
+  });
+  const btnCopiarLinkPesquisa = document.getElementById('btn-copiar-link-pesquisa');
+  if(btnCopiarLinkPesquisa) btnCopiarLinkPesquisa.onclick = async()=>{
+    const input = document.getElementById('link-pesquisa-manual');
+    try{ await navigator.clipboard.writeText(input.value); btnCopiarLinkPesquisa.textContent='✅ Copiado!'; setTimeout(()=>{ btnCopiarLinkPesquisa.textContent='📋 Copiar link'; },2000); }
+    catch(e){ input.select(); document.execCommand('copy'); }
+  };
+  const btnWhatsappLinkPesquisa = document.getElementById('btn-whatsapp-link-pesquisa');
+  if(btnWhatsappLinkPesquisa) btnWhatsappLinkPesquisa.onclick = ()=>{
+    const link = document.getElementById('link-pesquisa-manual').value;
+    const msg = 'Oi! Poderia responder essa pesquisa rapidinha pra gente? '+link;
+    window.open('https://wa.me/?text='+encodeURIComponent(msg), '_blank');
+  };
 
   document.querySelectorAll('[data-edit-fiado]').forEach(btn=>btn.onclick=()=>{
     const fi = state.fiados.find(x=>x.id===btn.dataset.editFiado);
@@ -11362,6 +11478,48 @@ async function iniciarNPSPublico(tipo, id){
   }
   render();
 }
+async function iniciarPesquisaManualPublica(){
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'max-width:480px;margin:40px auto;padding:24px;font-family:system-ui,sans-serif;';
+  document.body.innerHTML=''; document.body.appendChild(wrap);
+  let notaEscolhida = null;
+  function render(){
+    wrap.innerHTML =
+      '<div style="text-align:center;margin-bottom:18px;"><h2 style="margin:0;">Tom Gás</h2><div style="color:#777;font-size:13px;">Sua opinião é rápida e importante</div></div>'+
+      '<div style="text-align:center;font-weight:bold;font-size:16px;margin-bottom:16px;">De 0 a 10, o quanto você recomendaria a Tom Gás pra um amigo?</div>'+
+      '<div id="pm-botoes" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:16px;">'+
+      Array.from({length:11},(_,n)=>'<button type="button" data-nota="'+n+'" style="padding:10px 0;border-radius:8px;border:2px solid '+(notaEscolhida===n?'#25D366':'#ddd')+';background:'+(notaEscolhida===n?'#25D366':'#fff')+';color:'+(notaEscolhida===n?'#fff':'#333')+';font-weight:bold;">'+n+'</button>').join('')+
+      '</div>'+
+      '<div style="display:flex;justify-content:space-between;font-size:11px;color:#999;margin-top:-10px;margin-bottom:20px;"><span>0 = muito ruim</span><span>10 = excelente</span></div>'+
+      '<label style="font-size:13px;display:block;margin-bottom:4px;">Seu nome (opcional)</label>'+
+      '<input id="pm-nome" type="text" placeholder="Nome" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;box-sizing:border-box;">'+
+      '<label style="font-size:13px;display:block;margin-bottom:4px;">Seu telefone (opcional)</label>'+
+      '<input id="pm-telefone" type="text" placeholder="Telefone/WhatsApp" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;box-sizing:border-box;">'+
+      '<textarea id="pm-comentario" placeholder="Quer nos contar mais alguma coisa? (opcional)" style="width:100%;min-height:70px;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;box-sizing:border-box;"></textarea>'+
+      '<button id="pm-enviar" style="width:100%;padding:14px;font-size:15px;font-weight:bold;background:#25D366;color:#fff;border:none;border-radius:10px;" '+(notaEscolhida===null?'disabled':'')+'>Enviar</button>'+
+      '<div id="pm-msg" style="margin-top:12px;text-align:center;font-weight:bold;color:#188038;"></div>';
+    wrap.querySelectorAll('[data-nota]').forEach(btn=>btn.onclick=()=>{ notaEscolhida=Number(btn.dataset.nota); render(); });
+    const btnEnviar = document.getElementById('pm-enviar');
+    if(btnEnviar) btnEnviar.onclick = async()=>{
+      if(notaEscolhida===null) return;
+      btnEnviar.disabled=true; btnEnviar.textContent='Enviando...';
+      try{
+        const { data, error } = await supabaseClient.from('app_data').select('chave,valor').eq('chave','respostasPesquisaManual');
+        if(error) throw error;
+        const respostas = (data && data[0] && data[0].valor) || [];
+        respostas.push({
+          id:uid(), cliente:document.getElementById('pm-nome').value||'', telefone:document.getElementById('pm-telefone').value||'',
+          nota:notaEscolhida, comentario:document.getElementById('pm-comentario').value||'',
+          origem:'Link', data:todayStr(), criadoEm:Date.now()
+        });
+        const { error:err2 } = await supabaseClient.from('app_data').upsert({chave:'respostasPesquisaManual',valor:respostas,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
+        if(err2) throw err2;
+        wrap.innerHTML = '<div style="text-align:center;padding:40px 10px;"><div style="font-size:40px;">🙏</div><h3>Muito obrigado!</h3><div style="color:#666;">Sua resposta foi registrada.</div></div>';
+      }catch(e){ btnEnviar.disabled=false; btnEnviar.textContent='Enviar'; alert('Não foi possível enviar. Tente novamente.'); }
+    };
+  }
+  render();
+}
 async function init(){
   const paramsUrl = new URLSearchParams(location.search);
   const entregaId = paramsUrl.get('entrega');
@@ -11372,6 +11530,8 @@ async function init(){
   if(npsParam){ const [tipoNps,idNps] = npsParam.split(':'); await iniciarNPSPublico(tipoNps==='ag'?'agendamento':'venda', idNps); return; }
   const rastrearId = paramsUrl.get('rastrear');
   if(rastrearId){ await iniciarRastreioPublico(rastrearId); return; }
+  const pesquisaManualParam = paramsUrl.get('pesquisamanual');
+  if(pesquisaManualParam){ await iniciarPesquisaManualPublica(); return; }
   attachAuthHandlers();
   attachLogoInput();
   registerServiceWorker();
