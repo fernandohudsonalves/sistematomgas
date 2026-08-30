@@ -182,6 +182,11 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .table-wrap td .badge,.table-wrap td .pill{white-space:nowrap;}
 .table-wrap td button{font-size:11.5px;padding:2px 4px;}
 .ajuda-btn{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#f0ad00;color:#fff;border:none;font-weight:bold;font-size:12px;cursor:pointer;margin-left:6px;vertical-align:middle;padding:0;line-height:1;}
+.lapidar-btn{background:#4169E1;font-size:10px;}
+.lapidar-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;background:#4169E1;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;cursor:help;}
+.lapidar-conteudo{background:#EEF2FF;border:1px solid #4169E1;border-radius:8px;padding:10px 12px;margin:8px 0 4px;font-size:12.5px;line-height:1.5;color:#333;max-width:520px;}
+.lapidar-conteudo textarea{width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;}
+html[data-theme="dark"] .lapidar-conteudo{background:#111a3a;border-color:#4169E1;color:var(--text2);}
 .ajuda-conteudo{background:#fff8e6;border:1px solid #f0ad00;border-radius:8px;padding:10px 12px;margin:8px 0 4px;font-size:12.5px;line-height:1.5;color:#333;}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 th{text-align:left;color:var(--text2);font-weight:600;font-size:11px;text-transform:uppercase;padding:8px 6px;border-bottom:2px solid var(--border);white-space:nowrap;}
@@ -260,15 +265,15 @@ table td:last-child{min-width:180px;}
   background-image:repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px calc(100%/12)),repeating-linear-gradient(to bottom, var(--border) 0 1px, transparent 1px calc(100%/10));}
 .vaga-bolinha-abs{position:absolute;box-sizing:border-box;border-radius:50%;cursor:default;display:flex;align-items:center;justify-content:center;overflow:visible;}
 .vaga-bolinha-rotulo{font-size:5.5px;font-weight:700;line-height:1;white-space:nowrap;pointer-events:none;transform:scale(1);}
-.seletor-series-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:12px;}
-.chk-serie-item{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2,var(--bg));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}
+.seletor-series-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.chk-serie-item{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2,var(--bg));white-space:nowrap;cursor:pointer;}
 .chk-serie-item input{flex-shrink:0;margin:0;}
-.chk-serie-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chk-serie-item span{white-space:nowrap;}
 .chk-serie-item:has(input:checked){border-color:var(--royal,#4169E1);background:color-mix(in srgb, var(--royal,#4169E1) 10%, var(--bg2,var(--bg)));}
 @media (max-width:640px){
   .deposito-grid-quadrado{max-width:100%;}
   .vaga-bolinha-rotulo{font-size:4.2px;}
-  .seletor-series-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));}
+  .chk-serie-item{font-size:12px;padding:6px 8px;}
 }
 .checkbox-item{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;width:100%;}
 .checkbox-item input{width:auto;}
@@ -741,6 +746,7 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Relatórios: Itens por categoria', kw:'itens por categoria produtos vendidos', tab:'relatorios', sub:'itens'},
   {label:'Relatórios: Entregas por período', kw:'entregas por periodo relatorio', tab:'relatorios', sub:'entregas'},
   {label:'Relatórios: Despesas por período', kw:'despesas por periodo relatorio', tab:'relatorios', sub:'despesas'},
+  {label:'Relatórios: Veículos', kw:'veiculos km quilometragem gasto comparativo relatorio', tab:'relatorios', sub:'veiculos'},
   {label:'Relatórios: Fiado / A receber', kw:'fiado a receber relatorio', tab:'relatorios', sub:'fiado'},
   {label:'Relatórios: Créditos em haver', kw:'creditos em haver relatorio', tab:'relatorios', sub:'creditos'},
   {label:'Relatórios: Comodatos / Empréstimos', kw:'comodatos emprestimos relatorio', tab:'relatorios', sub:'comodatos'},
@@ -1165,6 +1171,7 @@ let state = {
   contasPagar: [],
   oficinasManutencao: [],
   veiculoKm: [],
+  lapidarItens: {},
   veiculos: [
     {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
     {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️', corIcone:'#2563eb'},
@@ -2712,7 +2719,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','usuariosSistema','calendarioEditorial','localizacaoEntregadores'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','usuariosSistema','calendarioEditorial','localizacaoEntregadores'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2786,6 +2793,7 @@ async function loadAll(){
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
   if(!Array.isArray(state.veiculoKm)) state.veiculoKm = [];
+  if(!state.lapidarItens || typeof state.lapidarItens!=='object' || Array.isArray(state.lapidarItens)) state.lapidarItens = {};
   if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
   if(!Array.isArray(state.fechamentosCaixa)) state.fechamentosCaixa = [];
   if(!Array.isArray(state.contasPagar)) state.contasPagar = [];
@@ -2893,7 +2901,7 @@ async function save(key){
     return true;
   }catch(e){ console.error('Erro ao salvar', key, e); alert('Não foi possível salvar no Supabase: '+(e.message||e)); return false; }
 }
-const LABEL_AREA_LOG = {vendas:'Vendas',despesas:'Despesas',clientes:'Clientes',empresas:'Empresas',produtos:'Produtos',estoque:'Estoque',estoqueLancamentos:'Estoque',categoriasProdutos:'Categorias de produtos',categoriasDespesas:'Categorias de despesas',fiados:'Fiados',fiadoPagamentos:'Pagamentos de fiado',creditos:'Créditos',comodatos:'Comodatos',agendamentos:'Agendamentos',metas:'Metas',comunicados:'Comunicados',funcionarios:'Funcionários',campanhas:'Campanhas',pendenciasConferencia:'Pendências de conferência',entregadores:'Entregadores',acertosEntrega:'Acertos de entrega',veiculos:'Veículos',veiculoKm:'Quilometragem de veículos',oficinasManutencao:'Empresas de manutenção',rotaConfig:'Configuração de rota',paradasRota:'Paradas de rota'};
+const LABEL_AREA_LOG = {vendas:'Vendas',despesas:'Despesas',clientes:'Clientes',empresas:'Empresas',produtos:'Produtos',estoque:'Estoque',estoqueLancamentos:'Estoque',categoriasProdutos:'Categorias de produtos',categoriasDespesas:'Categorias de despesas',fiados:'Fiados',fiadoPagamentos:'Pagamentos de fiado',creditos:'Créditos',comodatos:'Comodatos',agendamentos:'Agendamentos',metas:'Metas',comunicados:'Comunicados',funcionarios:'Funcionários',campanhas:'Campanhas',pendenciasConferencia:'Pendências de conferência',entregadores:'Entregadores',acertosEntrega:'Acertos de entrega',veiculos:'Veículos',veiculoKm:'Quilometragem de veículos',lapidarItens:'Itens do Lapidar',oficinasManutencao:'Empresas de manutenção',rotaConfig:'Configuração de rota',paradasRota:'Paradas de rota'};
 function registrarLogAtividade(key){
   if(!Array.isArray(state.logAtividades)) state.logAtividades=[];
   state.logAtividades.push({id:uid(), quando:Date.now(), usuario:usuarioAtualNome, area: LABEL_AREA_LOG[key]||key});
@@ -4312,7 +4320,19 @@ function clientesPorGrupo(grupo){ return (state.clientes||[]).filter(c=>gruposCl
 function escapeHtmlCampanha(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function ajudaHtml(id, texto){
   return '<button type="button" class="ajuda-btn" data-ajuda-toggle="'+id+'" title="Ajuda">!</button>'+
-    '<div class="ajuda-conteudo" id="ajuda-'+id+'" style="display:none;">💡 '+texto+'</div>';
+    '<div class="ajuda-conteudo" id="ajuda-'+id+'" style="display:none;">💡 '+texto+'</div>'+
+    lapidarHtml(id);
+}
+function lapidarHtml(id){
+  const item = (state.lapidarItens||{})[id] || {marcado:false, descricao:''};
+  const badge = item.marcado ? '<span class="lapidar-badge" title="'+escapeHtmlCampanha(item.descricao||'')+'">🏷️ Lapidar</span>' : '';
+  return badge+
+    '<button type="button" class="ajuda-btn lapidar-btn" data-lapidar-toggle="'+id+'" title="Marcar/editar item do Lapidar">🏷️</button>'+
+    '<div class="lapidar-conteudo" id="lapidar-'+id+'" style="display:none;">'+
+      '<label style="display:flex;align-items:center;gap:6px;font-weight:600;margin-bottom:6px;"><input type="checkbox" id="lapidar-chk-'+id+'" '+(item.marcado?'checked':'')+'> Marcar esta área como item do Lapidar</label>'+
+      '<textarea id="lapidar-desc-'+id+'" rows="3" placeholder="Explique aqui, para o Lapidar, o que é essa parte do sistema...">'+escapeHtmlCampanha(item.descricao||'')+'</textarea>'+
+      '<button type="button" class="btn small" style="margin-top:6px;" data-lapidar-salvar="'+id+'">Salvar</button>'+
+    '</div>';
 }
 function viewClientes(){
   return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'+
@@ -4860,8 +4880,19 @@ function viewConfig(){
     '<button type="button" class="btn small" id="btn-zerar-dados" style="background:var(--danger);margin-top:10px;">Zerar todos os lançamentos</button>'+
     '</details>'+
     '</div>'+
+    viewLapidarResumo()+
     viewLGPD()+
     viewLogAtividades();
+}
+function viewLapidarResumo(){
+  const itens = Object.entries(state.lapidarItens||{}).filter(([id,it])=>it&&it.marcado);
+  const linhas = itens.map(([id,it])=>'<tr><td>'+escapeHtmlCampanha(id)+'</td><td>'+escapeHtmlCampanha(it.descricao||'—')+'</td></tr>').join('');
+  return '<div class="config-group-title">Lapidar</div>'+
+    '<div class="card"><h2>🏷️ Itens marcados como Lapidar</h2>'+
+    '<div class="hint">Clique no ícone 🏷️ ao lado do título de qualquer seção do sistema pra marcar essa área como um item do Lapidar e escrever uma descrição explicando o que ela faz — útil pra apresentar o sistema pra futuros clientes. Aqui embaixo fica a lista de tudo que já foi marcado.</div>'+
+    (itens.length===0 ? '<div class="empty" style="margin-top:10px;">Nenhum item marcado como Lapidar ainda.</div>' :
+    '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Área do sistema</th><th>Descrição</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '</div>';
 }
 function viewLGPD(){
   return '<div class="card"><h2>🔒 LGPD — Privacidade dos clientes</h2>'+
@@ -4909,6 +4940,7 @@ function viewRelatorios(){
     {id:'itens', label:'Itens por categoria'},
     {id:'entregas', label:'Entregas por período'},
     {id:'despesas', label:'Despesas por período'},
+    {id:'veiculos', label:'Veículos'},
     {id:'fiado', label:'Fiado / A receber'},
     {id:'creditos', label:'Créditos em haver'},
     {id:'comodatos', label:'Comodatos / Empréstimos'},
@@ -4932,6 +4964,7 @@ function viewRelatorios(){
   else if(relatorioSub==='itens') content = relatorioItens();
   else if(relatorioSub==='entregas') content = relatorioEntregas();
   else if(relatorioSub==='despesas') content = relatorioDespesas();
+  else if(relatorioSub==='veiculos') content = relatorioVeiculos();
   else if(relatorioSub==='fiado') content = relatorioFiado();
   else if(relatorioSub==='creditos') content = relatorioCreditos();
   else if(relatorioSub==='comodatos') content = relatorioComodatos();
@@ -5390,6 +5423,65 @@ function relatorioDespesas(){
     '<div><label>De</label><input type="date" id="rd-de" value="'+firstOfMonth()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rd-ate" value="'+todayStr()+'"></div></div>'+
     '<button class="btn small ghost" id="rd-filtrar">Filtrar</button><div id="rd-resultado" style="margin-top:16px;"></div>';
+}
+function relatorioVeiculos(){
+  const veiculos = state.veiculos||[];
+  if(veiculos.length===0) return '<div class="empty">Nenhum veículo cadastrado ainda.</div>';
+  const mesAtual = monthKey(todayStr());
+  const linhas = veiculos.map(v=>{
+    const total = totalGastoVeiculo(v.id);
+    const totalMes = state.despesas.filter(d=>d.veiculoId===v.id && monthKey(d.data)===mesAtual).reduce((s,d)=>s+d.valor,0);
+    const km = kmUltimoRegistro(v.id);
+    const comparativo = kmComparativoMensal(v.id);
+    const compMesAtual = comparativo.find(c=>c.mes===mesAtual);
+    const rodadoMes = compMesAtual ? compMesAtual.rodado : null;
+    const custoPorKm = (rodadoMes && rodadoMes>0) ? (totalMes/rodadoMes) : null;
+    return {v, total, totalMes, km, comparativo, rodadoMes, custoPorKm};
+  });
+  const maiorGasto = Math.max(1, ...linhas.map(l=>l.total));
+
+  const tabelaGeral = '<div class="table-wrap"><table><thead><tr><th>Veículo</th><th>Gasto total</th><th>Gasto no mês</th><th>Km atual</th><th>Km rodado no mês</th><th>R$/km no mês</th></tr></thead><tbody>'+
+    linhas.map(l=>'<tr><td>'+iconeVeiculoHtml(l.v,15)+' '+escapeHtmlCampanha(l.v.nome)+'</td><td>'+fmtMoney(l.total)+'</td><td>'+fmtMoney(l.totalMes)+'</td>'+
+      '<td>'+(l.km?(l.km.km.toLocaleString('pt-BR')+' km'):'—')+'</td>'+
+      '<td>'+(l.rodadoMes!=null?((l.rodadoMes>=0?'+':'')+l.rodadoMes.toLocaleString('pt-BR')+' km'):'—')+'</td>'+
+      '<td>'+(l.custoPorKm!=null?(fmtMoney(l.custoPorKm)+'/km'):'—')+'</td></tr>').join('')+
+    '</tbody></table></div>';
+
+  const grafico = linhas.map(l=>{
+    const pct = Math.round((l.total/maiorGasto)*100);
+    return '<div style="margin-bottom:10px;">'+
+      '<div style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:3px;">'+iconeVeiculoHtml(l.v,15)+' '+escapeHtmlCampanha(l.v.nome)+' <strong style="margin-left:auto;">'+fmtMoney(l.total)+'</strong></div>'+
+      '<div style="background:var(--border);border-radius:6px;height:10px;overflow:hidden;"><div style="width:'+pct+'%;background:'+(l.v.corIcone||'#1E3A8A')+';height:100%;"></div></div>'+
+      '</div>';
+  }).join('');
+
+  const kmComparativoTabelas = linhas.map(l=>{
+    if(l.comparativo.length===0) return '';
+    const linhasKm = l.comparativo.slice().reverse().map(c=>
+      '<tr><td>'+nomeMes(c.mes)+'</td><td>'+c.km.toLocaleString('pt-BR')+' km</td>'+
+      '<td>'+(c.rodado!=null?((c.rodado>=0?'+':'')+c.rodado.toLocaleString('pt-BR')+' km'):'—')+'</td></tr>'
+    ).join('');
+    return '<div style="margin-bottom:14px;"><strong>'+iconeVeiculoHtml(l.v,15)+' '+escapeHtmlCampanha(l.v.nome)+'</strong>'+
+      '<div class="table-wrap" style="margin-top:4px;"><table><thead><tr><th>Mês</th><th>Km final do mês</th><th>Km rodado no mês</th></tr></thead><tbody>'+linhasKm+'</tbody></table></div></div>';
+  }).join('');
+
+  const categoriasDetalhe = linhas.map(l=>{
+    const porCategoria = {};
+    state.despesas.filter(d=>d.veiculoId===l.v.id).forEach(d=>{ porCategoria[d.categoria]=(porCategoria[d.categoria]||0)+d.valor; });
+    const cats = Object.keys(porCategoria).sort((a,b)=>porCategoria[b]-porCategoria[a]);
+    if(cats.length===0) return '';
+    return '<div style="margin-bottom:14px;"><strong>'+iconeVeiculoHtml(l.v,15)+' '+escapeHtmlCampanha(l.v.nome)+'</strong>'+
+      '<div class="table-wrap" style="margin-top:4px;"><table><thead><tr><th>Categoria</th><th>Total gasto</th></tr></thead><tbody>'+
+      cats.map(c=>'<tr><td>'+escapeHtmlCampanha(c)+'</td><td>'+fmtMoney(porCategoria[c])+'</td></tr>').join('')+
+      '</tbody></table></div></div>';
+  }).join('');
+
+  return '<h3>🚙 Relatório de Veículos</h3>'+ajudaHtml('relatorio-veiculos','Visão geral de todos os veículos: quanto cada um gastou (no total e no mês), a quilometragem no fim do mês, quanto rodou e o custo por km rodado — pra comparar qual veículo está pesando mais no bolso.')+
+    '<div class="hint">Comparativo geral entre todos os veículos. O "R$/km no mês" só aparece quando há leitura de quilometragem registrada pra esse mês (Veículos → Ver histórico → Quilometragem).</div>'+
+    tabelaGeral+
+    '<h3 style="margin-top:18px;">Comparativo de gasto total entre veículos</h3>'+grafico+
+    '<h3 style="margin-top:18px;">Quilometragem por mês (por veículo)</h3>'+(kmComparativoTabelas || '<div class="empty">Nenhuma quilometragem registrada ainda.</div>')+
+    '<h3 style="margin-top:18px;">Gasto por categoria (por veículo)</h3>'+(categoriasDetalhe || '<div class="empty">Nenhuma despesa lançada ainda.</div>');
 }
 /* ---------- PAINEL DE AÇÃO (Indicador -> Meta -> Resultado -> Ação) ---------- */
 function linhaPainelAcao(indicador, meta, resultadoTxt, atingiu, acao){
@@ -6375,6 +6467,21 @@ function attachHandlers(){
     e.preventDefault();
     const el = document.getElementById('ajuda-'+btn.dataset.ajudaToggle);
     if(el) el.style.display = el.style.display==='none' ? 'block' : 'none';
+  });
+  document.querySelectorAll('[data-lapidar-toggle]').forEach(btn=>btn.onclick=(e)=>{
+    e.preventDefault();
+    const el = document.getElementById('lapidar-'+btn.dataset.lapidarToggle);
+    if(el) el.style.display = el.style.display==='none' ? 'block' : 'none';
+  });
+  document.querySelectorAll('[data-lapidar-salvar]').forEach(btn=>btn.onclick=async(e)=>{
+    e.preventDefault();
+    const id = btn.dataset.lapidarSalvar;
+    const chk = document.getElementById('lapidar-chk-'+id);
+    const desc = document.getElementById('lapidar-desc-'+id);
+    if(!state.lapidarItens || typeof state.lapidarItens!=='object') state.lapidarItens = {};
+    state.lapidarItens[id] = { marcado: !!(chk&&chk.checked), descricao: (desc?desc.value:'').trim() };
+    await save('lapidarItens');
+    renderAll();
   });
   seletorVendaMain = wireSeletorCategoria({
     grupoId:'sel-grupo', etiquetaWrapId:'wrap-etiqueta', etiquetaId:'sel-etiqueta',
