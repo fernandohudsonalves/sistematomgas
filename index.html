@@ -70,6 +70,8 @@ html[data-theme="dark"] .ajuda-conteudo{background:#2E260F;border-color:#8a6d00;
 html[data-theme="dark"] .import-conferencia-alert{background:#3A2A10;border-color:#8a6d00;color:#FBBF24;}
 html[data-theme="dark"] .item-venda-row{background:var(--bg);}
 html[data-theme="dark"] .ag-item .ag-meta{color:var(--text3);}
+html[data-theme="dark"] #agenda-fechar{color:#fff;}
+html[data-theme="dark"] .badge.nota{color:#fff;}
 html[data-theme="dark"] .del-link{background:#3A1A1E;}
 html[data-theme="dark"] .cap-bar{background:repeating-linear-gradient(45deg,#182035 0 10px,#141C30 10px 20px);}
 html[data-theme="dark"] .lc-card{background:linear-gradient(180deg,var(--card) 0%,var(--blue-tint) 130%);}
@@ -265,15 +267,15 @@ table td:last-child{min-width:180px;}
   background-image:repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px calc(100%/12)),repeating-linear-gradient(to bottom, var(--border) 0 1px, transparent 1px calc(100%/10));}
 .vaga-bolinha-abs{position:absolute;box-sizing:border-box;border-radius:50%;cursor:default;display:flex;align-items:center;justify-content:center;overflow:visible;}
 .vaga-bolinha-rotulo{font-size:5.5px;font-weight:700;line-height:1;white-space:nowrap;pointer-events:none;transform:scale(1);}
-.seletor-series-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
-.chk-serie-item{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2,var(--bg));white-space:nowrap;cursor:pointer;}
-.chk-serie-item input{flex-shrink:0;margin:0;}
+.seletor-series-grid{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
+.chk-serie-item{display:inline-flex;flex:0 0 auto;align-items:center;gap:8px;font-size:13px;font-weight:600;padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg2,var(--bg));white-space:nowrap;cursor:pointer;}
+.chk-serie-item input{flex-shrink:0;margin:0;width:16px;height:16px;}
 .chk-serie-item span{white-space:nowrap;}
 .chk-serie-item:has(input:checked){border-color:var(--royal,#4169E1);background:color-mix(in srgb, var(--royal,#4169E1) 10%, var(--bg2,var(--bg)));}
 @media (max-width:640px){
   .deposito-grid-quadrado{max-width:100%;}
   .vaga-bolinha-rotulo{font-size:4.2px;}
-  .chk-serie-item{font-size:12px;padding:6px 8px;}
+  .chk-serie-item{font-size:12px;padding:6px 10px;}
 }
 .checkbox-item{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;width:100%;}
 .checkbox-item input{width:auto;}
@@ -520,13 +522,14 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "18/08/2026 21:40";
+const APP_BUILD_HORARIO = "1.0_30_08_2026";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
       <button id="menu-toggle" title="Abrir menu" aria-label="Abrir menu">☰</button>
       <div class="dot"></div>
       <h1>Sistema Tom Gás</h1>
+      <span class="pill" style="margin-left:8px;background:rgba(255,255,255,.15);color:#fff;font-size:10px;" title="Versão do sistema">v${APP_BUILD_HORARIO}</span>
       <span id="etiqueta-data-hoje" class="pill" style="margin-left:10px;background:rgba(255,255,255,.15);color:#fff;"></span>
     </div>
     <div id="busca-sistema-wrap" style="position:relative;flex:1;max-width:260px;margin:0 12px;">
@@ -613,9 +616,9 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
   </div>
 </div>
 <button id="rota-fab" title="Gerar rota rápida">🗺️</button>
-<button id="calc-fab" title="Calculadora">🧮</button>
+<button id="calc-fab" title="Calculadora">🖩</button>
 <div id="calc-panel">
-  <div id="calc-head">🧮 Calculadora <button type="button" id="calc-fechar">✕</button></div>
+  <div id="calc-head">🖩 Calculadora <button type="button" id="calc-fechar">✕</button></div>
   <div id="calc-body">
     <input type="text" id="calc-display" readonly value="0">
     <div class="calc-grid">
@@ -1033,7 +1036,7 @@ const VAPID_PUBLIC_KEY = "BJhtEhjv3z9JMW44Yg3JsfoGYR4lNcINkr1fRzNLxvx-jzxtErj7Ew
 const CANAIS = ['Portaria','WhatsApp','Venda Ativa','Ligação','Hub','Google'];
 const PAGAMENTOS = ['Dinheiro','Débito','Crédito','Vale gás','Gás do povo','Pix','Abateu','Marcou/Fiado','Outros'];
 const NOTAS = ['Nota fiscal','Cupom não fiscal','Já lançado','Não lança'];
-const TIPOS_ENTREGA = ['Retirada','Entrega a pé','Entrega de carro','Entrega de moto','Entrega de Strada'];
+const TIPOS_ENTREGA = ['Retirada','Falta retirar','Entrega a pé','Entrega de carro','Entrega de moto','Entrega de Strada'];
 const TIPOS_ENTREGA_COM_FRETE = ['Entrega de carro','Entrega de moto','Entrega de Strada'];
 
 const CATEGORIAS_ESTOQUE = {};
@@ -2230,12 +2233,14 @@ const imgs = {
     'Entrega de Strada': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAHCAYAAADXhRcnAAAAxElEQVQYlW3QIU+CYRQF4AfFTTcsjOaG3cEYxQAzaGZkk0ESP8GOhWywWdgIJIgkOhSDREfF5MZEgwp7t5ft2zdOurs7595zTqZY60rhDmV8ooQ5luhjlaQepJU4xBMeMUMH73hAIUnMood84tAZ7vGNc1zHuYIGRhhiGmyvcbLHwT784Bj/aIXPGbxhEOcbXKWUX3jGH07RDnGCOJQwxiJeDrsqjhLiCT6CVdTxust8iRya2MRML7G4HcKDW1zE5hv43QKS8CeKzldLEQAAAABJRU5ErkJggg==',
   };
   const b64 = imgs[tipo];
+  if(tipo==='Falta retirar') return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><line x1="12" y1="7" x2="12" y2="13"/><circle cx="12" cy="16.5" r="0.9" fill="#F59E0B"/></svg>';
   if(!b64) return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+(cor||'#1E3A8A')+'" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/></svg>';
   return '<img src="data:image/png;base64,'+b64+'" width="'+s+'" style="vertical-align:middle;image-rendering:-webkit-optimize-contrast;" alt="'+tipo+'">';
 }
 function entregaLabel(tipo, hora){
   if(!tipo) return '—';
-  return '<span style="display:inline-flex;align-items:center;gap:5px;">'+iconEntrega(tipo,'#1E3A8A')+'<span>'+tipo+(hora?' às '+hora:'')+'</span></span>';
+  const destaque = tipo==='Falta retirar' ? 'color:#F59E0B;font-weight:700;' : '';
+  return '<span style="display:inline-flex;align-items:center;gap:5px;'+destaque+'">'+iconEntrega(tipo,'#1E3A8A')+'<span>'+tipo+(hora?' às '+hora:'')+'</span></span>';
 }
 function novoItemVendaRow(opts){
   opts = opts || {};
@@ -4325,9 +4330,9 @@ function ajudaHtml(id, texto){
 }
 function lapidarHtml(id){
   const item = (state.lapidarItens||{})[id] || {marcado:false, descricao:''};
-  const badge = item.marcado ? '<span class="lapidar-badge" title="'+escapeHtmlCampanha(item.descricao||'')+'">🏷️ Lapidar</span>' : '';
+  const badge = item.marcado ? '<span class="lapidar-badge" title="'+escapeHtmlCampanha(item.descricao||'')+'">💎 Lapidar</span>' : '';
   return badge+
-    '<button type="button" class="ajuda-btn lapidar-btn" data-lapidar-toggle="'+id+'" title="Marcar/editar item do Lapidar">🏷️</button>'+
+    '<button type="button" class="ajuda-btn lapidar-btn" data-lapidar-toggle="'+id+'" title="Marcar/editar item do Lapidar">💎</button>'+
     '<div class="lapidar-conteudo" id="lapidar-'+id+'" style="display:none;">'+
       '<label style="display:flex;align-items:center;gap:6px;font-weight:600;margin-bottom:6px;"><input type="checkbox" id="lapidar-chk-'+id+'" '+(item.marcado?'checked':'')+'> Marcar esta área como item do Lapidar</label>'+
       '<textarea id="lapidar-desc-'+id+'" rows="3" placeholder="Explique aqui, para o Lapidar, o que é essa parte do sistema...">'+escapeHtmlCampanha(item.descricao||'')+'</textarea>'+
@@ -4470,9 +4475,10 @@ function viewMapaDeposito(){
     const topo = (s.linha/subLinhasPorColuna)*100;
     const altura = (s.span/subLinhasPorColuna)*100;
     const rotulo = s.tipo+'-'+s.estado;
-    const estilo = s.estado==='cheio'
+    const raio = s.tipo==='P13' ? '50%' : '8px';
+    const estilo = (s.estado==='cheio'
       ? 'background:'+cor+';color:#fff;'
-      : 'background:transparent;border:2px solid '+cor+';color:'+cor+';';
+      : 'background:transparent;border:2px solid '+cor+';color:'+cor+';')+'border-radius:'+raio+';';
     return '<div class="vaga-bolinha-abs" style="left:calc('+esquerda+'% + 2px);top:calc('+topo+'% + 2px);width:calc('+larguraCol+'% - 4px);height:calc('+altura+'% - 4px);'+estilo+'" title="'+rotulo+' ('+PESO_GAS_KG[s.tipo]+'kg)"><span class="vaga-bolinha-rotulo">'+rotulo+'</span></div>';
   }
   const blocosHtml = rc.segs.map(bolinhaHtml).join('') + rv.segs.map(bolinhaHtml).join('');
@@ -4888,8 +4894,8 @@ function viewLapidarResumo(){
   const itens = Object.entries(state.lapidarItens||{}).filter(([id,it])=>it&&it.marcado);
   const linhas = itens.map(([id,it])=>'<tr><td>'+escapeHtmlCampanha(id)+'</td><td>'+escapeHtmlCampanha(it.descricao||'—')+'</td></tr>').join('');
   return '<div class="config-group-title">Lapidar</div>'+
-    '<div class="card"><h2>🏷️ Itens marcados como Lapidar</h2>'+
-    '<div class="hint">Clique no ícone 🏷️ ao lado do título de qualquer seção do sistema pra marcar essa área como um item do Lapidar e escrever uma descrição explicando o que ela faz — útil pra apresentar o sistema pra futuros clientes. Aqui embaixo fica a lista de tudo que já foi marcado.</div>'+
+    '<div class="card"><h2>💎 Itens marcados como Lapidar</h2>'+
+    '<div class="hint">Clique no ícone 💎 ao lado do título de qualquer seção do sistema pra marcar essa área como um item do Lapidar e escrever uma descrição explicando o que ela faz — útil pra apresentar o sistema pra futuros clientes. Aqui embaixo fica a lista de tudo que já foi marcado.</div>'+
     (itens.length===0 ? '<div class="empty" style="margin-top:10px;">Nenhum item marcado como Lapidar ainda.</div>' :
     '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Área do sistema</th><th>Descrição</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
@@ -4974,7 +4980,7 @@ function viewRelatorios(){
   else if(relatorioSub==='analises') content = relatorioAnalises();
   else content = relatorioEmpresas();
   return '<div class="card"><div class="subtabs">'+subtabs.map(s=>'<button data-sub="'+s.id+'" class="'+(relatorioSub===s.id?'active':'')+'">'+s.label+'</button>').join('')+
-    '</div><div id="relatorio-content">'+content+'</div></div>';
+    '</div>'+lapidarHtml('relatorio-'+relatorioSub)+'<div id="relatorio-content">'+content+'</div></div>';
 }
 function saldoCreditoCliente(cliente){
   return state.creditos.filter(c=>c.cliente===cliente).reduce((s,c)=>s+c.valor,0);
