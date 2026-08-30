@@ -242,14 +242,15 @@ table td:last-child{min-width:180px;}
 .config-group-title:first-child{margin-top:0;padding-top:0;border-top:none;}
 .subtabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
 .checklist-nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-.checklist-lista{margin-top:8px;display:flex;flex-direction:column;gap:3px;}
-.checklist-item{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;padding:4px 8px;border-radius:6px;background:var(--blue-tint);overflow:hidden;}
+.checklist-lista{margin-top:8px;display:flex;flex-direction:column;gap:6px;}
+.checklist-item{display:flex;align-items:center;flex-wrap:wrap;row-gap:6px;column-gap:8px;padding:6px 8px;border-radius:6px;background:var(--blue-tint);}
 .checklist-item.feito{background:var(--green-tint);}
-.checklist-texto{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+.checklist-texto{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 100%;min-width:0;order:1;}
 .checklist-meta{font-size:11px;color:var(--text2);white-space:nowrap;flex-shrink:0;}
 .check-ok{color:var(--green);font-weight:800;}
 .riscado{text-decoration:line-through;color:var(--text2);}
-.checklist-select-func{max-width:130px;font-size:12px;padding:2px 4px;flex-shrink:0;}
+.checklist-controles{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1 1 100%;order:2;}
+.checklist-select-func{max-width:150px;flex:1 1 auto;font-size:12px;padding:3px 4px;flex-shrink:1;min-width:0;}
 .checklist-acoes{display:flex;gap:3px;flex-wrap:nowrap;flex-shrink:0;}
 .checklist-acoes button{font-size:11px;}
 .item-venda-row{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:#F8FAFC;}
@@ -1221,7 +1222,7 @@ let usuarioAtualEmail = null;
 let usuarioAtualEhAdmin = true;
 let usuarioAtualAbasPermitidas = [];
 let editUsuarioId = null;
-const ABAS_SEMPRE_PERMITIDAS = ['painel','config'];
+const ABAS_SEMPRE_PERMITIDAS = ['dashboard','config'];
 function calcularPermissaoAtual(){
   const lista = state.usuariosSistema||[];
   if(lista.length===0){ usuarioAtualEhAdmin = true; usuarioAtualAbasPermitidas=[]; return; }
@@ -1238,21 +1239,22 @@ function abaPermitida(tabId){
 
 const TABS = [
   {id:'dashboard', label:'Painel'},
-  {id:'financeiro', label:'Financeiro', filhos:['caixa','vendas','despesas','contaspagar']},
+  {id:'financeiro', label:'Financeiro', filhos:['caixa','vendas']},
   {id:'caixa', label:'Caixa'},
   {id:'vendas', label:'Vendas'},
+  {id:'gastos', label:'Despesas & Contas', filhos:['despesas','contaspagar','veiculos']},
   {id:'despesas', label:'Despesas'},
   {id:'contaspagar', label:'Contas a Pagar'},
+  {id:'veiculos', label:'Veículos'},
   {id:'entregas', label:'Entregas', filhos:['agendamentos','rota','acertos','tempoentrega']},
   {id:'agendamentos', label:'Agendamentos'},
   {id:'rota', label:'Rotas'},
   {id:'acertos', label:'Acertos'},
   {id:'tempoentrega', label:'Tempo Entrega'},
   {id:'estoque', label:'Estoque'},
-  {id:'veiculos', label:'Veículos'},
-  {id:'clientesmkt', label:'Clientes & Marketing', filhos:['cadastros','campanhas']},
+  {id:'clientesmkt', label:'Cadastros & Marketing', filhos:['cadastros','campanhas']},
   {id:'cadastros', label:'Cadastros'},
-  {id:'campanhas', label:'Campanhas'},
+  {id:'campanhas', label:'Marketing'},
   {id:'checklist', label:'Checklist'},
   {id:'relatorios', label:'Relatórios'},
   {id:'config', label:'Config'},
@@ -3980,7 +3982,9 @@ function viewDespesas(){
   const despesasHoje = state.despesas.filter(d=>d.data===hoje).sort((a,b)=>b.criadoEm-a.criadoEm);
   const totalHoje = despesasHoje.reduce((s,d)=>s+d.valor,0);
 
-  return '<div class="card"><details id="details-despesa-manual"'+(despesaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar despesa</h2><form id="form-despesa">'+
+  return '<div class="card"><details id="details-despesa-manual"'+(despesaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar despesa</h2>'+
+    '<div class="hint">Use este lançamento manual só pra gastos avulsos do dia a dia. Se a conta já está agendada em <strong>Contas a Pagar</strong>, não lance aqui — vá lá e clique em "Marcar paga" que a despesa é criada sozinha, sem duplicar. Se for gasto de um veículo (peça, combustível, manutenção), prefira lançar pela aba <strong>Veículos</strong>, que já entra aqui automaticamente com todos os detalhes.</div>'+
+    '<form id="form-despesa">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Categoria <span class="req">*</span></label><select name="categoria" required>'+opcoesComPlaceholder(state.categoriasDespesas,'Escolha uma categoria')+'</select>'+
@@ -4061,7 +4065,7 @@ function viewContasPagar(){
     ' <button class="act-link" data-edit-conta-pagar="'+c.id+'">✎</button><button class="del-link" data-del-conta-pagar="'+c.id+'">🗑</button></td></tr>'
   ).join('');
   const optsCategoria = state.categoriasDespesas.map(cat=>'<option'+(editando&&editando.categoria===cat?' selected':'')+'>'+cat+'</option>').join('');
-  return '<div class="card"><h2>📑 Contas a pagar</h2>'+ajudaHtml('contaspagar','Cadastre aqui contas com data de vencimento (aluguel, salário, parcelas, fornecedores). Quando marcar como paga, o sistema já lança automaticamente como despesa do dia. Se for uma conta que se repete todo mês, marque "recorrente" e a próxima já é criada sozinha.')+
+  return '<div class="card"><h2>📑 Contas a pagar</h2>'+ajudaHtml('contaspagar','Use esta aba só pra AGENDAR o que você deve e acompanhar vencimentos (aluguel, salário, parcelas, fornecedores) — ela não é um lançamento de gasto por si só. Quando marcar como "paga", o sistema cria a despesa correspondente sozinho, na data que você informar; não lance essa mesma conta de novo em Despesas. Se for uma conta que se repete todo mês, marque "recorrente" e a próxima já é criada sozinha.')+
     (vencidas>0 ? '<div class="import-conferencia-alert">⚠ '+vencidas+' conta(s) vencida(s) sem pagamento.</div>' : '')+
     '<form id="form-conta-pagar" data-editid="'+(editando?editando.id:'')+'">'+
     '<div class="form-row">'+
@@ -4145,7 +4149,7 @@ function viewVeiculos(){
         '</div>';
     }).join('')+
     '</div>';
-  return '<div class="card"><h2>🚙 Veículos</h2>'+ajudaHtml('veiculos','Registre aqui manutenção, troca de óleo, combustível, IPVA, seguro, peças etc de cada veículo, pra saber quanto cada um está custando. Escolha a categoria da despesa e vá acrescentando; use os campos de garantia e próxima troca pra não esquecer de renovar.')+
+  return '<div class="card"><h2>🚙 Veículos</h2>'+ajudaHtml('veiculos','Registre aqui manutenção, troca de óleo, combustível, IPVA, seguro, peças etc de cada veículo, pra saber quanto cada um está custando. Cada lançamento feito aqui já entra sozinho como despesa do dia (com o veículo marcado) — não precisa lançar de novo em Despesas. Escolha a categoria da despesa e vá acrescentando; use os campos de garantia e próxima troca pra não esquecer de renovar.')+
     '<div style="display:flex;gap:12px;flex-wrap:wrap;">'+cards+'</div></div>'+painel+grafico;
 }
 function viewDetalheVeiculo(v){
@@ -4528,16 +4532,18 @@ return '<div class="checklist-item">'+
 if(marc){
 return '<div class="checklist-item feito">'+
 '<span class="checklist-texto">✓ <span class="riscado">'+it.texto+'</span>'+(it.fixo?'':' ⏰')+'</span>'+
+'<div class="checklist-controles">'+
 '<span class="checklist-meta">'+marc.responsavel+' '+marc.horario+
 (hoje?' <button type="button" class="del-link" data-desmarcar-check="'+it.id+'">↶</button>':'')+'</span>'+
 acoes+
-'</div>';
+'</div></div>';
 }
 return '<div class="checklist-item">'+
 '<span class="checklist-texto">'+it.texto+(it.fixo?'':' ⏰')+'</span>'+
+'<div class="checklist-controles">'+
 (hoje ? '<select class="checklist-select-func" data-marcar-check="'+it.id+'">'+opcoesComPlaceholder(state.funcionarios,'quem?')+'</select>' : '<span class="checklist-meta">pendente</span>')+
 acoes+
-'</div>';
+'</div></div>';
 }).join('');
   const listaHtml = itens.length===0 ? '<div class="empty">Nenhum item no checklist ainda. Adicione um item de rotina ou do dia abaixo.</div>' : '<div class="checklist-lista">'+linhas+'</div>';
 
@@ -4617,19 +4623,20 @@ function viewAgendamentos(){
 function cardUsuariosPermissoes(){
   const usuarios = state.usuariosSistema||[];
   const editando = usuarios.find(u=>u.id===editUsuarioId);
-  const linhas = usuarios.map(u=>'<tr><td>'+escapeHtmlCampanha(u.nome||u.email)+'</td><td>'+escapeHtmlCampanha(u.email)+'</td><td>'+(u.papel==='admin'?'👑 Administrador':'🔒 Restrito ('+(u.abasPermitidas||[]).length+' aba(s))')+'</td><td class="cel-acoes"><button class="act-link" data-editar-usuario="'+u.id+'">✎</button><button class="del-link" data-del-usuario="'+u.id+'">🗑</button></td></tr>').join('');
+  const linhas = usuarios.map(u=>'<tr><td>'+escapeHtmlCampanha(u.nome||u.email)+'</td><td>'+escapeHtmlCampanha(u.email)+'</td><td>'+escapeHtmlCampanha(u.celular||'—')+'</td><td>'+(u.papel==='admin'?'👑 Administrador':'🔒 Restrito ('+(u.abasPermitidas||[]).length+' aba(s))')+'</td><td class="cel-acoes"><button class="act-link" data-editar-usuario="'+u.id+'">✎</button><button class="del-link" data-del-usuario="'+u.id+'">🗑</button></td></tr>').join('');
   return '<div class="card"><h2>👥 Usuários e Permissões</h2>'+
-    ajudaHtml('usuarios','Cadastre aqui o e-mail de cada pessoa que faz login no sistema e defina o que ela pode acessar. "Administrador" vê e mexe em tudo, sem restrição. "Restrito" só vê as abas que você marcar — as outras nem aparecem no menu dela. Importante: essa é uma trava de tela (esconde o que a pessoa não deve ver), não é uma trava de banco de dados — é pensada pra organizar o acesso da equipe, não pra proteger contra alguém tentando burlar de propósito.')+
+    ajudaHtml('usuarios','Cadastre aqui o e-mail (e, se quiser, o celular) de cada pessoa que faz login no sistema e defina o que ela pode acessar. "Administrador" vê e mexe em tudo, sem restrição. "Restrito" só vê as abas que você marcar — as outras nem aparecem no menu dela. Importante: essa é uma trava de tela (esconde o que a pessoa não deve ver), não é uma trava de banco de dados nem mexe na senha de login de ninguém — é pensada pra organizar o acesso da equipe, não pra proteger contra alguém tentando burlar de propósito.')+
     '<form id="form-usuario-permissao" data-edit-id="'+(editando?editando.id:'')+'">'+
     '<div class="form-row"><div><label>Nome</label><input type="text" name="nome" value="'+escapeHtmlCampanha(editando?.nome||'')+'"></div>'+
     '<div><label>E-mail de login <span class="req">*</span></label><input type="email" name="email" value="'+escapeHtmlCampanha(editando?.email||'')+'" required></div>'+
+    '<div><label>Celular</label><input type="text" name="celular" placeholder="(43) 99999-9999" value="'+escapeHtmlCampanha(editando?.celular||'')+'"></div>'+
     '<div><label>Nível de acesso</label><select name="papel" id="sel-papel-usuario"><option value="admin" '+(editando?.papel==='admin'?'selected':'')+'>👑 Administrador (acesso total)</option><option value="restrito" '+(editando&&editando.papel!=='admin'?'selected':'')+'>🔒 Restrito (escolher abas)</option></select></div></div>'+
     '<div id="campo-abas-restrito" style="display:'+((editando&&editando.papel!=='admin')?'block':'none')+';margin-top:10px;"><label>Abas que essa pessoa pode ver</label>'+
     '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">'+TABS_VISIVEIS.filter(t=>t.id!=='painel'&&t.id!=='config').map(t=>'<label style="display:flex;align-items:center;gap:4px;font-weight:normal;"><input type="checkbox" name="abas" value="'+t.id+'" '+((editando?.abasPermitidas||[]).includes(t.id)?'checked':'')+'> '+t.label+'</label>').join('')+'</div>'+
     '<div class="hint" style="margin-top:4px;">Painel e Config sempre ficam visíveis pra qualquer usuário logado.</div></div>'+
     '<button type="submit" class="btn small" style="margin-top:14px;">'+(editando?'Salvar alterações':'Adicionar usuário')+'</button> '+(editando?'<button type="button" class="btn small ghost" id="btn-cancelar-usuario">Cancelar</button>':'')+
     '</form>'+
-    (usuarios.length?'<div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Nível</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="empty" style="margin-top:14px;">Nenhum usuário cadastrado ainda — enquanto a lista estiver vazia, qualquer pessoa que fizer login tem acesso total.</div>')+
+    (usuarios.length?'<div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Celular</th><th>Nível</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="empty" style="margin-top:14px;">Nenhum usuário cadastrado ainda — enquanto a lista estiver vazia, qualquer pessoa que fizer login tem acesso total.</div>')+
     '</div>';
 }
 function viewConfig(){
@@ -4738,11 +4745,11 @@ function viewLGPD(){
 function viewLogAtividades(){
   const lista = (state.logAtividades||[]).slice().reverse().slice(0,200);
   const linhas = lista.map(l=>'<tr><td>'+new Date(l.quando).toLocaleString('pt-BR')+'</td><td>'+escapeHtmlCampanha(l.usuario||'—')+'</td><td>'+escapeHtmlCampanha(l.area||'—')+'</td></tr>').join('');
-  return '<div class="card"><h2>🗒️ Log de atividades</h2>'+
-    '<div class="hint">Mostra quem mexeu em quê e quando (últimos 200 registros).</div>'+
+  return '<div class="card"><details id="details-log-atividades"><summary><h2 style="display:inline;">🗒️ Log de atividades</h2></summary>'+
+    '<div class="hint" style="margin-top:8px;">Mostra quem mexeu em quê e quando (últimos 200 registros).</div>'+
     (lista.length===0 ? '<div class="empty">Nenhuma atividade registrada ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Quando</th><th>Usuário</th><th>Área alterada</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
-    '</div>';
+    '</details></div>';
 }
 function viewRelatorios(){
   const subtabs = [
@@ -8506,8 +8513,14 @@ function attachHandlers(){
     const f = new FormData(formUsuarioPermissao);
     const editId = formUsuarioPermissao.dataset.editId;
     const abas = [...formUsuarioPermissao.querySelectorAll('input[name="abas"]:checked')].map(x=>x.value);
-    const dados = {nome:(f.get('nome')||'').trim(), email:(f.get('email')||'').trim().toLowerCase(), papel:f.get('papel')||'restrito', abasPermitidas:abas};
+    const dados = {nome:(f.get('nome')||'').trim(), email:(f.get('email')||'').trim().toLowerCase(), celular:(f.get('celular')||'').trim(), papel:f.get('papel')||'restrito', abasPermitidas:abas};
     if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema=[];
+    // Trava de segurança: cadastrar outra pessoa nunca pode tirar o acesso de quem está logado agora.
+    // Se o e-mail de quem está usando o sistema neste momento ainda não está na lista, ele entra como administrador antes de mais nada.
+    const emailAtual = (usuarioAtualEmail||'').toLowerCase();
+    if(emailAtual && dados.email!==emailAtual && !state.usuariosSistema.some(u=>(u.email||'').toLowerCase()===emailAtual)){
+      state.usuariosSistema.push({id:uid(), criadoEm:Date.now(), nome:usuarioAtualNome||'Administrador', email:emailAtual, papel:'admin', abasPermitidas:[]});
+    }
     if(editId){ const u=state.usuariosSistema.find(x=>x.id===editId); if(u) Object.assign(u,dados); editUsuarioId=null; }
     else state.usuariosSistema.push(Object.assign({id:uid(),criadoEm:Date.now()},dados));
     await save('usuariosSistema'); calcularPermissaoAtual(); renderAll();
