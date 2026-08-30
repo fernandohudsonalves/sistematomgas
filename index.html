@@ -1265,9 +1265,10 @@ function abaPermitida(tabId){
 
 const TABS = [
   {id:'dashboard', label:'Painel'},
-  {id:'financeiro', label:'Financeiro', filhos:['caixa','vendas']},
+  {id:'financeiro', label:'Financeiro', filhos:['caixa','vendas','faltaretirar']},
   {id:'caixa', label:'Caixa'},
   {id:'vendas', label:'Vendas'},
+  {id:'faltaretirar', label:'📦 Falta retirar'},
   {id:'gastos', label:'Despesas & Contas', filhos:['despesas','contaspagar','veiculos']},
   {id:'despesas', label:'Despesas'},
   {id:'contaspagar', label:'Contas a Pagar'},
@@ -3200,6 +3201,7 @@ function renderAll(){
   if(currentTab==='metas') main.innerHTML = viewMetas();
   if(currentTab==='comunicados') main.innerHTML = viewComunicados();
   if(currentTab==='vendas') main.innerHTML = viewVendas();
+  if(currentTab==='faltaretirar') main.innerHTML = viewFaltaRetirar();
   if(currentTab==='despesas') main.innerHTML = viewDespesas();
   if(currentTab==='veiculos') main.innerHTML = viewVeiculos();
   if(currentTab==='caixa') main.innerHTML = viewFechamentoCaixa();
@@ -3338,9 +3340,13 @@ function viewDashboard(){
   const conveniosMes = totalConveniosMes(mk);
   const alertasEstoque = itensAbaixoDoMinimo();
 
+  const pendenciasRetiradaDash = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado);
+
   return comunicadosBannerHtml()+
     (alertasEstoque.length>0 ? '<div class="card" style="border-left:4px solid var(--danger);cursor:pointer;" data-ir-relatorio-estoque="1"><h2 style="color:var(--danger);">⚠️ Estoque baixo — '+alertasEstoque.length+' item(ns)</h2>'+
       '<div class="hint">'+alertasEstoque.map(al=>al.label+' ('+al.atual+'/'+al.min+')').join(' · ')+' — toque para ver na aba Estoque.</div></div>' : '')+
+    (pendenciasRetiradaDash.length>0 ? '<div class="card" style="border-left:4px solid var(--warning,#f59e0b);cursor:pointer;" data-ir-falta-retirar="1"><h2>📦 Falta retirar — '+pendenciasRetiradaDash.length+' pendência(s)</h2>'+
+      '<div class="hint">Gás já vendido/recebido que ainda falta o cliente retirar ou vocês entregarem. Toque para abrir.</div></div>' : '')+
     metaCardDashboardHtml()+googleCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div></div>'+
     '<div class="metric neg"><div class="label">Despesas do dia</div><div class="value">'+fmtMoney(totalDespesasHoje)+'</div></div>'+
@@ -3556,7 +3562,7 @@ function ajustaEstoquePorVenda(categoria, qtd, reverter){
 /* Resolve uma pendência de "Falta retirar": só agora o estoque é descontado (ele ficava
    reservado, sem sair do estoque, enquanto o cliente não retirava/não era entregue).
    forma: 'Cliente retirou' ou 'Entregamos - <meio>'. */
-async function resolverFaltaRetirar(id, forma){
+async function resolverFaltaRetirar(id, forma, freteValor, freteForma){
   const v = (state.vendas||[]).find(x=>x.id===id);
   if(!v) return;
   if(!v.estoqueBaixado){
@@ -3566,6 +3572,11 @@ async function resolverFaltaRetirar(id, forma){
   v.retirado = true;
   v.retiradoForma = forma;
   v.retiradoEm = Date.now();
+  if(freteValor && freteValor>0){
+    v.frete = (v.frete||0) + freteValor;
+    v.valor_total = (v.valor_total||0) + freteValor;
+    v.obs = (v.obs?v.obs+' — ':'') + 'Frete cobrado na entrega: '+fmtMoney(freteValor)+(freteForma?' ('+freteForma+')':'');
+  }
   await save('vendas'); await save('estoque');
   renderAll();
 }
@@ -4016,8 +4027,6 @@ function viewVendas(){
     '<div class="hint" style="margin-top:6px;">Se um horário de entrega for definido, os dados do pedido são enviados por WhatsApp para o entregador automaticamente.</div>'+
     '<button type="submit" class="btn">Registrar venda</button></form></details></div>'+
     formLancamentoVendaAnteriorHtml(clienteOpts)+
-    '<div class="card"><h2>📦 Falta retirar — pendentes ('+pendenciasRetirada.length+')</h2>'+ajudaHtml('falta-retirar','Vendas marcadas como "Falta retirar" ficam aqui até alguém confirmar que o cliente retirou ou que a gente entregou. O estoque só sai quando você resolve a pendência aqui (botão "Cliente retirou" ou "Nós entregamos") — até lá, o produto continua contando como reservado, sem descontar do estoque disponível.')+
-    '<div id="lista-pendencias-retirada-wrap">'+pendenciasRetiradaTable(pendenciasRetirada)+'</div></div>'+
     '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje)+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
@@ -4064,6 +4073,28 @@ function formLancamentoVendaAnteriorHtml(clienteOpts){
     '<div><label>Observação (opcional)</label><input type="text" name="obs" placeholder="Ex: venda de antes do sistema novo"></div>'+
     '<button type="submit" class="btn" style="margin-top:10px;">Registrar lançamento anterior</button>'+
     '</form></details></div>';
+}
+function viewFaltaRetirar(){
+  const hoje = todayStr();
+  const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
+  const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
+  return '<div class="card"><h2>📦 Falta retirar</h2>'+ajudaHtml('falta-retirar','Use esta tela pra gás que já foi vendido/recebido (às vezes de antes do sistema novo, às vezes é só alguém que aproveitou o preço e vai retirar quando o gás dela acabar) mas que ainda falta o cliente retirar ou vocês entregarem. O estoque só sai quando você resolve a pendência aqui embaixo ("Cliente retirou" ou "Nós entregamos") — até lá, o produto continua reservado, sem descontar do estoque disponível, e sem contar como uma venda nova nas métricas.')+'</div>'+
+    '<div class="card"><details><summary><strong>Registrar novo "falta retirar" (clique para abrir)</strong></summary>'+
+    '<div class="hint" style="margin-top:8px;">Cliente novo ou já cadastrado, tanto faz. Não lança valor do gás aqui (já foi recebido) — só o valor do frete, se houver, é perguntado depois, na hora de dar baixa.</div>'+
+    '<form id="form-falta-retirar-novo" style="margin-top:10px;">'+
+    '<div class="form-row">'+
+    '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-faltaretirar" name="cliente" placeholder="Nome do cliente" required><datalist id="lista-clientes-faltaretirar">'+clienteOpts+'</datalist></div>'+
+    '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+    '<div><label>Produto <span class="req">*</span></label><select name="categoria" required>'+opcoesComPlaceholder(CATEGORIAS_CONTROLADAS,'Selecione o produto')+'</select></div>'+
+    '<div><label>Quantidade <span class="req">*</span></label><div class="qty-stepper"><button type="button" class="qty-btn qty-minus">−</button><input type="number" name="quantidade" min="1" value="1" step="1" required><button type="button" class="qty-btn qty-plus">+</button></div></div>'+
+    '</div>'+
+    '<div><label>Observação (opcional)</label><input type="text" name="obs" placeholder="Ex: aproveitou o preço, vai retirar quando acabar o de casa"></div>'+
+    '<button type="submit" class="btn" style="margin-top:10px;">Registrar falta retirar</button>'+
+    '</form></details></div>'+
+    '<div class="card"><h2>Pendentes ('+pendenciasRetirada.length+')</h2>'+
+    '<div id="lista-pendencias-retirada-wrap">'+pendenciasRetiradaTable(pendenciasRetirada)+'</div></div>';
 }
 function vendasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma venda encontrada.</div>';
@@ -6927,6 +6958,28 @@ function attachHandlers(){
     alert('Lançamento anterior registrado'+(baixaEstoque?' e estoque atualizado.':', sem mexer no estoque.'));
     renderAll();
   };
+  const ffr = document.getElementById('form-falta-retirar-novo');
+  if(ffr) ffr.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(ffr);
+    const categoria = f.get('categoria');
+    const venda = {
+      id: uid(), criadoEm: Date.now(), grupoId: uid(), fiado_pago:false,
+      data: f.get('data'), cliente: (f.get('cliente')||'').trim(), canal: 'Venda Ativa', categoria, produto: categoria,
+      quantidade: Number(f.get('quantidade'))||1,
+      valor_unit: 0, valor_total: 0,
+      pagamento: 'Já lançado', nota: 'Já lançado', tipo_entrega: 'Falta retirar', empresa:'',
+      frete: 0, entrega_data:'', entrega_hora:'', entrega_status:'',
+      obs: (f.get('obs')||'').trim() || 'Falta retirar — gás já vendido/recebido, ainda não retirado/entregue',
+      estoqueBaixado: false, retirado:false, retiradoForma:'', retiradoEm:null,
+      vendaAnterior: true
+    };
+    state.vendas.push(venda);
+    await save('vendas');
+    ffr.reset();
+    alert('Falta retirar registrado. Ele aparece na lista de pendentes até você dar baixa (o estoque não foi mexido).');
+    renderAll();
+  };
   const btnAddItemVenda = document.getElementById('btn-add-item-venda');
   if(btnAddItemVenda) btnAddItemVenda.onclick = ()=>{
     document.getElementById('itens-extra-lista').appendChild(novoItemVendaRow({compact:false}));
@@ -7324,7 +7377,12 @@ function attachHandlers(){
       const meios = ['Entrega a pé','Entrega de moto','Entrega de carro','Entrega de Strada'];
       const escolha = prompt('Qual foi o meio de entrega?\n1 - A pé\n2 - Moto\n3 - Carro\n4 - Strada\n\nDigite o número:');
       const idx = Number(escolha)-1;
-      if(idx>=0 && idx<meios.length) resolverFaltaRetirar(btn.dataset.retirouEntregamos, 'Entregamos - '+meios[idx]);
+      if(idx<0 || idx>=meios.length) return;
+      const freteStr = prompt('Vai cobrar frete nessa entrega? Digite o valor em R$ (ou deixe em branco se não vai cobrar):');
+      const freteValor = freteStr ? (Number(String(freteStr).replace(',','.'))||0) : 0;
+      let freteForma = '';
+      if(freteValor>0) freteForma = prompt('Forma de pagamento do frete (ex: Dinheiro, Pix, Cartão):') || '';
+      resolverFaltaRetirar(btn.dataset.retirouEntregamos, 'Entregamos - '+meios[idx], freteValor, freteForma);
     });
     document.querySelectorAll('[data-edit-venda-ag]').forEach(btn=>btn.onclick=()=>{
       pendingEditVendaId = btn.dataset.editVendaAg;
@@ -8505,6 +8563,7 @@ function attachHandlers(){
   }
   document.querySelectorAll('[data-ir-metas]').forEach(btn=>btn.onclick=()=>{ currentTab='metas'; renderAll(); });
   document.querySelectorAll('[data-ir-relatorio-estoque]').forEach(btn=>btn.onclick=()=>{ currentTab='estoque'; renderAll(); });
+  document.querySelectorAll('[data-ir-falta-retirar]').forEach(btn=>btn.onclick=()=>{ currentTab='faltaretirar'; renderAll(); });
   document.querySelectorAll('[data-ir-relatorio]').forEach(btn=>btn.onclick=()=>{
     currentTab = 'relatorios';
     relatorioSub = btn.dataset.irRelatorio;
