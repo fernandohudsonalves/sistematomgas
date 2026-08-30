@@ -258,10 +258,9 @@ table td:last-child{min-width:180px;}
 .cat-checklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 16px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;}
 .deposito-grid-quadrado{position:relative;width:100%;max-width:640px;margin:0 auto;border:1px solid var(--border);border-radius:6px;overflow:hidden;background-color:var(--bg);
   background-image:repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px calc(100%/12)),repeating-linear-gradient(to bottom, var(--border) 0 1px, transparent 1px calc(100%/10));}
-.vaga-bloco-abs{position:absolute;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;overflow:hidden;white-space:nowrap;cursor:default;}
+.vaga-bolinha-abs{position:absolute;box-sizing:border-box;border-radius:50%;cursor:default;}
 @media (max-width:640px){
   .deposito-grid-quadrado{max-width:100%;}
-  .vaga-bloco-abs{font-size:0;}
 }
 .checkbox-item{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;width:100%;}
 .checkbox-item input{width:auto;}
@@ -4340,88 +4339,66 @@ function viewMapaDeposito(){
   const colunas = 12, linhas = 10;
   const totalVagas = colunas*linhas; // 120 quadradinhos de referência (do tamanho do P13)
   const RES = 2; // resolução interna (2 = permite meio quadradinho de precisão)
-  const totalSub = totalVagas*RES, subcolsPorLinha = colunas*RES;
+  const subLinhasPorColuna = linhas*RES; // 20
   const tipos = ['P5','P13','P20','P45'];
   const coresTipo = {P5:'#7DD3FC', P13:'#4169E1', P20:'#0F6674', P45:'#0B2545'}; // claro / royal / petróleo / marinho
   // Quantos quadradinhos (referência = 1 P13) cada vasilhame ocupa de espaço físico.
   const ESPACOS_POR_TIPO = {P5:0.5, P13:1, P20:1.5, P45:3.5};
   const subPorTipo = {}; tipos.forEach(t=>subPorTipo[t]=Math.round(ESPACOS_POR_TIPO[t]*RES));
 
-  function larguraBruta(campo){
-    const o={}; let total=0;
-    tipos.forEach(t=>{ const v=(g[t][campo]||0)*subPorTipo[t]; o[t]=v; total+=v; });
-    return {porTipo:o, total};
+  // Uma unidade = um vasilhame de verdade (se tem 23 P13, são 23 unidades, cada uma vira 1 bolinha).
+  function listaUnidades(campo){
+    const lista=[];
+    tipos.forEach(t=>{ const qtd=g[t][campo]||0; for(let i=0;i<qtd;i++) lista.push(t); });
+    return lista;
   }
-  const cheioBruto = larguraBruta('cheio');
-  const vazioBrutoCalc = larguraBruta('vazio');
+  const listaCheio = listaUnidades('cheio');
+  const listaVazio = listaUnidades('vazio');
 
-  let cheioSub = Math.min(cheioBruto.total, totalSub);
-  let vazioSub = Math.min(vazioBrutoCalc.total, totalSub-cheioSub);
-  const excedenteSub = Math.max(0, (cheioBruto.total+vazioBrutoCalc.total) - totalSub);
-  const excedenteQuadradinhos = excedenteSub/RES;
-
-  // Reduz proporcionalmente cada tipo se o total não couber nas vagas disponíveis.
-  function distribuir(porTipo, totalBruto, totalDisponivel){
-    if(totalBruto<=0) return {};
-    const fator = Math.min(1, totalDisponivel/totalBruto);
-    const out={}; let acumulado=0;
-    const lista = tipos.filter(t=>porTipo[t]>0);
-    lista.forEach((t,i)=>{
-      let v = (i===lista.length-1) ? (Math.round(totalDisponivel)-acumulado) : Math.round(porTipo[t]*fator);
-      v = Math.max(0, v);
-      acumulado += v;
-      out[t]=v;
-    });
-    return out;
+  // Empacota cada vasilhame INTEIRO (nunca corta) dentro de uma coluna, de cima pra baixo.
+  // Quando não cabe até o fim da coluna, pula pra próxima coluna — esquerda->direita nos
+  // cheios, direita->esquerda nos vazios — sem nunca invadir o lado do outro.
+  function empacotar(lista, estado, direcao, limite){
+    const segs = []; let coluna = direcao==='esquerda'?0:colunas-1, linha = 0, naoCoube = 0;
+    for(const tipo of lista){
+      const tam = subPorTipo[tipo];
+      if(linha+tam > subLinhasPorColuna){ coluna += (direcao==='esquerda'?1:-1); linha = 0; }
+      const foraDoLimite = direcao==='esquerda' ? (coluna>=colunas) : (coluna<limite);
+      if(foraDoLimite){ naoCoube++; continue; }
+      segs.push({coluna, linha, span:tam, tipo, estado});
+      linha += tam;
+    }
+    return {segs, naoCoube};
   }
-  const cheioPorTipo = distribuir(cheioBruto.porTipo, cheioBruto.total, cheioSub);
-  const vazioPorTipo = distribuir(vazioBrutoCalc.porTipo, vazioBrutoCalc.total, vazioSub);
-  const vazioInicioSub = totalSub - vazioSub;
+  const rc = empacotar(listaCheio, 'cheio', 'esquerda', 0);
+  const cheioColunasUsadas = rc.segs.length ? Math.max.apply(null, rc.segs.map(s=>s.coluna))+1 : 0;
+  const rv = empacotar(listaVazio, 'vazio', 'direita', cheioColunasUsadas);
+  const naoMostrados = rc.naoCoube + rv.naoCoube;
 
-  // Empacota os blocos em "linhas" de subcolsPorLinha, quebrando o bloco em pedaços
-  // quando ele não cabe até o fim da linha (sem cortar visualmente ao meio uma vaga).
-  function empacotar(porTipo, cursorInicial, estado){
-    const segs = []; let cursor = cursorInicial;
-    tipos.forEach(t=>{
-      let restante = porTipo[t]||0;
-      while(restante>0){
-        const linha = Math.floor(cursor/subcolsPorLinha);
-        const colNaLinha = cursor%subcolsPorLinha;
-        const disponivelNaLinha = subcolsPorLinha-colNaLinha;
-        const pega = Math.min(disponivelNaLinha, restante);
-        if(pega>0) segs.push({linha, col:colNaLinha, span:pega, tipo:t, estado});
-        cursor += pega; restante -= pega;
-      }
-    });
-    return segs;
-  }
-  const segCheios = empacotar(cheioPorTipo, 0, 'cheio');
-  const segVazios = empacotar(vazioPorTipo, vazioInicioSub, 'vazio');
-
-  function blocoHtml(s){
+  function bolinhaHtml(s){
     const cor = coresTipo[s.tipo];
-    const esquerda = (s.col/subcolsPorLinha)*100, topo=(s.linha/linhas)*100;
-    const largura = (s.span/subcolsPorLinha)*100, altura=(1/linhas)*100;
-    const qtd = s.estado==='cheio' ? g[s.tipo].cheio : g[s.tipo].vazio;
+    const larguraCol = 100/colunas;
+    const esquerda = s.coluna*larguraCol;
+    const topo = (s.linha/subLinhasPorColuna)*100;
+    const altura = (s.span/subLinhasPorColuna)*100;
     const estilo = s.estado==='cheio'
-      ? 'background:'+cor+';color:#fff;'
-      : 'background:repeating-linear-gradient(45deg,'+cor+'40 0 4px,transparent 4px 8px);border:2px solid '+cor+';color:'+cor+';';
-    const mostraTexto = s.span >= subcolsPorLinha*0.06;
-    return '<div class="vaga-bloco-abs" style="left:'+esquerda+'%;top:'+topo+'%;width:'+largura+'%;height:'+altura+'%;'+estilo+'" title="'+s.tipo+' ('+PESO_GAS_KG[s.tipo]+'kg) — '+qtd+' '+(s.estado==='cheio'?'cheio(s)':'vazio(s)')+'">'+(mostraTexto?s.tipo:'')+'</div>';
+      ? 'background:'+cor+';'
+      : 'background:transparent;border:2px solid '+cor+';';
+    return '<div class="vaga-bolinha-abs" style="left:calc('+esquerda+'% + 2px);top:calc('+topo+'% + 2px);width:calc('+larguraCol+'% - 4px);height:calc('+altura+'% - 4px);'+estilo+'" title="'+s.tipo+' ('+PESO_GAS_KG[s.tipo]+'kg) — '+(s.estado==='cheio'?'Cheio':'Vazio')+'"></div>';
   }
-  const blocosHtml = segCheios.map(blocoHtml).join('') + segVazios.map(blocoHtml).join('');
+  const blocosHtml = rc.segs.map(bolinhaHtml).join('') + rv.segs.map(bolinhaHtml).join('');
 
   const legendaPeso = tipos.map(t=>'<span><span class="dot" style="background:'+coresTipo[t]+';"></span>'+t+' — '+PESO_GAS_KG[t]+'kg</span>').join('');
   const legendaEstado = '<span><span class="dot" style="background:'+coresTipo.P13+';"></span>Cheio</span>'+
     '<span><span class="dot" style="background:transparent;border:2px solid '+coresTipo.P13+';"></span>Vazio</span>'+
     '<span><span class="dot" style="background:var(--bg);border:1px dashed var(--border);"></span>Livre</span>';
 
-  return '<div class="card deposito-mapa"><h2>🗺️ Mapa do Depósito <span class="pill">'+((cheioSub+vazioSub)/RES)+' / '+totalVagas+' vagas</span></h2>'+
-    '<div class="hint">Cada quadradinho do quadro é do tamanho de um P13 — a base para saber quanto cabe no depósito. Vasilhame mais pesado ocupa mais espaço (P20 ocupa 1,5 quadradinho, P45 ocupa 3,5). Os cheios ficam à esquerda, os vazios à direita, e o branco no meio é o espaço livre.</div>'+
+  return '<div class="card deposito-mapa"><h2>🗺️ Mapa do Depósito <span class="pill">'+(listaCheio.length+listaVazio.length-naoMostrados)+' vasilhame(s)</span></h2>'+
+    '<div class="hint">Cada bolinha é um vasilhame de verdade — se tem 23 P13, são 23 bolinhas. O tamanho da bolinha mostra o peso da carga (P20 ocupa 1,5 vez o espaço do P13, P45 ocupa 3,5 vezes, P5 ocupa menos da metade). Os cheios enchem as colunas de cima pra baixo a partir da esquerda, os vazios de cima pra baixo a partir da direita, e o meio fica em branco — o espaço livre do depósito.</div>'+
     '<div class="cap-legend" style="margin-bottom:8px;">'+legendaPeso+'</div>'+
     '<div class="deposito-grid-quadrado" style="aspect-ratio:'+colunas+'/'+linhas+';">'+blocosHtml+'</div>'+
     '<div class="cap-legend" style="margin-top:10px;">'+legendaEstado+'</div>'+
-    (excedenteQuadradinhos>0 ? '<div class="hint" style="color:var(--danger);font-weight:600;margin-top:6px;">Atenção: há '+excedenteQuadradinhos+' quadradinho(s) de vasilhame a mais do que cabe nas '+totalVagas+' vagas do depósito.</div>' : '')+
+    (naoMostrados>0 ? '<div class="hint" style="color:var(--danger);font-weight:600;margin-top:6px;">Atenção: '+naoMostrados+' vasilhame(s) não couberam no quadro — o depósito está além da capacidade de '+totalVagas+' vagas (P13).</div>' : '')+
     '</div>';
 }
 function viewEstoque(){
