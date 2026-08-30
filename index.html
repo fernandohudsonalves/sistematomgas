@@ -6971,6 +6971,7 @@ function attachHandlers(){
     if(valorSelecionado) movItem.value = valorSelecionado;
   };
   if(movTipo) movTipo.onchange = ()=>popularItensMov(movTipo.value);
+  const feMov = document.getElementById('form-estoque-mov');
   const movEstadoSel = feMov ? feMov.querySelector('select[name="estado"]') : null;
   const movDirecaoSel = feMov ? feMov.querySelector('select[name="direcao"]') : null;
   const movTrocaWrap = document.getElementById('mov-troca-vazios-wrap');
@@ -7008,7 +7009,6 @@ function attachHandlers(){
     await save('estoqueMinimo');
     renderAll();
   };
-  const feMov = document.getElementById('form-estoque-mov');
   if(feMov) feMov.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(feMov);
