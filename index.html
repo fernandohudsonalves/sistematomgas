@@ -391,7 +391,7 @@ table td:last-child{min-width:180px;}
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
 #whats-fab{position:fixed;right:18px;bottom:18px;z-index:500;width:56px;height:56px;border-radius:50%;background:#25D366;border:none;box-shadow:0 6px 18px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
-#calc-fab{position:fixed;right:18px;bottom:228px;z-index:500;width:56px;height:56px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 6px 18px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:24px;}
+#calc-fab{position:fixed;right:18px;bottom:228px;z-index:500;width:56px;height:56px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 6px 18px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:36px;}
 #calc-fab:hover{transform:scale(1.06);}
 #calc-fab:active{transform:scale(.96);}
 #calc-panel{position:fixed;right:18px;bottom:294px;z-index:2500;width:230px;background:var(--card,#fff);color:var(--text,#222);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden;display:none;}
@@ -435,7 +435,7 @@ table td:last-child{min-width:180px;}
 .cf-item .cf-detalhe{font-size:13px;color:var(--text);margin:4px 0 8px;}
 .cf-item .cf-valor{font-size:12px;color:var(--text2);margin-bottom:8px;}
 .cf-item .cf-acoes{display:flex;gap:8px;flex-wrap:wrap;}
-#rota-fab{position:fixed;right:18px;bottom:158px;z-index:500;width:56px;height:56px;border-radius:50%;background:#F59E0B;border:none;box-shadow:0 6px 18px rgba(245,158,11,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:26px;}
+#rota-fab{position:fixed;right:18px;bottom:158px;z-index:500;width:56px;height:56px;border-radius:50%;background:#0057B8;border:none;box-shadow:0 6px 18px rgba(0,87,184,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:26px;}
 #rota-fab:hover{transform:scale(1.06);}
 #rota-fab:active{transform:scale(.96);}
 #rota-overlay{position:static;}
@@ -530,7 +530,6 @@ const AUTH_APP_HTML = `
       <div class="dot"></div>
       <h1>Sistema Tom Gás</h1>
       <span class="pill" style="margin-left:8px;background:rgba(255,255,255,.15);color:#fff;font-size:10px;" title="Versão do sistema">v${APP_BUILD_HORARIO}</span>
-      <span id="etiqueta-data-hoje" class="pill" style="margin-left:10px;background:rgba(255,255,255,.15);color:#fff;"></span>
     </div>
     <div id="busca-sistema-wrap" style="position:relative;flex:1;max-width:260px;margin:0 12px;">
       <input type="text" id="busca-sistema-input" placeholder="🔎 Buscar no sistema (ex: nps, estoque)" style="width:100%;padding:8px 12px;border-radius:8px;border:none;font-size:13px;">
@@ -1198,6 +1197,7 @@ let state = {
 };
 let currentTab = 'dashboard';
 let relatorioSub = 'vendas';
+let estoqueSub = 'fisico';
 let resumoDiaData = null;
 let kpiMesSelecionado = null;
 let calendarioCampanhaMes = null;
@@ -1282,6 +1282,7 @@ const TABS = [
   {id:'cadastros', label:'Cadastros'},
   {id:'campanhas', label:'Marketing'},
   {id:'checklist', label:'Checklist'},
+  {id:'agenda', label:'Agenda'},
   {id:'relatorios', label:'Relatórios'},
   {id:'config', label:'Config'},
 ];
@@ -3047,6 +3048,7 @@ function grupoDoTab(tabId){
   return TABS.find(g=>g.filhos && g.filhos.includes(tabId)) || null;
 }
 function atualizarEtiquetaDataHoje(){
+  return; // etiqueta removida a pedido do usuário
   const etiquetaData = document.getElementById('etiqueta-data-hoje');
   if(!etiquetaData) return;
   // Usa a hora do servidor/dispositivo em UTC e aplica o fuso de Brasília (UTC-3) explicitamente,
@@ -3196,6 +3198,7 @@ function renderAll(){
   if(currentTab==='tempoentrega') main.innerHTML = viewTempoEntrega();
   if(currentTab==='campanhas') main.innerHTML = viewCampanhas();
   if(currentTab==='checklist') main.innerHTML = viewChecklist();
+  if(currentTab==='agenda') main.innerHTML = viewAgendaAdmin();
   if(currentTab==='relatorios') main.innerHTML = viewRelatorios();
   if(currentTab==='config') main.innerHTML = viewConfig();
   attachHandlers();
@@ -3210,7 +3213,7 @@ function comunicadosBannerHtml(){
   return ativos.map(c=>
     '<div class="comunicado-banner"><span class="tag">Comunicado interno</span>'+
     '<button type="button" class="btn-edit-card on-dark" data-ir-editar-comunicado="'+c.id+'" title="Editar este comunicado">✎</button>'+
-    '<button type="button" class="btn-edit-card on-dark" data-del-comunicado="'+c.id+'" title="Excluir este comunicado" style="right:38px;">🗑</button>'+
+    '<button type="button" class="btn-edit-card on-dark" data-del-comunicado="'+c.id+'" title="Excluir este comunicado" style="right:48px;">🗑</button>'+
     '<h3>'+c.titulo+'</h3>'+
     (c.texto ? '<p>'+c.texto+'</p>' : '')+
     (c.imagemUrl ? '<img src="'+c.imagemUrl+'" alt="'+c.titulo+'">' : '')+
@@ -3262,7 +3265,7 @@ function metaCardDashboardHtml(){
   const metaDiaria = metaDiariaP13(mk);
   const vendidoHoje = p13VendidosNoDia(hoje);
   const vendidoMes = p13VendidosNoMes(mk);
-  return '<div class="meta-card" style="position:relative;"><button type="button" class="btn-edit-card on-light" data-ir-editar-meta="1" title="Editar meta">✎</button><h2>🎯 Meta de cargas de P13 — '+nomeMes(mk)+'</h2>'+
+  return '<div class="meta-card" style="position:relative;"><button type="button" class="btn-edit-card on-dark" data-ir-editar-meta="1" title="Editar meta">✎</button><h2>🎯 Meta de cargas de P13 — '+nomeMes(mk)+'</h2>'+
     barraMetaHtml(vendidoHoje, metaDiaria, 'Meta de hoje ('+fmtDate(hoje)+')')+
     barraMetaHtml(vendidoMes, metaMensal, 'Meta do mês ('+nomeMes(mk)+')')+
     '</div>';
@@ -4475,7 +4478,7 @@ function viewMapaDeposito(){
     const topo = (s.linha/subLinhasPorColuna)*100;
     const altura = (s.span/subLinhasPorColuna)*100;
     const rotulo = s.tipo+'-'+s.estado;
-    const raio = s.tipo==='P13' ? '50%' : '8px';
+    const raio = '8px';
     const estilo = (s.estado==='cheio'
       ? 'background:'+cor+';color:#fff;'
       : 'background:transparent;border:2px solid '+cor+';color:'+cor+';')+'border-radius:'+raio+';';
@@ -4500,6 +4503,15 @@ function viewEstoque(){
   const g = state.estoque.gas, a = state.estoque.agua;
   const min = state.estoqueMinimo || defaultEstoqueMinimo();
   const alertas = itensAbaixoDoMinimo();
+  const devendoVazios = saldosComodato('atacadista').filter(x=>x.produto==='Vasilhame vazio' && x.saldo>0);
+  const totalDevendoVazios = devendoVazios.reduce((s,x)=>s+x.saldo,0);
+  const avisoVaziosDevidos = totalDevendoVazios>0 ? (
+    '<div class="card" style="border:2px solid var(--danger);background:rgba(220,38,38,.06);">'+
+    '<h2 style="color:var(--danger);">⚠️ Vasilhames vazios devendo ao fornecedor</h2>'+
+    '<div style="font-size:22px;font-weight:800;color:var(--danger);">'+totalDevendoVazios+' vasilhame(s)</div>'+
+    '<div class="hint" style="margin-top:4px;">'+devendoVazios.map(x=>x.item+': '+x.saldo).join(' · ')+'</div>'+
+    '</div>'
+  ) : '';
   const gasBoxes = ['P5','P13','P20','P45'].map(t=>{
     const abaixo = min.gas && min.gas[t]>0 && g[t].cheio < min.gas[t];
     return '<div class="stock-box" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:88px;'+(abaixo?'border-color:var(--danger);':'')+'">'+iconVasilhame(true,'#1E3A8A',TAMANHOS_GAS[t],t)+'<div class="n" style="'+(abaixo?'color:var(--danger);':'')+'">'+g[t].cheio+'</div><div class="l">'+t+' — cheio'+(abaixo?' ⚠️':'')+'</div></div>'+
@@ -4517,7 +4529,8 @@ function viewEstoque(){
     ['P5','P13','P20','P45'].map(t=>
     '<div><label>'+t+' — vazio</label><input type="number" name="gas_'+t+'_vazio" value="'+g[t].vazio+'"></div>').join('');
 
-  return viewCapacidadeGas()+
+  const conteudoFisico = viewCapacidadeGas()+
+    avisoVaziosDevidos+
     viewMapaDeposito()+
     (alertas.length>0 ? '<div class="card" style="border-left:4px solid var(--danger);"><h2 style="color:var(--danger);">⚠️ Estoque abaixo do mínimo</h2>'+
       '<div class="table-wrap"><table><thead><tr><th>Item</th><th>Cheio atual</th><th>Mínimo configurado</th></tr></thead><tbody>'+
@@ -4543,7 +4556,13 @@ function viewEstoque(){
     '<div><label>Quantidade <span class="req">*</span></label><input type="number" name="quantidade" min="1" step="1" placeholder="Ex: 20" required></div>'+
     '<div><label>Movimento <span class="req">*</span></label><select name="direcao" required>'+opcoesComPlaceholder(['Entrada (+)','Saída (-)'],'Selecione')+'</select></div>'+
     '<div><label>Motivo (opcional)</label><input type="text" name="motivo" placeholder="Ex: chegada do fornecedor"></div>'+
-    '</div><button type="submit" class="btn">Lançar movimentação</button></form></div>'+
+    '</div>'+
+    '<div id="mov-troca-vazios-wrap" style="display:none;margin-top:8px;padding:10px 12px;background:var(--blue-tint);border-radius:8px;">'+
+    '<label>Vasilhames vazios devolvidos ao fornecedor agora</label>'+
+    '<input type="number" id="mov-vazios-devolvidos" name="vazios_devolvidos" min="0" step="1" placeholder="Ex: 15">'+
+    '<div class="hint" id="mov-devendo-preview" style="margin-top:4px;">Toda entrada de carga cheia costuma exigir devolver a mesma quantidade de vazio pro fornecedor. Preencha aqui só o que você realmente devolveu agora — a diferença fica registrada como dívida de vazio com o fornecedor.</div>'+
+    '</div>'+
+    '<button type="submit" class="btn">Lançar movimentação</button></form></div>'+
     '<div class="card"><h2>Histórico de movimentações</h2>'+
     (state.estoqueLancamentos.length===0 ? '<div class="empty">Nenhuma movimentação lançada ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Movimento</th><th>Quantidade</th><th>Motivo</th><th>Lançado por</th><th></th></tr></thead><tbody>'+
@@ -4563,6 +4582,10 @@ function viewEstoque(){
     '<div><label>Safira — cheio</label><input type="number" name="agua_safira_cheio" value="'+a.safira.cheio+'"></div>'+
     '<div><label>Safira — vazio</label><input type="number" name="agua_safira_vazio" value="'+a.safira.vazio+'"></div>'+
     '</div><button type="submit" class="btn ghost">Salvar estoque</button></form></div>';
+  const ESTOQUE_SUBTABS = [{id:'fisico',label:'Estoque (Gás e Água)'},{id:'comodatos',label:'Comodatos'},{id:'patrimonio',label:'Patrimônio real'}];
+  const conteudoSub = estoqueSub==='comodatos' ? relatorioComodatos() : estoqueSub==='patrimonio' ? relatorioPatrimonio() : conteudoFisico;
+  return '<div class="card"><div class="subtabs">'+ESTOQUE_SUBTABS.map(s=>'<button data-estoque-sub="'+s.id+'" class="'+(estoqueSub===s.id?'active':'')+'">'+s.label+'</button>').join('')+'</div></div>'+
+    conteudoSub;
 }
 
 /* ---------- AGENDAMENTOS ---------- */
@@ -6948,6 +6971,32 @@ function attachHandlers(){
     if(valorSelecionado) movItem.value = valorSelecionado;
   };
   if(movTipo) movTipo.onchange = ()=>popularItensMov(movTipo.value);
+  const movEstadoSel = feMov ? feMov.querySelector('select[name="estado"]') : null;
+  const movDirecaoSel = feMov ? feMov.querySelector('select[name="direcao"]') : null;
+  const movTrocaWrap = document.getElementById('mov-troca-vazios-wrap');
+  const movVaziosInput = document.getElementById('mov-vazios-devolvidos');
+  const movDevendoPreview = document.getElementById('mov-devendo-preview');
+  function atualizarTrocaVazios(){
+    if(!movTrocaWrap) return;
+    const ehEntradaCheio = feMov.estado && feMov.estado.value==='Cheio' && feMov.direcao && feMov.direcao.value.startsWith('Entrada');
+    movTrocaWrap.style.display = ehEntradaCheio ? 'block' : 'none';
+    if(ehEntradaCheio) atualizarPreviewDevendo();
+  }
+  function atualizarPreviewDevendo(){
+    if(!movDevendoPreview) return;
+    const qtd = Number(feMov.quantidade.value)||0;
+    const devolvidos = Number(movVaziosInput.value)||0;
+    const devendo = Math.max(0, qtd - devolvidos);
+    movDevendoPreview.innerHTML = devendo>0
+      ? '⚠️ Você vai ficar devendo <strong>'+devendo+' vasilhame(s) vazio(s)</strong> ao fornecedor. Isso entra automaticamente em "Comodatos / Empréstimos → Eu devo ao atacadista".'
+      : 'Toda entrada de carga cheia costuma exigir devolver a mesma quantidade de vazio pro fornecedor. Preencha aqui só o que você realmente devolveu agora — a diferença fica registrada como dívida de vazio com o fornecedor.';
+  }
+  if(feMov){
+    if(movEstadoSel) movEstadoSel.addEventListener('change', atualizarTrocaVazios);
+    if(movDirecaoSel) movDirecaoSel.addEventListener('change', atualizarTrocaVazios);
+    feMov.quantidade.addEventListener('input', atualizarPreviewDevendo);
+    if(movVaziosInput) movVaziosInput.addEventListener('input', atualizarPreviewDevendo);
+  }
   const feMin = document.getElementById('form-estoque-minimo');
   if(feMin) feMin.onsubmit = async(e)=>{
     e.preventDefault();
@@ -6987,11 +7036,43 @@ function attachHandlers(){
       };
       aplicarEfeitoEstoqueLanc(novoLanc, false);
       state.estoqueLancamentos.push(novoLanc);
+      if(estado==='Cheio' && direcao==='entrada'){
+        const vaziosDevolvidos = Math.max(0, Math.min(quantidade, Number(f.get('vazios_devolvidos'))||0));
+        if(vaziosDevolvidos>0){
+          const lancVazio = {
+            id: uid(), criadoEm: Date.now(), data: todayStr(), tipo, item: itemLabel, itemChave, estado:'Vazio',
+            direcao:'saida', quantidade: vaziosDevolvidos, motivo:'Devolução de vazio na troca por carga cheia', usuario: usuarioAtualNome
+          };
+          aplicarEfeitoEstoqueLanc(lancVazio, false);
+          state.estoqueLancamentos.push(lancVazio);
+        }
+        const devendo = quantidade - vaziosDevolvidos;
+        if(devendo>0){
+          state.comodatos.push({
+            id: uid(), direcao:'atacadista', nome:'Fornecedor', categoria: tipo, item: itemChave, produto:'Vasilhame vazio',
+            quantidade: devendo, data: todayStr(), obs:'Gerado automaticamente na entrada de '+quantidade+' '+itemLabel+' cheio(s)'
+          });
+        }
+      }
     }
     await save('estoque');
     await save('estoqueLancamentos');
+    await save('comodatos');
     renderAll();
   };
+  const btnAgAdminNovo = document.getElementById('btn-agadmin-novo');
+  if(btnAgAdminNovo) btnAgAdminNovo.onclick = ()=>{ const fab = document.getElementById('agenda-fab'); if(fab) fab.click(); };
+  document.querySelectorAll('[data-agadmin-editar]').forEach(btn=>btn.onclick=()=>{
+    const fab = document.getElementById('agenda-fab'); if(fab) fab.click();
+    const alvo = document.querySelector('#agenda-lista [data-ag-editar="'+btn.dataset.agadminEditar+'"]');
+    if(alvo) alvo.click();
+  });
+  document.querySelectorAll('[data-agadmin-excluir]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir esse evento?')) return;
+    state.agendaEventos = (state.agendaEventos||[]).filter(x=>x.id!==btn.dataset.agadminExcluir);
+    await save('agendaEventos');
+    renderAll();
+  });
   document.querySelectorAll('[data-edit-mov-estoque]').forEach(btn=>btn.onclick=()=>{
     const l = state.estoqueLancamentos.find(x=>x.id===btn.dataset.editMovEstoque);
     if(!l || !feMov) return;
@@ -7724,6 +7805,7 @@ function attachHandlers(){
   };
 
   document.querySelectorAll('[data-sub]').forEach(btn=>btn.onclick=()=>{ relatorioSub = btn.dataset.sub; renderAll(); });
+  document.querySelectorAll('[data-estoque-sub]').forEach(btn=>btn.onclick=()=>{ estoqueSub = btn.dataset.estoqueSub; renderAll(); });
   document.querySelectorAll('[data-cadastro-sub]').forEach(btn=>btn.onclick=()=>{ cadastroSub = btn.dataset.cadastroSub; renderAll(); });
 
   // ---- Campanhas ----
@@ -10454,6 +10536,22 @@ document.addEventListener('click', function(e){
 });
 
 /* ---------- AGENDA (Painel flutuante) ---------- */
+function viewAgendaAdmin(){
+  const evs = (state.agendaEventos||[]).slice().sort((a,b)=>(a.data+a.hora).localeCompare(b.data+b.hora));
+  const corPrior = {Alta:'#DC2626',Média:'#D97706',Baixa:'#16A34A'};
+  const linhas = evs.length===0 ? '<tr><td colspan="7" class="empty">Nenhum evento cadastrado ainda.</td></tr>' :
+    evs.map(ev=>'<tr style="border-left:4px solid '+(corPrior[ev.prioridade]||'#999')+';">'+
+      '<td>'+fmtDate(ev.data)+'</td><td>'+ev.hora+'</td><td>'+ev.titulo+(ev.obs?'<div class="hint">'+ev.obs+'</div>':'')+'</td>'+
+      '<td>'+ev.categoria+'</td><td>'+ev.prioridade+'</td><td>'+ev.status+(ev.som?' 🔔':'')+'</td>'+
+      '<td><button type="button" class="act-link" data-agadmin-editar="'+ev.id+'">✎ editar</button>'+
+      '<button type="button" class="del-link" data-agadmin-excluir="'+ev.id+'">🗑 excluir</button></td></tr>'
+    ).join('');
+  return '<div class="card"><h2>📋 Administrar Agenda</h2>'+
+    ajudaHtml('agendaadmin','Aqui ficam todos os eventos da Agenda (o painel flutuante 📋 Agenda), com data, hora, categoria e prioridade — dá pra editar ou excluir qualquer um. Pra adicionar um novo evento, use o botão abaixo (abre o mesmo painel flutuante usado pra cadastrar).')+
+    '<button type="button" class="btn small" id="btn-agadmin-novo" style="margin-bottom:12px;">+ Novo evento</button>'+
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Hora</th><th>Título</th><th>Categoria</th><th>Prioridade</th><th>Status</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>'+
+    '</div>';
+}
 function renderAgendaLista(){
   const box = document.getElementById('agenda-lista');
   if(!box) return;
