@@ -256,6 +256,21 @@ table td:last-child{min-width:180px;}
 .item-venda-row{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:#F8FAFC;}
 .item-venda-row .form-row{align-items:end;}
 .cat-checklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 16px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;}
+.deposito-mapa .cap-barra-info{font-size:13px;font-weight:600;margin:8px 0 4px;}
+.cap-barra-track{height:14px;border-radius:8px;background:var(--border);overflow:hidden;margin-bottom:16px;}
+.cap-barra-fill{height:100%;border-radius:8px;transition:width .3s;}
+.deposito-zonas{display:flex;align-items:stretch;}
+.deposito-zona{flex:1;min-width:0;}
+.deposito-zona h3{font-size:13px;margin:0 0 8px;color:var(--text2);}
+.deposito-divisor{width:2px;align-self:stretch;background:var(--border);margin:0 14px;}
+.deposito-grid{display:grid;grid-template-columns:repeat(1560,1fr);grid-auto-rows:30px;gap:2px;max-height:400px;overflow-y:auto;}
+.vasilhame-cheio{background:linear-gradient(135deg,var(--royal-light),var(--royal));color:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:default;}
+.vasilhame-vazio{border:2px dashed var(--royal-light);border-radius:4px;background:transparent;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;}
+@media (max-width:640px){
+  .deposito-zonas{flex-direction:column;}
+  .deposito-divisor{width:100%;height:2px;margin:14px 0;}
+  .deposito-grid{grid-auto-rows:24px;}
+}
 .checkbox-item{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;width:100%;}
 .checkbox-item input{width:auto;}
 .comunicado-banner{background:linear-gradient(135deg,var(--royal) 0%,var(--royal-dark) 100%);color:#fff;border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;position:relative;overflow:hidden;}
@@ -4328,6 +4343,36 @@ function viewCapacidadeGas(){
     '<div class="metric"><div class="label">Vazios (unidades, sem peso)</div><div class="value" style="font-size:14px;">'+(vaziosResumo||'0')+'</div></div>'+
     '</div></div>';
 }
+function viewMapaDeposito(){
+  const g = state.estoque.gas; // mesma fonte de dados dos cards de Cheios/Vazios
+  const cap = CAPACIDADE_GAS_KG; // 1560kg = 120 vagas de P13 (já existente)
+  const p = pesoGasTotal(); // função já existente — não recalcula nada novo
+  const ocupadoKg = p.cheio;
+  const pct = Math.min(100, Math.round((ocupadoKg/cap)*100));
+  const corBarra = pct>90?'var(--danger)':(pct>=70?'var(--amber)':'var(--green)');
+  const vagasOcupadas = Math.round(ocupadoKg/13);
+  const vagasTotais = Math.round(cap/13); // 120
+  function blocosHtml(estado){
+    let html='';
+    ['P5','P13','P20','P45'].forEach(t=>{
+      const qtd = estado==='cheio' ? (g[t].cheio||0) : (g[t].vazio||0);
+      const peso = PESO_GAS_KG[t];
+      for(let i=0;i<qtd;i++){
+        html += '<div class="vasilhame-'+estado+'" style="grid-column:span '+peso+';" title="'+t+' — '+peso+'kg — '+(estado==='cheio'?'Cheio':'Vazio')+'">'+t+'</div>';
+      }
+    });
+    return html || '<div class="empty" style="grid-column:1/-1;">Nenhum vasilhame '+estado+'.</div>';
+  }
+  return '<div class="card deposito-mapa"><h2>🗺️ Mapa do Depósito</h2>'+
+    '<div class="hint">Representação visual do depósito de gás: cada bloco é um vasilhame, ocupando espaço proporcional ao peso da carga (P5, P13, P20, P45). Vasilhame cheio conta peso; vazio só reserva o espaço, sem pesar.</div>'+
+    '<div class="cap-barra-info">Ocupado: <strong>'+ocupadoKg.toFixed(1)+'kg / '+cap+'kg</strong> ('+pct+'%) · Vagas ocupadas: <strong>'+vagasOcupadas+' / '+vagasTotais+'</strong></div>'+
+    '<div class="cap-barra-track"><div class="cap-barra-fill" style="width:'+pct+'%;background:'+corBarra+';"></div></div>'+
+    '<div class="deposito-zonas">'+
+      '<div class="deposito-zona"><h3>Cheios</h3><div class="deposito-grid">'+blocosHtml('cheio')+'</div></div>'+
+      '<div class="deposito-divisor"></div>'+
+      '<div class="deposito-zona"><h3>Vazios</h3><div class="deposito-grid">'+blocosHtml('vazio')+'</div></div>'+
+    '</div></div>';
+}
 function viewEstoque(){
   const g = state.estoque.gas, a = state.estoque.agua;
   const min = state.estoqueMinimo || defaultEstoqueMinimo();
@@ -4350,6 +4395,7 @@ function viewEstoque(){
     '<div><label>'+t+' — vazio</label><input type="number" name="gas_'+t+'_vazio" value="'+g[t].vazio+'"></div>').join('');
 
   return viewCapacidadeGas()+
+    viewMapaDeposito()+
     (alertas.length>0 ? '<div class="card" style="border-left:4px solid var(--danger);"><h2 style="color:var(--danger);">⚠️ Estoque abaixo do mínimo</h2>'+
       '<div class="table-wrap"><table><thead><tr><th>Item</th><th>Cheio atual</th><th>Mínimo configurado</th></tr></thead><tbody>'+
       alertas.map(al=>'<tr><td>'+al.label+'</td><td style="color:var(--danger);font-weight:700;">'+al.atual+'</td><td>'+al.min+'</td></tr>').join('')+
