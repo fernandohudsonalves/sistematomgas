@@ -258,9 +258,17 @@ table td:last-child{min-width:180px;}
 .cat-checklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 16px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;}
 .deposito-grid-quadrado{position:relative;width:100%;max-width:640px;margin:0 auto;border:1px solid var(--border);border-radius:6px;overflow:hidden;background-color:var(--bg);
   background-image:repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px calc(100%/12)),repeating-linear-gradient(to bottom, var(--border) 0 1px, transparent 1px calc(100%/10));}
-.vaga-bolinha-abs{position:absolute;box-sizing:border-box;border-radius:50%;cursor:default;}
+.vaga-bolinha-abs{position:absolute;box-sizing:border-box;border-radius:50%;cursor:default;display:flex;align-items:center;justify-content:center;overflow:visible;}
+.vaga-bolinha-rotulo{font-size:5.5px;font-weight:700;line-height:1;white-space:nowrap;pointer-events:none;transform:scale(1);}
+.seletor-series-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:12px;}
+.chk-serie-item{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2,var(--bg));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}
+.chk-serie-item input{flex-shrink:0;margin:0;}
+.chk-serie-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chk-serie-item:has(input:checked){border-color:var(--royal,#4169E1);background:color-mix(in srgb, var(--royal,#4169E1) 10%, var(--bg2,var(--bg)));}
 @media (max-width:640px){
   .deposito-grid-quadrado{max-width:100%;}
+  .vaga-bolinha-rotulo{font-size:4.2px;}
+  .seletor-series-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));}
 }
 .checkbox-item{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;width:100%;}
 .checkbox-item input{width:auto;}
@@ -1156,6 +1164,7 @@ let state = {
   fechamentosCaixa: [],
   contasPagar: [],
   oficinasManutencao: [],
+  veiculoKm: [],
   veiculos: [
     {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
     {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️', corIcone:'#2563eb'},
@@ -1206,6 +1215,7 @@ function parseValorBR(str){
 }
 let despesaManualAberta = false;
 let veiculoSelecionado = null, editManutencaoId = null, comprovantesSelecionadosVeiculo = [], comissaoMesSelecionado = null;
+let editKmId = null;
 let simuladorReajusteDe = null, simuladorReajusteAte = null, simuladorReajusteCategoria = null, simuladorReajusteValor = null;
 let backupsListaAberta = false;
 let ultimoBackupAutomaticoOk = null;
@@ -2702,7 +2712,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','usuariosSistema','calendarioEditorial','localizacaoEntregadores'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','usuariosSistema','calendarioEditorial','localizacaoEntregadores'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2775,6 +2785,7 @@ async function loadAll(){
   if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema = [];
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
+  if(!Array.isArray(state.veiculoKm)) state.veiculoKm = [];
   if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
   if(!Array.isArray(state.fechamentosCaixa)) state.fechamentosCaixa = [];
   if(!Array.isArray(state.contasPagar)) state.contasPagar = [];
@@ -2882,7 +2893,7 @@ async function save(key){
     return true;
   }catch(e){ console.error('Erro ao salvar', key, e); alert('Não foi possível salvar no Supabase: '+(e.message||e)); return false; }
 }
-const LABEL_AREA_LOG = {vendas:'Vendas',despesas:'Despesas',clientes:'Clientes',empresas:'Empresas',produtos:'Produtos',estoque:'Estoque',estoqueLancamentos:'Estoque',categoriasProdutos:'Categorias de produtos',categoriasDespesas:'Categorias de despesas',fiados:'Fiados',fiadoPagamentos:'Pagamentos de fiado',creditos:'Créditos',comodatos:'Comodatos',agendamentos:'Agendamentos',metas:'Metas',comunicados:'Comunicados',funcionarios:'Funcionários',campanhas:'Campanhas',pendenciasConferencia:'Pendências de conferência',entregadores:'Entregadores',acertosEntrega:'Acertos de entrega',veiculos:'Veículos',oficinasManutencao:'Empresas de manutenção',rotaConfig:'Configuração de rota',paradasRota:'Paradas de rota'};
+const LABEL_AREA_LOG = {vendas:'Vendas',despesas:'Despesas',clientes:'Clientes',empresas:'Empresas',produtos:'Produtos',estoque:'Estoque',estoqueLancamentos:'Estoque',categoriasProdutos:'Categorias de produtos',categoriasDespesas:'Categorias de despesas',fiados:'Fiados',fiadoPagamentos:'Pagamentos de fiado',creditos:'Créditos',comodatos:'Comodatos',agendamentos:'Agendamentos',metas:'Metas',comunicados:'Comunicados',funcionarios:'Funcionários',campanhas:'Campanhas',pendenciasConferencia:'Pendências de conferência',entregadores:'Entregadores',acertosEntrega:'Acertos de entrega',veiculos:'Veículos',veiculoKm:'Quilometragem de veículos',oficinasManutencao:'Empresas de manutenção',rotaConfig:'Configuração de rota',paradasRota:'Paradas de rota'};
 function registrarLogAtividade(key){
   if(!Array.isArray(state.logAtividades)) state.logAtividades=[];
   state.logAtividades.push({id:uid(), quando:Date.now(), usuario:usuarioAtualNome, area: LABEL_AREA_LOG[key]||key});
@@ -4023,6 +4034,26 @@ function despesasTable(list){
 /* ===================== Veículos (manutenção e gastos) ===================== */
 function totalGastoVeiculo(id){ return state.despesas.filter(d=>d.veiculoId===id).reduce((s,d)=>s+d.valor,0); }
 function ultimaDespesaVeiculo(id){ const l=state.despesas.filter(d=>d.veiculoId===id).sort((a,b)=>b.data.localeCompare(a.data)); return l[0]||null; }
+function kmHistoricoVeiculo(id){ return (state.veiculoKm||[]).filter(k=>k.veiculoId===id).sort((a,b)=>a.data.localeCompare(b.data)||(a.criadoEm-b.criadoEm)); }
+function kmUltimoRegistro(id){ const l=kmHistoricoVeiculo(id); return l.length ? l[l.length-1] : null; }
+// Pra cada mês com leitura, pega a MAIOR quilometragem registrada naquele mês (última leitura do
+// odômetro do mês) e compara com a do mês anterior — assim dá pra ver quanto o veículo rodou.
+function kmComparativoMensal(id){
+  const historico = kmHistoricoVeiculo(id);
+  const porMes = {};
+  historico.forEach(k=>{
+    const mk = monthKey(k.data);
+    if(!porMes[mk] || k.km > porMes[mk].km || (k.km===porMes[mk].km && k.data>porMes[mk].data)) porMes[mk]=k;
+  });
+  const meses = Object.keys(porMes).sort();
+  let anterior = null;
+  return meses.map(mk=>{
+    const reg = porMes[mk];
+    const rodado = anterior!=null ? (reg.km-anterior) : null;
+    anterior = reg.km;
+    return {mes:mk, km:reg.km, data:reg.data, rodado};
+  });
+}
 /* ===================== Fechamento de caixa ===================== */
 let editFechamentoId = null;
 function resumoCaixaDoDia(data, abertura){
@@ -4132,10 +4163,12 @@ function viewFechamentoCaixa(){
 function viewVeiculos(){
   const cards = (state.veiculos||[]).map(v=>{
     const total = totalGastoVeiculo(v.id), ultima = ultimaDespesaVeiculo(v.id);
+    const km = kmUltimoRegistro(v.id);
     return '<div class="card" style="flex:1;min-width:230px;">'+
       '<h3 style="margin:0 0 6px;display:flex;align-items:center;gap:6px;">'+iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)+'</h3>'+
       '<div class="hint">Total gasto: <strong>'+fmtMoney(total)+'</strong></div>'+
       (ultima ? '<div class="hint">Último lançamento: '+fmtDate(ultima.data)+' — '+escapeHtmlCampanha(ultima.categoria)+'</div>' : '<div class="hint">Nenhum gasto lançado ainda.</div>')+
+      (km ? '<div class="hint">📏 Km atual: <strong>'+km.km.toLocaleString('pt-BR')+' km</strong> (em '+fmtDate(km.data)+')</div>' : '<div class="hint">📏 Nenhuma quilometragem registrada ainda.</div>')+
       '<button type="button" class="btn small" data-ver-veiculo="'+v.id+'" style="margin-top:8px;">Ver histórico / Lançar gasto</button>'+
       '</div>';
   }).join('');
@@ -4155,7 +4188,7 @@ function viewVeiculos(){
         '</div>';
     }).join('')+
     '</div>';
-  return '<div class="card"><h2>🚙 Veículos</h2>'+ajudaHtml('veiculos','Registre aqui manutenção, troca de óleo, combustível, IPVA, seguro, peças etc de cada veículo, pra saber quanto cada um está custando. Cada lançamento feito aqui já entra sozinho como despesa do dia (com o veículo marcado) — não precisa lançar de novo em Despesas. Escolha a categoria da despesa e vá acrescentando; use os campos de garantia e próxima troca pra não esquecer de renovar.')+
+  return '<div class="card"><h2>🚙 Veículos</h2>'+ajudaHtml('veiculos','Registre aqui manutenção, troca de óleo, combustível, IPVA, seguro, peças etc de cada veículo, pra saber quanto cada um está custando. Cada lançamento feito aqui já entra sozinho como despesa do dia (com o veículo marcado) — não precisa lançar de novo em Despesas. Escolha a categoria da despesa e vá acrescentando; use os campos de garantia e próxima troca pra não esquecer de renovar. Dentro do histórico de cada veículo também dá pra registrar a quilometragem (ex: no fim de cada mês) e comparar quanto ele rodou de um mês pro outro.')+
     '<div style="display:flex;gap:12px;flex-wrap:wrap;">'+cards+'</div></div>'+painel+grafico;
 }
 function viewDetalheVeiculo(v){
@@ -4219,10 +4252,45 @@ function viewDetalheVeiculo(v){
     '<div style="margin-top:10px;"><button type="submit" class="btn">'+(editando?'Salvar alterações':'Registrar gasto')+'</button>'+
     ' <button type="button" class="link-btn" id="btn-fechar-veiculo">fechar</button>'+
     (editando?' <button type="button" class="link-btn" id="btn-cancelar-manutencao">cancelar edição</button>':'')+
+    '</div></form></div>'+
+    viewKmVeiculo(v);
+}
+// Pra cada mês com pelo menos 1 leitura, mostra a maior km do mês e o quanto rodou em
+// comparação ao mês anterior — é o "comparativo ao final do mês" pedido.
+function viewKmVeiculo(v){
+  const editando = editKmId ? (state.veiculoKm||[]).find(k=>k.id===editKmId) : null;
+  const hoje = todayStr();
+  const historicoAsc = kmHistoricoVeiculo(v.id);
+  const linhas = historicoAsc.map((k,i)=>{
+    const anterior = i>0 ? historicoAsc[i-1].km : null;
+    return Object.assign({}, k, {delta: anterior!=null ? (k.km-anterior) : null});
+  }).slice().reverse();
+  const linhasHtml = linhas.map(k=>
+    '<tr><td>'+fmtDate(k.data)+'</td><td>'+k.km.toLocaleString('pt-BR')+' km</td>'+
+    '<td>'+(k.delta!=null ? (k.delta>=0?'+':'')+k.delta.toLocaleString('pt-BR')+' km' : '—')+'</td>'+
+    '<td>'+(k.obs?escapeHtmlCampanha(k.obs):'—')+'</td>'+
+    '<td class="cel-acoes"><button class="act-link" data-edit-km="'+k.id+'">✎</button><button class="del-link" data-del-km="'+k.id+'">🗑</button></td></tr>'
+  ).join('');
+  const comparativo = kmComparativoMensal(v.id);
+  const compHtml = comparativo.slice().reverse().map(c=>
+    '<tr><td>'+nomeMes(c.mes)+'</td><td>'+c.km.toLocaleString('pt-BR')+' km</td>'+
+    '<td>'+(c.rodado!=null ? (c.rodado>=0?'+':'')+c.rodado.toLocaleString('pt-BR')+' km' : '—')+'</td></tr>'
+  ).join('');
+  return '<div class="card"><h2 style="display:flex;align-items:center;gap:8px;">📏 Quilometragem — '+iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)+'</h2>'+
+    '<div class="hint">Registre a leitura do odômetro (ex: sempre no fim do mês) pra comparar quanto o veículo rodou de um mês pro outro.</div>'+
+    (comparativo.length<2 ? '' : '<div class="table-wrap"><table><thead><tr><th>Mês</th><th>Km final do mês</th><th>Km rodado no mês</th></tr></thead><tbody>'+compHtml+'</tbody></table></div>')+
+    (historicoAsc.length===0 ? '<div class="empty" style="margin-top:10px;">Nenhuma leitura de quilometragem registrada ainda.</div>' :
+    '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Data</th><th>Km</th><th>Desde a leitura anterior</th><th>Observação</th><th></th></tr></thead><tbody>'+linhasHtml+'</tbody></table></div>')+
+    '<form id="form-km" data-veiculo="'+v.id+'" data-editid="'+(editando?editando.id:'')+'" style="margin-top:12px;">'+
+    '<div class="form-row">'+
+    '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+(editando?editando.data:hoje)+'" required></div>'+
+    '<div><label>Quilometragem (km) <span class="req">*</span></label><input type="number" min="0" step="1" name="km" placeholder="Ex: 45210" value="'+(editando?editando.km:'')+'" required></div>'+
+    '</div>'+
+    '<label>Observação (opcional)</label><input type="text" name="obs" value="'+(editando?(editando.obs||''):'')+'" placeholder="Ex: viagem pra São Paulo">'+
+    '<div style="margin-top:10px;"><button type="submit" class="btn small">'+(editando?'Salvar alterações':'Registrar leitura')+'</button>'+
+    (editando?' <button type="button" class="link-btn" id="btn-cancelar-km">cancelar edição</button>':'')+
     '</div></form></div>';
 }
-
-/* ---------- CLIENTES ---------- */
 function viewCadastros(){
   const subtabs = [
     {id:'clientes', label:'Clientes'},
@@ -4306,7 +4374,7 @@ function viewCapacidadeGas(){
   const ocupado = p.cheio;
   const pctOcupado = Math.min(100, (ocupado/cap)*100);
   const excedente = Math.max(0, ocupado-cap);
-  const coresTipo = {P5:'#B45309', P13:'#1E3A8A', P20:'#0EA5E9', P45:'#7C3AED'};
+  const coresTipo = {P5:'#7DD3FC', P13:'#4169E1', P20:'#0F6674', P45:'#0B2545'}; // mesmas cores do Mapa do Depósito
   function segmentosHtml(porTipo, totalLado){
     if(totalLado<=0) return '';
     return ['P5','P13','P20','P45'].map(t=>{
@@ -4381,10 +4449,11 @@ function viewMapaDeposito(){
     const esquerda = s.coluna*larguraCol;
     const topo = (s.linha/subLinhasPorColuna)*100;
     const altura = (s.span/subLinhasPorColuna)*100;
+    const rotulo = s.tipo+'-'+s.estado;
     const estilo = s.estado==='cheio'
-      ? 'background:'+cor+';'
-      : 'background:transparent;border:2px solid '+cor+';';
-    return '<div class="vaga-bolinha-abs" style="left:calc('+esquerda+'% + 2px);top:calc('+topo+'% + 2px);width:calc('+larguraCol+'% - 4px);height:calc('+altura+'% - 4px);'+estilo+'" title="'+s.tipo+' ('+PESO_GAS_KG[s.tipo]+'kg) — '+(s.estado==='cheio'?'Cheio':'Vazio')+'"></div>';
+      ? 'background:'+cor+';color:#fff;'
+      : 'background:transparent;border:2px solid '+cor+';color:'+cor+';';
+    return '<div class="vaga-bolinha-abs" style="left:calc('+esquerda+'% + 2px);top:calc('+topo+'% + 2px);width:calc('+larguraCol+'% - 4px);height:calc('+altura+'% - 4px);'+estilo+'" title="'+rotulo+' ('+PESO_GAS_KG[s.tipo]+'kg)"><span class="vaga-bolinha-rotulo">'+rotulo+'</span></div>';
   }
   const blocosHtml = rc.segs.map(bolinhaHtml).join('') + rv.segs.map(bolinhaHtml).join('');
 
@@ -5612,8 +5681,8 @@ function viewSeletorSeriesEvolucao(){
     seriesEvolucaoSelecionadas = padrao.length ? padrao.slice(0,3) : colunas.slice(0,1);
   }
   return '<div class="hint" style="margin-bottom:8px;">Escolha quais colunas mostrar no gráfico (pode marcar uma ou várias):</div>'+
-    '<div id="seletor-series-evolucao" style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:12px;">'+
-    colunas.map(c=>'<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;"><input type="checkbox" class="chk-serie-evolucao" value="'+c+'" '+(seriesEvolucaoSelecionadas.includes(c)?'checked':'')+'> '+c+'</label>').join('')+
+    '<div id="seletor-series-evolucao" class="seletor-series-grid">'+
+    colunas.map(c=>'<label class="chk-serie-item"><input type="checkbox" class="chk-serie-evolucao" value="'+c+'" '+(seriesEvolucaoSelecionadas.includes(c)?'checked':'')+'><span>'+c+'</span></label>').join('')+
     '</div>';
 }
 function tabelaMesesImportadosHtml(){
@@ -6950,10 +7019,10 @@ function attachHandlers(){
       state.despesas = state.despesas.filter(x=>x.id!==id); await save('despesas'); renderAll();
     });
     document.querySelectorAll('[data-ver-veiculo]').forEach(btn=>btn.onclick=()=>{
-      veiculoSelecionado = btn.dataset.verVeiculo; editManutencaoId=null; comprovantesSelecionadosVeiculo=[]; renderAll();
+      veiculoSelecionado = btn.dataset.verVeiculo; editManutencaoId=null; comprovantesSelecionadosVeiculo=[]; editKmId=null; renderAll();
     });
     const btnFecharVeic = document.getElementById('btn-fechar-veiculo');
-    if(btnFecharVeic) btnFecharVeic.onclick = ()=>{ veiculoSelecionado=null; editManutencaoId=null; renderAll(); };
+    if(btnFecharVeic) btnFecharVeic.onclick = ()=>{ veiculoSelecionado=null; editManutencaoId=null; editKmId=null; renderAll(); };
     const btnCancelarManut = document.getElementById('btn-cancelar-manutencao');
     if(btnCancelarManut) btnCancelarManut.onclick = ()=>{ editManutencaoId=null; comprovantesSelecionadosVeiculo=[]; renderAll(); };
     document.querySelectorAll('[data-edit-manutencao]').forEach(btn=>btn.onclick=()=>{
@@ -7042,6 +7111,36 @@ function attachHandlers(){
       }
       await save('despesas'); await save('categoriasDespesas');
       editManutencaoId=null; comprovantesSelecionadosVeiculo=[];
+      renderAll();
+    };
+    document.querySelectorAll('[data-edit-km]').forEach(btn=>btn.onclick=()=>{
+      editKmId = btn.dataset.editKm; renderAll();
+    });
+    document.querySelectorAll('[data-del-km]').forEach(btn=>btn.onclick=async()=>{
+      if(!confirm('Excluir esta leitura de quilometragem?')) return;
+      state.veiculoKm = (state.veiculoKm||[]).filter(x=>x.id!==btn.dataset.delKm);
+      await save('veiculoKm'); renderAll();
+    });
+    const btnCancelarKm = document.getElementById('btn-cancelar-km');
+    if(btnCancelarKm) btnCancelarKm.onclick = ()=>{ editKmId=null; renderAll(); };
+    const formKm = document.getElementById('form-km');
+    if(formKm) formKm.onsubmit = async(e)=>{
+      e.preventDefault();
+      const f = new FormData(formKm);
+      const km = Number(f.get('km'));
+      if(!f.get('km') || isNaN(km) || km<0){ alert('Digite uma quilometragem válida.'); return; }
+      const veiculoId = formKm.dataset.veiculo;
+      const dados = { data: f.get('data'), km, obs: f.get('obs')||'', veiculoId };
+      const editId = formKm.dataset.editid;
+      if(!Array.isArray(state.veiculoKm)) state.veiculoKm = [];
+      if(editId){
+        const k = state.veiculoKm.find(x=>x.id===editId);
+        if(k) Object.assign(k, dados);
+      } else {
+        state.veiculoKm.push(Object.assign({id:uid(), criadoEm:Date.now()}, dados));
+      }
+      await save('veiculoKm');
+      editKmId=null;
       renderAll();
     };
     const formCaixa = document.getElementById('form-fechamento-caixa');
