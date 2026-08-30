@@ -256,20 +256,12 @@ table td:last-child{min-width:180px;}
 .item-venda-row{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:#F8FAFC;}
 .item-venda-row .form-row{align-items:end;}
 .cat-checklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 16px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px;}
-.deposito-mapa .cap-barra-info{font-size:13px;font-weight:600;margin:8px 0 4px;}
-.cap-barra-track{height:14px;border-radius:8px;background:var(--border);overflow:hidden;margin-bottom:16px;}
-.cap-barra-fill{height:100%;border-radius:8px;transition:width .3s;}
-.deposito-zonas{display:flex;align-items:stretch;}
-.deposito-zona{flex:1;min-width:0;}
-.deposito-zona h3{font-size:13px;margin:0 0 8px;color:var(--text2);}
-.deposito-divisor{width:2px;align-self:stretch;background:var(--border);margin:0 14px;}
-.deposito-grid{display:grid;grid-template-columns:repeat(1560,1fr);grid-auto-rows:30px;gap:2px;max-height:400px;overflow-y:auto;}
-.vasilhame-cheio{background:linear-gradient(135deg,var(--royal-light),var(--royal));color:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:default;}
-.vasilhame-vazio{border:2px dashed var(--royal-light);border-radius:4px;background:transparent;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;}
+.deposito-grid-unico{display:grid;grid-template-columns:repeat(120,minmax(0,1fr));grid-auto-rows:34px;gap:2px;width:100%;}
+.vaga-bloco{border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;overflow:hidden;white-space:nowrap;cursor:default;}
+.vaga-livre{border-radius:3px;background:var(--bg);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:var(--text2);}
 @media (max-width:640px){
-  .deposito-zonas{flex-direction:column;}
-  .deposito-divisor{width:100%;height:2px;margin:14px 0;}
-  .deposito-grid{grid-auto-rows:24px;}
+  .deposito-grid-unico{grid-auto-rows:22px;}
+  .vaga-bloco,.vaga-livre{font-size:0;}
 }
 .checkbox-item{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;width:100%;}
 .checkbox-item input{width:auto;}
@@ -4345,33 +4337,58 @@ function viewCapacidadeGas(){
 }
 function viewMapaDeposito(){
   const g = state.estoque.gas; // mesma fonte de dados dos cards de Cheios/Vazios
-  const cap = CAPACIDADE_GAS_KG; // 1560kg = 120 vagas de P13 (já existente)
-  const p = pesoGasTotal(); // função já existente — não recalcula nada novo
-  const ocupadoKg = p.cheio;
-  const pct = Math.min(100, Math.round((ocupadoKg/cap)*100));
-  const corBarra = pct>90?'var(--danger)':(pct>=70?'var(--amber)':'var(--green)');
-  const vagasOcupadas = Math.round(ocupadoKg/13);
-  const vagasTotais = Math.round(cap/13); // 120
-  function blocosHtml(estado){
-    let html='';
-    ['P5','P13','P20','P45'].forEach(t=>{
-      const qtd = estado==='cheio' ? (g[t].cheio||0) : (g[t].vazio||0);
-      const peso = PESO_GAS_KG[t];
-      for(let i=0;i<qtd;i++){
-        html += '<div class="vasilhame-'+estado+'" style="grid-column:span '+peso+';" title="'+t+' — '+peso+'kg — '+(estado==='cheio'?'Cheio':'Vazio')+'">'+t+'</div>';
-      }
+  const totalVagas = Math.round(CAPACIDADE_GAS_KG/13); // 1560kg / 13kg (P13) = 120 vagas físicas
+  const coresTipo = {P5:'#B45309', P13:'#1E3A8A', P20:'#0EA5E9', P45:'#7C3AED'};
+  const tipos = ['P5','P13','P20','P45'];
+
+  // Vaga física = espaço que o vasilhame ocupa no depósito (independe de estar cheio ou vazio).
+  // Usamos o tamanho do P13 como referência: 1 vaga = 13kg de capacidade do vasilhame.
+  const vagasCheioPorTipo = {}, vagasVazioPorTipo = {};
+  let vagasCheioReal = 0, vagasVazioReal = 0;
+  tipos.forEach(t=>{
+    const vc = (g[t].cheio||0) * PESO_GAS_KG[t] / 13;
+    const vv = (g[t].vazio||0) * PESO_GAS_KG[t] / 13;
+    vagasCheioPorTipo[t]=vc; vagasVazioPorTipo[t]=vv;
+    vagasCheioReal+=vc; vagasVazioReal+=vv;
+  });
+
+  let vagasCheioInt = Math.round(vagasCheioReal);
+  let vagasVazioInt = Math.round(vagasVazioReal);
+  const excedente = Math.max(0, (vagasCheioInt+vagasVazioInt) - totalVagas);
+  if(vagasCheioInt > totalVagas) vagasCheioInt = totalVagas;
+  if(vagasCheioInt + vagasVazioInt > totalVagas) vagasVazioInt = Math.max(0, totalVagas - vagasCheioInt);
+  const vagasLivres = Math.max(0, totalVagas - vagasCheioInt - vagasVazioInt);
+
+  function blocosHtml(porTipo, totalReal, totalInt, estado){
+    if(totalInt<=0 || totalReal<=0) return '';
+    const lista = tipos.filter(t=>porTipo[t]>0);
+    let acumulado = 0, html='';
+    lista.forEach((t,i)=>{
+      let span = (i===lista.length-1) ? (totalInt-acumulado) : Math.round((porTipo[t]/totalReal)*totalInt);
+      if(span<=0) return;
+      acumulado += span;
+      const qtd = estado==='cheio' ? g[t].cheio : g[t].vazio;
+      const estilo = estado==='cheio'
+        ? 'background:'+coresTipo[t]+';color:#fff;'
+        : 'background:repeating-linear-gradient(45deg,'+coresTipo[t]+'33 0 4px,transparent 4px 8px);border:2px dashed '+coresTipo[t]+';color:'+coresTipo[t]+';';
+      html += '<div class="vaga-bloco" style="grid-column:span '+span+';'+estilo+'" title="'+t+' — '+qtd+' '+(estado==='cheio'?'cheio(s)':'vazio(s)')+'">'+t+'</div>';
     });
-    return html || '<div class="empty" style="grid-column:1/-1;">Nenhum vasilhame '+estado+'.</div>';
+    return html;
   }
-  return '<div class="card deposito-mapa"><h2>🗺️ Mapa do Depósito</h2>'+
-    '<div class="hint">Representação visual do depósito de gás: cada bloco é um vasilhame, ocupando espaço proporcional ao peso da carga (P5, P13, P20, P45). Vasilhame cheio conta peso; vazio só reserva o espaço, sem pesar.</div>'+
-    '<div class="cap-barra-info">Ocupado: <strong>'+ocupadoKg.toFixed(1)+'kg / '+cap+'kg</strong> ('+pct+'%) · Vagas ocupadas: <strong>'+vagasOcupadas+' / '+vagasTotais+'</strong></div>'+
-    '<div class="cap-barra-track"><div class="cap-barra-fill" style="width:'+pct+'%;background:'+corBarra+';"></div></div>'+
-    '<div class="deposito-zonas">'+
-      '<div class="deposito-zona"><h3>Cheios</h3><div class="deposito-grid">'+blocosHtml('cheio')+'</div></div>'+
-      '<div class="deposito-divisor"></div>'+
-      '<div class="deposito-zona"><h3>Vazios</h3><div class="deposito-grid">'+blocosHtml('vazio')+'</div></div>'+
-    '</div></div>';
+
+  const blocosCheios = blocosHtml(vagasCheioPorTipo, vagasCheioReal, vagasCheioInt, 'cheio');
+  const blocosVazios = blocosHtml(vagasVazioPorTipo, vagasVazioReal, vagasVazioInt, 'vazio');
+  const filler = vagasLivres>0 ? '<div class="vaga-livre" style="grid-column:span '+vagasLivres+';" title="Espaço livre — '+vagasLivres+' vaga(s)">'+(vagasLivres>=6?'Livre':'')+'</div>' : '';
+  const legenda = tipos.map(t=>'<span><span class="dot" style="background:'+coresTipo[t]+';"></span>'+t+'</span>').join('') +
+    '<span><span class="dot" style="background:transparent;border:2px dashed var(--text2);"></span>Vazio</span>'+
+    '<span><span class="dot" style="background:var(--bg);border:1px dashed var(--border);"></span>Livre</span>';
+
+  return '<div class="card deposito-mapa"><h2>🗺️ Mapa do Depósito <span class="pill">'+(vagasCheioInt+vagasVazioInt)+' / '+totalVagas+' vagas</span></h2>'+
+    '<div class="hint">Cada vaga do quadro abaixo tem o tamanho de um P13. Vasilhame maior ocupa mais vagas, menor ocupa menos. Os cheios ficam à esquerda, os vazios à direita, e o espaço em branco no meio é o que ainda cabe no depósito.</div>'+
+    '<div class="deposito-grid-unico">'+blocosCheios+filler+blocosVazios+'</div>'+
+    '<div class="cap-legend" style="margin-top:10px;">'+legenda+'</div>'+
+    (excedente>0 ? '<div class="hint" style="color:var(--danger);font-weight:600;margin-top:6px;">Atenção: o depósito está '+excedente+' vaga(s) além da capacidade de '+totalVagas+'.</div>' : '')+
+    '</div>';
 }
 function viewEstoque(){
   const g = state.estoque.gas, a = state.estoque.agua;
