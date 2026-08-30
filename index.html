@@ -2234,14 +2234,14 @@ const imgs = {
     'Entrega de Strada': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAHCAYAAADXhRcnAAAAxElEQVQYlW3QIU+CYRQF4AfFTTcsjOaG3cEYxQAzaGZkk0ESP8GOhWywWdgIJIgkOhSDREfF5MZEgwp7t5ft2zdOurs7595zTqZY60rhDmV8ooQ5luhjlaQepJU4xBMeMUMH73hAIUnMood84tAZ7vGNc1zHuYIGRhhiGmyvcbLHwT784Bj/aIXPGbxhEOcbXKWUX3jGH07RDnGCOJQwxiJeDrsqjhLiCT6CVdTxust8iRya2MRML7G4HcKDW1zE5hv43QKS8CeKzldLEQAAAABJRU5ErkJggg==',
   };
   const b64 = imgs[tipo];
-  if(tipo==='Falta retirar') return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><line x1="12" y1="7" x2="12" y2="13"/><circle cx="12" cy="16.5" r="0.9" fill="#F59E0B"/></svg>';
+  if(tipo==='Falta retirar') return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><line x1="12" y1="7" x2="12" y2="13"/><circle cx="12" cy="16.5" r="0.9" fill="'+c+'"/></svg>';
   if(!b64) return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+(cor||'#1E3A8A')+'" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/></svg>';
   return '<img src="data:image/png;base64,'+b64+'" width="'+s+'" style="vertical-align:middle;image-rendering:-webkit-optimize-contrast;" alt="'+tipo+'">';
 }
-function entregaLabel(tipo, hora){
+function entregaLabel(tipo, hora, pendente){
   if(!tipo) return '—';
-  const destaque = tipo==='Falta retirar' ? 'color:#F59E0B;font-weight:700;' : '';
-  return '<span style="display:inline-flex;align-items:center;gap:5px;'+destaque+'">'+iconEntrega(tipo,'#1E3A8A')+'<span>'+tipo+(hora?' às '+hora:'')+'</span></span>';
+  const destaque = pendente ? 'font-weight:700;' : '';
+  return '<span style="display:inline-flex;align-items:center;gap:5px;'+destaque+'">'+iconEntrega(tipo,'#1E3A8A')+'<span>'+tipo+(hora?' às '+hora:'')+'</span>'+(pendente?' <span class="badge" style="background:var(--border);color:var(--text2);">pendente</span>':'')+'</span>';
 }
 function novoItemVendaRow(opts){
   opts = opts || {};
@@ -3553,6 +3553,22 @@ function ajustaEstoquePorVenda(categoria, qtd, reverter){
   if(info.tipo==='carga'){ bucket.cheio -= qtd*sinal; bucket.vazio += qtd*sinal; }
   else { bucket.vazio -= qtd*sinal; }
 }
+/* Resolve uma pendência de "Falta retirar": só agora o estoque é descontado (ele ficava
+   reservado, sem sair do estoque, enquanto o cliente não retirava/não era entregue).
+   forma: 'Cliente retirou' ou 'Entregamos - <meio>'. */
+async function resolverFaltaRetirar(id, forma){
+  const v = (state.vendas||[]).find(x=>x.id===id);
+  if(!v) return;
+  if(!v.estoqueBaixado){
+    ajustaEstoquePorVenda(v.categoria, v.quantidade, false);
+    v.estoqueBaixado = true;
+  }
+  v.retirado = true;
+  v.retiradoForma = forma;
+  v.retiradoEm = Date.now();
+  await save('vendas'); await save('estoque');
+  renderAll();
+}
 
 function opcoesComPlaceholder(lista, texto){
   return '<option value="" selected disabled>'+texto+'</option>'+lista.map(x=>'<option>'+x+'</option>').join('');
@@ -3941,6 +3957,7 @@ function viewVendas(){
   const vendasHoje = state.vendas.filter(v=>v.data===hoje).sort((a,b)=>b.criadoEm-a.criadoEm);
   const totalHoje = vendasHoje.reduce((s,v)=>s+v.valor_total,0);
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
+  const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
 
   return '<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
     '<div class="form-row">'+
@@ -3998,6 +4015,9 @@ function viewVendas(){
     '<div><label>Observação (opcional)</label><input type="text" name="obs"></div>'+
     '<div class="hint" style="margin-top:6px;">Se um horário de entrega for definido, os dados do pedido são enviados por WhatsApp para o entregador automaticamente.</div>'+
     '<button type="submit" class="btn">Registrar venda</button></form></details></div>'+
+    formLancamentoVendaAnteriorHtml(clienteOpts)+
+    '<div class="card"><h2>📦 Falta retirar — pendentes ('+pendenciasRetirada.length+')</h2>'+ajudaHtml('falta-retirar','Vendas marcadas como "Falta retirar" ficam aqui até alguém confirmar que o cliente retirou ou que a gente entregou. O estoque só sai quando você resolve a pendência aqui (botão "Cliente retirou" ou "Nós entregamos") — até lá, o produto continua contando como reservado, sem descontar do estoque disponível.')+
+    '<div id="lista-pendencias-retirada-wrap">'+pendenciasRetiradaTable(pendenciasRetirada)+'</div></div>'+
     '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje)+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
@@ -4006,13 +4026,52 @@ function viewVendas(){
     '<div class="hint" style="margin-top:8px;">Mostrando as vendas mais recentes. Use a busca para encontrar um lançamento específico em qualquer data.</div>'+
     '</div>';
 }
+function pendenciasRetiradaTable(list){
+  if(list.length===0) return '<div class="empty">Nenhuma pendência de retirada.</div>';
+  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd</th><th>Valor</th><th></th></tr></thead><tbody>'+
+    list.map(v=>{
+      const info = CATEGORIAS_ESTOQUE[v.categoria];
+      const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
+      return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
+        '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+'</td><td>'+fmtMoney(v.valor_total)+'</td>'+
+        '<td><button class="btn small" data-retirou-cliente="'+v.id+'">🙋 Cliente retirou</button>'+
+        '<button class="btn small ghost" data-retirou-entregamos="'+v.id+'">🛵 Nós entregamos</button>'+
+        '<button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
+        '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+function formLancamentoVendaAnteriorHtml(clienteOpts){
+  const hoje = todayStr();
+  return '<div class="card"><details><summary><strong>Lançamento de venda anterior ao sistema (clique para abrir)</strong></summary>'+
+    '<div class="hint" style="margin-top:8px;">Use isso só pra registrar clientes/vendas de antes do sistema (sem valor, já que já foi vendido e recebido antes). Serve pra manter o histórico do cliente e, se marcar, dar baixa no estoque.</div>'+
+    '<form id="form-venda-antiga" style="margin-top:10px;">'+
+    '<div class="form-row">'+
+    '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-antiga" name="cliente" placeholder="Nome do cliente" required><datalist id="lista-clientes-antiga">'+clienteOpts+'</datalist></div>'+
+    '<div><label>Data da compra <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+    '<div><label>Produto <span class="req">*</span></label><select name="categoria" required>'+opcoesComPlaceholder(CATEGORIAS_CONTROLADAS,'Selecione o produto')+'</select></div>'+
+    '<div><label>Quantidade <span class="req">*</span></label><div class="qty-stepper"><button type="button" class="qty-btn qty-minus">−</button><input type="number" name="quantidade" min="1" value="1" step="1" required><button type="button" class="qty-btn qty-plus">+</button></div></div>'+
+    '</div>'+
+    '<div class="hint" style="margin-top:6px;">Sem valor do produto — já foi vendido/recebido antes desse sistema.</div>'+
+    '<div style="margin-top:10px;"><label><input type="checkbox" id="chk-venda-antiga-valor-extra"> Lançar um valor a mais (ex: frete)?</label></div>'+
+    '<div id="wrap-venda-antiga-valor-extra" class="item-venda-row" style="display:none;margin-top:6px;">'+
+    '<div class="form-row">'+
+    '<div><label>Valor extra (R$)</label><input type="number" name="valor_extra" min="0" step="0.01" placeholder="0,00"></div>'+
+    '<div><label>Forma de pagamento desse valor extra</label><select name="pagamento_extra">'+opcoesComPlaceholder(PAGAMENTOS,'Selecione')+'</select></div>'+
+    '</div></div>'+
+    '<div style="margin-top:10px;"><label><input type="checkbox" id="chk-venda-antiga-baixa-estoque"> Dar baixa no estoque agora?</label></div>'+
+    '<div><label>Observação (opcional)</label><input type="text" name="obs" placeholder="Ex: venda de antes do sistema novo"></div>'+
+    '<button type="submit" class="btn" style="margin-top:10px;">Registrar lançamento anterior</button>'+
+    '</form></details></div>';
+}
 function vendasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma venda encontrada.</div>';
   return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
-      const entrega = entregaLabel(v.tipo_entrega, v.entrega_hora) + (v.frete ? ' <span class="badge fiado">frete '+fmtMoney(v.frete)+'</span>' : '');
+      const entrega = entregaLabel(v.tipo_entrega, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (v.frete ? ' <span class="badge fiado">frete '+fmtMoney(v.frete)+'</span>' : '');
       const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber">A receber</span>' : ' <span class="badge status-pago">Pago</span>');
       return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
         '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td>'+v.quantidade+'</td>'+
@@ -6712,7 +6771,7 @@ function attachHandlers(){
     if(editVendaId){
       const v = state.vendas.find(x=>x.id===editVendaId);
       if(v){
-        ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
+        if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
         v.data=f.get('data'); v.cliente=f.get('cliente')||''; v.canal=f.get('canal');
         v.categoria=categoria; v.produto=produto; v.quantidade=quantidade; v.valor_unit=valor_unit; v.valor_total=valor_total;
         v.pagamento=f.get('pagamento'); v.nota=f.get('nota'); v.tipo_entrega=f.get('tipo_entrega'); v.cupom=(f.get('cupom')||'').trim().toUpperCase();
@@ -6720,7 +6779,16 @@ function attachHandlers(){
         v.frete = TIPOS_ENTREGA_COM_FRETE.includes(v.tipo_entrega) ? (Number(f.get('frete'))||0) : 0;
         if(v.entrega_hora && !v.entrega_status) v.entrega_status='pendente';
         if(!v.entrega_hora) v.entrega_status='';
-        ajustaEstoquePorVenda(categoria, quantidade, false);
+        // "Falta retirar" só desconta do estoque quando o cliente realmente retirar/for entregue
+        // (resolvido pela lista de pendências). Editar a venda pra outro tipo de entrega aqui
+        // já conta como resolução (o estoque sai na hora).
+        if(v.tipo_entrega === 'Falta retirar'){
+          v.estoqueBaixado = false; v.retirado = false; v.retiradoForma = ''; v.retiradoEm = null;
+        } else {
+          ajustaEstoquePorVenda(categoria, quantidade, false);
+          v.estoqueBaixado = true;
+          if(!v.retirado){ v.retirado = true; v.retiradoForma = 'Editado manualmente'; v.retiradoEm = Date.now(); }
+        }
         if(v.cliente && (v.pagamento||'').includes('Fiado')) verificarLimiteCreditoCliente(v.cliente);
       }
       editVendaId = null;
@@ -6744,10 +6812,13 @@ function attachHandlers(){
         obs: f.get('obs')||''
       };
       const freteTotal = TIPOS_ENTREGA_COM_FRETE.includes(camposComuns.tipo_entrega) ? (Number(f.get('frete'))||0) : 0;
+      // "Falta retirar" fica com o estoque reservado (não desconta ainda) até alguém confirmar,
+      // na lista de pendências, que o cliente retirou ou que foi entregue.
+      const pendenteRetiradaNova = camposComuns.tipo_entrega === 'Falta retirar';
       itens.forEach((item,idx)=>{
-        const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':''}, camposComuns, item);
+        const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':'', estoqueBaixado: !pendenteRetiradaNova, retirado:false, retiradoForma:'', retiradoEm:null}, camposComuns, item);
         state.vendas.push(venda);
-        ajustaEstoquePorVenda(item.categoria, item.quantidade, false);
+        if(!pendenteRetiradaNova) ajustaEstoquePorVenda(item.categoria, item.quantidade, false);
       });
       const chkUsarCreditoVenda = document.getElementById('chk-usar-credito');
       if(chkUsarCreditoVenda && chkUsarCreditoVenda.checked && camposComuns.cliente){
@@ -6819,6 +6890,41 @@ function attachHandlers(){
     }
     if(camposComuns.empresa) await garantirEmpresaCadastrada(camposComuns.empresa);
     await save('vendas'); await save('estoque');
+    renderAll();
+  };
+  const chkVendaAntigaValorExtra = document.getElementById('chk-venda-antiga-valor-extra');
+  const wrapVendaAntigaValorExtra = document.getElementById('wrap-venda-antiga-valor-extra');
+  if(chkVendaAntigaValorExtra && wrapVendaAntigaValorExtra) chkVendaAntigaValorExtra.onchange = ()=>{
+    wrapVendaAntigaValorExtra.style.display = chkVendaAntigaValorExtra.checked ? 'block' : 'none';
+  };
+  const fva = document.getElementById('form-venda-antiga');
+  if(fva) fva.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(fva);
+    const categoria = f.get('categoria');
+    const produto = categoria;
+    const quantidade = Number(f.get('quantidade'))||1;
+    const cliente = (f.get('cliente')||'').trim();
+    const temValorExtra = !!document.getElementById('chk-venda-antiga-valor-extra').checked;
+    const valorExtra = temValorExtra ? (Number(f.get('valor_extra'))||0) : 0;
+    const pagamentoExtra = temValorExtra ? (f.get('pagamento_extra')||'Outros') : '';
+    const baixaEstoque = !!document.getElementById('chk-venda-antiga-baixa-estoque').checked;
+    const venda = {
+      id: uid(), criadoEm: Date.now(), grupoId: uid(), fiado_pago:false,
+      data: f.get('data'), cliente, canal: 'Venda Ativa', categoria, produto, quantidade,
+      valor_unit: 0, valor_total: 0,
+      pagamento: pagamentoExtra || 'Já lançado', nota: 'Já lançado', tipo_entrega: 'Retirada', empresa:'',
+      frete: valorExtra, entrega_data:'', entrega_hora:'', entrega_status:'',
+      obs: (f.get('obs')||'').trim() || 'Venda anterior ao sistema (lançamento manual, sem valor de produto)'+(valorExtra?' — valor extra: '+fmtMoney(valorExtra):''),
+      estoqueBaixado: baixaEstoque, retirado:true, retiradoForma:'', retiradoEm:null,
+      vendaAnterior: true
+    };
+    state.vendas.push(venda);
+    if(baixaEstoque) ajustaEstoquePorVenda(categoria, quantidade, false);
+    await save('vendas'); await save('estoque');
+    fva.reset();
+    if(wrapVendaAntigaValorExtra) wrapVendaAntigaValorExtra.style.display = 'none';
+    alert('Lançamento anterior registrado'+(baixaEstoque?' e estoque atualizado.':', sem mexer no estoque.'));
     renderAll();
   };
   const btnAddItemVenda = document.getElementById('btn-add-item-venda');
@@ -7204,12 +7310,21 @@ function attachHandlers(){
     document.querySelectorAll('[data-del-venda]').forEach(btn=>btn.onclick=async()=>{
       const id = btn.dataset.delVenda;
       const v = state.vendas.find(x=>x.id===id);
-      if(v && confirm('Excluir esta venda? O estoque será revertido, se aplicável.')){
-        ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
+      if(v && confirm('Excluir esta venda?'+(v.estoqueBaixado?' O estoque será revertido.':' (essa venda ainda não tinha descontado o estoque — nada a reverter)'))){
+        if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
         state.vendas = state.vendas.filter(x=>x.id!==id);
         await save('vendas'); await save('estoque');
         renderAll();
       }
+    });
+    document.querySelectorAll('[data-retirou-cliente]').forEach(btn=>btn.onclick=()=>{
+      resolverFaltaRetirar(btn.dataset.retirouCliente, 'Cliente retirou');
+    });
+    document.querySelectorAll('[data-retirou-entregamos]').forEach(btn=>btn.onclick=()=>{
+      const meios = ['Entrega a pé','Entrega de moto','Entrega de carro','Entrega de Strada'];
+      const escolha = prompt('Qual foi o meio de entrega?\n1 - A pé\n2 - Moto\n3 - Carro\n4 - Strada\n\nDigite o número:');
+      const idx = Number(escolha)-1;
+      if(idx>=0 && idx<meios.length) resolverFaltaRetirar(btn.dataset.retirouEntregamos, 'Entregamos - '+meios[idx]);
     });
     document.querySelectorAll('[data-edit-venda-ag]').forEach(btn=>btn.onclick=()=>{
       pendingEditVendaId = btn.dataset.editVendaAg;
@@ -9440,13 +9555,14 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           id: uid(), criadoEm: Date.now(), grupoId, fiado_pago:false,
           data, cliente, canal, categoria, produto, quantidade, valor_unit, valor_total,
           pagamento, nota, tipo_entrega, empresa, frete,
-          entrega_data:'', entrega_hora:'', entrega_status:'', obs: obs || 'Importado de planilha'
+          entrega_data:'', entrega_hora:'', entrega_status:'', obs: obs || 'Importado de planilha',
+          estoqueBaixado: tipo_entrega !== 'Falta retirar', retirado:false, retiradoForma:'', retiradoEm:null
         };
         const fpVenda = chaveVendaFingerprint(venda);
         if(fpVenda && fingerprintsVendas.has(fpVenda)){ duplicadas++; return; }
         if(fpVenda) fingerprintsVendas.add(fpVenda);
         state.vendas.push(venda);
-        ajustaEstoquePorVenda(categoria, quantidade, false);
+        if(venda.estoqueBaixado) ajustaEstoquePorVenda(categoria, quantidade, false);
         importadas++;
 
         // Se a planilha marcou a venda como "Abateu", desconta automaticamente do crédito em
@@ -10158,10 +10274,11 @@ function renderCsvVendasMapping(){
         id: uid(), criadoEm: Date.now(), grupoId: uid(), fiado_pago:false,
         data, cliente, canal, categoria, produto, quantidade, valor_unit, valor_total,
         pagamento, nota:'Não lança', tipo_entrega, empresa, frete,
-        entrega_data:'', entrega_hora:'', entrega_status:'', obs:'Importado de planilha'
+        entrega_data:'', entrega_hora:'', entrega_status:'', obs:'Importado de planilha',
+        estoqueBaixado: tipo_entrega !== 'Falta retirar', retirado:false, retiradoForma:'', retiradoEm:null
       };
       state.vendas.push(venda);
-      ajustaEstoquePorVenda(categoria, quantidade, false);
+      if(venda.estoqueBaixado) ajustaEstoquePorVenda(categoria, quantidade, false);
       importadas++;
     });
     await save('vendas'); await save('estoque'); await save('categoriasProdutos'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia');
