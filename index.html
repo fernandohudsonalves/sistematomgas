@@ -2851,7 +2851,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2903,6 +2903,7 @@ async function loadAll(){
     await save('funcionarios');
   }
   if(!state.historicoMensal) state.historicoMensal = [];
+  if(!state.historicoColunasOrdem) state.historicoColunasOrdem = [];
   if(!state.estoqueLancamentos) state.estoqueLancamentos = [];
   if(!state.creditos) state.creditos = [];
   if(!state.comodatos) state.comodatos = [];
@@ -6522,9 +6523,11 @@ function parseNumeroPlanilha(v){
   return neg ? -n : n;
 }
 function colunasHistoricoDisponiveis(){
-  const colunas = {};
-  state.historicoMensal.forEach(h=>Object.keys(h.dados).forEach(k=>colunas[k]=true));
-  return Object.keys(colunas);
+  const vistas = {};
+  state.historicoMensal.forEach(h=>Object.keys(h.dados).forEach(k=>vistas[k]=true));
+  const ordem = (state.historicoColunasOrdem||[]).filter(k=>vistas[k]);
+  Object.keys(vistas).forEach(k=>{ if(!ordem.includes(k)) ordem.push(k); });
+  return ordem;
 }
 function renderHistoricoMapping(headers, linhas){
   const wrap = document.getElementById('historico-mapping');
@@ -6553,15 +6556,19 @@ function renderHistoricoMapping(headers, linhas){
   wrap.innerHTML = '<div class="hint" style="margin-top:10px;">'+registros.length+' mês(es) encontrados: '+registros.map(r=>nomeMes(r.mes)).join(', ')+'</div>'+
     '<button class="btn small green" id="btn-importar-historico" style="margin-top:8px;">Importar '+registros.length+' mês(es)</button>';
   document.getElementById('btn-importar-historico').onclick = async ()=>{
+    if(!state.historicoColunasOrdem) state.historicoColunasOrdem = [];
+    headers.slice(1).forEach(h=>{ if(!state.historicoColunasOrdem.includes(h)) state.historicoColunasOrdem.push(h); });
     registros.forEach(function(reg){
       const idx = state.historicoMensal.findIndex(x=>x.mes===reg.mes);
-      if(idx>-1) state.historicoMensal[idx] = reg; else state.historicoMensal.push(reg);
+      if(idx>-1) state.historicoMensal[idx].dados = Object.assign({}, state.historicoMensal[idx].dados, reg.dados);
+      else state.historicoMensal.push(reg);
     });
     await save('historicoMensal');
+    await save('historicoColunasOrdem');
     seriesEvolucaoSelecionadas = null;
     wrap.innerHTML = '';
     renderAll();
-    alert(registros.length+' mês(es) importado(s)/atualizado(s) com sucesso!');
+    alert(registros.length+' mês(es) importado(s)/atualizado(s) com sucesso! Os valores de meses já existentes foram atualizados apenas nas colunas que vieram preenchidas nessa planilha — colunas em branco não apagam o que já estava salvo.');
   };
 }
 function evolucaoMensalCompleta(){
