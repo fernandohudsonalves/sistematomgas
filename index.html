@@ -406,7 +406,7 @@ table td:last-child{min-width:180px;}
 #recado-fab-badge{position:absolute;top:-4px;right:-4px;background:#DC2626;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 5px;display:none;}
 #recado-panel{position:fixed;right:18px;bottom:350px;z-index:2500;width:270px;max-height:360px;overflow-y:auto;background:#FFF6C9;color:#333;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);display:none;}
 #recado-panel.open{display:block;}
-#recado-head{background:#F5B800;color:#3a2e00;padding:8px 12px;font-weight:700;display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+#recado-head{background:#F5B800;color:#3a2e00;padding:8px 12px;font-weight:700;display:flex;justify-content:space-between;align-items:center;font-size:13px;cursor:move;user-select:none;}
 #recado-head button{background:transparent;border:none;color:#3a2e00;font-size:15px;cursor:pointer;}
 #recado-body{padding:10px;}
 .recado-item{background:#fff;border-left:4px solid #F5B800;border-radius:6px;padding:7px 9px;margin-bottom:7px;font-size:12.5px;}
@@ -635,7 +635,7 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
 <button id="calc-fab" title="Calculadora">🖩</button>
 <button id="recado-fab" title="Recados / Post-it">📌<span id="recado-fab-badge"></span></button>
 <div id="recado-panel">
-  <div id="recado-head">📌 Recados <button type="button" id="recado-fechar">✕</button></div>
+  <div id="recado-head">📌 Recados <span style="display:flex;align-items:center;gap:4px;"><button type="button" id="recado-admin-toggle" title="Administrar todos os recados">📋</button><button type="button" id="recado-fechar">✕</button></span></div>
   <div id="recado-body">
     <div id="recado-lista"></div>
     <textarea id="recado-novo-texto" rows="2" placeholder="Novo aviso pro dia seguinte..." style="width:100%;box-sizing:border-box;font-family:inherit;font-size:12.5px;"></textarea>
@@ -918,12 +918,15 @@ function tornarArrastavel(panel, head){
   document.addEventListener('touchmove', e=>{ const t=e.touches[0]; mover(t.clientX,t.clientY); }, {passive:true});
   document.addEventListener('touchend', soltar);
 }
+let recadosAdminAberto = false;
 function initRecados(){
-  const fab=document.getElementById('recado-fab'), panel=document.getElementById('recado-panel');
+  const fab=document.getElementById('recado-fab'), panel=document.getElementById('recado-panel'), head=document.getElementById('recado-head');
   if(!fab||!panel||fab.dataset.bound) return;
   fab.dataset.bound='1';
   fab.onclick=()=>{ panel.classList.toggle('open'); };
   document.getElementById('recado-fechar').onclick=()=>panel.classList.remove('open');
+  const btnAdminToggle = document.getElementById('recado-admin-toggle');
+  if(btnAdminToggle) btnAdminToggle.onclick=(e)=>{ e.stopPropagation(); recadosAdminAberto = !recadosAdminAberto; renderRecadosFab(); };
   const inputData = document.getElementById('recado-novo-data');
   if(inputData){ const amanha=new Date(Date.now()+86400000); inputData.value = amanha.toISOString().slice(0,10); }
   document.getElementById('recado-salvar-novo').onclick = async()=>{
@@ -935,20 +938,40 @@ function initRecados(){
     txt.value='';
     renderRecadosFab();
   };
+  tornarArrastavel(panel, head);
 }
 function renderRecadosFab(){
   const badge = document.getElementById('recado-fab-badge');
   const lista = document.getElementById('recado-lista');
+  const btnAdminToggle = document.getElementById('recado-admin-toggle');
   if(!badge || !lista) return;
-  const pendentes = (state.recados||[]).filter(r=>!r.concluido).sort((a,b)=>(a.paraData||'').localeCompare(b.paraData||''));
+  const todos = (state.recados||[]);
+  const pendentes = todos.filter(r=>!r.concluido).sort((a,b)=>(a.paraData||'').localeCompare(b.paraData||''));
   badge.style.display = pendentes.length>0 ? 'block' : 'none';
   badge.textContent = pendentes.length;
-  lista.innerHTML = pendentes.length===0 ? '<div class="hint">Nenhum recado pendente.</div>' :
-    pendentes.map(r=>'<div class="recado-item"><strong>'+fmtDate(r.paraData)+'</strong><div>'+escapeHtmlCampanha(r.texto)+'</div>'+
-      '<div style="margin-top:5px;display:flex;gap:8px;"><button type="button" class="act-link" data-recado-concluir="'+r.id+'">✓ concluído</button><button type="button" class="del-link" data-recado-excluir="'+r.id+'">🗑</button></div></div>').join('');
+  if(btnAdminToggle){
+    btnAdminToggle.textContent = recadosAdminAberto ? '📌' : '📋';
+    btnAdminToggle.title = recadosAdminAberto ? 'Voltar pros pendentes' : 'Administrar todos os recados';
+  }
+  if(!recadosAdminAberto){
+    lista.innerHTML = pendentes.length===0 ? '<div class="hint">Nenhum recado pendente.</div>' :
+      pendentes.map(r=>'<div class="recado-item"><strong>'+fmtDate(r.paraData)+'</strong><div>'+escapeHtmlCampanha(r.texto)+'</div>'+
+        '<div style="margin-top:5px;display:flex;gap:8px;"><button type="button" class="act-link" data-recado-concluir="'+r.id+'">✓ concluído</button><button type="button" class="del-link" data-recado-excluir="'+r.id+'">🗑</button></div></div>').join('');
+  } else {
+    const todosOrdenados = todos.slice().sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+    lista.innerHTML = '<div class="hint" style="margin-bottom:6px;">📋 Todos os recados (histórico completo, inclusive concluídos).</div>'+
+      (todosOrdenados.length===0 ? '<div class="hint">Nenhum recado cadastrado ainda.</div>' :
+      todosOrdenados.map(r=>'<div class="recado-item" style="'+(r.concluido?'opacity:.6;':'')+'"><strong>'+fmtDate(r.paraData)+'</strong>'+(r.concluido?' <span class="hint">(concluído)</span>':'')+'<div>'+escapeHtmlCampanha(r.texto)+'</div>'+
+        '<div style="margin-top:5px;display:flex;gap:8px;">'+(r.concluido?'<button type="button" class="act-link" data-recado-reabrir="'+r.id+'">↺ reabrir</button>':'<button type="button" class="act-link" data-recado-concluir="'+r.id+'">✓ concluído</button>')+
+        '<button type="button" class="del-link" data-recado-excluir="'+r.id+'">🗑</button></div></div>').join(''));
+  }
   lista.querySelectorAll('[data-recado-concluir]').forEach(btn=>btn.onclick=async()=>{
     const r = state.recados.find(x=>x.id===btn.dataset.recadoConcluir);
     if(r){ r.concluido=true; await save('recados'); renderRecadosFab(); if(currentTab==='config') renderAll(); }
+  });
+  lista.querySelectorAll('[data-recado-reabrir]').forEach(btn=>btn.onclick=async()=>{
+    const r = state.recados.find(x=>x.id===btn.dataset.recadoReabrir);
+    if(r){ r.concluido=false; await save('recados'); renderRecadosFab(); if(currentTab==='config') renderAll(); }
   });
   lista.querySelectorAll('[data-recado-excluir]').forEach(btn=>btn.onclick=async()=>{
     state.recados = state.recados.filter(x=>x.id!==btn.dataset.recadoExcluir);
