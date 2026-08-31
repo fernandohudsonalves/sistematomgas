@@ -4402,6 +4402,10 @@ function viewContasPagar(){
     '<button type="submit" class="btn" style="margin-top:8px;">'+(editando?'Salvar alterações':'Cadastrar conta')+'</button>'+
     (editando?' <button type="button" class="link-btn" id="btn-cancelar-conta-pagar">cancelar edição</button>':'')+
     '</form></div>'+
+    '<div class="card"><h2>📥 Importar planilha</h2>'+
+    '<div class="hint">Suba aqui uma planilha Excel com uma aba chamada <strong>ContasPagar</strong> (colunas: Descrição, Valor, Categoria, Vencimento, Recorrente, Status) pra lançar várias contas de uma vez, sem precisar digitar uma por uma. Baixe o <a href="#" id="link-baixar-modelo-contas-pagar">modelo em Excel</a> pra ver o formato certo.</div>'+
+    '<input type="file" id="input-importar-contas-pagar" accept=".xlsx,.xls" style="margin-top:10px;">'+
+    '</div>'+
     '<div class="card"><h2>Todas as contas</h2>'+
     (lista.length===0 ? '<div class="empty">Nenhuma conta cadastrada.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
@@ -9069,6 +9073,16 @@ function attachHandlers(){
   };
   const btnCancelarContaPagar = document.getElementById('btn-cancelar-conta-pagar');
   if(btnCancelarContaPagar) btnCancelarContaPagar.onclick = ()=>{ editContaPagarId=null; renderAll(); };
+  const linkModeloContasPagar = document.getElementById('link-baixar-modelo-contas-pagar');
+  if(linkModeloContasPagar) linkModeloContasPagar.onclick = (e)=>{ e.preventDefault(); gerarModeloImportacaoDiaria(); };
+  const inputImportarContasPagar = document.getElementById('input-importar-contas-pagar');
+  if(inputImportarContasPagar) inputImportarContasPagar.onchange = (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    if(!confirm('Isso vai importar as contas da aba "ContasPagar" desse arquivo (e também Vendas/Despesas/Clientes/Produtos/FechamentoCaixa, se essas abas estiverem preenchidas). Continuar?')){ e.target.value=''; return; }
+    processarImportacaoDiariaExcel(file);
+    e.target.value='';
+  };
   document.querySelectorAll('[data-edit-conta-pagar]').forEach(btn=>btn.onclick=()=>{ editContaPagarId = btn.dataset.editContaPagar; renderAll(); });
   document.querySelectorAll('[data-del-conta-pagar]').forEach(btn=>btn.onclick=async()=>{
     const c = state.contasPagar.find(x=>x.id===btn.dataset.delContaPagar);
