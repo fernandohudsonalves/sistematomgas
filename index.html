@@ -3733,6 +3733,33 @@ function ajustaEstoquePorVenda(categoria, qtd, reverter){
 /* Resolve uma pendência de "Falta retirar": só agora o estoque é descontado (ele ficava
    reservado, sem sair do estoque, enquanto o cliente não retirava/não era entregue).
    forma: 'Cliente retirou' ou 'Entregamos - <meio>'. */
+function preencherFormEdicaoVenda(v, fvEl){
+  fvEl = fvEl || document.getElementById('form-venda');
+  if(!v || !fvEl) return;
+  editVendaId = v.id;
+  fvEl.data.value=v.data; fvEl.cliente.value=v.cliente||''; fvEl.canal.value=v.canal;
+  if(seletorVendaMain) seletorVendaMain.setValor(v.categoria, v.produto);
+  fvEl.quantidade.value=v.quantidade; fvEl.valor_unit.value=v.valor_unit; fvEl.pagamento.value=v.pagamento; fvEl.nota.value=v.nota;
+  fvEl.tipo_entrega.value=v.tipo_entrega; fvEl.empresa.value=v.empresa||''; fvEl.entrega_data.value=v.entrega_data||''; fvEl.entrega_hora.value=v.entrega_hora||''; fvEl.obs.value=v.obs||'';
+  if(fvEl.frete) fvEl.frete.value = v.frete||'';
+  const selFormaRetiradaEdit = document.getElementById('sel-forma-retirada-edit');
+  const inputFreteFREdit = document.getElementById('input-frete-falta-retirar');
+  const chkBaixaFREdit = document.getElementById('chk-baixa-estoque-falta-retirar');
+  const wrapFormaPagtoFREdit = document.getElementById('wrap-forma-pagto-frete-falta-retirar');
+  if(v.tipo_entrega==='Falta retirar'){
+    if(selFormaRetiradaEdit) selFormaRetiradaEdit.value = v.retirado ? (v.retiradoForma||'') : 'Ainda pendente';
+    if(inputFreteFREdit) inputFreteFREdit.value = v.frete||'';
+    if(wrapFormaPagtoFREdit) wrapFormaPagtoFREdit.style.display = (v.frete>0) ? 'block' : 'none';
+    if(chkBaixaFREdit) chkBaixaFREdit.checked = !!v.estoqueBaixado;
+  }
+  fvEl.querySelector('button[type=submit]').textContent='Salvar alterações';
+  const itensExtraEl = document.getElementById('itens-extra-lista'); if(itensExtraEl) itensExtraEl.innerHTML='';
+  const btnAddItemEl = document.getElementById('btn-add-item-venda'); if(btnAddItemEl) btnAddItemEl.style.display='none';
+  const btnAddItemMesmaCatEl = document.getElementById('btn-add-item-mesma-categoria'); if(btnAddItemMesmaCatEl) btnAddItemMesmaCatEl.style.display='none';
+  toggleDetalhesEntregaVenda();
+  atualizarTotalCarrinho();
+  fvEl.scrollIntoView({behavior:'smooth'});
+}
 async function resolverFaltaRetirar(id, forma, freteValor, freteForma, darBaixa){
   const v = (state.vendas||[]).find(x=>x.id===id);
   if(!v) return;
@@ -8025,31 +8052,10 @@ function attachHandlers(){
   const attachVendaRowHandlers = ()=>{
     document.querySelectorAll('[data-edit-venda]').forEach(btn=>btn.onclick=()=>{
       const v = state.vendas.find(x=>x.id===btn.dataset.editVenda);
+      if(!v) return;
       const fvEl = document.getElementById('form-venda');
-      if(!v || !fvEl) return;
-      editVendaId = v.id;
-      fvEl.data.value=v.data; fvEl.cliente.value=v.cliente||''; fvEl.canal.value=v.canal;
-      if(seletorVendaMain) seletorVendaMain.setValor(v.categoria, v.produto);
-      fvEl.quantidade.value=v.quantidade; fvEl.valor_unit.value=v.valor_unit; fvEl.pagamento.value=v.pagamento; fvEl.nota.value=v.nota;
-      fvEl.tipo_entrega.value=v.tipo_entrega; fvEl.empresa.value=v.empresa||''; fvEl.entrega_data.value=v.entrega_data||''; fvEl.entrega_hora.value=v.entrega_hora||''; fvEl.obs.value=v.obs||'';
-      if(fvEl.frete) fvEl.frete.value = v.frete||'';
-      const selFormaRetiradaEdit = document.getElementById('sel-forma-retirada-edit');
-      const inputFreteFREdit = document.getElementById('input-frete-falta-retirar');
-      const chkBaixaFREdit = document.getElementById('chk-baixa-estoque-falta-retirar');
-      const wrapFormaPagtoFREdit = document.getElementById('wrap-forma-pagto-frete-falta-retirar');
-      if(v.tipo_entrega==='Falta retirar'){
-        if(selFormaRetiradaEdit) selFormaRetiradaEdit.value = v.retirado ? (v.retiradoForma||'') : 'Ainda pendente';
-        if(inputFreteFREdit) inputFreteFREdit.value = v.frete||'';
-        if(wrapFormaPagtoFREdit) wrapFormaPagtoFREdit.style.display = (v.frete>0) ? 'block' : 'none';
-        if(chkBaixaFREdit) chkBaixaFREdit.checked = !!v.estoqueBaixado;
-      }
-      fvEl.querySelector('button[type=submit]').textContent='Salvar alterações';
-      const itensExtraEl = document.getElementById('itens-extra-lista'); if(itensExtraEl) itensExtraEl.innerHTML='';
-      const btnAddItemEl = document.getElementById('btn-add-item-venda'); if(btnAddItemEl) btnAddItemEl.style.display='none';
-      const btnAddItemMesmaCatEl = document.getElementById('btn-add-item-mesma-categoria'); if(btnAddItemMesmaCatEl) btnAddItemMesmaCatEl.style.display='none';
-      toggleDetalhesEntregaVenda();
-      atualizarTotalCarrinho();
-      fvEl.scrollIntoView({behavior:'smooth'});
+      if(!fvEl){ pendingEditVendaId = v.id; currentTab='vendas'; renderAll(); return; }
+      preencherFormEdicaoVenda(v, fvEl);
     });
     document.querySelectorAll('[data-del-venda]').forEach(btn=>btn.onclick=async()=>{
       const id = btn.dataset.delVenda;
@@ -8456,9 +8462,9 @@ function attachHandlers(){
   };
 
   if(pendingEditVendaId){
-    const btnPending = document.querySelector('[data-edit-venda="'+pendingEditVendaId+'"]');
+    const vPend = state.vendas.find(x=>x.id===pendingEditVendaId);
     pendingEditVendaId = null;
-    if(btnPending) btnPending.click();
+    if(vPend) preencherFormEdicaoVenda(vPend);
   }
 
   const csvInput = document.getElementById('csv-input');
