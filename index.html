@@ -4246,16 +4246,16 @@ function viewVendas(){
 function pendenciasRetiradaTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma pendência de retirada.</div>';
   const opcoesForma = ['Cliente retirou','Entrega a pé'].concat((state.veiculos||[]).map(vc=>'Entrega de '+vc.nome));
-  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd</th><th>Valor</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd / Valor</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
       return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
-        '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+'</td><td>'+fmtMoney(v.valor_total)+'</td>'+
-        '<td><button type="button" class="btn small green" data-retirar-toggle="'+v.id+'">🚚 Retirar</button> '+
+        '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+' · '+fmtMoney(v.valor_total)+'</td>'+
+        '<td class="cel-acoes"><button type="button" class="btn small green" data-retirar-toggle="'+v.id+'">🚚 Retirar</button> '+
         '<button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
         '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>'+
-        '<tr id="linha-retirar-'+v.id+'" style="display:none;"><td colspan="6" style="background:var(--bg2,#f8f8f8);">'+
+        '<tr id="linha-retirar-'+v.id+'" style="display:none;"><td colspan="5" style="background:var(--bg2,#f8f8f8);">'+
         '<div class="form-row">'+
         '<div><label>Quem está retirando <span class="req">*</span></label><select id="sel-retirar-forma-'+v.id+'">'+opcoesComPlaceholder(opcoesForma,'Selecione')+'</select></div>'+
         '<div><label>Teve frete? Valor (R$)</label><input type="number" id="input-retirar-frete-'+v.id+'" min="0" step="0.01" placeholder="0,00"></div>'+
