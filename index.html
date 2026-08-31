@@ -1311,6 +1311,10 @@ let relatorioSub = 'vendas';
 let estoqueSub = 'fisico';
 let resumoDiaData = null;
 let kpiMesSelecionado = null;
+let metaRelMesSelecionado = null;
+let gestaoCanalMesSelecionado = null;
+let gestaoEntregadorMesSelecionado = null;
+let crmClienteSelecionado = null;
 let relatorioNovosClientesMes = null;
 let calendarioCampanhaMes = null;
 let relEmpresaSel = '';
@@ -2869,7 +2873,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','localizacaoEntregadores'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2945,6 +2949,13 @@ async function loadAll(){
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
   if(!Array.isArray(state.veiculoKm)) state.veiculoKm = [];
   if(!state.lapidarItens || typeof state.lapidarItens!=='object' || Array.isArray(state.lapidarItens)) state.lapidarItens = {};
+  if(!state.lapidarItens['relatorio-meta']) state.lapidarItens['relatorio-meta'] = {marcado:true, descricao:'Relatório da meta mensal de cargas de P13: quanto já foi vendido, meta diária, ritmo necessário nos dias restantes pra bater a meta e histórico mês a mês.'};
+  if(!state.metasCanal || typeof state.metasCanal!=='object' || Array.isArray(state.metasCanal)) state.metasCanal = {};
+  if(!state.lapidarItens['relatorio-gestaocanal']) state.lapidarItens['relatorio-gestaocanal'] = {marcado:true, descricao:'Gestão à vista — meta e acompanhamento de vendas por canal (Portaria, WhatsApp, Venda Ativa, Ligação, Hub, Google), com o valor vendido detalhado semana a semana dentro do mês.'};
+  if(!state.lapidarItens['relatorio-gestaoentregador']) state.lapidarItens['relatorio-gestaoentregador'] = {marcado:true, descricao:'Gestão à vista — meta e acompanhamento de vendas por entregador, com o valor vendido detalhado dia a dia dentro do mês.'};
+  if(!Array.isArray(state.interacoesCliente)) state.interacoesCliente = [];
+  if(!Array.isArray(state.tarefasCliente)) state.tarefasCliente = [];
+  if(!state.lapidarItens['relatorio-crm']) state.lapidarItens['relatorio-crm'] = {marcado:true, descricao:'CRM — ficha completa de cada cliente (histórico de compras, fiado, crédito, comodato, NPS, indicações e anexos), com histórico de interações (ligação, WhatsApp, visita etc.) e follow-ups/lembretes de contato pendentes.'};
   if(!Array.isArray(state.recados)) state.recados = [];
   if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
   if(!Array.isArray(state.fechamentosCaixa)) state.fechamentosCaixa = [];
@@ -3053,7 +3064,7 @@ async function save(key){
     return true;
   }catch(e){ console.error('Erro ao salvar', key, e); alert('Não foi possível salvar no Supabase: '+(e.message||e)); return false; }
 }
-const LABEL_AREA_LOG = {vendas:'Vendas',despesas:'Despesas',clientes:'Clientes',empresas:'Empresas',produtos:'Produtos',estoque:'Estoque',estoqueLancamentos:'Estoque',categoriasProdutos:'Categorias de produtos',categoriasDespesas:'Categorias de despesas',fiados:'Fiados',fiadoPagamentos:'Pagamentos de fiado',creditos:'Créditos',comodatos:'Comodatos',agendamentos:'Agendamentos',metas:'Metas',comunicados:'Comunicados',funcionarios:'Funcionários',campanhas:'Campanhas',pendenciasConferencia:'Pendências de conferência',entregadores:'Entregadores',acertosEntrega:'Acertos de entrega',veiculos:'Veículos',veiculoKm:'Quilometragem de veículos',lapidarItens:'Itens do Lapidar',oficinasManutencao:'Empresas de manutenção',rotaConfig:'Configuração de rota',paradasRota:'Paradas de rota'};
+const LABEL_AREA_LOG = {vendas:'Vendas',despesas:'Despesas',clientes:'Clientes',empresas:'Empresas',produtos:'Produtos',estoque:'Estoque',estoqueLancamentos:'Estoque',categoriasProdutos:'Categorias de produtos',categoriasDespesas:'Categorias de despesas',fiados:'Fiados',fiadoPagamentos:'Pagamentos de fiado',creditos:'Créditos',comodatos:'Comodatos',agendamentos:'Agendamentos',metas:'Metas',comunicados:'Comunicados',funcionarios:'Funcionários',campanhas:'Campanhas',pendenciasConferencia:'Pendências de conferência',entregadores:'Entregadores',acertosEntrega:'Acertos de entrega',veiculos:'Veículos',veiculoKm:'Quilometragem de veículos',lapidarItens:'Itens do Lapidar',oficinasManutencao:'Empresas de manutenção',rotaConfig:'Configuração de rota',paradasRota:'Paradas de rota',metasCanal:'Metas por canal',interacoesCliente:'Interações com clientes (CRM)',tarefasCliente:'Follow-ups de clientes (CRM)'};
 function registrarLogAtividade(key){
   if(!Array.isArray(state.logAtividades)) state.logAtividades=[];
   state.logAtividades.push({id:uid(), quando:Date.now(), usuario:usuarioAtualNome, area: LABEL_AREA_LOG[key]||key});
@@ -4672,7 +4683,7 @@ function clientesTable(list){
     const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="9" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
     return '<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+etiquetaFrequenciaClienteHtml(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td><td>'+(c.indicadoPor?escapeHtmlCampanha(c.indicadoPor):'—')+'</td>'+
     '<td><button type="button" class="act-link" data-ver-anexos-cliente="'+escapeHtmlCampanha(c.nome)+'">📎 '+anexosCli.length+'</button></td>'+
-    '<td class="cel-acoes">'+botaoWhatsApp(c.telefone)+'<button class="act-link" data-edit-cliente="'+c.id+'">✎</button><button class="del-link" data-del-cliente="'+c.id+'">🗑</button></td></tr>'+linhaAnexos;
+    '<td class="cel-acoes">'+botaoWhatsApp(c.telefone)+'<button type="button" class="act-link" data-ir-crm-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Abrir ficha no CRM">🤝</button><button class="act-link" data-edit-cliente="'+c.id+'">✎</button><button class="del-link" data-del-cliente="'+c.id+'">🗑</button></td></tr>'+linhaAnexos;
   }).join('')+'</tbody></table></div>';
 }
 
@@ -5322,6 +5333,10 @@ function viewLogAtividades(){
 function viewRelatorios(){
   const subtabs = [
     {id:'vendas', label:'Vendas por período'},
+    {id:'meta', label:'Meta de Cargas P13'},
+    {id:'gestaocanal', label:'Gestão à Vista — Canal'},
+    {id:'gestaoentregador', label:'Gestão à Vista — Entregador'},
+    {id:'crm', label:'CRM — Relacionamento'},
     {id:'resumodia', label:'Resumo do Dia'},
     {id:'ranking', label:'Ranking de Clientes'},
     {id:'abc', label:'Curva ABC de Clientes'},
@@ -5348,6 +5363,10 @@ function viewRelatorios(){
   ];
   let content = '';
   if(relatorioSub==='vendas') content = relatorioVendas();
+  else if(relatorioSub==='meta') content = relatorioMeta();
+  else if(relatorioSub==='gestaocanal') content = relatorioGestaoCanal();
+  else if(relatorioSub==='gestaoentregador') content = relatorioGestaoEntregador();
+  else if(relatorioSub==='crm') content = relatorioCRM();
   else if(relatorioSub==='resumodia') content = relatorioResumoDia();
   else if(relatorioSub==='abc') content = relatorioABC();
   else if(relatorioSub==='indicacoes') content = relatorioIndicacoes();
@@ -5781,6 +5800,245 @@ function relatorioNovosClientes(){
     (doMes.length===0 ? '<div class="empty">Nenhum cliente novo nesse mês.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Indicado por</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
+}
+function relatorioMeta(){
+  const mk = metaRelMesSelecionado || monthKey(todayStr());
+  const meta = metaMensalP13(mk);
+  const metaDiaria = metaDiariaP13(mk);
+  const vendidoMes = p13VendidosNoMes(mk);
+  const dias = diasNoMes(mk);
+  const hoje = todayStr();
+  const ehMesAtual = mk===monthKey(hoje);
+  const diaDoMes = ehMesAtual ? Number(hoje.slice(8,10)) : dias;
+  const diasRestantes = ehMesAtual ? Math.max(0, dias-diaDoMes) : 0;
+  const pct = meta>0 ? Math.round((vendidoMes/meta)*1000)/10 : 0;
+  const falta = Math.max(0, meta-vendidoMes);
+  const ritmoNecessario = (ehMesAtual && diasRestantes>0) ? falta/diasRestantes : null;
+  const ritmoAtual = diaDoMes>0 ? vendidoMes/diaDoMes : 0;
+  const projecao = ehMesAtual ? ritmoAtual*dias : vendidoMes;
+
+  const meses = Object.keys(state.metas).sort((a,b)=>b.localeCompare(a));
+  const linhasHist = meses.map(function(m){
+    const mMeta = Number(state.metas[m])||0;
+    const mVendido = p13VendidosNoMes(m);
+    const mPct = mMeta>0 ? Math.round((mVendido/mMeta)*1000)/10 : 0;
+    const bateu = mMeta>0 && mVendido>=mMeta;
+    return '<tr><td>'+nomeMes(m)+'</td><td>'+arred1(mMeta)+' cargas</td><td>'+mVendido+' cargas</td>'+
+      '<td>'+(mMeta>0?mPct+'%':'—')+'</td>'+
+      '<td>'+(mMeta>0?(bateu?'✅ Bateu':'⚠️ Não bateu'):'—')+'</td></tr>';
+  }).join('');
+
+  return '<h3>🎯 Relatório de Meta — Cargas de P13</h3>'+
+    ajudaHtml('meta','Acompanha a meta de cargas de P13 (inclui Gás do Povo) mês a mês: quanto já foi vendido, quanto falta, o ritmo diário necessário nos dias que restam pra bater a meta, a projeção pro fim do mês, e o histórico de meses anteriores. Pra configurar ou editar a meta de um mês, use o botão "Configurar em Meta" abaixo.')+
+    '<div class="form-row" style="max-width:260px;margin-top:10px;"><div><label>Mês de referência</label><input type="month" id="input-mes-relatorio-meta" value="'+mk+'"></div></div>'+
+    (meta<=0 ?
+      '<div class="meta-sem-config" style="margin-top:12px;">Meta ainda não configurada para '+nomeMes(mk)+'. <button type="button" class="link-btn" data-ir-metas="1">Configurar em Meta →</button></div>'
+      :
+      '<div style="display:grid;gap:12px;margin-top:14px;">'+
+      '<div class="card" style="margin:0;"><h3>📦 Meta de '+nomeMes(mk)+'</h3>'+
+      barraMetaHtml(vendidoMes, meta, 'Meta do mês')+
+      '<div class="hint" style="margin-top:8px;">Meta diária: <strong>'+arred1(metaDiaria)+' cargas/dia</strong> · Vendido até agora: <strong>'+vendidoMes+' cargas</strong> ('+pct+'%) · Faltam: <strong>'+arred1(falta)+' cargas</strong> · <button type="button" class="link-btn" data-ir-metas="1">Configurar em Meta →</button></div>'+
+      '</div>'+
+      (ehMesAtual ? '<div class="card" style="margin:0;"><h3>📈 Ritmo e projeção</h3>'+
+        '<div class="hint">Dias corridos: '+diaDoMes+' de '+dias+' · Dias restantes: '+diasRestantes+'</div>'+
+        '<div class="hint" style="margin-top:6px;">Ritmo médio até agora: <strong>'+arred1(ritmoAtual)+' cargas/dia</strong></div>'+
+        (diasRestantes>0 ? '<div class="hint" style="margin-top:6px;">Pra bater a meta, precisa vender <strong>'+arred1(ritmoNecessario)+' cargas/dia</strong> nos dias que restam.</div>' : '<div class="hint" style="margin-top:6px;">'+(vendidoMes>=meta?'✅ Meta do mês já batida!':'Mês encerrado sem bater a meta.')+'</div>')+
+        '<div class="hint" style="margin-top:6px;">Projeção pro fim do mês (mantendo o ritmo atual): <strong>'+arred1(projecao)+' cargas</strong> — '+(projecao>=meta?'✅ bateria a meta':'⚠️ ficaria abaixo da meta')+'</div>'+
+        '</div>' : '')+
+      '</div>'
+    )+
+    '<div class="card" style="margin-top:14px;"><h3>🗓️ Histórico de metas por mês</h3>'+
+    (meses.length===0 ? '<div class="empty">Nenhuma meta configurada ainda.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Mês</th><th>Meta</th><th>Vendido</th><th>% atingido</th><th>Resultado</th></tr></thead><tbody>'+linhasHist+'</tbody></table></div>')+
+    '</div>';
+}
+function vendaValor(v){ return (v.valor_total||0)+(v.frete||0); }
+function semanasDoMes(mk){
+  const dias = diasNoMes(mk);
+  const semanas = [];
+  for(let inicio=1; inicio<=dias; inicio+=7){
+    semanas.push({inicio, fim:Math.min(inicio+6, dias)});
+  }
+  return semanas;
+}
+function relatorioGestaoCanal(){
+  const mk = gestaoCanalMesSelecionado || monthKey(todayStr());
+  const semanas = semanasDoMes(mk);
+  const vendasMes = (state.vendas||[]).filter(v=>monthKey(v.data)===mk);
+  const metasDoMes = (state.metasCanal && state.metasCanal[mk]) || {};
+  const linhas = CANAIS.map(function(canal){
+    const vendasCanal = vendasMes.filter(v=>(v.canal||'')===canal);
+    const porSemana = semanas.map(function(s){
+      return vendasCanal.filter(function(v){ const dia=Number(v.data.slice(8,10)); return dia>=s.inicio && dia<=s.fim; }).reduce((sum,v)=>sum+vendaValor(v),0);
+    });
+    const totalMes = porSemana.reduce((a,b)=>a+b,0);
+    const meta = Number(metasDoMes[canal])||0;
+    const pct = meta>0 ? Math.round((totalMes/meta)*1000)/10 : null;
+    return {canal, porSemana, totalMes, meta, pct};
+  });
+  const totalGeralPorSemana = semanas.map((s,i)=>linhas.reduce((sum,l)=>sum+l.porSemana[i],0));
+  const totalGeralMes = linhas.reduce((s,l)=>s+l.totalMes,0);
+  const totalGeralMeta = linhas.reduce((s,l)=>s+l.meta,0);
+  const pctGeral = totalGeralMeta>0 ? Math.round((totalGeralMes/totalGeralMeta)*1000)/10 : null;
+
+  const cabecalhoSemanas = semanas.map((s,i)=>'<th>Semana '+(i+1)+' ('+String(s.inicio).padStart(2,'0')+'–'+String(s.fim).padStart(2,'0')+')</th>').join('');
+  const linhasHtml = linhas.map(function(l){
+    return '<tr><td>'+l.canal+'</td>'+
+      l.porSemana.map(v=>'<td>'+fmtMoney(v)+'</td>').join('')+
+      '<td><strong>'+fmtMoney(l.totalMes)+'</strong></td>'+
+      '<td><input type="text" inputmode="decimal" class="input-meta-canal" data-canal="'+escapeHtmlCampanha(l.canal)+'" value="'+(l.meta?fmtNumBR(l.meta):'')+'" placeholder="0,00" style="width:90px;"></td>'+
+      '<td>'+(l.meta>0?(l.pct+'%'):'—')+'</td>'+
+      '<td>'+(l.meta>0?(l.totalMes>=l.meta?'✅':'⚠️'):'—')+'</td></tr>';
+  }).join('');
+  const linhaTotal = '<tr style="font-weight:700;"><td>Total geral</td>'+
+    totalGeralPorSemana.map(v=>'<td>'+fmtMoney(v)+'</td>').join('')+
+    '<td>'+fmtMoney(totalGeralMes)+'</td>'+
+    '<td>'+fmtMoney(totalGeralMeta)+'</td>'+
+    '<td>'+(pctGeral!=null?pctGeral+'%':'—')+'</td>'+
+    '<td>'+(totalGeralMeta>0?(totalGeralMes>=totalGeralMeta?'✅':'⚠️'):'—')+'</td></tr>';
+
+  return '<h3>📊 Gestão à Vista — Meta e Acompanhamento por Canal</h3>'+
+    ajudaHtml('gestaocanal','Painel de gestão à vista pra acompanhar a meta de vendas de cada canal (Portaria, WhatsApp, Venda Ativa, Ligação, Hub, Google), detalhado semana a semana dentro do mês — ideal pra conferir e atualizar toda semana. Digite a meta de cada canal na coluna "Meta do mês" e clique em Salvar; o valor vendido é somado automaticamente a partir das vendas já lançadas, usando o campo Canal de cada venda.')+
+    '<div class="form-row" style="max-width:260px;margin-top:10px;"><div><label>Mês de referência</label><input type="month" id="input-mes-gestao-canal" value="'+mk+'"></div></div>'+
+    '<form id="form-metas-canal"><div class="table-wrap" style="margin-top:12px;"><table><thead><tr><th>Canal</th>'+cabecalhoSemanas+'<th>Total do mês</th><th>Meta do mês</th><th>% atingido</th><th></th></tr></thead><tbody>'+linhasHtml+linhaTotal+'</tbody></table></div>'+
+    '<button type="submit" class="btn small" style="margin-top:10px;">💾 Salvar metas por canal</button>'+
+    '</form>';
+}
+function relatorioGestaoEntregador(){
+  const mk = gestaoEntregadorMesSelecionado || monthKey(todayStr());
+  const dias = diasNoMes(mk);
+  const hoje = todayStr();
+  const ehMesAtual = mk===monthKey(hoje);
+  const diaHoje = ehMesAtual ? Number(hoje.slice(8,10)) : dias;
+  const entregadoresComMeta = (state.entregadores||[]).filter(e=>e.metaMensal>0);
+  const vendasMes = (state.vendas||[]).filter(v=>monthKey(v.data)===mk && v.entregadorId);
+
+  const cabecalhoDias = Array.from({length:dias}, (_,i)=>'<th'+(ehMesAtual && (i+1)===diaHoje?' style="background:var(--neon);color:var(--royal-dark);"':'')+'>'+(i+1)+'</th>').join('');
+  const linhasHtml = entregadoresComMeta.map(function(e){
+    const vendasDele = vendasMes.filter(v=>v.entregadorId===e.id);
+    const porDia = [];
+    for(let d=1; d<=dias; d++){
+      const dataStr = mk+'-'+String(d).padStart(2,'0');
+      porDia.push(vendasDele.filter(v=>v.data===dataStr).reduce((s,v)=>s+vendaValor(v),0));
+    }
+    const totalMes = porDia.reduce((a,b)=>a+b,0);
+    const pct = Math.round((totalMes/e.metaMensal)*1000)/10;
+    return '<tr><td>'+escapeHtmlCampanha(e.nome)+'</td>'+
+      porDia.map(function(v){
+        return '<td'+(v>0?' style="color:var(--green);font-weight:600;"':'')+'>'+(v>0?fmtMoney(v).replace('R$','').trim():'—')+'</td>';
+      }).join('')+
+      '<td><strong>'+fmtMoney(totalMes)+'</strong></td>'+
+      '<td>'+fmtMoney(e.metaMensal)+'</td>'+
+      '<td>'+pct+'%</td>'+
+      '<td>'+(totalMes>=e.metaMensal?'✅':'⚠️')+'</td></tr>';
+  }).join('');
+
+  return '<h3>📊 Gestão à Vista — Meta e Acompanhamento por Entregador</h3>'+
+    ajudaHtml('gestaoentregador','Painel de gestão à vista pra acompanhar a meta de vendas de cada entregador, detalhado dia a dia dentro do mês — ideal pra conferir e atualizar todo dia. O valor vendido é somado automaticamente a partir das vendas já lançadas e vinculadas ao entregador. A meta mensal de cada entregador é configurada em Rotas → Entregadores; quem não tiver meta cadastrada não aparece aqui.')+
+    '<div class="form-row" style="max-width:260px;margin-top:10px;"><div><label>Mês de referência</label><input type="month" id="input-mes-gestao-entregador" value="'+mk+'"></div></div>'+
+    (entregadoresComMeta.length===0 ? '<div class="meta-sem-config" style="margin-top:12px;">Nenhum entregador com meta de vendas configurada ainda. <button type="button" class="link-btn" data-ir-rotas-entregadores="1">Ir pra Rotas → Entregadores →</button></div>' :
+    '<div class="table-wrap" style="margin-top:12px;"><table><thead><tr><th>Entregador</th>'+cabecalhoDias+'<th>Total do mês</th><th>Meta do mês</th><th>% atingido</th><th></th></tr></thead><tbody>'+linhasHtml+'</tbody></table></div>');
+}
+const TIPOS_INTERACAO_CLIENTE = ['Ligação','WhatsApp','Visita','E-mail','Reclamação','Elogio','Outro'];
+function interacoesDoCliente(nome){
+  return (state.interacoesCliente||[]).filter(i=>i.cliente===nome).sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+}
+function tarefasDoCliente(nome){
+  return (state.tarefasCliente||[]).filter(t=>t.cliente===nome).sort((a,b)=>a.dataPrevista.localeCompare(b.dataPrevista));
+}
+function relatorioCRM(){
+  return crmClienteSelecionado ? crmFichaCliente(crmClienteSelecionado) : crmPainelGeral();
+}
+function crmPainelGeral(){
+  const hoje = todayStr();
+  const pendentes = (state.tarefasCliente||[]).filter(t=>t.status!=='concluida').sort((a,b)=>a.dataPrevista.localeCompare(b.dataPrevista));
+  const linhasTarefas = pendentes.map(function(t){
+    const atrasada = t.dataPrevista < hoje;
+    return '<tr'+(atrasada?' style="color:var(--danger);"':'')+'><td>'+fmtDate(t.dataPrevista)+(atrasada?' ⚠️':'')+'</td><td>'+escapeHtmlCampanha(t.cliente)+'</td><td>'+escapeHtmlCampanha(t.titulo)+'</td>'+
+      '<td class="cel-acoes"><button type="button" class="act-link" data-crm-ver-cliente="'+escapeHtmlCampanha(t.cliente)+'">👤 ver ficha</button>'+
+      ' <button type="button" class="act-link" data-concluir-tarefa-cliente="'+t.id+'">✅ concluir</button>'+
+      ' <button type="button" class="del-link" data-del-tarefa-cliente="'+t.id+'">🗑</button></td></tr>';
+  }).join('');
+  const nomesAtencao = Array.from(new Set((state.vendas||[]).filter(v=>v.cliente).map(v=>v.cliente)))
+    .map(nome=>({nome, info:classificarFrequenciaCliente(nome)}))
+    .filter(x=>x.info.cor==='vermelho'||x.info.cor==='roxo')
+    .sort((a,b)=>(b.info.dias||0)-(a.info.dias||0)).slice(0,12);
+  const linhasAtencao = nomesAtencao.map(x=>'<tr><td>'+escapeHtmlCampanha(x.nome)+'</td><td>'+etiquetaFrequenciaClienteHtml(x.nome)+'</td>'+
+    '<td class="cel-acoes">'+botaoWhatsApp(telefoneDoCliente(x.nome))+' <button type="button" class="act-link" data-crm-ver-cliente="'+escapeHtmlCampanha(x.nome)+'">👤 ver ficha</button></td></tr>').join('');
+  const nomesClientes = state.clientes.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>c.nome);
+  return '<h3>🤝 CRM — Gestão de Relacionamento com Clientes</h3>'+
+    ajudaHtml('crm','Um mini-CRM dentro do sistema: escolha um cliente pra abrir a ficha completa (histórico de compras, fiado, crédito, comodato, NPS, indicações e anexos), registre interações (ligação, WhatsApp, visita, reclamação...) e crie follow-ups/lembretes de contato. Aqui no painel geral aparecem os follow-ups pendentes de todos os clientes e os clientes que merecem atenção por estarem há mais tempo sem comprar.')+
+    '<div class="card" style="margin:14px 0 0;"><h3>🔎 Abrir ficha de um cliente</h3><select id="select-crm-cliente" style="max-width:360px;">'+opcoesComPlaceholder(nomesClientes,'Selecione um cliente')+'</select></div>'+
+    '<div class="card"><h3>⏰ Follow-ups pendentes <span class="pill">'+pendentes.length+'</span></h3>'+
+    (pendentes.length===0 ? '<div class="empty">Nenhum follow-up pendente. Crie um dentro da ficha de qualquer cliente.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Data prevista</th><th>Cliente</th><th>O que fazer</th><th></th></tr></thead><tbody>'+linhasTarefas+'</tbody></table></div>')+
+    '</div>'+
+    '<div class="card"><h3>🚨 Clientes que merecem atenção (sumindo ou já sumidos)</h3>'+
+    (nomesAtencao.length===0 ? '<div class="empty">Nenhum cliente nessa situação agora.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Situação</th><th></th></tr></thead><tbody>'+linhasAtencao+'</tbody></table></div>')+
+    '</div>';
+}
+function crmFichaCliente(nome){
+  const c = state.clientes.find(x=>x.nome===nome);
+  const compras = (state.vendas||[]).filter(v=>v.cliente===nome).sort((a,b)=>b.data.localeCompare(a.data));
+  const ultimasCompras = compras.slice(0,10);
+  const ltv = valorTotalCompradoCliente(nome);
+  const saldoFiado = saldoDoCliente(nome);
+  const saldoCredito = saldoCreditoCliente(nome);
+  const saldoComodato = saldoComodatoCliente(nome);
+  const npsDoCliente = (state.npsRespostas||[]).filter(n=>n.cliente===nome).sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+  const indicados = (state.clientes||[]).filter(x=>x.indicadoPor===nome);
+  const anexos = anexosDoContexto({cliente:nome});
+  const interacoes = interacoesDoCliente(nome);
+  const tarefas = tarefasDoCliente(nome);
+  const hoje = todayStr();
+
+  const linhasCompras = ultimasCompras.map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+escapeHtmlCampanha(v.produto||v.categoria||'')+'</td><td>'+(v.quantidade||1)+'</td><td>'+fmtMoney((v.valor_total||0)+(v.frete||0))+'</td><td>'+(v.canal||'—')+'</td><td>'+(v.pagamento||'—')+'</td></tr>').join('');
+  const linhasInteracoes = interacoes.map(i=>'<tr><td>'+fmtDate(i.data)+'</td><td>'+escapeHtmlCampanha(i.tipo)+'</td><td style="white-space:normal;max-width:none;">'+escapeHtmlCampanha(i.texto)+'</td><td><button type="button" class="del-link" data-del-interacao-cliente="'+i.id+'">🗑</button></td></tr>').join('');
+  const linhasTarefas = tarefas.map(function(t){
+    const atrasada = t.status!=='concluida' && t.dataPrevista<hoje;
+    return '<tr'+(atrasada?' style="color:var(--danger);"':'')+'><td>'+fmtDate(t.dataPrevista)+'</td><td>'+escapeHtmlCampanha(t.titulo)+'</td>'+
+      '<td>'+(t.status==='concluida'?'<span class="badge pago">✅ concluída</span>':(atrasada?'⚠️ atrasada':'pendente'))+'</td>'+
+      '<td class="cel-acoes">'+(t.status!=='concluida'?'<button type="button" class="act-link" data-concluir-tarefa-cliente="'+t.id+'">✅ concluir</button>':'<button type="button" class="act-link" data-reabrir-tarefa-cliente="'+t.id+'">↺ reabrir</button>')+
+      ' <button type="button" class="del-link" data-del-tarefa-cliente="'+t.id+'">🗑</button></td></tr>';
+  }).join('');
+  const linhasIndicados = indicados.map(x=>'<tr><td>'+escapeHtmlCampanha(x.nome)+'</td><td>'+fmtMoney(valorTotalCompradoCliente(x.nome))+' gerado</td></tr>').join('');
+  const linhasNps = npsDoCliente.map(n=>'<tr><td>'+fmtDate(n.data)+'</td><td>'+n.nota+'</td><td style="white-space:normal;max-width:none;">'+(n.comentario?escapeHtmlCampanha(n.comentario):'—')+'</td></tr>').join('');
+
+  return '<button type="button" class="link-btn" id="btn-crm-voltar" style="margin-bottom:10px;">← voltar pro painel CRM</button>'+
+    '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">'+
+    '<div><h2 style="margin:0;">'+escapeHtmlCampanha(nome)+' '+etiquetaFrequenciaClienteHtml(nome)+'</h2>'+
+    '<div class="hint" style="margin-top:4px;">'+(c&&c.telefone?escapeHtmlCampanha(c.telefone):'sem telefone')+' · '+(c&&c.endereco?escapeHtmlCampanha(c.endereco)+(c.complemento?' — '+escapeHtmlCampanha(c.complemento):''):'sem endereço')+'</div>'+
+    (c&&c.indicadoPor?'<div class="hint">Indicado por: '+escapeHtmlCampanha(c.indicadoPor)+'</div>':'')+
+    (c&&c.aniversario?'<div class="hint">🎂 Aniversário: '+fmtDate(c.aniversario)+'</div>':'')+
+    ((c&&gruposClienteDoCliente(c).length)?'<div style="margin-top:4px;">'+gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' ')+'</div>':'')+
+    '</div>'+botaoWhatsApp(c?c.telefone:'')+'</div>'+
+    '<div class="grid cols4" style="margin-top:14px;">'+
+    '<div class="metric"><div class="label">Total já comprado</div><div class="value" style="font-size:16px;">'+fmtMoney(ltv)+'</div></div>'+
+    '<div class="metric"><div class="label">Compras no histórico</div><div class="value" style="font-size:16px;">'+compras.length+'</div></div>'+
+    '<div class="metric"><div class="label">Fiado em aberto</div><div class="value" style="font-size:16px;'+(saldoFiado>0?'color:var(--danger);':'')+'">'+fmtMoney(saldoFiado)+'</div></div>'+
+    '<div class="metric"><div class="label">Crédito em haver</div><div class="value" style="font-size:16px;">'+fmtMoney(saldoCredito)+'</div></div>'+
+    '</div>'+(saldoComodato>0?'<div class="hint" style="margin-top:8px;">📦 '+saldoComodato+' item(ns) em comodato com esse cliente.</div>':'')+
+    '</div>'+
+    '<div class="card"><h3>🛒 Últimas compras</h3>'+(ultimasCompras.length===0?'<div class="empty">Nenhuma compra registrada ainda.</div>':'<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Canal</th><th>Pagto</th></tr></thead><tbody>'+linhasCompras+'</tbody></table></div>')+'</div>'+
+    '<div class="card"><h3>🗒️ Histórico de interações</h3>'+
+    '<form id="form-interacao-cliente" data-cliente="'+escapeHtmlCampanha(nome)+'" class="form-row">'+
+    '<div><label>Tipo</label><select name="tipo">'+TIPOS_INTERACAO_CLIENTE.map(t=>'<option>'+t+'</option>').join('')+'</select></div>'+
+    '<div><label>Data</label><input type="date" name="data" value="'+hoje+'" max="'+hoje+'"></div>'+
+    '<div style="flex:2;min-width:200px;"><label>O que aconteceu</label><input type="text" name="texto" placeholder="Ex: ligou perguntando sobre entrega, elogiou o atendimento..." required></div>'+
+    '<div><button type="submit" class="btn small ghost">+ Registrar</button></div></form>'+
+    (interacoes.length===0?'<div class="empty" style="margin-top:10px;">Nenhuma interação registrada ainda.</div>':'<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Data</th><th>Tipo</th><th>O que aconteceu</th><th></th></tr></thead><tbody>'+linhasInteracoes+'</tbody></table></div>')+
+    '</div>'+
+    '<div class="card"><h3>⏰ Follow-ups / lembretes de contato</h3>'+
+    '<form id="form-tarefa-cliente" data-cliente="'+escapeHtmlCampanha(nome)+'" class="form-row">'+
+    '<div style="flex:2;min-width:200px;"><label>O que fazer</label><input type="text" name="titulo" placeholder="Ex: ligar confirmando se recebeu tudo certo" required></div>'+
+    '<div><label>Pra quando</label><input type="date" name="dataPrevista" value="'+hoje+'" required></div>'+
+    '<div><button type="submit" class="btn small ghost">+ Criar follow-up</button></div></form>'+
+    (tarefas.length===0?'<div class="empty" style="margin-top:10px;">Nenhum follow-up criado ainda.</div>':'<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Pra quando</th><th>O que fazer</th><th>Situação</th><th></th></tr></thead><tbody>'+linhasTarefas+'</tbody></table></div>')+
+    '</div>'+
+    (npsDoCliente.length>0?'<div class="card"><h3>😊 NPS respondido por esse cliente</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Nota</th><th>Comentário</th></tr></thead><tbody>'+linhasNps+'</tbody></table></div></div>':'')+
+    (indicados.length>0?'<div class="card"><h3>🎁 Clientes indicados por '+escapeHtmlCampanha(nome)+'</h3><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Valor gerado</th></tr></thead><tbody>'+linhasIndicados+'</tbody></table></div></div>':'')+
+    '<div class="card"><h3>📎 Anexos (fotos, vídeos, localização)</h3>'+anexosGaleriaHtml(anexos)+'</div>';
 }
 function relatorioKPIs(){
   const mk = kpiMesSelecionado || monthKey(todayStr());
@@ -8924,6 +9182,54 @@ function attachHandlers(){
   const rdData = document.getElementById('rd-data'); if(rdData) rdData.onchange = ()=>{ resumoDiaData = rdData.value; renderAll(); };
   const abcFiltrar = document.getElementById('abc-filtrar'); if(abcFiltrar) abcFiltrar.onclick = renderRelatorioABCResultado;
   const inputMesKpi = document.getElementById('input-mes-kpi'); if(inputMesKpi) inputMesKpi.onchange = ()=>{ kpiMesSelecionado = inputMesKpi.value; renderAll(); };
+  const inputMesRelMeta = document.getElementById('input-mes-relatorio-meta'); if(inputMesRelMeta) inputMesRelMeta.onchange = ()=>{ metaRelMesSelecionado = inputMesRelMeta.value; renderAll(); };
+  const inputMesGestaoCanal = document.getElementById('input-mes-gestao-canal'); if(inputMesGestaoCanal) inputMesGestaoCanal.onchange = ()=>{ gestaoCanalMesSelecionado = inputMesGestaoCanal.value; renderAll(); };
+  const inputMesGestaoEntregador = document.getElementById('input-mes-gestao-entregador'); if(inputMesGestaoEntregador) inputMesGestaoEntregador.onchange = ()=>{ gestaoEntregadorMesSelecionado = inputMesGestaoEntregador.value; renderAll(); };
+  document.querySelectorAll('[data-ir-rotas-entregadores]').forEach(btn=>btn.onclick=()=>{ currentTab='rota'; renderAll(); });
+  const selectCrmCliente = document.getElementById('select-crm-cliente');
+  if(selectCrmCliente) selectCrmCliente.onchange = ()=>{ if(selectCrmCliente.value){ crmClienteSelecionado = selectCrmCliente.value; renderAll(); } };
+  const btnCrmVoltar = document.getElementById('btn-crm-voltar');
+  if(btnCrmVoltar) btnCrmVoltar.onclick = ()=>{ crmClienteSelecionado = null; renderAll(); };
+  document.querySelectorAll('[data-crm-ver-cliente]').forEach(btn=>btn.onclick=()=>{ crmClienteSelecionado = btn.dataset.crmVerCliente; renderAll(); });
+  document.querySelectorAll('[data-ir-crm-cliente]').forEach(btn=>btn.onclick=()=>{ currentTab='relatorios'; relatorioSub='crm'; crmClienteSelecionado = btn.dataset.irCrmCliente; renderAll(); });
+  const fInteracaoCliente = document.getElementById('form-interacao-cliente');
+  if(fInteracaoCliente) fInteracaoCliente.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(fInteracaoCliente);
+    state.interacoesCliente.push({id:uid(), cliente:fInteracaoCliente.dataset.cliente, tipo:f.get('tipo'), texto:(f.get('texto')||'').trim(), data:f.get('data')||todayStr(), criadoEm:Date.now()});
+    await save('interacoesCliente');
+    renderAll();
+  };
+  const fTarefaCliente = document.getElementById('form-tarefa-cliente');
+  if(fTarefaCliente) fTarefaCliente.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(fTarefaCliente);
+    state.tarefasCliente.push({id:uid(), cliente:fTarefaCliente.dataset.cliente, titulo:(f.get('titulo')||'').trim(), dataPrevista:f.get('dataPrevista')||todayStr(), status:'pendente', criadoEm:Date.now()});
+    await save('tarefasCliente');
+    renderAll();
+  };
+  document.querySelectorAll('[data-concluir-tarefa-cliente]').forEach(btn=>btn.onclick=async()=>{
+    const t = state.tarefasCliente.find(x=>x.id===btn.dataset.concluirTarefaCliente);
+    if(!t) return;
+    t.status='concluida'; t.concluidoEm=Date.now();
+    await save('tarefasCliente'); renderAll();
+  });
+  document.querySelectorAll('[data-reabrir-tarefa-cliente]').forEach(btn=>btn.onclick=async()=>{
+    const t = state.tarefasCliente.find(x=>x.id===btn.dataset.reabrirTarefaCliente);
+    if(!t) return;
+    t.status='pendente'; t.concluidoEm=null;
+    await save('tarefasCliente'); renderAll();
+  });
+  document.querySelectorAll('[data-del-tarefa-cliente]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir este follow-up?')) return;
+    state.tarefasCliente = state.tarefasCliente.filter(x=>x.id!==btn.dataset.delTarefaCliente);
+    await save('tarefasCliente'); renderAll();
+  });
+  document.querySelectorAll('[data-del-interacao-cliente]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir esta interação?')) return;
+    state.interacoesCliente = state.interacoesCliente.filter(x=>x.id!==btn.dataset.delInteracaoCliente);
+    await save('interacoesCliente'); renderAll();
+  });
   const inputMesNovosClientes = document.getElementById('input-mes-novos-clientes'); if(inputMesNovosClientes) inputMesNovosClientes.onchange = ()=>{ relatorioNovosClientesMes = inputMesNovosClientes.value; renderAll(); };
   document.querySelectorAll('[data-recompensar-indicador]').forEach(btn=>btn.onclick=async()=>{
     const obs = prompt('O que você vai dar de recompensa pra '+btn.dataset.recompensarIndicador+'? (ex: 1 botijão grátis, desconto de R$10, etc)');
@@ -9198,6 +9504,19 @@ function attachHandlers(){
     await save('metas');
     renderAll();
   });
+  const fMetasCanal = document.getElementById('form-metas-canal');
+  if(fMetasCanal) fMetasCanal.onsubmit = async(e)=>{
+    e.preventDefault();
+    const mk = gestaoCanalMesSelecionado || monthKey(todayStr());
+    if(!state.metasCanal[mk]) state.metasCanal[mk] = {};
+    fMetasCanal.querySelectorAll('.input-meta-canal').forEach(inp=>{
+      const v = parseValorBR(inp.value);
+      if(inp.value.trim()==='' || isNaN(v) || v<=0) delete state.metasCanal[mk][inp.dataset.canal];
+      else state.metasCanal[mk][inp.dataset.canal] = v;
+    });
+    await save('metasCanal');
+    renderAll();
+  };
   document.querySelectorAll('[data-edit-meta]').forEach(btn=>btn.onclick=()=>{
     const mk = btn.dataset.editMeta;
     const fEl = document.getElementById('form-meta');
