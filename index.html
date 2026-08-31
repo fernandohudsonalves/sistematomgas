@@ -851,7 +851,7 @@ function initNovoAgendamentoFab(){
   if(!b){
     b = document.createElement('button');
     b.id = 'new-ag-fab';
-    b.title = 'Novo agendamento';
+    b.title = 'Nova entrega';
     b.textContent = '+';
     document.body.appendChild(b);
     b.onclick = ()=>{
@@ -2284,7 +2284,11 @@ function viewComissaoEntregadores(){
     (metas ? '<div class="card"><h2>🎯 Meta de vendas por entregador</h2>'+metas+'</div>' : '');
 }
 function viewTempoEntrega(){
-  const lista = (state.temposEntrega||[]).slice().sort((a,b)=>new Date(b.horaConclusao)-new Date(a.horaConclusao));
+  const lista = (state.temposEntrega||[]).filter(t=>{
+    if(!t.agendamentoId) return true;
+    const ag = (state.agendamentos||[]).find(a=>a.id===t.agendamentoId);
+    return !(ag && ag.agendado);
+  }).sort((a,b)=>new Date(b.horaConclusao)-new Date(a.horaConclusao));
   const fmtHora = iso=> iso ? new Date(iso).toLocaleString('pt-BR') : '—';
   const fmtDur = min=> min==null ? '—' : (min>=60 ? Math.floor(min/60)+'h '+(min%60)+'min' : min+' min');
   const linhas = lista.map(t=>'<tr><td>'+fmtDate(t.data)+'</td><td>'+escapeHtmlCampanha(t.cliente||'')+'</td><td>'+escapeHtmlCampanha(getClienteEndereco(t.cliente)||'—')+'</td><td>'+(getClienteTelefone(t.cliente)||'—')+'</td><td>'+fmtHora(t.horaPedido)+'</td><td>'+fmtHora(t.horaConclusao)+'</td><td><strong>'+fmtDur(t.duracaoMin)+'</strong></td>'+
@@ -2645,6 +2649,15 @@ function toggleDetalhesEntregaAgendamento(){
     const empresaEl = wrap.querySelector('[name="empresa"]');
     if(empresaEl) empresaEl.value = '';
   }
+}
+function toggleHoraAgendamento(){
+  const chk = document.getElementById('chk-ag-agendado');
+  const wrap = document.getElementById('wrap-hora-ag');
+  if(!chk || !wrap) return;
+  const horaInput = wrap.querySelector('[name="hora"]');
+  wrap.style.display = chk.checked ? 'flex' : 'none';
+  if(horaInput) horaInput.required = chk.checked;
+  if(!chk.checked && horaInput) horaInput.value = '';
 }
 function itensDoGrupo(grupoId, vendaId){
   if(grupoId) return state.vendas.filter(v=>v.grupoId===grupoId);
@@ -4882,6 +4895,9 @@ function iniciarEditarAgendamento(id){
   if(!a || !fa) return;
   editAgendamentoId = a.id;
   fa.cliente.value=a.cliente||''; fa.data.value=a.data; fa.hora.value=a.hora;
+  const chkAgendadoEdit = document.getElementById('chk-ag-agendado');
+  if(chkAgendadoEdit) chkAgendadoEdit.checked = (a.agendado!==undefined) ? !!a.agendado : !!a.hora;
+  toggleHoraAgendamento();
   let categoriaParaPreencher = a.categoria || '';
   if(!categoriaParaPreencher && a.produto_nota){
     // agendamento antigo, criado antes da categoria existir: joga tudo como texto livre
@@ -4984,14 +5000,14 @@ acoes+
 }
 function viewAgendamentos(){
   const hoje = todayStr();
-  return '<div class="card"><h2>Agendar entrega (sem lançar a venda ainda)</h2>'+ajudaHtml('agendamentos','Agende aqui uma entrega futura pra um cliente já cadastrado, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante. A venda em si (pro caixa) continua sendo lançada pela planilha do fim do dia.')+
-    '<div class="hint">Use isto pra reservar um horário — por exemplo, agenda hoje pra entregar amanhã. Quando a entrega acontecer de fato, registre a venda normalmente na aba Vendas (os dois ficam juntos aqui na lista do dia).</div>'+
+  return '<div class="card"><h2>Nova entrega</h2>'+ajudaHtml('agendamentos','Registre aqui uma entrega pra um cliente já cadastrado, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante. Marque "Entrega agendada" só quando precisar reservar um horário certo (ex: agenda hoje pra entregar amanhã); do contrário ela entra como entrega normal, sem horário fixo. A venda em si (pro caixa) continua sendo lançada pela planilha do fim do dia.')+
     '<form id="form-agendamento"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-ag" name="cliente" id="ag-cliente-input" required>'+
     '<datalist id="lista-clientes-ag">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist>'+
     '<div class="hint" id="ag-endereco-preview" style="margin-top:4px;"></div></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" id="ag-data-input" name="data" value="'+hoje+'" required></div>'+
-    '<div><label>Horário <span class="req">*</span></label><input type="time" name="hora" min="07:00" max="20:00" required></div></div>'+
+    '<div style="display:flex;align-items:center;gap:8px;align-self:end;"><input type="checkbox" name="agendado" id="chk-ag-agendado" style="width:auto;"><label for="chk-ag-agendado" style="margin:0;">Entrega agendada (definir horário certo)</label></div></div>'+
+    '<div id="wrap-hora-ag" class="form-row" style="display:none;margin-top:6px;"><div><label>Horário <span class="req">*</span></label><input type="time" name="hora" min="07:00" max="20:00"></div></div>'+
     '<div id="ag-aviso-retroativo" style="display:none;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px;margin-top:6px;">'+
     '<label style="display:flex;align-items:center;gap:8px;margin:0;font-size:13px;"><input type="checkbox" id="ag-confirma-retroativo" name="confirma_retroativo" style="width:auto;">Sei que essa data já passou, quero lançar mesmo assim</label>'+
     '</div>'+
@@ -5015,8 +5031,8 @@ function viewAgendamentos(){
     '<div><label>Empresa conveniada (opcional)</label><input list="lista-empresas-ag" name="empresa">'+
     '<datalist id="lista-empresas-ag">'+empresasOptions()+'</datalist></div>'+
     '</div></div>'+
-    '<button type="submit" class="btn small" style="margin-top:12px;">Agendar</button></form></div>'+
-    '<div class="card"><h2>Entregas agendadas</h2>'+
+    '<button type="submit" class="btn small" style="margin-top:12px;">Registrar entrega</button></form></div>'+
+    '<div class="card"><h2>Entregas</h2>'+
     '<input type="text" id="busca-agendamento" class="searchbar" placeholder="Buscar por cliente, produto ou empresa (em todas as datas)...">'+
     '<div class="form-row" style="max-width:420px;align-items:end;">'+
     '<div><label>Data</label><input type="date" id="ag-data" value="'+hoje+'"></div>'+
@@ -5445,7 +5461,12 @@ function relatorioResumoDia(){
   const despesasDia = (state.despesas||[]).filter(d=>d.data===data);
   const totalDespesas = despesasDia.reduce((s,d)=>s+(d.formaPagamento==='parcelado'?0:d.valor),0);
   const agConcluidos = (state.agendamentos||[]).filter(a=>a.status==='concluido' && a.criadoEm && a.criadoEm.slice(0,10)<=data).length;
-  const temposDia = (state.temposEntrega||[]).filter(t=>t.data===data);
+  const temposDia = (state.temposEntrega||[]).filter(t=>{
+    if(t.data!==data) return false;
+    if(!t.agendamentoId) return true;
+    const ag = (state.agendamentos||[]).find(a=>a.id===t.agendamentoId);
+    return !(ag && ag.agendado);
+  });
   const tempoMedio = temposDia.length ? Math.round(temposDia.reduce((s,t)=>s+(t.duracaoMin||0),0)/temposDia.length) : null;
   const acertosDia = (state.acertosEntrega||[]).filter(a=>a.data===data);
   const acertosPendentes = acertosDia.filter(a=>a.status==='pendente').length;
@@ -9073,7 +9094,12 @@ function attachHandlers(){
       return;
     }
     const temFrete = TIPOS_ENTREGA_COM_FRETE.includes(f.get('tipo_entrega'));
-    const horaForm = f.get('hora')||'';
+    const agendadoForm = !!f.get('agendado');
+    const horaForm = agendadoForm ? (f.get('hora')||'') : '';
+    if(agendadoForm && !horaForm){
+      alert('Marque o horário da entrega agendada.');
+      return;
+    }
     if(horaForm && (horaForm < '07:00' || horaForm > '20:00')){
       alert('O horário da entrega precisa ser entre 07:00 e 20:00.');
       return;
@@ -9086,16 +9112,16 @@ function attachHandlers(){
     if(editAgendamentoId){
       const a = state.agendamentos.find(x=>x.id===editAgendamentoId);
       if(a){
-        a.cliente=f.get('cliente'); a.data=dataForm; a.hora=f.get('hora');
+        a.cliente=f.get('cliente'); a.data=dataForm; a.hora=horaForm; a.agendado=agendadoForm;
         a.categoria=categoriaAg; a.produto=produtoAg; a.quantidade=quantidadeAg; a.produto_nota=produtoNotaAg;
         a.tipo_entrega=f.get('tipo_entrega'); a.empresa=temFrete?(f.get('empresa')||''):'';
         a.pagamento=f.get('pagamento')||''; a.valor=Number(f.get('valor'))||0; a.frete=temFrete?(Number(f.get('frete'))||0):0;
         a.entregadorId=f.get('entregadorId')||''; a.pago=!!f.get('pago');
       }
       editAgendamentoId = null;
-      fa.querySelector('button[type=submit]').textContent='Agendar';
+      fa.querySelector('button[type=submit]').textContent='Registrar entrega';
     } else {
-      const novoAg = {id:uid(), cliente:f.get('cliente'), data:dataForm, hora:f.get('hora'),
+      const novoAg = {id:uid(), cliente:f.get('cliente'), data:dataForm, hora:horaForm, agendado:agendadoForm,
         categoria:categoriaAg, produto:produtoAg, quantidade:quantidadeAg, produto_nota:produtoNotaAg,
         tipo_entrega:f.get('tipo_entrega'), empresa:temFrete?(f.get('empresa')||''):'',
         pagamento:f.get('pagamento')||'', valor:Number(f.get('valor'))||0, frete:temFrete?(Number(f.get('frete'))||0):0, status:'pendente',
@@ -9107,8 +9133,9 @@ function attachHandlers(){
         tipo_entrega: novoAg.tipo_entrega, hora: novoAg.hora, data: novoAg.data, empresa: novoAg.empresa, obs: '',
         entregadorId: novoAg.entregadorId, pago: novoAg.pago, agendamentoId: novoAg.id
       });
-      notificarLocal('Novo agendamento de entrega', (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
-      enviarPushServidor('Novo agendamento de entrega', (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
+      const tituloNotifAg = agendadoForm ? 'Novo agendamento de entrega' : 'Nova entrega registrada';
+      notificarLocal(tituloNotifAg, (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
+      enviarPushServidor(tituloNotifAg, (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
     }
     const empresaAg = temFrete ? (f.get('empresa')||'') : '';
     if(empresaAg) await garantirEmpresaCadastrada(empresaAg);
@@ -9119,6 +9146,9 @@ function attachHandlers(){
   const selTipoEntregaAg = document.getElementById('sel-tipo-entrega-ag');
   if(selTipoEntregaAg) selTipoEntregaAg.onchange = toggleDetalhesEntregaAgendamento;
   toggleDetalhesEntregaAgendamento();
+  const chkAgAgendado = document.getElementById('chk-ag-agendado');
+  if(chkAgAgendado) chkAgAgendado.onchange = toggleHoraAgendamento;
+  toggleHoraAgendamento();
   const agValorInput = document.querySelector('#form-agendamento [name="valor"]');
   const agQuantidadeInput = document.querySelector('#form-agendamento [name="quantidade"]');
   const tentarPreencherValorAg = (opt)=>{
