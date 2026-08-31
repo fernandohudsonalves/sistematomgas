@@ -539,7 +539,7 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_30_08_2026";
+const APP_BUILD_HORARIO = "1.0_01_09_2026";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -635,7 +635,7 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
 <button id="calc-fab" title="Calculadora">🖩</button>
 <button id="recado-fab" title="Recados / Post-it">📌<span id="recado-fab-badge"></span></button>
 <div id="recado-panel">
-  <div id="recado-head">📌 Recados <span style="display:flex;align-items:center;gap:4px;"><button type="button" id="recado-admin-toggle" title="Administrar todos os recados">📋</button><button type="button" id="recado-fechar">✕</button></span></div>
+  <div id="recado-head">📌 Recados <span style="display:flex;align-items:center;gap:4px;"><button type="button" id="recado-admin-toggle" title="Administrar todos os recados (editar/excluir)">📋</button><button type="button" id="recado-fechar">✕</button></span></div>
   <div id="recado-body">
     <div id="recado-lista"></div>
     <textarea id="recado-novo-texto" rows="2" placeholder="Novo aviso pro dia seguinte..." style="width:100%;box-sizing:border-box;font-family:inherit;font-size:12.5px;"></textarea>
@@ -918,7 +918,6 @@ function tornarArrastavel(panel, head){
   document.addEventListener('touchmove', e=>{ const t=e.touches[0]; mover(t.clientX,t.clientY); }, {passive:true});
   document.addEventListener('touchend', soltar);
 }
-let recadosAdminAberto = false;
 function initRecados(){
   const fab=document.getElementById('recado-fab'), panel=document.getElementById('recado-panel'), head=document.getElementById('recado-head');
   if(!fab||!panel||fab.dataset.bound) return;
@@ -926,7 +925,7 @@ function initRecados(){
   fab.onclick=()=>{ panel.classList.toggle('open'); };
   document.getElementById('recado-fechar').onclick=()=>panel.classList.remove('open');
   const btnAdminToggle = document.getElementById('recado-admin-toggle');
-  if(btnAdminToggle) btnAdminToggle.onclick=(e)=>{ e.stopPropagation(); recadosAdminAberto = !recadosAdminAberto; renderRecadosFab(); };
+  if(btnAdminToggle) btnAdminToggle.onclick=(e)=>{ e.stopPropagation(); panel.classList.remove('open'); currentTab='config'; renderAll(); const alvo=document.getElementById('recados-admin-wrap'); if(alvo) alvo.scrollIntoView({behavior:'smooth'}); };
   const inputData = document.getElementById('recado-novo-data');
   if(inputData){ const amanha=new Date(Date.now()+86400000); inputData.value = amanha.toISOString().slice(0,10); }
   document.getElementById('recado-salvar-novo').onclick = async()=>{
@@ -943,45 +942,23 @@ function initRecados(){
 function renderRecadosFab(){
   const badge = document.getElementById('recado-fab-badge');
   const lista = document.getElementById('recado-lista');
-  const btnAdminToggle = document.getElementById('recado-admin-toggle');
   if(!badge || !lista) return;
-  const todos = (state.recados||[]);
-  const pendentes = todos.filter(r=>!r.concluido).sort((a,b)=>(a.paraData||'').localeCompare(b.paraData||''));
+  const pendentes = (state.recados||[]).filter(r=>!r.concluido).sort((a,b)=>(a.paraData||'').localeCompare(b.paraData||''));
   badge.style.display = pendentes.length>0 ? 'block' : 'none';
   badge.textContent = pendentes.length;
-  if(btnAdminToggle){
-    btnAdminToggle.textContent = recadosAdminAberto ? '📌' : '📋';
-    btnAdminToggle.title = recadosAdminAberto ? 'Voltar pros pendentes' : 'Administrar todos os recados';
-  }
-  if(!recadosAdminAberto){
-    lista.innerHTML = pendentes.length===0 ? '<div class="hint">Nenhum recado pendente.</div>' :
-      pendentes.map(r=>'<div class="recado-item"><strong>'+fmtDate(r.paraData)+'</strong><div>'+escapeHtmlCampanha(r.texto)+'</div>'+
-        '<div style="margin-top:5px;display:flex;gap:8px;"><button type="button" class="act-link" data-recado-concluir="'+r.id+'">✓ concluído</button><button type="button" class="del-link" data-recado-excluir="'+r.id+'">🗑</button></div></div>').join('');
-  } else {
-    const todosOrdenados = todos.slice().sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
-    lista.innerHTML = '<div class="hint" style="margin-bottom:6px;">📋 Todos os recados (histórico completo, inclusive concluídos).</div>'+
-      (todosOrdenados.length===0 ? '<div class="hint">Nenhum recado cadastrado ainda.</div>' :
-      todosOrdenados.map(r=>'<div class="recado-item" style="'+(r.concluido?'opacity:.6;':'')+'"><strong>'+fmtDate(r.paraData)+'</strong>'+(r.concluido?' <span class="hint">(concluído)</span>':'')+'<div>'+escapeHtmlCampanha(r.texto)+'</div>'+
-        '<div style="margin-top:5px;display:flex;gap:8px;">'+(r.concluido?'<button type="button" class="act-link" data-recado-reabrir="'+r.id+'">↺ reabrir</button>':'<button type="button" class="act-link" data-recado-concluir="'+r.id+'">✓ concluído</button>')+
-        '<button type="button" class="del-link" data-recado-excluir="'+r.id+'">🗑</button></div></div>').join(''));
-  }
+  lista.innerHTML = pendentes.length===0 ? '<div class="hint">Nenhum recado pendente.</div>' :
+    pendentes.map(r=>'<div class="recado-item"><strong>'+fmtDate(r.paraData)+'</strong><div>'+escapeHtmlCampanha(r.texto)+'</div>'+
+      '<div style="margin-top:5px;display:flex;gap:8px;"><button type="button" class="act-link" data-recado-concluir="'+r.id+'">✓ concluído</button></div></div>').join('');
   lista.querySelectorAll('[data-recado-concluir]').forEach(btn=>btn.onclick=async()=>{
     const r = state.recados.find(x=>x.id===btn.dataset.recadoConcluir);
     if(r){ r.concluido=true; await save('recados'); renderRecadosFab(); if(currentTab==='config') renderAll(); }
-  });
-  lista.querySelectorAll('[data-recado-reabrir]').forEach(btn=>btn.onclick=async()=>{
-    const r = state.recados.find(x=>x.id===btn.dataset.recadoReabrir);
-    if(r){ r.concluido=false; await save('recados'); renderRecadosFab(); if(currentTab==='config') renderAll(); }
-  });
-  lista.querySelectorAll('[data-recado-excluir]').forEach(btn=>btn.onclick=async()=>{
-    state.recados = state.recados.filter(x=>x.id!==btn.dataset.recadoExcluir);
-    await save('recados'); renderRecadosFab(); if(currentTab==='config') renderAll();
   });
 }
 function viewRecadosAdmin(){
   const todos = (state.recados||[]).slice().sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
   const linhas = todos.map(r=>'<tr><td>'+fmtDate(r.paraData)+'</td><td>'+escapeHtmlCampanha(r.texto)+'</td><td>'+(r.concluido?'✅ Concluído':'⏳ Pendente')+'</td>'+
     '<td>'+(r.concluido?'<button type="button" class="act-link" data-recado-reabrir="'+r.id+'">↺ reabrir</button>':'<button type="button" class="act-link" data-recado-concluir="'+r.id+'">✓ concluído</button>')+
+    ' <button type="button" class="act-link" data-recado-editar="'+r.id+'">✎ editar</button>'+
     ' <button type="button" class="del-link" data-recado-excluir="'+r.id+'">🗑 excluir</button></td></tr>').join('');
   return '<div class="config-group-title">Recados / Post-it</div>'+
     '<div class="card" id="recados-admin-wrap"><h2>📌 Todos os recados</h2>'+
@@ -1382,6 +1359,7 @@ function abaPermitida(tabId){
 
 const TABS = [
   {id:'dashboard', label:'Painel'},
+  {id:'crm', label:'🤝 CRM'},
   {id:'financeiro', label:'Financeiro', filhos:['caixa','vendas','faltaretirar']},
   {id:'caixa', label:'Caixa'},
   {id:'vendas', label:'Vendas'},
@@ -3387,6 +3365,7 @@ function renderAll(){
   renderNav();
   const main = document.getElementById('main');
   if(currentTab==='dashboard') main.innerHTML = viewDashboard();
+  if(currentTab==='crm') main.innerHTML = relatorioCRM();
   if(currentTab==='metas') main.innerHTML = viewMetas();
   if(currentTab==='comunicados') main.innerHTML = viewComunicados();
   if(currentTab==='vendas') main.innerHTML = viewVendas();
@@ -4239,14 +4218,25 @@ function viewVendas(){
 }
 function pendenciasRetiradaTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma pendência de retirada.</div>';
+  const opcoesForma = ['Cliente retirou','Entrega a pé'].concat((state.veiculos||[]).map(vc=>'Entrega de '+vc.nome));
   return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd</th><th>Valor</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
       return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
         '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+'</td><td>'+fmtMoney(v.valor_total)+'</td>'+
-        '<td><button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
-        '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>';
+        '<td><button type="button" class="btn small green" data-retirar-toggle="'+v.id+'">🚚 Retirar</button> '+
+        '<button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
+        '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>'+
+        '<tr id="linha-retirar-'+v.id+'" style="display:none;"><td colspan="6" style="background:var(--bg2,#f8f8f8);">'+
+        '<div class="form-row">'+
+        '<div><label>Quem está retirando <span class="req">*</span></label><select id="sel-retirar-forma-'+v.id+'">'+opcoesComPlaceholder(opcoesForma,'Selecione')+'</select></div>'+
+        '<div><label>Teve frete? Valor (R$)</label><input type="number" id="input-retirar-frete-'+v.id+'" min="0" step="0.01" placeholder="0,00"></div>'+
+        '<div id="wrap-retirar-frete-forma-'+v.id+'" style="display:none;"><label>Forma de pagamento do frete</label><select id="sel-retirar-frete-forma-'+v.id+'">'+opcoesComPlaceholder(PAGAMENTOS,'Selecione')+'</select></div>'+
+        '</div>'+
+        '<label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:normal;"><input type="checkbox" id="chk-retirar-baixa-'+v.id+'" checked> Dar baixa no estoque agora</label>'+
+        '<button type="button" class="btn small" style="margin-top:8px;" data-retirar-confirmar="'+v.id+'">✔ Confirmar retirada</button>'+
+        '</td></tr>';
     }).join('')+'</tbody></table></div>';
 }
 function formLancamentoVendaAnteriorHtml(clienteOpts){
@@ -4437,10 +4427,6 @@ function viewContasPagar(){
     '<button type="submit" class="btn" style="margin-top:8px;">'+(editando?'Salvar alterações':'Cadastrar conta')+'</button>'+
     (editando?' <button type="button" class="link-btn" id="btn-cancelar-conta-pagar">cancelar edição</button>':'')+
     '</form></div>'+
-    '<div class="card"><h2>📥 Importar planilha</h2>'+
-    '<div class="hint">Suba aqui uma planilha Excel com uma aba chamada <strong>ContasPagar</strong> (colunas: Descrição, Valor, Categoria, Vencimento, Recorrente, Status) pra lançar várias contas de uma vez, sem precisar digitar uma por uma. Baixe o <a href="#" id="link-baixar-modelo-contas-pagar">modelo em Excel</a> pra ver o formato certo.</div>'+
-    '<input type="file" id="input-importar-contas-pagar" accept=".xlsx,.xls" style="margin-top:10px;">'+
-    '</div>'+
     '<div class="card"><h2>Todas as contas</h2>'+
     (lista.length===0 ? '<div class="empty">Nenhuma conta cadastrada.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
@@ -5281,6 +5267,7 @@ function viewConfig(){
     viewLogAtividades();
 }
 function lapidarDestino(id){
+  if(id==='relatorio-crm') return {tab:'crm'};
   if(id.indexOf('relatorio-')===0) return {tab:'relatorios', sub:id.slice(10)};
   if(id==='falta-retirar') return {tab:'faltaretirar'};
   if(id==='novos-clientes') return {tab:'relatorios', sub:'novosclientes'};
@@ -5337,7 +5324,6 @@ function viewRelatorios(){
     {id:'meta', label:'Meta de Cargas P13'},
     {id:'gestaocanal', label:'Gestão à Vista — Canal'},
     {id:'gestaoentregador', label:'Gestão à Vista — Entregador'},
-    {id:'crm', label:'CRM — Relacionamento'},
     {id:'remuneracao', label:'Remuneração Variável'},
     {id:'resumodia', label:'Resumo do Dia'},
     {id:'ranking', label:'Ranking de Clientes'},
@@ -7264,7 +7250,18 @@ function attachHandlers(){
       if(r){ r.concluido=true; await save('recados'); renderRecadosFab(); renderAll(); }
     });
     wrapRecadosAdmin.querySelectorAll('[data-recado-excluir]').forEach(btn=>btn.onclick=async()=>{
+      if(!confirm('Excluir este recado?')) return;
       state.recados = state.recados.filter(x=>x.id!==btn.dataset.recadoExcluir);
+      await save('recados'); renderRecadosFab(); renderAll();
+    });
+    wrapRecadosAdmin.querySelectorAll('[data-recado-editar]').forEach(btn=>btn.onclick=async()=>{
+      const r = state.recados.find(x=>x.id===btn.dataset.recadoEditar);
+      if(!r) return;
+      const novoTexto = prompt('Editar recado:', r.texto);
+      if(novoTexto===null || !novoTexto.trim()) return;
+      const novaData = prompt('Data do recado (AAAA-MM-DD):', r.paraData||todayStr());
+      if(novaData===null) return;
+      r.texto = novoTexto.trim(); r.paraData = novaData;
       await save('recados'); renderRecadosFab(); renderAll();
     });
   }
@@ -8063,6 +8060,25 @@ function attachHandlers(){
         await save('vendas'); await save('estoque');
         renderAll();
       }
+    });
+    document.querySelectorAll('[data-retirar-toggle]').forEach(btn=>btn.onclick=()=>{
+      const linha = document.getElementById('linha-retirar-'+btn.dataset.retirarToggle);
+      if(linha) linha.style.display = linha.style.display==='none' ? 'table-row' : 'none';
+    });
+    document.querySelectorAll('input[id^="input-retirar-frete-"]').forEach(inp=>{
+      const rid = inp.id.replace('input-retirar-frete-','');
+      const wrap = document.getElementById('wrap-retirar-frete-forma-'+rid);
+      inp.oninput = ()=>{ if(wrap) wrap.style.display = (Number(inp.value)||0)>0 ? 'block' : 'none'; };
+    });
+    document.querySelectorAll('[data-retirar-confirmar]').forEach(btn=>btn.onclick=async()=>{
+      const rid = btn.dataset.retirarConfirmar;
+      const selForma = document.getElementById('sel-retirar-forma-'+rid);
+      const inputFrete = document.getElementById('input-retirar-frete-'+rid);
+      const selFreteForma = document.getElementById('sel-retirar-frete-forma-'+rid);
+      const chkBaixa = document.getElementById('chk-retirar-baixa-'+rid);
+      if(!selForma || !selForma.value){ alert('Selecione quem está retirando.'); return; }
+      const freteValor = Number(inputFrete && inputFrete.value)||0;
+      await resolverFaltaRetirar(rid, selForma.value, freteValor, (selFreteForma?selFreteForma.value:''), chkBaixa?chkBaixa.checked:true);
     });
     document.querySelectorAll('[data-edit-venda-ag]').forEach(btn=>btn.onclick=()=>{
       pendingEditVendaId = btn.dataset.editVendaAg;
@@ -9216,7 +9232,7 @@ function attachHandlers(){
   const btnCrmVoltar = document.getElementById('btn-crm-voltar');
   if(btnCrmVoltar) btnCrmVoltar.onclick = ()=>{ crmClienteSelecionado = null; renderAll(); };
   document.querySelectorAll('[data-crm-ver-cliente]').forEach(btn=>btn.onclick=()=>{ crmClienteSelecionado = btn.dataset.crmVerCliente; renderAll(); });
-  document.querySelectorAll('[data-ir-crm-cliente]').forEach(btn=>btn.onclick=()=>{ currentTab='relatorios'; relatorioSub='crm'; crmClienteSelecionado = btn.dataset.irCrmCliente; renderAll(); });
+  document.querySelectorAll('[data-ir-crm-cliente]').forEach(btn=>btn.onclick=()=>{ currentTab='crm'; crmClienteSelecionado = btn.dataset.irCrmCliente; renderAll(); });
   const fInteracaoCliente = document.getElementById('form-interacao-cliente');
   if(fInteracaoCliente) fInteracaoCliente.onsubmit = async(e)=>{
     e.preventDefault();
@@ -9429,16 +9445,6 @@ function attachHandlers(){
   };
   const btnCancelarContaPagar = document.getElementById('btn-cancelar-conta-pagar');
   if(btnCancelarContaPagar) btnCancelarContaPagar.onclick = ()=>{ editContaPagarId=null; renderAll(); };
-  const linkModeloContasPagar = document.getElementById('link-baixar-modelo-contas-pagar');
-  if(linkModeloContasPagar) linkModeloContasPagar.onclick = (e)=>{ e.preventDefault(); gerarModeloImportacaoDiaria(); };
-  const inputImportarContasPagar = document.getElementById('input-importar-contas-pagar');
-  if(inputImportarContasPagar) inputImportarContasPagar.onchange = (e)=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    if(!confirm('Isso vai importar as contas da aba "ContasPagar" desse arquivo (e também Vendas/Despesas/Clientes/Produtos/FechamentoCaixa, se essas abas estiverem preenchidas). Continuar?')){ e.target.value=''; return; }
-    processarImportacaoDiariaExcel(file);
-    e.target.value='';
-  };
   document.querySelectorAll('[data-edit-conta-pagar]').forEach(btn=>btn.onclick=()=>{ editContaPagarId = btn.dataset.editContaPagar; renderAll(); });
   document.querySelectorAll('[data-del-conta-pagar]').forEach(btn=>btn.onclick=async()=>{
     const c = state.contasPagar.find(x=>x.id===btn.dataset.delContaPagar);
