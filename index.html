@@ -391,9 +391,18 @@ table td:last-child{min-width:180px;}
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
 #whats-fab{position:fixed;right:18px;bottom:18px;z-index:500;width:56px;height:56px;border-radius:50%;background:#25D366;border:none;box-shadow:0 6px 18px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
-#calc-fab{position:fixed;right:18px;bottom:228px;z-index:500;width:56px;height:56px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 6px 18px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:36px;}
+#calc-fab{position:fixed;right:18px;bottom:228px;z-index:500;width:56px;height:56px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 6px 18px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:46px;}
 #calc-fab:hover{transform:scale(1.06);}
 #calc-fab:active{transform:scale(.96);}
+#recado-fab{position:fixed;right:18px;bottom:294px;z-index:500;width:48px;height:48px;border-radius:50%;background:#F5B800;border:none;box-shadow:0 6px 18px rgba(245,184,0,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;}
+#recado-fab-badge{position:absolute;top:-4px;right:-4px;background:#DC2626;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 5px;display:none;}
+#recado-panel{position:fixed;right:18px;bottom:350px;z-index:2500;width:270px;max-height:360px;overflow-y:auto;background:#FFF6C9;color:#333;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);display:none;}
+#recado-panel.open{display:block;}
+#recado-head{background:#F5B800;color:#3a2e00;padding:8px 12px;font-weight:700;display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+#recado-head button{background:transparent;border:none;color:#3a2e00;font-size:15px;cursor:pointer;}
+#recado-body{padding:10px;}
+.recado-item{background:#fff;border-left:4px solid #F5B800;border-radius:6px;padding:7px 9px;margin-bottom:7px;font-size:12.5px;}
+.recado-item textarea{width:100%;box-sizing:border-box;font-family:inherit;font-size:12.5px;margin-top:4px;}
 #calc-panel{position:fixed;right:18px;bottom:294px;z-index:2500;width:230px;background:var(--card,#fff);color:var(--text,#222);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden;display:none;}
 #calc-panel.open{display:block;}
 #calc-head{background:#2563EB;color:#fff;padding:8px 12px;font-weight:700;cursor:move;display:flex;justify-content:space-between;align-items:center;user-select:none;font-size:13px;}
@@ -616,6 +625,18 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
 </div>
 <button id="rota-fab" title="Gerar rota rápida">🗺️</button>
 <button id="calc-fab" title="Calculadora">🖩</button>
+<button id="recado-fab" title="Recados / Post-it">📌<span id="recado-fab-badge"></span></button>
+<div id="recado-panel">
+  <div id="recado-head">📌 Recados <button type="button" id="recado-fechar">✕</button></div>
+  <div id="recado-body">
+    <div id="recado-lista"></div>
+    <textarea id="recado-novo-texto" rows="2" placeholder="Novo aviso pro dia seguinte..." style="width:100%;box-sizing:border-box;font-family:inherit;font-size:12.5px;"></textarea>
+    <div style="display:flex;gap:6px;margin-top:6px;align-items:center;">
+      <input type="date" id="recado-novo-data" style="flex:1;font-size:12px;">
+      <button type="button" class="btn small" id="recado-salvar-novo">Adicionar</button>
+    </div>
+  </div>
+</div>
 <div id="calc-panel">
   <div id="calc-head">🖩 Calculadora <button type="button" id="calc-fechar">✕</button></div>
   <div id="calc-body">
@@ -742,6 +763,8 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Relatórios: Programa de Indicação', kw:'indicacao indique e ganhe recompensa', tab:'relatorios', sub:'indicacoes'},
   {label:'Relatórios: Indicadores (KPIs) e NPS', kw:'kpi indicadores nps pesquisa satisfacao nota rfm ltv sumidos', tab:'relatorios', sub:'kpis'},
   {label:'Relatórios: Pesquisa de Clientes (sugestão/crítica)', kw:'pesquisa clientes sugestao critica melhoria', tab:'relatorios', sub:'pesquisa'},
+  {label:'Relatórios: Pesquisas Manuais', kw:'pesquisa manual link enviar cliente nota satisfacao', tab:'relatorios', sub:'pesquisasmanuais'},
+  {label:'Relatórios: Novos Clientes', kw:'novos clientes cadastrados conferencia mes', tab:'relatorios', sub:'novosclientes'},
   {label:'Relatórios: Painel de Ação', kw:'painel de acao alertas', tab:'relatorios', sub:'painelacao'},
   {label:'Relatórios: Controle ESG', kw:'esg desperdicio energia agua sustentabilidade', tab:'relatorios', sub:'esg'},
   {label:'Relatórios: Comparar Campanhas', kw:'comparar campanhas conversao', tab:'relatorios', sub:'compararcampanhas'},
@@ -758,6 +781,7 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Relatórios: Simulador de Reajuste', kw:'simulador de reajuste preco', tab:'relatorios', sub:'reajuste'},
   {label:'Relatórios: Análises e Gráficos', kw:'analises graficos relatorio', tab:'relatorios', sub:'analises'},
   {label:'Configurações', kw:'config configuracoes categorias produtos backup usuarios permissoes google negocio', tab:'config'},
+  {label:'💎 Lapidar (itens marcados do sistema)', kw:'lapidar diamante marcados apresentar sistema clientes', tab:'config'},
 ];
 function initBuscaSistema(){
   const input = document.getElementById('busca-sistema-input');
@@ -786,13 +810,19 @@ function initBuscaSistema(){
     const termo = chaveBusca(input.value.trim());
     if(!termo){ resDiv.style.display='none'; resDiv.innerHTML=''; return; }
     const achadosMenu = BUSCA_SISTEMA_INDEX.filter(item=>chaveBusca(item.label+' '+item.kw).includes(termo)).slice(0,6);
+    const achadosLapidar = [];
+    if(termo && 'lapidar'.includes(termo)){
+      Object.entries(state.lapidarItens||{}).filter(([id,it])=>it&&it.marcado).forEach(([id,it])=>{
+        achadosLapidar.push({label:'💎 Lapidar: '+(it.descricao ? it.descricao.slice(0,70) : id), tab:'config'});
+      });
+    }
     const achadosDados = [];
     (state.clientes||[]).forEach(c=>{ if(achadosDados.length<8 && chaveBusca((c.nome||'')+' '+(c.telefone||'')+' '+(c.endereco||'')).includes(termo)) achadosDados.push({label:'👤 Cliente: '+c.nome, tipo:'cliente', valor:c.nome}); });
     (state.empresas||[]).forEach(e=>{ if(achadosDados.length<10 && chaveBusca(e.nome||'').includes(termo)) achadosDados.push({label:'🏢 Empresa conveniada: '+e.nome, tipo:'empresa', valor:e.nome}); });
     (state.produtos||[]).forEach(p=>{ if(achadosDados.length<12 && chaveBusca(p.nome||'').includes(termo)) achadosDados.push({label:'📦 Produto: '+p.nome, tipo:'produto', valor:p.nome}); });
     (state.entregadores||[]).forEach(en=>{ if(achadosDados.length<14 && chaveBusca(en.nome||'').includes(termo)) achadosDados.push({label:'🛵 Entregador: '+en.nome, tipo:'entregador', valor:en.nome}); });
     (state.veiculos||[]).forEach(v=>{ if(achadosDados.length<16 && chaveBusca(v.nome||'').includes(termo)) achadosDados.push({label:'🚗 Veículo: '+v.nome, tipo:'veiculo', valor:v.nome}); });
-    const achados = achadosMenu.concat(achadosDados).slice(0,16);
+    const achados = achadosMenu.concat(achadosLapidar).concat(achadosDados).slice(0,16);
     if(achados.length===0){ resDiv.innerHTML = '<div style="padding:10px;font-size:13px;color:#777;">Nada encontrado.</div>'; resDiv.style.display='block'; return; }
     resDiv.innerHTML = achados.map((item,i)=>'<div class="busca-sistema-item" data-idx="'+i+'" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;">'+item.label+'</div>').join('');
     resDiv.style.display='block';
@@ -879,6 +909,55 @@ function tornarArrastavel(panel, head){
   head.addEventListener('touchstart', e=>{ const t=e.touches[0]; iniciar(t.clientX,t.clientY); }, {passive:true});
   document.addEventListener('touchmove', e=>{ const t=e.touches[0]; mover(t.clientX,t.clientY); }, {passive:true});
   document.addEventListener('touchend', soltar);
+}
+function initRecados(){
+  const fab=document.getElementById('recado-fab'), panel=document.getElementById('recado-panel');
+  if(!fab||!panel||fab.dataset.bound) return;
+  fab.dataset.bound='1';
+  fab.onclick=()=>{ panel.classList.toggle('open'); };
+  document.getElementById('recado-fechar').onclick=()=>panel.classList.remove('open');
+  const inputData = document.getElementById('recado-novo-data');
+  if(inputData){ const amanha=new Date(Date.now()+86400000); inputData.value = amanha.toISOString().slice(0,10); }
+  document.getElementById('recado-salvar-novo').onclick = async()=>{
+    const txt = document.getElementById('recado-novo-texto');
+    const dt = document.getElementById('recado-novo-data');
+    if(!txt.value.trim()) return;
+    state.recados.push({id:uid(), texto:txt.value.trim(), paraData:dt.value||todayStr(), criadoEm:Date.now(), concluido:false});
+    await save('recados');
+    txt.value='';
+    renderRecadosFab();
+  };
+}
+function renderRecadosFab(){
+  const badge = document.getElementById('recado-fab-badge');
+  const lista = document.getElementById('recado-lista');
+  if(!badge || !lista) return;
+  const pendentes = (state.recados||[]).filter(r=>!r.concluido).sort((a,b)=>(a.paraData||'').localeCompare(b.paraData||''));
+  badge.style.display = pendentes.length>0 ? 'block' : 'none';
+  badge.textContent = pendentes.length;
+  lista.innerHTML = pendentes.length===0 ? '<div class="hint">Nenhum recado pendente.</div>' :
+    pendentes.map(r=>'<div class="recado-item"><strong>'+fmtDate(r.paraData)+'</strong><div>'+escapeHtmlCampanha(r.texto)+'</div>'+
+      '<div style="margin-top:5px;display:flex;gap:8px;"><button type="button" class="act-link" data-recado-concluir="'+r.id+'">✓ concluído</button><button type="button" class="del-link" data-recado-excluir="'+r.id+'">🗑</button></div></div>').join('');
+  lista.querySelectorAll('[data-recado-concluir]').forEach(btn=>btn.onclick=async()=>{
+    const r = state.recados.find(x=>x.id===btn.dataset.recadoConcluir);
+    if(r){ r.concluido=true; await save('recados'); renderRecadosFab(); if(currentTab==='config') renderAll(); }
+  });
+  lista.querySelectorAll('[data-recado-excluir]').forEach(btn=>btn.onclick=async()=>{
+    state.recados = state.recados.filter(x=>x.id!==btn.dataset.recadoExcluir);
+    await save('recados'); renderRecadosFab(); if(currentTab==='config') renderAll();
+  });
+}
+function viewRecadosAdmin(){
+  const todos = (state.recados||[]).slice().sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+  const linhas = todos.map(r=>'<tr><td>'+fmtDate(r.paraData)+'</td><td>'+escapeHtmlCampanha(r.texto)+'</td><td>'+(r.concluido?'✅ Concluído':'⏳ Pendente')+'</td>'+
+    '<td>'+(r.concluido?'<button type="button" class="act-link" data-recado-reabrir="'+r.id+'">↺ reabrir</button>':'<button type="button" class="act-link" data-recado-concluir="'+r.id+'">✓ concluído</button>')+
+    ' <button type="button" class="del-link" data-recado-excluir="'+r.id+'">🗑 excluir</button></td></tr>').join('');
+  return '<div class="config-group-title">Recados / Post-it</div>'+
+    '<div class="card" id="recados-admin-wrap"><h2>📌 Todos os recados</h2>'+
+    '<div class="hint">Use o post-it flutuante (ícone 📌 no canto da tela) pra deixar avisos rápidos pro dia seguinte. Aqui embaixo fica o histórico completo, incluindo os já concluídos.</div>'+
+    (todos.length===0 ? '<div class="empty" style="margin-top:10px;">Nenhum recado ainda.</div>' :
+    '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Data</th><th>Recado</th><th>Status</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '</div>';
 }
 function initCalculadora(){
   const fab=document.getElementById('calc-fab'), panel=document.getElementById('calc-panel'), head=document.getElementById('calc-head'), display=document.getElementById('calc-display');
@@ -1174,6 +1253,7 @@ let state = {
   oficinasManutencao: [],
   veiculoKm: [],
   lapidarItens: {},
+  recados: [],
   veiculos: [
     {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
     {id:'v2', nome:'Moto Azul', tipo:'moto', cor:'Azul', icone:'🏍️', corIcone:'#2563eb'},
@@ -1200,6 +1280,7 @@ let relatorioSub = 'vendas';
 let estoqueSub = 'fisico';
 let resumoDiaData = null;
 let kpiMesSelecionado = null;
+let relatorioNovosClientesMes = null;
 let calendarioCampanhaMes = null;
 let relEmpresaSel = '';
 let relEmpresaDe = '';
@@ -1310,6 +1391,7 @@ function diasEntre(dataA, dataB){
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function monthKey(d){ return d.slice(0,7); }
+function monthKeyFromTimestamp(ts){ const d=new Date(ts); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function firstOfMonth(){ return todayStr().slice(0,7)+'-01'; }
 function diasNoMes(mk){
   const partes = mk.split('-');
@@ -2526,6 +2608,22 @@ function toggleDetalhesEntregaVenda(){
     if(horaEl) horaEl.value = '';
     atualizarTotalCarrinho();
   }
+  toggleDetalhesFaltaRetirarVenda();
+}
+function toggleDetalhesFaltaRetirarVenda(){
+  const sel = document.getElementById('sel-tipo-entrega');
+  const wrap = document.getElementById('detalhes-falta-retirar-venda');
+  if(!sel || !wrap) return;
+  const mostrar = sel.value==='Falta retirar' && !!editVendaId;
+  wrap.style.display = mostrar ? 'block' : 'none';
+  if(!mostrar){
+    const selForma = document.getElementById('sel-forma-retirada-edit');
+    if(selForma) selForma.value = '';
+    const freteEl = document.getElementById('input-frete-falta-retirar');
+    if(freteEl) freteEl.value = '';
+    const wrapFormaPagto = document.getElementById('wrap-forma-pagto-frete-falta-retirar');
+    if(wrapFormaPagto) wrapFormaPagto.style.display = 'none';
+  }
 }
 function toggleAvisoRetroativoAgendamento(){
   const dataEl = document.getElementById('ag-data-input');
@@ -2727,7 +2825,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','localizacaoEntregadores'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','localizacaoEntregadores'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2803,6 +2901,7 @@ async function loadAll(){
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
   if(!Array.isArray(state.veiculoKm)) state.veiculoKm = [];
   if(!state.lapidarItens || typeof state.lapidarItens!=='object' || Array.isArray(state.lapidarItens)) state.lapidarItens = {};
+  if(!Array.isArray(state.recados)) state.recados = [];
   if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
   if(!Array.isArray(state.fechamentosCaixa)) state.fechamentosCaixa = [];
   if(!Array.isArray(state.contasPagar)) state.contasPagar = [];
@@ -3220,6 +3319,7 @@ function renderAll(){
   if(currentTab==='relatorios') main.innerHTML = viewRelatorios();
   if(currentTab==='config') main.innerHTML = viewConfig();
   attachHandlers();
+  renderRecadosFab();
   initNovoAgendamentoFab();
   initBuscaSistema();
 }
@@ -3378,7 +3478,7 @@ function viewDashboard(){
     '<div class="chart-card" style="margin-top:14px;"><h3>Vendas por categoria de produto</h3><div class="chart-box"><canvas id="chart-vendas-pizza"></canvas></div></div>'+
     '</div>'+
     '<h3 style="margin-top:22px;">Vendas por dia</h3><div class="chart-box"><canvas id="chart-vendas-dia"></canvas></div>'+
-    '<h3 style="margin-top:22px;">Evolução das vendas por categoria (Gás / Água / Outros)</h3><div class="chart-box"><canvas id="chart-evolucao"></canvas></div>'+
+    '<h3 style="margin-top:22px;">Evolução das vendas por categoria (Gás / Água / Outros) — mês vigente</h3><div class="chart-box"><canvas id="chart-evolucao"></canvas></div>'+
     '<h3 style="margin-top:22px;">Entregas realizadas por tipo</h3><div class="grid cols4" id="db-entregas-contador"></div>'+
     '</div>'+
     '<div class="card"><h2>Evolução das vendas</h2>'+
@@ -3524,12 +3624,14 @@ function renderDashboardRelatorios(){
   }
 
   const grupos = {gas:{}, agua:{}, outros:{}};
-  vendas.forEach(v=>{
+  const mkAtualEvolucao = monthKey(todayStr());
+  const vendasMesVigente = state.vendas.filter(v=>monthKey(v.data)===mkAtualEvolucao);
+  vendasMesVigente.forEach(v=>{
     const info = CATEGORIAS_ESTOQUE[v.categoria];
     const g = info ? info.grupo : 'outros';
     grupos[g][v.data] = (grupos[g][v.data]||0) + v.valor_total;
   });
-  const todasDatas = diasOrdenados;
+  const todasDatas = [...new Set(vendasMesVigente.map(v=>v.data))].sort();
   if(todasDatas.length===0){
     const elE = document.getElementById('chart-evolucao');
     if(elE) elE.parentElement.innerHTML = '<div class="empty">Nenhuma venda no período.</div>';
@@ -4026,6 +4128,15 @@ function viewVendas(){
     '<div><label>Agendar entrega — horário (opcional)</label><input type="time" name="entrega_hora"></div>'+
     '</div>'+
     '</div>'+
+    '<div id="detalhes-falta-retirar-venda" class="item-venda-row" style="display:none;margin-top:10px;border:1px dashed var(--warning,#f59e0b);">'+
+    '<div class="hint" style="margin-bottom:6px;">Essa venda ainda está pendente em "Falta retirar". Preencha aqui embaixo só quando o cliente já tiver retirado ou vocês já tiverem entregado — se ainda não aconteceu, deixe "Ainda pendente" e o estoque continua reservado.</div>'+
+    '<div class="form-row">'+
+    '<div><label>Forma</label><select name="retirado_forma_edit" id="sel-forma-retirada-edit">'+opcoesComPlaceholder(['Ainda pendente','Cliente retirou','Entrega a pé'].concat((state.veiculos||[]).map(vc=>'Entrega de '+vc.nome)),'Selecione')+'</select></div>'+
+    '<div><label>Frete cobrado (R$)</label><input type="number" id="input-frete-falta-retirar" name="frete_falta_retirar" min="0" step="0.01" placeholder="0,00"></div>'+
+    '<div id="wrap-forma-pagto-frete-falta-retirar" style="display:none;"><label>Forma de pagamento do frete</label><select name="frete_falta_retirar_forma">'+opcoesComPlaceholder(PAGAMENTOS,'Selecione')+'</select></div>'+
+    '</div>'+
+    '<label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:normal;"><input type="checkbox" id="chk-baixa-estoque-falta-retirar" checked> Dar baixa no estoque agora</label>'+
+    '</div>'+
     '<div><label>Observação (opcional)</label><input type="text" name="obs"></div>'+
     '<div class="hint" style="margin-top:6px;">Se um horário de entrega for definido, os dados do pedido são enviados por WhatsApp para o entregador automaticamente.</div>'+
     '<button type="submit" class="btn">Registrar venda</button></form></details></div>'+
@@ -4046,8 +4157,7 @@ function pendenciasRetiradaTable(list){
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
       return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
         '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+'</td><td>'+fmtMoney(v.valor_total)+'</td>'+
-        '<td><button class="btn small" data-resolver-pendencia="'+v.id+'">✅ Resolver pendência</button>'+
-        '<button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
+        '<td><button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
         '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>';
     }).join('')+'</tbody></table></div>';
 }
@@ -4080,7 +4190,7 @@ function viewFaltaRetirar(){
   const hoje = todayStr();
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
-  return '<div class="card"><h2>'+iconVasilhame(true,null,20,'P13')+' Falta retirar</h2>'+ajudaHtml('falta-retirar','Use esta tela pra gás que já foi vendido/recebido (às vezes de antes do sistema novo, às vezes é só alguém que aproveitou o preço e vai retirar quando o gás dela acabar) mas que ainda falta o cliente retirar ou vocês entregarem. O estoque só sai quando você clica em "✅ Resolver pendência" aqui embaixo e escolhe se deu baixa no estoque — até lá, o produto continua reservado, sem descontar do estoque disponível, e sem contar como uma venda nova nas métricas.')+'</div>'+
+  return '<div class="card"><h2>'+iconVasilhame(true,null,20,'P13')+' Falta retirar</h2>'+ajudaHtml('falta-retirar','Use esta tela pra gás que já foi vendido/recebido (às vezes de antes do sistema novo, às vezes é só alguém que aproveitou o preço e vai retirar quando o gás dela acabar) mas que ainda falta o cliente retirar ou vocês entregarem. Clique em "✎ editar" em cada pendência pra informar a forma de retirada/entrega, se teve frete e se deve dar baixa no estoque agora — até resolver, o produto continua reservado, sem descontar do estoque disponível, e sem contar como uma venda nova nas métricas. Também dá pra editar os dados do lançamento em si (cliente, quantidade, etc.) ou excluir, se precisar.')+'</div>'+
     '<div class="card"><details><summary><strong>Registrar novo "falta retirar" (clique para abrir)</strong></summary>'+
     '<div class="hint" style="margin-top:8px;">Cliente novo ou já cadastrado, tanto faz. Não lança valor do gás aqui (já foi recebido) — só o valor do frete, se houver, é perguntado depois, na hora de dar baixa.</div>'+
     '<form id="form-falta-retirar-novo" style="margin-top:10px;">'+
@@ -5016,18 +5126,29 @@ function viewConfig(){
     '</details>'+
     '</div>'+
     viewLapidarResumo()+
+    viewRecadosAdmin()+
     viewLGPD()+
     viewLogAtividades();
 }
+function lapidarDestino(id){
+  if(id.indexOf('relatorio-')===0) return {tab:'relatorios', sub:id.slice(10)};
+  if(id==='falta-retirar') return {tab:'faltaretirar'};
+  if(id==='novos-clientes') return {tab:'relatorios', sub:'novosclientes'};
+  if(TABS.some(t=>t.id===id)) return {tab:id};
+  return null;
+}
 function viewLapidarResumo(){
   const itens = Object.entries(state.lapidarItens||{}).filter(([id,it])=>it&&it.marcado);
-  const linhas = itens.map(([id,it])=>'<tr><td>'+escapeHtmlCampanha(id)+'</td><td>'+escapeHtmlCampanha(it.descricao||'—')+'</td></tr>').join('');
+  const linhas = itens.map(([id,it])=>{
+    const dest = lapidarDestino(id);
+    return '<tr><td>'+(dest?'<button type="button" class="act-link" data-lapidar-ir=\''+id+'\'">↪ '+escapeHtmlCampanha(id)+'</button>':escapeHtmlCampanha(id))+'</td><td>'+escapeHtmlCampanha(it.descricao||'—')+'</td></tr>';
+  }).join('');
   return '<div class="config-group-title">Lapidar</div>'+
-    '<div class="card"><h2>💎 Itens marcados como Lapidar</h2>'+
-    '<div class="hint">Clique no ícone 💎 ao lado do título de qualquer seção do sistema pra marcar essa área como um item do Lapidar e escrever uma descrição explicando o que ela faz — útil pra apresentar o sistema pra futuros clientes. Aqui embaixo fica a lista de tudo que já foi marcado.</div>'+
+    '<div class="card"><details><summary><strong>💎 Itens marcados como Lapidar ('+itens.length+')</strong></summary>'+
+    '<div class="hint" style="margin-top:8px;">Clique no ícone 💎 ao lado do título de qualquer seção do sistema pra marcar essa área como um item do Lapidar e escrever uma descrição explicando o que ela faz — útil pra apresentar o sistema pra futuros clientes. Clique num item da lista abaixo pra ir direto até ele.</div>'+
     (itens.length===0 ? '<div class="empty" style="margin-top:10px;">Nenhum item marcado como Lapidar ainda.</div>' :
     '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Área do sistema</th><th>Descrição</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
-    '</div>';
+    '</details></div>';
 }
 function viewLGPD(){
   return '<div class="card"><h2>🔒 LGPD — Privacidade dos clientes</h2>'+
@@ -5070,6 +5191,7 @@ function viewRelatorios(){
     {id:'kpis', label:'Indicadores (KPIs)'},
     {id:'pesquisa', label:'Pesquisa de Clientes'},
     {id:'pesquisasmanuais', label:'Pesquisas Manuais'},
+    {id:'novosclientes', label:'Novos Clientes'},
     {id:'painelacao', label:'Painel de Ação'},
     {id:'esg', label:'Controle ESG'},
     {id:'compararcampanhas', label:'Comparar Campanhas'},
@@ -5094,6 +5216,7 @@ function viewRelatorios(){
   else if(relatorioSub==='kpis') content = relatorioKPIs();
   else if(relatorioSub==='pesquisa') content = relatorioPesquisaClientes();
   else if(relatorioSub==='pesquisasmanuais') content = relatorioPesquisasManuais();
+  else if(relatorioSub==='novosclientes') content = relatorioNovosClientes();
   else if(relatorioSub==='painelacao') content = relatorioPainelAcao();
   else if(relatorioSub==='esg') content = relatorioESG();
   else if(relatorioSub==='compararcampanhas') content = relatorioCompararCampanhas();
@@ -5478,6 +5601,28 @@ function relatorioPesquisasManuais(){
     '<div class="card"><h2>Respostas ('+totalRespostas+')</h2>'+
     (lista.length===0 ? '<div class="empty">Nenhuma resposta ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Nota</th><th>Comentário</th><th>Origem</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '</div>';
+}
+function relatorioNovosClientes(){
+  const mk = relatorioNovosClientesMes || monthKey(todayStr());
+  const clientesComData = (state.clientes||[]).filter(c=>c.criadoEm);
+  const doMes = clientesComData.filter(c=>monthKeyFromTimestamp(c.criadoEm)===mk).sort((a,b)=>b.criadoEm-a.criadoEm);
+  const semData = (state.clientes||[]).length - clientesComData.length;
+  const linhas = doMes.map(c=>{
+    const d = new Date(c.criadoEm);
+    return '<tr><td>'+fmtDate(d.toISOString().slice(0,10))+'</td><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+escapeHtmlCampanha(c.telefone||'—')+'</td><td>'+escapeHtmlCampanha(c.indicadoPor||'—')+'</td></tr>';
+  }).join('');
+  return '<div class="card"><h2>🆕 Novos Clientes</h2>'+ajudaHtml('novos-clientes','Todo cliente cadastrado a partir de agora fica marcado com a data em que entrou no sistema — seja pelo cadastro manual, pelo lançamento de venda, ou pela importação da planilha. Esse relatório serve pra você conferir, mês a mês, quantos clientes novos realmente chegaram (útil pra bater com a conferência do dia). Clientes cadastrados antes dessa marcação existir não aparecem aqui.')+
+    '<h3 style="margin-top:10px;">Mês de referência</h3><input type="month" id="input-mes-novos-clientes" value="'+mk+'">'+
+    '</div>'+
+    '<div class="card"><div class="grid cols2">'+
+    '<div class="metric"><div class="label">Novos clientes no mês</div><div class="value">'+doMes.length+'</div></div>'+
+    '<div class="metric"><div class="label">Total de clientes cadastrados</div><div class="value">'+(state.clientes||[]).length+'</div></div>'+
+    '</div>'+(semData>0?'<div class="hint" style="margin-top:6px;">'+semData+' cliente(s) do cadastro são de antes dessa marcação existir, por isso não entram na contagem por mês.</div>':'')+
+    '</div>'+
+    '<div class="card">'+
+    (doMes.length===0 ? '<div class="empty">Nenhum cliente novo nesse mês.</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Indicado por</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
 }
 function relatorioKPIs(){
@@ -6662,6 +6807,27 @@ function attachHandlers(){
     const el = document.getElementById('ajuda-'+btn.dataset.ajudaToggle);
     if(el) el.style.display = el.style.display==='none' ? 'block' : 'none';
   });
+  document.querySelectorAll('[data-lapidar-ir]').forEach(btn=>btn.onclick=()=>{
+    const dest = lapidarDestino(btn.dataset.lapidarIr);
+    if(!dest) return;
+    currentTab = dest.tab; if(dest.sub) relatorioSub = dest.sub;
+    renderAll();
+  });
+  document.querySelectorAll('[data-recado-reabrir]').forEach(btn=>btn.onclick=async()=>{
+    const r = state.recados.find(x=>x.id===btn.dataset.recadoReabrir);
+    if(r){ r.concluido=false; await save('recados'); renderRecadosFab(); renderAll(); }
+  });
+  const wrapRecadosAdmin = document.getElementById('recados-admin-wrap');
+  if(wrapRecadosAdmin){
+    wrapRecadosAdmin.querySelectorAll('[data-recado-concluir]').forEach(btn=>btn.onclick=async()=>{
+      const r = state.recados.find(x=>x.id===btn.dataset.recadoConcluir);
+      if(r){ r.concluido=true; await save('recados'); renderRecadosFab(); renderAll(); }
+    });
+    wrapRecadosAdmin.querySelectorAll('[data-recado-excluir]').forEach(btn=>btn.onclick=async()=>{
+      state.recados = state.recados.filter(x=>x.id!==btn.dataset.recadoExcluir);
+      await save('recados'); renderRecadosFab(); renderAll();
+    });
+  }
   document.querySelectorAll('[data-lapidar-toggle]').forEach(btn=>btn.onclick=(e)=>{
     e.preventDefault();
     const el = document.getElementById('lapidar-'+btn.dataset.lapidarToggle);
@@ -6875,7 +7041,19 @@ function attachHandlers(){
         // (resolvido pela lista de pendências). Editar a venda pra outro tipo de entrega aqui
         // já conta como resolução (o estoque sai na hora).
         if(v.tipo_entrega === 'Falta retirar'){
-          v.estoqueBaixado = false; v.retirado = false; v.retiradoForma = ''; v.retiradoEm = null;
+          const formaEscolhaEdit = f.get('retirado_forma_edit') || '';
+          const freteFR = Number(f.get('frete_falta_retirar'))||0;
+          const freteFRForma = f.get('frete_falta_retirar_forma')||'';
+          const chkBaixaFR = document.getElementById('chk-baixa-estoque-falta-retirar');
+          const darBaixaFR = chkBaixaFR ? chkBaixaFR.checked : false;
+          if(formaEscolhaEdit && formaEscolhaEdit!=='Ainda pendente'){
+            if(darBaixaFR){ ajustaEstoquePorVenda(categoria, quantidade, false); v.estoqueBaixado = true; } else { v.estoqueBaixado = false; }
+            v.retirado = true; v.retiradoForma = formaEscolhaEdit; if(!v.retiradoEm) v.retiradoEm = Date.now();
+            if(freteFR>0){ v.frete = freteFR; v.valor_total = Math.round((v.valor_total + freteFR)*100)/100; v.obs = (v.obs?v.obs+' — ':'')+'Frete cobrado: '+fmtMoney(freteFR)+(freteFRForma?' ('+freteFRForma+')':''); } else { v.frete = 0; }
+          } else {
+            v.estoqueBaixado = false; v.retirado = false; v.retiradoForma = ''; v.retiradoEm = null;
+            v.frete = freteFR>0 ? freteFR : 0;
+          }
         } else {
           ajustaEstoquePorVenda(categoria, quantidade, false);
           v.estoqueBaixado = true;
@@ -7060,6 +7238,11 @@ function attachHandlers(){
   if(selTipoEntrega) selTipoEntrega.onchange = toggleDetalhesEntregaVenda;
   const inputFrete = document.getElementById('input-frete');
   if(inputFrete) inputFrete.oninput = atualizarTotalCarrinho;
+  const inputFreteFR = document.getElementById('input-frete-falta-retirar');
+  const wrapFormaPagtoFR = document.getElementById('wrap-forma-pagto-frete-falta-retirar');
+  if(inputFreteFR && wrapFormaPagtoFR) inputFreteFR.oninput = ()=>{
+    wrapFormaPagtoFR.style.display = (Number(inputFreteFR.value)||0)>0 ? 'block' : 'none';
+  };
   toggleDetalhesEntregaVenda();
   atualizarTotalCarrinho();
 
@@ -7074,7 +7257,7 @@ function attachHandlers(){
     const telefoneNovo = document.getElementById('ncv-telefone').value.trim();
     if(!nome){ alert('Informe o nome do cliente.'); return; }
     if(!telefoneNovo){ alert('Informe o telefone/WhatsApp do cliente.'); return; }
-    const novoCli = {id:uid(), nome, telefone:telefoneNovo, endereco:document.getElementById('ncv-endereco').value||'', complemento:document.getElementById('ncv-complemento').value||'', obs:''};
+    const novoCli = {id:uid(), nome, telefone:telefoneNovo, endereco:document.getElementById('ncv-endereco').value||'', complemento:document.getElementById('ncv-complemento').value||'', obs:'', criadoEm:Date.now()};
     state.clientes.push(novoCli);
     await save('clientes');
     if(fv) fv.cliente.value = nome;
@@ -7155,7 +7338,7 @@ function attachHandlers(){
       if(c){ c.nome=f.get('nome'); c.telefone=f.get('telefone')||''; c.endereco=f.get('endereco')||''; c.complemento=f.get('complemento')||''; c.obs=f.get('obs')||''; c.indicadoPor=f.get('indicadoPor')||''; c.aniversario=f.get('aniversario')||''; c.limiteCredito=f.get('limiteCredito')?Number(f.get('limiteCredito')):undefined; c.grupos=[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value); }
       editClienteId = null;
     } else {
-      state.clientes.push({id:uid(), nome:f.get('nome'), telefone:f.get('telefone')||'', endereco:f.get('endereco')||'', complemento:f.get('complemento')||'', obs:f.get('obs')||'', indicadoPor:f.get('indicadoPor')||'', aniversario:f.get('aniversario')||'', limiteCredito:f.get('limiteCredito')?Number(f.get('limiteCredito')):undefined, grupos:[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value)});
+      state.clientes.push({id:uid(), nome:f.get('nome'), telefone:f.get('telefone')||'', endereco:f.get('endereco')||'', complemento:f.get('complemento')||'', obs:f.get('obs')||'', indicadoPor:f.get('indicadoPor')||'', aniversario:f.get('aniversario')||'', limiteCredito:f.get('limiteCredito')?Number(f.get('limiteCredito')):undefined, grupos:[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value), criadoEm:Date.now()});
     }
     await save('clientes');
     renderAll();
@@ -7413,6 +7596,16 @@ function attachHandlers(){
       fvEl.quantidade.value=v.quantidade; fvEl.valor_unit.value=v.valor_unit; fvEl.pagamento.value=v.pagamento; fvEl.nota.value=v.nota;
       fvEl.tipo_entrega.value=v.tipo_entrega; fvEl.empresa.value=v.empresa||''; fvEl.entrega_data.value=v.entrega_data||''; fvEl.entrega_hora.value=v.entrega_hora||''; fvEl.obs.value=v.obs||'';
       if(fvEl.frete) fvEl.frete.value = v.frete||'';
+      const selFormaRetiradaEdit = document.getElementById('sel-forma-retirada-edit');
+      const inputFreteFREdit = document.getElementById('input-frete-falta-retirar');
+      const chkBaixaFREdit = document.getElementById('chk-baixa-estoque-falta-retirar');
+      const wrapFormaPagtoFREdit = document.getElementById('wrap-forma-pagto-frete-falta-retirar');
+      if(v.tipo_entrega==='Falta retirar'){
+        if(selFormaRetiradaEdit) selFormaRetiradaEdit.value = v.retirado ? (v.retiradoForma||'') : 'Ainda pendente';
+        if(inputFreteFREdit) inputFreteFREdit.value = v.frete||'';
+        if(wrapFormaPagtoFREdit) wrapFormaPagtoFREdit.style.display = (v.frete>0) ? 'block' : 'none';
+        if(chkBaixaFREdit) chkBaixaFREdit.checked = !!v.estoqueBaixado;
+      }
       fvEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       const itensExtraEl = document.getElementById('itens-extra-lista'); if(itensExtraEl) itensExtraEl.innerHTML='';
       const btnAddItemEl = document.getElementById('btn-add-item-venda'); if(btnAddItemEl) btnAddItemEl.style.display='none';
@@ -7430,21 +7623,6 @@ function attachHandlers(){
         await save('vendas'); await save('estoque');
         renderAll();
       }
-    });
-    document.querySelectorAll('[data-resolver-pendencia]').forEach(btn=>btn.onclick=()=>{
-      const id = btn.dataset.resolverPendencia;
-      const opcoesForma = ['Cliente retirou','Entrega a pé'].concat((state.veiculos||[]).map(vc=>'Entrega de '+vc.nome));
-      const listaTexto = opcoesForma.map((o,i)=>(i+1)+' - '+o).join('\n');
-      const escolha = prompt('Qual foi a forma de entrega?\n'+listaTexto+'\n\nDigite o número:');
-      const idx = Number(escolha)-1;
-      if(!(idx>=0 && idx<opcoesForma.length)) return;
-      const forma = opcoesForma[idx];
-      const freteStr = prompt('Ganhou algo com o frete dessa entrega/retirada? Digite o valor em R$ (ou deixe em branco se não):');
-      const freteValor = freteStr ? (Number(String(freteStr).replace(',','.'))||0) : 0;
-      let freteForma = '';
-      if(freteValor>0) freteForma = prompt('Forma de pagamento do frete (ex: Dinheiro, Pix, Cartão):') || '';
-      const darBaixa = confirm('Dar baixa no estoque agora?\n\nOK = Sim, descontar do estoque\nCancelar = Não descontar agora');
-      resolverFaltaRetirar(id, forma, freteValor, freteForma, darBaixa);
     });
     document.querySelectorAll('[data-edit-venda-ag]').forEach(btn=>btn.onclick=()=>{
       pendingEditVendaId = btn.dataset.editVendaAg;
@@ -8576,6 +8754,7 @@ function attachHandlers(){
   const rdData = document.getElementById('rd-data'); if(rdData) rdData.onchange = ()=>{ resumoDiaData = rdData.value; renderAll(); };
   const abcFiltrar = document.getElementById('abc-filtrar'); if(abcFiltrar) abcFiltrar.onclick = renderRelatorioABCResultado;
   const inputMesKpi = document.getElementById('input-mes-kpi'); if(inputMesKpi) inputMesKpi.onchange = ()=>{ kpiMesSelecionado = inputMesKpi.value; renderAll(); };
+  const inputMesNovosClientes = document.getElementById('input-mes-novos-clientes'); if(inputMesNovosClientes) inputMesNovosClientes.onchange = ()=>{ relatorioNovosClientesMes = inputMesNovosClientes.value; renderAll(); };
   document.querySelectorAll('[data-recompensar-indicador]').forEach(btn=>btn.onclick=async()=>{
     const obs = prompt('O que você vai dar de recompensa pra '+btn.dataset.recompensarIndicador+'? (ex: 1 botijão grátis, desconto de R$10, etc)');
     if(obs===null) return;
@@ -9495,7 +9674,11 @@ async function gerarModeloImportacaoDiaria(){
     {titulo:'GrupoProduto', valores:gruposProduto},
     {titulo:'Veiculo', valores:state.veiculos.map(v=>v.nome)},
     {titulo:'StatusConta', valores:['pendente','pago']},
-    {titulo:'SimNao', valores:['sim','não']}
+    {titulo:'SimNao', valores:['sim','não']},
+    {titulo:'ClienteExistente', valores:state.clientes.map(c=>c.nome)},
+    {titulo:'EmpresaConveniada', valores:state.empresas.map(e=>e.nome)},
+    {titulo:'FormaPagamentoDespesa', valores:['avista','parcelado']},
+    {titulo:'Oficina', valores:state.oficinasManutencao.map(o=>o.nome)}
   ];
   colunasListas.forEach(function(col, idx){
     const letra = String.fromCharCode(65+idx);
@@ -9514,6 +9697,26 @@ async function gerarModeloImportacaoDiaria(){
       };
     }
   }
+  function configurarImpressaoA4(ws, qtdColunas, ultimaLinhaImpressao){
+    ws.pageSetup.paperSize = 9; // A4
+    ws.pageSetup.orientation = qtdColunas>8 ? 'landscape' : 'portrait';
+    ws.pageSetup.fitToPage = true;
+    ws.pageSetup.fitToWidth = 1;
+    ws.pageSetup.fitToHeight = 0;
+    ws.pageSetup.horizontalCentered = true;
+    ws.pageSetup.showGridLines = true;
+    ws.pageSetup.margins = {left:0.3, right:0.3, top:0.5, bottom:0.5, header:0.2, footer:0.2};
+    ws.pageSetup.printTitlesRow = '1:1';
+    const ultimaColuna = String.fromCharCode(64+qtdColunas);
+    ws.pageSetup.printArea = 'A1:'+ultimaColuna+ultimaLinhaImpressao;
+    const bordaFina = {style:'thin', color:{argb:'FFBBBBBB'}};
+    for(let l=1; l<=ultimaLinhaImpressao; l++){
+      for(let c=1; c<=qtdColunas; c++){
+        ws.getRow(l).getCell(c).border = {top:bordaFina, left:bordaFina, bottom:bordaFina, right:bordaFina};
+      }
+      ws.getRow(l).height = 18;
+    }
+  }
 
   // ---- Aba Instruções ----
   const wsInstr = wb.addWorksheet('Instruções');
@@ -9523,7 +9726,8 @@ async function gerarModeloImportacaoDiaria(){
     '1. Preencha as abas Vendas, Despesas, Clientes e Produtos durante o dia. Deixe em branco a aba que não for usar.',
     '2. No fim do expediente, vá em Configurações > Importação diária e suba este mesmo arquivo.',
     '3. Não mude o nome das abas nem os títulos da primeira linha de cada aba — é assim que o sistema reconhece as colunas.',
-    '4. As colunas com opções fixas (Canal, Forma de Pagamento, Nota, Tipo de Entrega, Categoria) já vêm com uma setinha — clique na célula e escolha da lista, sem precisar digitar.',
+    '4. As colunas com opções fixas ou já cadastradas no sistema (Canal, Forma de Pagamento, Nota, Tipo de Entrega, Categoria, Cliente, Empresa Convênio, Indicado Por, Veículo, Oficina/Empresa) já vêm com uma setinha — clique na célula e escolha da lista. Nas colunas de Cliente/Empresa/Oficina você ainda pode digitar um nome novo se ele ainda não existir; nas demais, escolha sempre uma opção da lista.',
+    '5. Todas as abas de preenchimento (Vendas, Despesas, ContasPagar, FechamentoCaixa, Clientes, Produtos) já vêm formatadas em A4, com linhas/colunas prontas pra imprimir e usar no papel antes de digitar — bom pra fazer a conferência tripla do dia (impresso x planilha x sistema).',
     '',
     'Valores válidos para preencher:',
     'Canal (Vendas): '+CANAIS.join(' | '),
@@ -9556,6 +9760,10 @@ async function gerarModeloImportacaoDiaria(){
   aplicarDropdown(wsVendas, 'K', 'B', PAGAMENTOS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'L', 'C', NOTAS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'M', 'D', TIPOS_ENTREGA.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'C', 'L', state.clientes.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'N', 'M', state.empresas.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'Q', 'L', state.clientes.length, 2, ULTIMA_LINHA);
+  configurarImpressaoA4(wsVendas, 18, 45);
 
   // ---- Aba Despesas ----
   const wsDespesas = wb.addWorksheet('Despesas');
@@ -9564,6 +9772,9 @@ async function gerarModeloImportacaoDiaria(){
   wsDespesas.columns.forEach(c=>{ c.width = 18; });
   aplicarDropdown(wsDespesas, 'B', 'F', categoriasDespesaValidas.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsDespesas, 'E', 'I', state.veiculos.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsDespesas, 'F', 'O', state.oficinasManutencao.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsDespesas, 'G', 'N', 2, 2, ULTIMA_LINHA);
+  configurarImpressaoA4(wsDespesas, 10, 35);
 
   // ---- Aba ContasPagar ----
   const wsContas = wb.addWorksheet('ContasPagar');
@@ -9574,18 +9785,22 @@ async function gerarModeloImportacaoDiaria(){
   aplicarDropdown(wsContas, 'E', 'K', 2, 2, ULTIMA_LINHA);
   aplicarDropdown(wsContas, 'F', 'J', 2, 2, ULTIMA_LINHA);
   aplicarDropdown(wsContas, 'H', 'I', state.veiculos.length, 2, ULTIMA_LINHA);
+  configurarImpressaoA4(wsContas, 8, 30);
 
   // ---- Aba FechamentoCaixa ----
   const wsCaixa = wb.addWorksheet('FechamentoCaixa');
   wsCaixa.addRow(['Data','Abertura','Dinheiro Contado','Observação']);
   wsCaixa.getRow(1).font = {bold:true};
   wsCaixa.columns.forEach(c=>{ c.width = 18; });
+  configurarImpressaoA4(wsCaixa, 4, 10);
 
   // ---- Aba Clientes ----
   const wsClientes = wb.addWorksheet('Clientes');
   wsClientes.addRow(['Nome','Telefone','Endereço','Complemento','Observação','Indicado Por','Aniversário']);
   wsClientes.getRow(1).font = {bold:true};
   wsClientes.columns.forEach(c=>{ c.width = 18; });
+  aplicarDropdown(wsClientes, 'F', 'L', state.clientes.length, 2, ULTIMA_LINHA);
+  configurarImpressaoA4(wsClientes, 7, 25);
 
   // ---- Aba Produtos ----
   const wsProdutos = wb.addWorksheet('Produtos');
@@ -9594,6 +9809,7 @@ async function gerarModeloImportacaoDiaria(){
   wsProdutos.columns.forEach(c=>{ c.width = 18; });
   aplicarDropdown(wsProdutos, 'A', 'H', gruposProduto.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsProdutos, 'B', 'G', categoriasProdutoNaoControladas.length, 2, ULTIMA_LINHA);
+  configurarImpressaoA4(wsProdutos, 4, 25);
 
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
@@ -9702,7 +9918,8 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
               complemento: (r['Complemento Cliente']||'').trim(),
               obs: '',
               indicadoPor: (r['Indicado Por (Cliente novo)']||'').trim(),
-              aniversario: r['Aniversário Cliente (Cliente novo)'] ? normalizarDataImportada(r['Aniversário Cliente (Cliente novo)'],'') : ''
+              aniversario: r['Aniversário Cliente (Cliente novo)'] ? normalizarDataImportada(r['Aniversário Cliente (Cliente novo)'],'') : '',
+              criadoEm: Date.now()
             });
             clientesNovosDeVendas++;
           }
@@ -9847,7 +10064,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         const chave = chaveNormalizada(nome);
         if(nomesClientesExistentes.has(chave)){ duplicados++; return; }
         nomesClientesExistentes.add(chave);
-        state.clientes.push({id:uid(), nome, telefone:(r['Telefone']||'').trim(), endereco:(r['Endereço']||'').trim(), complemento:(r['Complemento']||'').trim(), obs:(r['Observação']||'').trim(), indicadoPor:(r['Indicado Por']||'').trim(), aniversario: r['Aniversário'] ? normalizarDataImportada(r['Aniversário'],'') : ''});
+        state.clientes.push({id:uid(), nome, telefone:(r['Telefone']||'').trim(), endereco:(r['Endereço']||'').trim(), complemento:(r['Complemento']||'').trim(), obs:(r['Observação']||'').trim(), indicadoPor:(r['Indicado Por']||'').trim(), aniversario: r['Aniversário'] ? normalizarDataImportada(r['Aniversário'],'') : '', criadoEm:Date.now()});
         novos++;
       });
       if(novos>0) await save('clientes');
@@ -10435,7 +10652,8 @@ function renderCsvVendasMapping(){
             telefone: colClienteTelefone ? (r[colClienteTelefone]||'').trim() : '',
             endereco: colClienteEndereco ? (r[colClienteEndereco]||'').trim() : '',
             complemento: colClienteComplemento ? (r[colClienteComplemento]||'').trim() : '',
-            obs: ''
+            obs: '',
+            criadoEm: Date.now()
           });
           clientesNovos++;
         }
@@ -10711,6 +10929,7 @@ async function afterLogin(){
   initWhatsFab();
   initRotaFab();
   initCalculadora();
+  initRecados();
   rodarBackupAutomaticoSeNecessario();
   iniciarNotificacoesRealtime();
   atualizarBadgeApp();
