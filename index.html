@@ -2956,6 +2956,7 @@ async function loadAll(){
   if(!Array.isArray(state.interacoesCliente)) state.interacoesCliente = [];
   if(!Array.isArray(state.tarefasCliente)) state.tarefasCliente = [];
   if(!state.lapidarItens['relatorio-crm']) state.lapidarItens['relatorio-crm'] = {marcado:true, descricao:'CRM — ficha completa de cada cliente (histórico de compras, fiado, crédito, comodato, NPS, indicações e anexos), com histórico de interações (ligação, WhatsApp, visita etc.) e follow-ups/lembretes de contato pendentes.'};
+  if(!state.lapidarItens['relatorio-remuneracao']) state.lapidarItens['relatorio-remuneracao'] = {marcado:true, descricao:'Programa de remuneração variável / bonificação dos entregadores: comissão calculada por entrega (valor fixo ou % do frete) e progresso da meta de vendas do mês de cada um, configurados em Rotas → Entregadores.'};
   if(!Array.isArray(state.recados)) state.recados = [];
   if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
   if(!Array.isArray(state.fechamentosCaixa)) state.fechamentosCaixa = [];
@@ -5337,6 +5338,7 @@ function viewRelatorios(){
     {id:'gestaocanal', label:'Gestão à Vista — Canal'},
     {id:'gestaoentregador', label:'Gestão à Vista — Entregador'},
     {id:'crm', label:'CRM — Relacionamento'},
+    {id:'remuneracao', label:'Remuneração Variável'},
     {id:'resumodia', label:'Resumo do Dia'},
     {id:'ranking', label:'Ranking de Clientes'},
     {id:'abc', label:'Curva ABC de Clientes'},
@@ -5367,6 +5369,7 @@ function viewRelatorios(){
   else if(relatorioSub==='gestaocanal') content = relatorioGestaoCanal();
   else if(relatorioSub==='gestaoentregador') content = relatorioGestaoEntregador();
   else if(relatorioSub==='crm') content = relatorioCRM();
+  else if(relatorioSub==='remuneracao') content = relatorioRemuneracaoVariavel();
   else if(relatorioSub==='resumodia') content = relatorioResumoDia();
   else if(relatorioSub==='abc') content = relatorioABC();
   else if(relatorioSub==='indicacoes') content = relatorioIndicacoes();
@@ -6039,6 +6042,28 @@ function crmFichaCliente(nome){
     (npsDoCliente.length>0?'<div class="card"><h3>😊 NPS respondido por esse cliente</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Nota</th><th>Comentário</th></tr></thead><tbody>'+linhasNps+'</tbody></table></div></div>':'')+
     (indicados.length>0?'<div class="card"><h3>🎁 Clientes indicados por '+escapeHtmlCampanha(nome)+'</h3><div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Valor gerado</th></tr></thead><tbody>'+linhasIndicados+'</tbody></table></div></div>':'')+
     '<div class="card"><h3>📎 Anexos (fotos, vídeos, localização)</h3>'+anexosGaleriaHtml(anexos)+'</div>';
+}
+function relatorioRemuneracaoVariavel(){
+  const mk = comissaoMesSelecionado || monthKey(todayStr());
+  const linhas = (state.entregadores||[]).map(function(e){
+    const r = comissaoEntregadorMes(e.id, mk);
+    const vendidoMes = (state.vendas||[]).filter(v=>v.entregadorId===e.id && monthKey(v.data)===mk).reduce((s,v)=>s+vendaValor(v),0);
+    const bateuMeta = e.metaMensal>0 && vendidoMes>=e.metaMensal;
+    return {e, r, vendidoMes, bateuMeta};
+  });
+  const linhasHtml = linhas.map(function(x){
+    return '<tr><td>'+escapeHtmlCampanha(x.e.nome)+'</td><td>'+x.r.qtd+'</td>'+
+      '<td>'+(x.e.tipoComissao==='percentual'?(Number(x.e.valorComissao||0)+'% do frete'):fmtMoney(Number(x.e.valorComissao||0))+'/entrega')+'</td>'+
+      '<td><strong>'+fmtMoney(x.r.total)+'</strong></td>'+
+      '<td>'+(x.e.metaMensal>0?(fmtMoney(x.vendidoMes)+' / '+fmtMoney(x.e.metaMensal)+' '+(x.bateuMeta?'✅':'⚠️')):'—')+'</td></tr>';
+  }).join('') || '<tr><td colspan="5">Nenhum entregador cadastrado.</td></tr>';
+  const totalAPagar = linhas.reduce((s,x)=>s+x.r.total,0);
+  return '<h3>💵 Remuneração Variável / Bonificação dos Colaboradores</h3>'+
+    ajudaHtml('remuneracao','Relatório da comissão (remuneração variável) de cada entregador, calculada com base nas entregas já lançadas como venda no mês, usando o valor fixo ou o percentual configurado em Rotas → Entregadores. A coluna de meta mostra o progresso da meta de vendas do mês de cada um (também configurada em Rotas → Entregadores) — bater a meta serve como referência de bonificação. Pra confirmar pagamentos e ver o histórico de acertos, use Acertos → Comissão dos entregadores (é a mesma informação, esse relatório é só uma versão pra apresentar/consultar).')+
+    '<div class="form-row" style="max-width:260px;margin-top:10px;"><div><label>Mês de referência</label><input type="month" id="input-mes-remuneracao" value="'+mk+'"></div></div>'+
+    '<div class="table-wrap" style="margin-top:12px;"><table><thead><tr><th>Entregador</th><th>Entregas no mês</th><th>Comissão configurada</th><th>Total a pagar</th><th>Meta de vendas do mês</th></tr></thead><tbody>'+linhasHtml+'</tbody></table></div>'+
+    '<div class="hint" style="margin-top:8px;">Total geral a pagar em comissões no mês: <strong>'+fmtMoney(totalAPagar)+'</strong></div>'+
+    '<button type="button" class="btn small ghost" style="margin-top:10px;" data-ir-acertos="1">Ir pra Acertos → Comissão dos entregadores</button>';
 }
 function relatorioKPIs(){
   const mk = kpiMesSelecionado || monthKey(todayStr());
@@ -9230,6 +9255,8 @@ function attachHandlers(){
     state.interacoesCliente = state.interacoesCliente.filter(x=>x.id!==btn.dataset.delInteracaoCliente);
     await save('interacoesCliente'); renderAll();
   });
+  const inputMesRemuneracao = document.getElementById('input-mes-remuneracao'); if(inputMesRemuneracao) inputMesRemuneracao.onchange = ()=>{ comissaoMesSelecionado = inputMesRemuneracao.value; renderAll(); };
+  document.querySelectorAll('[data-ir-acertos]').forEach(btn=>btn.onclick=()=>{ currentTab='acertos'; renderAll(); });
   const inputMesNovosClientes = document.getElementById('input-mes-novos-clientes'); if(inputMesNovosClientes) inputMesNovosClientes.onchange = ()=>{ relatorioNovosClientesMes = inputMesNovosClientes.value; renderAll(); };
   document.querySelectorAll('[data-recompensar-indicador]').forEach(btn=>btn.onclick=async()=>{
     const obs = prompt('O que você vai dar de recompensa pra '+btn.dataset.recompensarIndicador+'? (ex: 1 botijão grátis, desconto de R$10, etc)');
