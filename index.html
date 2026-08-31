@@ -3556,9 +3556,23 @@ function viewDashboard(){
     '</div>';
 }
 function cardUploadEvolucaoVendasHtml(){
-  return '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-evolucao">modelo em Excel</a>, preencha e suba aqui todo mês (repita o arquivo com a linha nova — meses repetidos são atualizados, sem duplicar). O mesmo arquivo alimenta o gráfico de Evolução das vendas no Painel.</div>'+
+  const temHistorico = (state.historicoMensal||[]).length>0;
+  return '<div class="hint">'+(temHistorico
+      ? 'Baixe a <a href="#" id="link-baixar-evolucao-atual">planilha com os meses já importados</a>, acrescente a linha do novo mês e suba ela de novo aqui (meses repetidos são atualizados, sem duplicar). Se preferir começar do zero, use o <a href="#" id="link-baixar-modelo-evolucao">modelo em branco</a>.'
+      : 'Baixe o <a href="#" id="link-baixar-modelo-evolucao">modelo em Excel</a>, preencha e suba aqui todo mês.')+
+    ' O mesmo arquivo alimenta o gráfico de Evolução das vendas no Painel. A última versão enviada fica salva no sistema — no mês seguinte é só baixar de novo por aqui.</div>'+
     '<input type="file" id="historico-input" accept=".csv,.txt,.tsv,.xlsx,.xls" style="margin-top:10px;">'+
     '<div id="historico-mapping"></div>';
+}
+function gerarEvolucaoVendasAtualXlsx(){
+  if(typeof XLSX==='undefined'){ alert('Não consegui carregar a biblioteca de Excel. Confira sua conexão com a internet e tente de novo.'); return; }
+  const colunas = colunasHistoricoDisponiveis();
+  const linhas = state.historicoMensal.slice().sort((a,b)=>a.mes.localeCompare(b.mes));
+  const cabecalho = ['Mês'].concat(colunas);
+  const dados = linhas.map(l=>[l.mes+'-01'].concat(colunas.map(c=>l.dados[c]!=null?l.dados[c]:'')));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([cabecalho].concat(dados)), 'Evolução');
+  XLSX.writeFile(wb, 'evolucao_das_vendas_atualizada.xlsx');
 }
 
 function clientesComFiado(){
@@ -8527,6 +8541,8 @@ function attachHandlers(){
   };
   const linkModeloEvolucao = document.getElementById('link-baixar-modelo-evolucao');
   if(linkModeloEvolucao) linkModeloEvolucao.onclick = (e)=>{ e.preventDefault(); gerarModeloEvolucaoVendas(); };
+  const linkEvolucaoAtual = document.getElementById('link-baixar-evolucao-atual');
+  if(linkEvolucaoAtual) linkEvolucaoAtual.onclick = (e)=>{ e.preventDefault(); gerarEvolucaoVendasAtualXlsx(); };
 
   const linkModeloDespesas = document.getElementById('link-baixar-modelo-despesas');
   if(linkModeloDespesas) linkModeloDespesas.onclick = (e)=>{ e.preventDefault(); baixarBase64('modelo_vendas_despesas.xlsx', MODELO_XLSX_B64, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); };
