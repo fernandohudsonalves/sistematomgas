@@ -5462,6 +5462,22 @@ function creditosListaHtml(){
     '<td><button class="act-link" data-edit-credito="'+c.id+'">✎ editar</button><button class="del-link" data-del-credito="'+c.id+'">🗑 excluir</button></td></tr>').join('')+
     '</tbody></table></div>';
 }
+function textoWhatsappComodato(c){
+  if(c.obs && c.obs.trim()) return c.obs.trim();
+  const qtd = Math.abs(c.quantidade);
+  return (c.direcao==='atacadista' ? 'Olá! Ainda estou devendo ' : 'Olá! Você ainda está devendo ')+
+    qtd+' '+(c.produto||'item')+' de '+itemComodatoLabel(c.categoria,c.item)+' — '+c.nome+'.';
+}
+async function copiarTextoComodato(texto){
+  try{ await navigator.clipboard.writeText(texto); alert('Texto copiado! Já pode colar na conversa do WhatsApp.'); }
+  catch(e){ alert('Não consegui copiar automaticamente. Texto:\n\n'+texto); }
+}
+function whatsappPorNomeEntregador(nome){
+  const alvo = (nome||'').trim().toLowerCase();
+  if(!alvo) return '';
+  const en = (state.entregadores||[]).find(e=>(e.nome||'').trim().toLowerCase()===alvo);
+  return en ? (en.whatsapp||'') : '';
+}
 function itemComodatoLabel(categoria, item){
   if(categoria==='Gás') return item;
   const par = ITENS_AGUA_COMODATO.find(p=>p[1]===item);
@@ -5561,7 +5577,7 @@ function relatorioComodatos(){
     '<option value="atacadista">Eu devo ao atacadista (peguei carga a mais dele)</option>'+
     '</select></div>'+
     '<div><label>Nome <span class="req">*</span></label><input list="lista-nomes-comodato" name="nome" required placeholder="Cliente ou nome do atacadista">'+
-    '<datalist id="lista-nomes-comodato">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist></div></div>'+
+    '<datalist id="lista-nomes-comodato">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+(state.entregadores||[]).map(en=>'<option value="'+en.nome+'">').join('')+'</datalist></div></div>'+
     '<div class="form-row">'+
     '<div><label>Categoria <span class="req">*</span></label><select id="cmd-categoria" name="categoria" required>'+opcoesComPlaceholder(['Gás','Água'],'Selecione')+'</select></div>'+
     '<div><label>Item da categoria <span class="req">*</span></label><select id="cmd-item" name="item" required><option value="" selected disabled>Selecione a categoria primeiro</option></select></div>'+
@@ -5569,7 +5585,11 @@ function relatorioComodatos(){
     '<div class="form-row">'+
     '<div><label>Quantidade <span class="req">*</span></label><input type="number" name="quantidade" step="1" placeholder="Ex: 2 ou -2" required></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+todayStr()+'" required></div></div>'+
-    '<label>Observação</label><input type="text" name="obs" placeholder="Ex: pegou 2 vasilhames vazios emprestados">'+
+    '<label>Observação</label><input type="text" id="cmd-obs" name="obs" placeholder="Ex: falta trazer 3 botijões cheios">'+
+    '<div class="form-row" style="margin-top:8px;">'+
+    '<div><label>WhatsApp (opcional)</label><input type="tel" id="cmd-whatsapp" name="whatsapp" placeholder="Ex: 43999999999">'+
+    '<div class="hint">Se o nome acima bater com um entregador cadastrado, o WhatsApp dele é preenchido sozinho. Pode editar ou digitar outro número.</div></div>'+
+    '<div style="align-self:flex-end;"><button type="button" class="btn small ghost" id="cmd-copiar-obs">📋 Copiar observação p/ colar no WhatsApp</button></div></div>'+
     '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;"><input type="checkbox" name="baixa_estoque" id="cmd-baixa-estoque" checked style="width:auto;"> Dar baixa/entrada automática no estoque</label>'+
     '<div class="hint">Marcado: este lançamento também ajusta o estoque (cheio/vazio) do item na hora. Desmarque só se for um caso avulso que não deve mexer no estoque.</div>'+
     '<button type="submit" class="btn small">Lançar</button></form>'+
@@ -5584,12 +5604,13 @@ function comodatosListaHtml(){
   const todos = state.comodatos.slice().sort((a,b)=>b.data.localeCompare(a.data));
   if(todos.length===0) return '<div class="empty">Nenhum comodato lançado ainda.</div>';
   return '<div class="table-wrap"><table><thead><tr><th>Direção</th><th>Nome</th><th>Categoria / Item</th><th>Produto</th><th>Data</th><th>Qtd</th><th>Estoque</th><th>Observação</th><th></th></tr></thead><tbody>'+
-    todos.map(c=>'<tr><td>'+(c.direcao==='cliente'?'Cliente':'Atacadista')+'</td><td>'+c.nome+'</td>'+
+    todos.map(c=>'<tr><td>'+(c.direcao==='cliente'?'Cliente':'Atacadista')+'</td><td>'+c.nome+(c.whatsapp?'<br><span class="hint">📱 '+c.whatsapp+'</span>':'')+'</td>'+
     '<td>'+c.categoria+' — '+itemComodatoLabel(c.categoria,c.item)+'</td><td>'+c.produto+'</td><td>'+fmtDate(c.data)+'</td>'+
     '<td>'+(c.quantidade>0?'+':'')+c.quantidade+'</td>'+
     '<td>'+(c.baixaEstoque?'<span class="badge status-pago">ajustou</span>':'<span class="badge" style="background:var(--border);color:var(--text2);">não mexeu</span>')+'</td>'+
     '<td>'+(c.obs||'—')+'</td>'+
-    '<td><button class="act-link" data-edit-comodato="'+c.id+'">✎ editar</button><button class="del-link" data-del-comodato="'+c.id+'">🗑 excluir</button></td></tr>').join('')+
+    '<td><button class="act-link" data-edit-comodato="'+c.id+'">✎ editar</button><button class="del-link" data-del-comodato="'+c.id+'">🗑 excluir</button>'+
+    '<br><button class="act-link" data-copiar-comodato="'+c.id+'">📋 copiar</button></td></tr>').join('')+
     '</tbody></table></div>';
 }
 function relatorioEntregas(){
@@ -8724,6 +8745,7 @@ function attachHandlers(){
     fcmEl.direcao.value=c.direcao; fcmEl.nome.value=c.nome; fcmEl.categoria.value=c.categoria;
     popularItensComodato(c.categoria, c.item);
     fcmEl.produto.value=c.produto; fcmEl.quantidade.value=c.quantidade; fcmEl.data.value=c.data; fcmEl.obs.value=c.obs||'';
+    fcmEl.whatsapp.value = c.whatsapp||'';
     fcmEl.querySelector('#cmd-baixa-estoque').checked = !!c.baixaEstoque;
     fcmEl.querySelector('button[type=submit]').textContent='Salvar alterações';
     fcmEl.scrollIntoView({behavior:'smooth'});
@@ -8746,13 +8768,28 @@ function attachHandlers(){
       renderAll();
     }
   });
+  document.querySelectorAll('[data-copiar-comodato]').forEach(btn=>btn.onclick=()=>{
+    const c = state.comodatos.find(x=>x.id===btn.dataset.copiarComodato);
+    if(c) copiarTextoComodato(textoWhatsappComodato(c));
+  });
   const formComodato = document.getElementById('form-comodato');
+  const cmdNomeInput = formComodato ? formComodato.querySelector('input[name="nome"]') : null;
+  if(cmdNomeInput) cmdNomeInput.addEventListener('change', ()=>{
+    const wa = whatsappPorNomeEntregador(cmdNomeInput.value);
+    if(wa && formComodato.whatsapp) formComodato.whatsapp.value = wa;
+  });
+  const btnCmdCopiarObs = document.getElementById('cmd-copiar-obs');
+  if(btnCmdCopiarObs) btnCmdCopiarObs.onclick = ()=>{
+    const obsVal = document.getElementById('cmd-obs').value.trim();
+    if(!obsVal){ alert('Escreva uma observação primeiro.'); return; }
+    copiarTextoComodato(obsVal);
+  };
   if(formComodato) formComodato.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(formComodato);
     const quantidade = Number(f.get('quantidade'))||0;
     const baixaEstoque = !!formComodato.querySelector('#cmd-baixa-estoque').checked;
-    const dados = {direcao:f.get('direcao'), nome:f.get('nome'), categoria:f.get('categoria'), item:f.get('item'), produto:f.get('produto'), quantidade, data:f.get('data'), obs:f.get('obs')||''};
+    const dados = {direcao:f.get('direcao'), nome:f.get('nome'), categoria:f.get('categoria'), item:f.get('item'), produto:f.get('produto'), quantidade, data:f.get('data'), obs:f.get('obs')||'', whatsapp:f.get('whatsapp')||''};
     let c;
     if(editComodatoId){
       c = state.comodatos.find(x=>x.id===editComodatoId);
