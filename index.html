@@ -95,11 +95,11 @@ header{background:var(--royal);color:#fff;padding:12px 20px;display:flex;align-i
 #logo-box{display:flex;align-items:center;gap:8px;}
 
 nav{background:var(--royal-dark);display:block;overflow-x:auto;position:sticky;top:53px;z-index:19;}
-#nav-principal,#subnav{display:flex;}
-nav button{flex:1;min-width:88px;background:none;border:none;color:#C6D4F5;padding:11px 6px;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
+#nav-principal,#subnav{display:flex;gap:2px;}
+nav button{flex:1 1 auto;min-width:88px;background:none;border:none;color:#C6D4F5;padding:11px 8px;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;white-space:normal;line-height:1.25;word-break:break-word;}
 nav button.active{color:var(--neon);border-bottom-color:var(--neon);background:rgba(255,255,255,.06);}
 nav button:hover{color:#fff;}
-.nav-sep{color:rgba(255,255,255,.3);display:flex;align-items:center;font-size:14px;flex-shrink:0;}
+.nav-sep{color:rgba(255,255,255,.3);display:flex;align-items:center;font-size:14px;flex-shrink:0;margin:0 2px;}
 
 /* Menu mobile (hambúrguer + gaveta lateral) — some no desktop, substitui as abas horizontais no celular */
 #menu-toggle{display:none;background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:17px;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
@@ -5572,7 +5572,7 @@ function relatorioPesquisaClientes(){
     '<td>'+(r.data||'')+'</td>'+
     '</tr>').join('');
   return '<div class="card"><h2>📋 Pesquisa de Clientes</h2>'+
-    '<div class="hint">Respostas do link de sugestão/melhoria enviado junto com a pesquisa de satisfação (NPS) pós-entrega. O próprio cliente marca se cada resposta é crítica ou sugestão.</div>'+
+    '<div class="hint">Respostas do link de sugestão/melhoria enviado junto com a pesquisa de satisfação (NPS) pós-entrega, mais as sugestões/críticas lançadas pela Pesquisa Manual. O próprio cliente marca (ou você marca, no caso da manual) se cada resposta é crítica ou sugestão.</div>'+
     (lista.length===0 ? '<div class="empty">Nenhuma resposta ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Campo</th><th>O que o cliente disse</th><th>Tipo</th><th>Data</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
@@ -5584,17 +5584,22 @@ function relatorioPesquisasManuais(){
   const mediaNota = totalRespostas ? (lista.reduce((s,r)=>s+(Number(r.nota)||0),0)/totalRespostas) : null;
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
   const hoje = todayStr();
+  const simNaoTxt = v=> v==='sim'?'✅':(v==='nao'?'❌':'—');
+  const optsSimNao = (val)=>'<option value="">—</option><option value="sim"'+(val==='sim'?' selected':'')+'>Sim</option><option value="nao"'+(val==='nao'?' selected':'')+'>Não</option>';
   const linhas = lista.map(r=>'<tr>'+
     '<td>'+fmtDate(r.data)+'</td>'+
     '<td>'+escapeHtmlCampanha(r.cliente||'—')+'</td>'+
     '<td>'+escapeHtmlCampanha(r.telefone||'—')+'</td>'+
     '<td><strong>'+(r.nota!=null?r.nota:'—')+'</strong></td>'+
+    '<td>'+simNaoTxt(r.prazo)+'</td>'+
+    '<td>'+simNaoTxt(r.entregador)+'</td>'+
+    '<td>'+simNaoTxt(r.indicaria)+'</td>'+
     '<td>'+escapeHtmlCampanha(r.comentario||'—')+'</td>'+
     '<td>'+(r.origem==='Link'?'🔗 Pelo link':'✍️ Lançada manualmente')+'</td>'+
     '<td><button class="act-link" data-edit-pesquisa-manual="'+r.id+'">✎ editar</button><button class="del-link" data-del-pesquisa-manual="'+r.id+'">🗑 excluir</button></td>'+
     '</tr>').join('');
   return '<div class="card"><h2>📝 Pesquisas Manuais</h2>'+
-    '<div class="hint">Use esta pesquisa pra quando você quer perguntar a opinião do cliente sem estar amarrado a uma entrega específica (ex: uma pesquisa geral de satisfação). Envie o link abaixo pro cliente responder sozinho, ou, se ele te responder por telefone/pessoalmente, lance a resposta manualmente aqui embaixo que ela entra na mesma pesquisa.</div>'+
+    '<div class="hint">Mesma pesquisa enviada pelo entregador após a entrega, só que pra qualquer cliente e em qualquer momento. Envie o link abaixo pro cliente responder sozinho, ou, se ele te responder por telefone/pessoalmente, lance a resposta manualmente aqui embaixo com os mesmos campos (nota, prazo, entregador, indicaria, sugestão/crítica) que ela entra na mesma pesquisa.</div>'+
     '<div class="form-row" style="margin-top:10px;align-items:flex-end;">'+
     '<div style="flex:1;"><label>Link da pesquisa (envie pro cliente)</label><input type="text" id="link-pesquisa-manual" value="'+linkPesquisa+'" readonly></div>'+
     '<div><button type="button" class="btn small ghost" id="btn-copiar-link-pesquisa">📋 Copiar link</button></div>'+
@@ -5615,13 +5620,22 @@ function relatorioPesquisasManuais(){
     '</div>'+
     '<div class="form-row">'+
     '<div><label>Nota (0 a 10) <span class="req">*</span></label><select name="nota" required>'+opcoesComPlaceholder(Array.from({length:11},(_,n)=>String(n)),'Selecione a nota')+'</select></div>'+
+    '<div><label>Chegou no prazo combinado?</label><select name="prazo">'+optsSimNao('')+'</select></div>'+
+    '<div><label>Entregador foi educado/cuidadoso?</label><select name="entregador">'+optsSimNao('')+'</select></div>'+
+    '<div><label>Indicaria a Tom Gás?</label><select name="indicaria">'+optsSimNao('')+'</select></div>'+
     '</div>'+
     '<div><label>Comentário (opcional)</label><input type="text" name="comentario" placeholder="O que o cliente disse"></div>'+
+    '<div class="form-row" style="margin-top:8px;">'+
+    '<div><label>Sugestão (opcional)</label><input type="text" name="sugestao_texto" placeholder="Ideia de sugestão do cliente"></div>'+
+    '<div><label>Tipo</label><select name="sugestao_tipo"><option value="sugestao">💡 Sugestão</option><option value="critica">🔴 Crítica</option></select></div>'+
+    '<div><label>Melhoria (opcional)</label><input type="text" name="melhoria_texto" placeholder="Melhoria que o cliente quer ver"></div>'+
+    '<div><label>Tipo</label><select name="melhoria_tipo"><option value="sugestao">💡 Sugestão</option><option value="critica">🔴 Crítica</option></select></div>'+
+    '</div>'+
     '<button type="submit" class="btn" style="margin-top:10px;">Lançar resposta</button>'+
     '</form></details></div>'+
     '<div class="card"><h2>Respostas ('+totalRespostas+')</h2>'+
     (lista.length===0 ? '<div class="empty">Nenhuma resposta ainda.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Nota</th><th>Comentário</th><th>Origem</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Nota</th><th>Prazo</th><th>Entregador</th><th>Indicaria</th><th>Comentário</th><th>Origem</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
 }
 function relatorioNovosClientes(){
@@ -7900,22 +7914,34 @@ function attachHandlers(){
     e.preventDefault();
     const f = new FormData(fPesquisaManual);
     if(!Array.isArray(state.respostasPesquisaManual)) state.respostasPesquisaManual = [];
+    if(!Array.isArray(state.pesquisaClientes)) state.pesquisaClientes = [];
+    let respostaId = editPesquisaManualId;
     if(editPesquisaManualId){
       const r = state.respostasPesquisaManual.find(x=>x.id===editPesquisaManualId);
       if(r){
         r.cliente = (f.get('cliente')||'').trim(); r.telefone = (f.get('telefone')||'').trim();
         r.data = f.get('data'); r.nota = Number(f.get('nota')); r.comentario = (f.get('comentario')||'').trim();
+        r.prazo = f.get('prazo')||''; r.entregador = f.get('entregador')||''; r.indicaria = f.get('indicaria')||'';
       }
       editPesquisaManualId = null;
     } else {
+      respostaId = uid();
       state.respostasPesquisaManual.push({
-        id:uid(), cliente:(f.get('cliente')||'').trim(), telefone:(f.get('telefone')||'').trim(),
+        id:respostaId, cliente:(f.get('cliente')||'').trim(), telefone:(f.get('telefone')||'').trim(),
         data:f.get('data'), nota:Number(f.get('nota')), comentario:(f.get('comentario')||'').trim(),
+        prazo:f.get('prazo')||'', entregador:f.get('entregador')||'', indicaria:f.get('indicaria')||'',
         origem:'Manual', criadoEm:Date.now()
       });
     }
+    const clientePesq = (f.get('cliente')||'').trim(), telefonePesq = (f.get('telefone')||'').trim(), dataPesq = f.get('data');
+    [{campo:'sugestao', texto:(f.get('sugestao_texto')||'').trim(), tipo:f.get('sugestao_tipo')||'sugestao'}, {campo:'melhoria', texto:(f.get('melhoria_texto')||'').trim(), tipo:f.get('melhoria_tipo')||'sugestao'}].forEach(o=>{
+      if(o.texto){
+        state.pesquisaClientes.push({id:uid(), origem:'manual', refId:respostaId, cliente:clientePesq, telefone:telefonePesq, endereco:'', campo:o.campo, texto:o.texto, tipo:o.tipo, data:dataPesq, criadoEm:Date.now()});
+      }
+    });
     const ok = await save('respostasPesquisaManual');
     if(!ok) return;
+    await save('pesquisaClientes');
     renderAll();
   };
   document.querySelectorAll('[data-edit-pesquisa-manual]').forEach(btn=>btn.onclick=()=>{
@@ -7925,6 +7951,7 @@ function attachHandlers(){
     editPesquisaManualId = r.id;
     fpm.cliente.value=r.cliente||''; fpm.telefone.value=r.telefone||''; fpm.data.value=r.data||todayStr();
     fpm.nota.value=String(r.nota!=null?r.nota:''); fpm.comentario.value=r.comentario||'';
+    if(fpm.prazo) fpm.prazo.value=r.prazo||''; if(fpm.entregador) fpm.entregador.value=r.entregador||''; if(fpm.indicaria) fpm.indicaria.value=r.indicaria||'';
     fpm.querySelector('button[type=submit]').textContent='Salvar alterações';
     const det = fpm.closest('details'); if(det) det.open = true;
     fpm.scrollIntoView({behavior:'smooth'});
@@ -11732,6 +11759,26 @@ async function iniciarPesquisaManualPublica(){
   wrap.style.cssText = 'max-width:480px;margin:40px auto;padding:24px;font-family:system-ui,sans-serif;';
   document.body.innerHTML=''; document.body.appendChild(wrap);
   let notaEscolhida = null;
+  const extras = { prazo:null, entregador:null, indicaria:null };
+  const opinioes = { sugestao:{texto:'', tipo:'sugestao'}, melhoria:{texto:'', tipo:'sugestao'} };
+  function simNaoGrupo(chave, pergunta){
+    return '<div style="margin-bottom:14px;"><div style="font-size:14px;margin-bottom:6px;">'+pergunta+'</div>'+
+      '<div style="display:flex;gap:8px;">'+
+      ['sim','nao'].map(v=>{
+        const ativo = extras[chave]===(v==='sim');
+        return '<button type="button" data-extra="'+chave+'" data-valor="'+v+'" style="flex:1;padding:10px 0;border-radius:8px;border:2px solid '+(ativo?'#25D366':'#ddd')+';background:'+(ativo?'#25D366':'#fff')+';color:'+(ativo?'#fff':'#333')+';font-weight:bold;">'+(v==='sim'?'Sim':'Não')+'</button>';
+      }).join('')+
+      '</div></div>';
+  }
+  function campoOpiniao(chave, placeholder){
+    return '<textarea data-opiniao-texto="'+chave+'" placeholder="'+placeholder+'" style="width:100%;min-height:50px;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:6px;">'+escapeHtmlCampanha(opinioes[chave].texto)+'</textarea>'+
+      '<div style="display:flex;gap:8px;margin-bottom:14px;">'+
+      ['sugestao','critica'].map(v=>{
+        const ativo = opinioes[chave].tipo===v;
+        return '<button type="button" data-opiniao-tipo="'+chave+'" data-valor="'+v+'" style="flex:1;padding:8px 0;border-radius:8px;border:2px solid '+(ativo?'#25D366':'#ddd')+';background:'+(ativo?'#25D366':'#fff')+';color:'+(ativo?'#fff':'#333')+';font-weight:bold;font-size:13px;">'+(v==='critica'?'🔴 Crítica':'💡 Sugestão')+'</button>';
+      }).join('')+
+      '</div>';
+  }
   function render(){
     wrap.innerHTML =
       '<div style="text-align:center;margin-bottom:18px;"><h2 style="margin:0;">Tom Gás</h2><div style="color:#777;font-size:13px;">Sua opinião é rápida e importante</div></div>'+
@@ -11744,25 +11791,47 @@ async function iniciarPesquisaManualPublica(){
       '<input id="pm-nome" type="text" placeholder="Nome" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;box-sizing:border-box;">'+
       '<label style="font-size:13px;display:block;margin-bottom:4px;">Seu telefone (opcional)</label>'+
       '<input id="pm-telefone" type="text" placeholder="Telefone/WhatsApp" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;box-sizing:border-box;">'+
+      simNaoGrupo('prazo','O produto chegou no prazo combinado?')+
+      simNaoGrupo('entregador','O entregador foi educado e cuidadoso?')+
+      simNaoGrupo('indicaria','Indicaria a Tom Gás para amigos/vizinhos?')+
       '<textarea id="pm-comentario" placeholder="Quer nos contar mais alguma coisa? (opcional)" style="width:100%;min-height:70px;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;box-sizing:border-box;"></textarea>'+
+      campoOpiniao('sugestao','Alguma ideia de sugestão pra gente? (opcional)')+
+      campoOpiniao('melhoria','Alguma melhoria que você gostaria de ver? (opcional)')+
       '<button id="pm-enviar" style="width:100%;padding:14px;font-size:15px;font-weight:bold;background:#25D366;color:#fff;border:none;border-radius:10px;" '+(notaEscolhida===null?'disabled':'')+'>Enviar</button>'+
       '<div id="pm-msg" style="margin-top:12px;text-align:center;font-weight:bold;color:#188038;"></div>';
     wrap.querySelectorAll('[data-nota]').forEach(btn=>btn.onclick=()=>{ notaEscolhida=Number(btn.dataset.nota); render(); });
+    wrap.querySelectorAll('[data-extra]').forEach(btn=>btn.onclick=()=>{ extras[btn.dataset.extra]=(btn.dataset.valor==='sim'); render(); });
+    wrap.querySelectorAll('[data-opiniao-texto]').forEach(ta=>ta.oninput=()=>{ opinioes[ta.dataset.opiniaoTexto].texto=ta.value; });
+    wrap.querySelectorAll('[data-opiniao-tipo]').forEach(btn=>btn.onclick=()=>{ opinioes[btn.dataset.opiniaoTipo].tipo=btn.dataset.valor; render(); });
     const btnEnviar = document.getElementById('pm-enviar');
     if(btnEnviar) btnEnviar.onclick = async()=>{
       if(notaEscolhida===null) return;
       btnEnviar.disabled=true; btnEnviar.textContent='Enviando...';
       try{
-        const { data, error } = await supabaseClient.from('app_data').select('chave,valor').eq('chave','respostasPesquisaManual');
+        const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave',['respostasPesquisaManual','pesquisaClientes']);
         if(error) throw error;
-        const respostas = (data && data[0] && data[0].valor) || [];
+        const porChave = {}; (data||[]).forEach(r=>porChave[r.chave]=r.valor);
+        const respostas = porChave.respostasPesquisaManual || [];
+        const respostaId = uid();
+        const cliente = document.getElementById('pm-nome').value||'', telefone = document.getElementById('pm-telefone').value||'';
         respostas.push({
-          id:uid(), cliente:document.getElementById('pm-nome').value||'', telefone:document.getElementById('pm-telefone').value||'',
-          nota:notaEscolhida, comentario:document.getElementById('pm-comentario').value||'',
+          id:respostaId, cliente, telefone,
+          nota:notaEscolhida, prazo:extras.prazo===null?'':(extras.prazo?'sim':'nao'), entregador:extras.entregador===null?'':(extras.entregador?'sim':'nao'), indicaria:extras.indicaria===null?'':(extras.indicaria?'sim':'nao'),
+          comentario:document.getElementById('pm-comentario').value||'',
           origem:'Link', data:todayStr(), criadoEm:Date.now()
         });
         const { error:err2 } = await supabaseClient.from('app_data').upsert({chave:'respostasPesquisaManual',valor:respostas,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
         if(err2) throw err2;
+        const pesquisas = porChave.pesquisaClientes || [];
+        ['sugestao','melhoria'].forEach(campo=>{
+          if((opinioes[campo].texto||'').trim()){
+            pesquisas.push({id:uid(), origem:'manual', refId:respostaId, cliente, telefone, endereco:'', campo, texto:opinioes[campo].texto.trim(), tipo:opinioes[campo].tipo, data:todayStr(), criadoEm:Date.now()});
+          }
+        });
+        if(pesquisas.length!==(porChave.pesquisaClientes||[]).length){
+          const { error:err3 } = await supabaseClient.from('app_data').upsert({chave:'pesquisaClientes',valor:pesquisas,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
+          if(err3) throw err3;
+        }
         wrap.innerHTML = '<div style="text-align:center;padding:40px 10px;"><div style="font-size:40px;">🙏</div><h3>Muito obrigado!</h3><div style="color:#666;">Sua resposta foi registrada.</div></div>';
       }catch(e){ btnEnviar.disabled=false; btnEnviar.textContent='Enviar'; alert('Não foi possível enviar. Tente novamente.'); }
     };
