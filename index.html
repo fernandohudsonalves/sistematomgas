@@ -533,7 +533,7 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.4_31_08_2026";
+const APP_BUILD_HORARIO = "1.5_31_08_2026";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -751,7 +751,7 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Contas a Pagar', kw:'contas a pagar boleto vencimento', tab:'contaspagar'},
   {label:'Cadastros (Clientes/Empresas/Produtos)', kw:'cadastros clientes empresas conveniadas produtos', tab:'cadastros'},
   {label:'Estoque', kw:'estoque gas agua garrafa vasilhame', tab:'estoque'},
-  {label:'Nova Entrega', kw:'nova entrega entrega agendada entrega programada', tab:'nova-entrega'},
+  {label:'Agendamentos', kw:'agendamentos agenda entrega programada', tab:'agendamentos'},
   {label:'Nova Entrega', kw:'nova entrega imediata agora entregador', tab:'vendas'},
   {label:'Rotas', kw:'rota do dia entregador rota rapida mapa', tab:'rota'},
   {label:'Localização dos Entregadores', kw:'localizacao entregador onde esta rastreio gps mapa ao vivo', tab:'rota'},
@@ -1360,7 +1360,7 @@ const TABS = [
   {id:'contaspagar', label:'Contas a Pagar'},
   {id:'veiculos', label:'Veículos'},
   {id:'entregas', label:'Entregas', filhos:['agendamentos','rota','acertos','tempoentrega']},
-  {id:'agendamentos', label:'Agendamentos'},
+  {id:'nova-entrega', label:'Nova Entrega'},
   {id:'rota', label:'Rotas'},
   {id:'acertos', label:'Acertos'},
   {id:'tempoentrega', label:'Tempo Entrega'},
@@ -3567,7 +3567,6 @@ function renderRelatoriosGestaoVista(){
     </div></div>`;
 }
 function renderAll(){
-  if(currentTab==='nova-entrega'){ viewNovaEntrega(); return; }
   if(currentTab==='gav-meta'){ renderGavMeta(); return; }
   if(currentTab==='gav-canal'){ renderGavCanal(); return; }
   if(currentTab==='gav-entregador'){ renderGavEntregador(); return; }
@@ -4347,134 +4346,33 @@ function catalogoProdutosFiltradoHtml(q){
 }
 
 
-/* =========================
-   NOVA ENTREGA — FLUXO ÚNICO
-   Imediata ou agendada pelo mesmo formulário.
-   ========================= */
 function viewNovaEntrega(){
   const hoje=todayStr();
-  const empresas=state.empresas||[];
-  const entregadores=state.entregadores||[];
-  const clientes=state.clientes||[];
-  document.getElementById('app').innerHTML=`
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <div><h2 style="margin:0;">🚚 Nova Entrega</h2><div class="hint">Cadastre uma entrega normal. Se marcar agendamento, a data e o horário aparecem automaticamente.</div></div>
-      <button class="btn small" onclick="currentTab='relatorios';renderAll()">Voltar</button>
-    </div>
-  </div>
-  <div class="card">
-    <form id="form-nova-entrega-unificada">
-      <div class="form-row">
-        <div><label>Cliente</label><input name="cliente" required placeholder="Nome do cliente"></div>
-        <div><label>Telefone</label><input name="telefone" placeholder="Telefone"></div>
-      </div>
-      <div class="form-row">
-        <div><label>Endereço</label><input name="endereco" required placeholder="Endereço de entrega"></div>
-        <div><label>Entregador</label><select name="entregador"><option value="">Selecionar</option>${entregadores.map(e=>`<option value="${escapeHtml(e.id||e.nome||'')}">${escapeHtml(e.nome||e.name||'')}</option>`).join('')}</select></div>
-      </div>
-      <div class="form-row">
-        <div><label>Empresa/Canal</label><input name="empresa" placeholder="Empresa ou canal"></div>
-        <div><label>Valor</label><input name="valor" type="number" min="0" step="0.01" placeholder="0,00"></div>
-      </div>
-      <div style="margin:14px 0;padding:12px;border:1px solid var(--border,#ddd);border-radius:10px">
-        <label style="display:flex;align-items:center;gap:9px;font-weight:700;cursor:pointer">
-          <input id="nova-entrega-agendada" name="agendada" type="checkbox" style="width:auto">
-          📅 Agendar esta entrega
-        </label>
-        <div id="campos-agendamento-nova" style="display:none;margin-top:12px">
-          <div class="form-row">
-            <div><label>Data da entrega</label><input id="nova-entrega-data" name="entrega_data" type="date" value="${hoje}"></div>
-            <div><label>Horário da entrega</label><input id="nova-entrega-hora" name="entrega_hora" type="time"></div>
-          </div>
-          <div class="hint">⏰ O sistema lembrará o entregador 20 minutos antes.</div>
-        </div>
-      </div>
-      <div><label>Observações</label><textarea name="obs" rows="3" placeholder="Observações da entrega"></textarea></div>
-      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn green" type="submit">🚚 Criar entrega</button></div>
-    </form>
-  </div>`;
-  const chk=document.getElementById('nova-entrega-agendada');
-  const campos=document.getElementById('campos-agendamento-nova');
-  const hora=document.getElementById('nova-entrega-hora');
-  if(chk) chk.onchange=()=>{
-    campos.style.display=chk.checked?'block':'none';
-    hora.required=chk.checked;
-  };
-  const form=document.getElementById('form-nova-entrega-unificada');
-  if(form) form.onsubmit=async e=>{
-    e.preventDefault();
-    const f=new FormData(form), agendada=chk.checked;
-    const data=agendada?(f.get('entrega_data')||hoje):hoje;
-    const horaEntrega=agendada?(f.get('entrega_hora')||'') : new Date().toTimeString().slice(0,5);
-    if(agendada && !horaEntrega){ alert('Informe o horário da entrega agendada.'); return; }
-
+  return '<div class="card"><h2>🚚 Nova Entrega</h2><div class="hint">Uma única tela para entrega imediata ou agendada.</div>'+
+  '<form id="form-nova-entrega-unificada">'+
+  '<div class="form-row"><div><label>Cliente <span class="req">*</span></label><input name="cliente" list="nova-clientes" required><datalist id="nova-clientes">'+(state.clientes||[]).map(c=>'<option value="'+escapeHtml(c.nome||'')+'">').join('')+'</datalist></div><div><label>Telefone</label><input name="telefone"></div></div>'+
+  '<div class="form-row"><div><label>Endereço <span class="req">*</span></label><input name="endereco" required></div><div><label>Entregador</label><select name="entregadorId">'+entregadoresOptionsHtml(entregadorPrincipal()?entregadorPrincipal().id:'')+'</select></div></div>'+
+  '<div class="form-row"><div><label>Valor</label><input name="valor" type="number" min="0" step="0.01"></div><div><label>Canal</label><input name="canal"></div></div>'+
+  '<div style="margin:14px 0;padding:12px;border:1px solid var(--border,#ddd);border-radius:10px"><label style="display:flex;gap:8px;align-items:center;font-weight:700"><input id="chk-nova-agendada" name="agendada" type="checkbox" style="width:auto"> 📅 Agendar esta entrega</label>'+
+  '<div id="box-nova-agendada" style="display:none;margin-top:12px"><div class="form-row"><div><label>Data</label><input name="entrega_data" type="date" value="'+hoje+'"></div><div><label>Horário</label><input id="hora-nova-agendada" name="entrega_hora" type="time"></div></div><div class="hint">⏰ Lembrete automático 20 minutos antes.</div></div></div>'+
+  '<label>Observações</label><textarea name="obs" rows="3"></textarea><br><button class="btn green" type="submit">🚚 Criar entrega</button></form></div>';
+}
+function initNovaEntrega(){
+  const f=document.getElementById('form-nova-entrega-unificada'); if(!f)return;
+  const c=document.getElementById('chk-nova-agendada'), b=document.getElementById('box-nova-agendada'), h=document.getElementById('hora-nova-agendada');
+  c.onchange=()=>{b.style.display=c.checked?'block':'none';h.required=c.checked;};
+  f.onsubmit=async e=>{
+    e.preventDefault(); const d=new FormData(f), ag=c.checked;
+    const data=ag?(d.get('entrega_data')||todayStr()):todayStr(), hora=ag?(d.get('entrega_hora')||''):new Date().toTimeString().slice(0,5);
+    if(ag&&!hora){alert('Informe o horário da entrega agendada.');return;}
     const id='ent_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-    const entrega={
-      id,
-      cliente:f.get('cliente')||'',
-      telefone:f.get('telefone')||'',
-      endereco:f.get('endereco')||'',
-      entregadorId:f.get('entregador')||'',
-      empresa:f.get('empresa')||'',
-      valor:gavNumero(f.get('valor')),
-      obs:f.get('obs')||'',
-      entrega_data:data,
-      entrega_hora:horaEntrega,
-      entrega_tipo:agendada?'programada':'imediata',
-      entrega_programada:agendada,
-      entrega_status:'pendente',
-      criadoEm:new Date().toISOString(),
-      anexoContexto:{tipo:agendada?'programada':'imediata',agendamentoId:null,vendaGrupoId:id}
-    };
-
-    // Store the delivery in the common delivery collection when available,
-    // and in vendas so the existing customer/map/driver flow can consume it.
-    if(!Array.isArray(state.entregas)) state.entregas=[];
-    state.entregas.push(entrega);
-    if(!Array.isArray(state.vendas)) state.vendas=[];
-    state.vendas.push({
-      id,
-      data:data,
-      cliente:entrega.cliente,
-      telefone:entrega.telefone,
-      endereco:entrega.endereco,
-      entregadorId:entrega.entregadorId,
-      empresa:entrega.empresa,
-      valor:entrega.valor,
-      total:entrega.valor,
-      obs:entrega.obs,
-      entrega_data:data,
-      entrega_hora:horaEntrega,
-      entrega_tipo:entrega.entrega_tipo,
-      entrega_programada:agendada,
-      entrega_status:'pendente',
-      status:'aberta',
-      criadoEm:entrega.criadoEm
-    });
+    const obj={id,cliente:d.get('cliente')||'',telefone:d.get('telefone')||'',endereco:d.get('endereco')||'',entregadorId:d.get('entregadorId')||'',valor:Number(d.get('valor')||0),canal:d.get('canal')||'',obs:d.get('obs')||'',data,entrega_data:data,entrega_hora:hora,entrega_tipo:ag?'programada':'imediata',entrega_programada:ag,entrega_status:'pendente',criadoEm:new Date().toISOString(),anexoContexto:{tipo:ag?'programada':'imediata',agendamentoId:null,vendaGrupoId:id}};
+    if(!Array.isArray(state.entregas))state.entregas=[]; state.entregas.push(obj);
+    if(!Array.isArray(state.vendas))state.vendas=[];
+    state.vendas.push({...obj,total:obj.valor,status:'aberta'});
     await save('entregas'); await save('vendas');
-
-    // Scheduled deliveries use the existing agendamento store only as an index,
-    // not as a second creation form/flow.
-    if(agendada){
-      if(!Array.isArray(state.agendamentos)) state.agendamentos=[];
-      state.agendamentos.push({
-        id:'agd_'+id,
-        vendaId:id,
-        cliente:entrega.cliente,
-        endereco:entrega.endereco,
-        data,
-        hora:horaEntrega,
-        entregadorId:entrega.entregadorId,
-        status:'pendente',
-        lembrete20Enviado:false,
-        criadoEm:entrega.criadoEm
-      });
-      await save('agendamentos');
-    }
-
-    alert(agendada?'📅 Entrega agendada com sucesso.':'🚚 Entrega criada como próxima entrega.');
-    currentTab='nova-entrega';
+    if(ag){if(!Array.isArray(state.agendamentos))state.agendamentos=[];state.agendamentos.push({id:'agd_'+id,vendaId:id,cliente:obj.cliente,endereco:obj.endereco,data,hora,entregadorId:obj.entregadorId,status:'pendente',lembrete20Enviado:false,criadoEm:obj.criadoEm});await save('agendamentos');}
+    alert(ag?'📅 Entrega agendada.':'🚚 Nova entrega criada como próxima entrega.');
     renderAll();
   };
 }
@@ -5401,7 +5299,7 @@ acoes+
 }
 function viewAgendamentos(){
   const hoje = todayStr();
-  return '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;"><h2 style="margin-bottom:0;">Nova Entrega</h2><button type="button" class="btn small green" id="btn-nova-entrega">+ Nova Entrega</button></div>'+ajudaHtml('agendamentos','Agende aqui uma entrega futura pra um cliente já cadastrado, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante. A venda em si (pro caixa) continua sendo lançada pela planilha do fim do dia.')+
+  return '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;"><h2 style="margin-bottom:0;">Agendar entrega (sem lançar a venda ainda)</h2><button type="button" class="btn small green" id="btn-nova-entrega">🚚 Nova Entrega</button></div>'+ajudaHtml('agendamentos','Agende aqui uma entrega futura pra um cliente já cadastrado, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante. A venda em si (pro caixa) continua sendo lançada pela planilha do fim do dia.')+
     '<div class="hint">Use isto pra reservar um horário — por exemplo, agenda hoje pra entregar amanhã. Quando a entrega acontecer de fato, registre a venda normalmente na aba Vendas (os dois ficam juntos aqui na lista do dia).</div>'+
     '<form id="form-agendamento"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-ag" name="cliente" id="ag-cliente-input" required>'+
@@ -5598,6 +5496,37 @@ function viewLogAtividades(){
     '<div class="table-wrap"><table><thead><tr><th>Quando</th><th>Usuário</th><th>Área alterada</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</details></div>';
 }
+
+function relatorioGavMetaHtml(){
+  const meta=gavMetaMensal(), vendas=gavVendasDoMes(), real=vendas.reduce((a,v)=>a+gavValorVenda(v),0), falta=Math.max(0,meta-real);
+  return '<div class="card"><h2>🎯 Gestão à Vista — Possui Meta mensal</h2><div class="kpis">'+
+  '<div class="kpi"><div>Meta do mês</div><strong>'+gavMoney(meta)+'</strong></div>'+
+  '<div class="kpi"><div>Realizado</div><strong>'+gavMoney(real)+'</strong></div>'+
+  '<div class="kpi"><div>Atingimento</div><strong>'+gavPctTxt(gavPct(real,meta))+'</strong></div>'+
+  '<div class="kpi"><div>Falta</div><strong>'+gavMoney(falta)+'</strong></div></div>'+
+  '<div style="margin-top:12px">'+gavBar(real,meta)+'</div></div>';
+}
+function relatorioGavCanalHtml(){
+  const vendas=gavVendasDoMes(), meta=gavMetaMensal(), grupos={};
+  vendas.forEach(v=>{const k=gavCanal(v);grupos[k]=(grupos[k]||0)+gavValorVenda(v);});
+  const total=Object.values(grupos).reduce((a,b)=>a+b,0);
+  const rows=Object.entries(grupos).sort((a,b)=>b[1]-a[1]).map(([k,val])=>'<tr><td><strong>'+escapeHtml(k)+'</strong></td><td>'+gavMoney(val)+'</td><td>'+gavPctTxt(total?val/total*100:0)+'</td><td>'+gavMoney(meta*(total?val/total:0))+'</td><td>'+gavPctTxt(gavPct(val,meta*(total?val/total:0)))+'</td></tr>').join('');
+  return '<div class="card"><h2>📈 Gestão à Vista — Meta e acompanhamento por canal</h2><div class="hint">Atualização semanal.</div><div class="table-wrap"><table><thead><tr><th>Canal</th><th>Realizado</th><th>Participação</th><th>Meta proporcional</th><th>Atingimento</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+function relatorioGavEntregadorHtml(){
+  const vendas=gavVendasDoMes(), meta=gavMetaMensal(), grupos={};
+  vendas.forEach(v=>{const k=gavEntregador(v);grupos[k]=(grupos[k]||0)+gavValorVenda(v);});
+  const total=Object.values(grupos).reduce((a,b)=>a+b,0);
+  const rows=Object.entries(grupos).sort((a,b)=>b[1]-a[1]).map(([k,val],i)=>'<tr><td><strong>'+(i+1)+'º '+escapeHtml(k)+'</strong></td><td>'+gavMoney(val)+'</td><td>'+gavPctTxt(total?val/total*100:0)+'</td><td>'+gavMoney(meta*(total?val/total:0))+'</td><td>'+gavPctTxt(gavPct(val,meta*(total?val/total:0)))+'</td></tr>').join('');
+  return '<div class="card"><h2>🚚 Gestão à Vista — Meta e acompanhamento por Entregador</h2><div class="hint">Atualização diária.</div><div class="table-wrap"><table><thead><tr><th>Entregador</th><th>Realizado</th><th>Participação</th><th>Meta proporcional</th><th>Atingimento</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+function relatorioGavVasilhameHtml(){
+  const vendas=gavVendasDoMes(), meta=gavMetaMensal(), grupos={};
+  vendas.forEach(v=>{const k=gavVasilhame(v);grupos[k]=(grupos[k]||0)+gavValorVenda(v);});
+  const total=Object.values(grupos).reduce((a,b)=>a+b,0);
+  const rows=Object.entries(grupos).sort((a,b)=>b[1]-a[1]).map(([k,val])=>'<tr><td><strong>'+escapeHtml(k)+'</strong></td><td>'+gavMoney(val)+'</td><td>'+gavPctTxt(total?val/total*100:0)+'</td><td>'+gavMoney(meta*(total?val/total:0))+'</td><td>'+gavPctTxt(gavPct(val,meta*(total?val/total:0)))+'</td></tr>').join('');
+  return '<div class="card"><h2>🧴 Gestão à Vista — Meta e acompanhamento por tipo de vasilhame</h2><div class="hint">Atualização diária.</div><div class="table-wrap"><table><thead><tr><th>Tipo de vasilhame</th><th>Realizado</th><th>Participação</th><th>Meta proporcional</th><th>Atingimento</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
 function viewRelatorios(){
   const subtabs = [
     {id:'vendas', label:'Vendas por período'},
@@ -5624,6 +5553,10 @@ function viewRelatorios(){
     {id:'empresas', label:'Empresas conveniadas'},
     {id:'reajuste', label:'Simulador de Reajuste'},
     {id:'analises', label:'Análises e Gráficos'},
+    {id:'gav-meta', label:'Meta mensal'},
+    {id:'gav-canal', label:'Gestão por canal'},
+    {id:'gav-entregador', label:'Gestão por entregador'},
+    {id:'gav-vasilhame', label:'Gestão por vasilhame'},
   ];
   let content = '';
   if(relatorioSub==='vendas') content = relatorioVendas();
@@ -5649,6 +5582,10 @@ function viewRelatorios(){
   else if(relatorioSub==='notas') content = relatorioNotas();
   else if(relatorioSub==='reajuste') content = relatorioSimuladorReajuste();
   else if(relatorioSub==='analises') content = relatorioAnalises();
+  else if(relatorioSub==='gav-meta') content = relatorioGavMetaHtml();
+  else if(relatorioSub==='gav-canal') content = relatorioGavCanalHtml();
+  else if(relatorioSub==='gav-entregador') content = relatorioGavEntregadorHtml();
+  else if(relatorioSub==='gav-vasilhame') content = relatorioGavVasilhameHtml();
   else content = relatorioEmpresas();
   return '<div class="card"><div class="subtabs">'+subtabs.map(s=>'<button data-sub="'+s.id+'" class="'+(relatorioSub===s.id?'active':'')+'">'+s.label+'</button>').join('')+
     '</div>'+lapidarHtml('relatorio-'+relatorioSub)+'<div id="relatorio-content">'+content+'</div></div>';
@@ -9493,9 +9430,10 @@ function attachHandlers(){
 
   const btnNovaEntrega = document.getElementById('btn-nova-entrega');
   if(btnNovaEntrega) btnNovaEntrega.onclick = ()=>{
-    novaEntregaImediata=false;
-    currentTab='nova-entrega';
+    novaEntregaImediata=true;
+    currentTab='vendas';
     renderAll();
+    setTimeout(()=>{ const form=document.getElementById('form-venda'); if(form) form.closest('details')?.setAttribute('open',''); },50);
   };
 
   const fa = document.getElementById('form-agendamento');
