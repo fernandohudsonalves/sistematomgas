@@ -855,14 +855,16 @@ function initNovoAgendamentoFab(){
   if(!b){
     b = document.createElement('button');
     b.id = 'new-ag-fab';
-    b.title = 'Novo agendamento';
+    b.title = 'Nova entrega';
     b.textContent = '+';
     document.body.appendChild(b);
     b.onclick = ()=>{
-      currentTab = 'agendamentos';
+      novaEntregaImediata = true;
+      currentTab = 'vendas';
       renderAll();
       setTimeout(()=>{
-        const form = document.getElementById('form-agendamento');
+        const form = document.getElementById('form-venda');
+        if(form) form.closest('details')?.setAttribute('open','');
         if(form) form.scrollIntoView({behavior:'smooth'});
         const primeiroInput = form ? form.querySelector('input,select') : null;
         if(primeiroInput) primeiroInput.focus();
@@ -3489,7 +3491,7 @@ function gavTabela(rows, cols){
 function renderGavMeta(){
   const meta=gavMetaMensal(), vendas=gavVendasDoMes(), realizado=vendas.reduce((a,v)=>a+gavValorVenda(v),0);
   const falta=Math.max(0,meta-realizado);
-  document.getElementById('app').innerHTML=
+  document.getElementById('main').innerHTML=
     gavHeader('📊 Gestão à Vista — Meta Mensal','Meta mensal já cadastrada no sistema e acompanhamento do realizado.')+
     `<div class="card"><div class="kpis">
       <div class="kpi"><div>Meta do mês</div><strong>${gavMoney(meta)}</strong></div>
@@ -3517,7 +3519,7 @@ function renderGavCanal(){
     gavMoney(meta* (total?val/total:0)),
     gavPctTxt(gavPct(val,meta*(total?val/total:0)))
   ]);
-  document.getElementById('app').innerHTML=
+  document.getElementById('main').innerHTML=
     gavHeader('📈 Gestão à Vista — Meta e acompanhamento por canal','Acompanhamento semanal do mês, distribuindo a meta mensal conforme a participação de cada canal.')+
     `<div class="card"><h3>Desempenho por canal</h3>${rows.length?gavTabela(rows,['Canal','Realizado','Participação','Meta proporcional','Atingimento']):'<div class="hint">Nenhuma venda no mês.</div>'}</div>`;
 }
@@ -3534,7 +3536,7 @@ function renderGavEntregador(){
     gavMoney(meta*(total?val/total:0)),
     gavPctTxt(gavPct(val,meta*(total?val/total:0)))
   ]);
-  document.getElementById('app').innerHTML=
+  document.getElementById('main').innerHTML=
     gavHeader('🚚 Gestão à Vista — Meta e acompanhamento por Entregador','Acompanhamento diário e ranking dos entregadores no mês.')+
     `<div class="card"><h3>Desempenho por entregador</h3>${rows.length?gavTabela(rows,['Entregador','Realizado','Participação','Meta proporcional','Atingimento']):'<div class="hint">Nenhuma entrega/venda atribuída a entregador no mês.</div>'}</div>`;
 }
@@ -3551,13 +3553,13 @@ function renderGavVasilhame(){
     gavMoney(meta*(total?val/total:0)),
     gavPctTxt(gavPct(val,meta*(total?val/total:0)))
   ]);
-  document.getElementById('app').innerHTML=
+  document.getElementById('main').innerHTML=
     gavHeader('🧴 Gestão à Vista — Meta e acompanhamento por tipo de vasilhame','Acompanhamento diário por tipo de vasilhame no mês.')+
     `<div class="card"><h3>Desempenho por vasilhame</h3>${rows.length?gavTabela(rows,['Tipo de vasilhame','Realizado','Participação','Meta proporcional','Atingimento']):'<div class="hint">Nenhuma venda no mês.</div>'}</div>`;
 }
 
 function renderRelatoriosGestaoVista(){
-  document.getElementById('app').innerHTML=`
+  document.getElementById('main').innerHTML=`
     <div class="card"><h2>📊 Gestão à Vista</h2><div class="hint">Relatórios baseados na meta mensal já cadastrada em Configurações e nos dados de vendas/entregas.</div></div>
     <div class="card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px">
       <button class="card" style="cursor:pointer;text-align:left" onclick="currentTab='gav-meta';renderAll()"><h3>🎯 Meta mensal</h3><p>Meta, realizado, atingimento e quanto falta.</p></button>
@@ -4435,8 +4437,9 @@ function viewVendas(){
     '<div><label>Empresa conveniada (opcional)</label><input list="lista-empresas" name="empresa" placeholder="Nome da empresa"><datalist id="lista-empresas">'+empresasOptions()+'</datalist></div>'+
     '</div>'+
     (modoNovaEntrega ?
-    '<div class="hint" style="margin-top:8px;padding:9px;border-radius:8px;">🚚 <strong>Entrega imediata:</strong> entra como a próxima entrega e não é considerada agendada.</div>'+
-    '<input type="hidden" name="entrega_data" value="'+hoje+'"><input type="hidden" name="entrega_hora" value="'+horaNovaEntrega+'">'
+    '<div style="margin:10px 0;padding:12px;border:1px solid var(--border,#ddd);border-radius:10px"><label style="display:flex;gap:8px;align-items:center;font-weight:700"><input id="chk-nova-entrega-agendada" name="nova_entrega_agendada" type="checkbox" style="width:auto"> 📅 Agendar esta entrega</label>'+
+    '<div id="box-nova-entrega-agendada" style="display:none;margin-top:10px"><div class="form-row"><div><label>Data</label><input name="entrega_data" type="date" value="'+hoje+'"></div><div><label>Horário</label><input id="hora-nova-entrega-agendada" name="entrega_hora" type="time"></div></div></div>'+
+    '<div id="hint-nova-entrega-imediata" class="hint" style="margin-top:8px;">🚚 <strong>Entrega imediata:</strong> entra como a próxima entrega e não é considerada agendada.</div></div>'
     :
     '<div class="form-row">'+
     '<div><label>Agendar entrega — data (opcional)</label><input type="date" name="entrega_data"></div>'+
@@ -7382,9 +7385,12 @@ function attachHandlers(){
   if(fv) fv.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(fv);
-    const dataEntregaAtual = novaEntregaImediata ? todayStr() : (f.get('entrega_data')||'');
-    const horaEntregaAtual = novaEntregaImediata ? new Date().toTimeString().slice(0,5) : (f.get('entrega_hora')||'');
-    const tipoEntregaAtual = novaEntregaImediata ? 'imediata' : (horaEntregaAtual ? 'programada' : '');
+    const novaEntregaAgendada = novaEntregaImediata && f.get('nova_entrega_agendada');
+    const dataEntregaAtual = (novaEntregaImediata && !novaEntregaAgendada) ? todayStr() : (f.get('entrega_data')||'');
+    const horaEntregaAtual = (novaEntregaImediata && !novaEntregaAgendada) ? new Date().toTimeString().slice(0,5) : (f.get('entrega_hora')||'');
+    const tipoEntregaAtual = novaEntregaAgendada ? 'programada' : (novaEntregaImediata ? 'imediata' : (horaEntregaAtual ? 'programada' : ''));
+    if(novaEntregaAgendada && !dataEntregaAtual){ alert('Informe a data da entrega agendada.'); return; }
+    if(novaEntregaAgendada && !horaEntregaAtual){ alert('Informe o horário da entrega agendada.'); return; }
     const categoria = f.get('categoria');
     const controlada = isControlada(categoria);
     const produto = controlada ? categoria : (f.get('produto_livre')||'(sem nome)');
@@ -7602,6 +7608,12 @@ function attachHandlers(){
   if(fv && fv.cliente) fv.cliente.oninput = atualizarBoxCreditoVenda;
   const selTipoEntrega = document.getElementById('sel-tipo-entrega');
   if(selTipoEntrega) selTipoEntrega.onchange = toggleDetalhesEntregaVenda;
+  const chkNovaAg = document.getElementById('chk-nova-entrega-agendada'), boxNovaAg = document.getElementById('box-nova-entrega-agendada'), hintNovaImediata = document.getElementById('hint-nova-entrega-imediata'), horaNovaAg = document.getElementById('hora-nova-entrega-agendada');
+  if(chkNovaAg) chkNovaAg.onchange = ()=>{
+    if(boxNovaAg) boxNovaAg.style.display = chkNovaAg.checked?'block':'none';
+    if(hintNovaImediata) hintNovaImediata.style.display = chkNovaAg.checked?'none':'block';
+    if(horaNovaAg) horaNovaAg.required = chkNovaAg.checked;
+  };
   const inputFrete = document.getElementById('input-frete');
   if(inputFrete) inputFrete.oninput = atualizarTotalCarrinho;
   const inputFreteFR = document.getElementById('input-frete-falta-retirar');
