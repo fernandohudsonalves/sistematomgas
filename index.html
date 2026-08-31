@@ -319,10 +319,18 @@ table td:last-child{min-width:180px;}
   .card{padding:10px 12px;}
   .form-row{grid-template-columns:1fr;}
 }
+#entregas-imprimir{ display:none; }
+.entregas-imprimir-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.entrega-imprimir-item{ border:1px solid #333; border-radius:8px; padding:10px 12px; font-size:13px; color:#111; break-inside:avoid; page-break-inside:avoid; }
+.entrega-imprimir-item h3{ margin:0 0 6px; font-size:15px; border-bottom:1px solid #999; padding-bottom:4px; }
+.entrega-imprimir-item .li{ margin:3px 0; line-height:1.35; }
+.entrega-imprimir-cobrar{ margin-top:8px; padding:6px; border:1px solid #333; border-radius:6px; font-weight:700; text-align:center; }
 @media print{
   body *{ visibility:hidden; }
-  #extrato-imprimir, #extrato-imprimir *{ visibility:visible; }
+  #extrato-imprimir, #extrato-imprimir *, #entregas-imprimir, #entregas-imprimir *{ visibility:visible; }
   #extrato-imprimir{ position:absolute; left:0; top:0; width:100%; box-shadow:none; border:none; }
+  #entregas-imprimir{ display:block; position:absolute; left:0; top:0; width:100%; box-shadow:none; border:none; }
+  .entregas-imprimir-grid{ grid-template-columns:1fr 1fr; }
   .no-print{ display:none !important; }
 }
 .cap-bar-wrap{margin:14px 0;}
@@ -748,7 +756,7 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Contas a Pagar', kw:'contas a pagar boleto vencimento', tab:'contaspagar'},
   {label:'Cadastros (Clientes/Empresas/Produtos)', kw:'cadastros clientes empresas conveniadas produtos', tab:'cadastros'},
   {label:'Estoque', kw:'estoque gas agua garrafa vasilhame', tab:'estoque'},
-  {label:'Agendamentos', kw:'agendamentos agenda entrega novo agendamento', tab:'agendamentos'},
+  {label:'Nova entrega', kw:'agendamentos agenda entrega novo agendamento nova entrega', tab:'agendamentos'},
   {label:'Rotas', kw:'rota do dia entregador rota rapida mapa', tab:'rota'},
   {label:'Localização dos Entregadores', kw:'localizacao entregador onde esta rastreio gps mapa ao vivo', tab:'rota'},
   {label:'Acertos de Entrega', kw:'acertos entrega dinheiro pendencia', tab:'acertos'},
@@ -1356,7 +1364,7 @@ const TABS = [
   {id:'contaspagar', label:'Contas a Pagar'},
   {id:'veiculos', label:'Veículos'},
   {id:'entregas', label:'Entregas', filhos:['agendamentos','rota','acertos','tempoentrega']},
-  {id:'agendamentos', label:'Agendamentos'},
+  {id:'agendamentos', label:'Nova entrega'},
   {id:'rota', label:'Rotas'},
   {id:'acertos', label:'Acertos'},
   {id:'tempoentrega', label:'Tempo Entrega'},
@@ -3200,6 +3208,38 @@ setInterval(()=>{
     }
   }
 }, 60000);
+let avisos25minDia = null;
+let avisos25minEnviados = new Set();
+function checarAvisos25minEntrega(){
+  const hoje = todayStr();
+  if(avisos25minDia!==hoje){ avisos25minDia = hoje; avisos25minEnviados = new Set(); }
+  const agora = new Date();
+  todosAgendamentosEVendas().filter(v=>v.data===hoje && v.status!=='concluido' && v.hora).forEach(v=>{
+    const chave = v.origem+':'+v.id;
+    if(avisos25minEnviados.has(chave)) return;
+    const partesHora = v.hora.split(':');
+    const horaEntrega = new Date(); horaEntrega.setHours(Number(partesHora[0])||0, Number(partesHora[1])||0, 0, 0);
+    const diffMin = (horaEntrega - agora)/60000;
+    if(diffMin<=25 && diffMin>-2){
+      avisos25minEnviados.add(chave);
+      dispararAviso25minEntrega(v);
+    }
+  });
+}
+function dispararAviso25minEntrega(v){
+  const d = dadosImpressaoEntrega({id:v.id, origem:v.origem, grupoId:v.grupoId});
+  if(!d) return;
+  const titulo = '⏰ Entrega em 25 min';
+  const corpo = (d.cliente||'Cliente')+' às '+d.hora+(d.entregador?' — '+d.entregador:'');
+  notificarLocal(titulo, corpo);
+  enviarPushServidor(titulo, corpo);
+  enviarWhatsAppEntregador({
+    cliente:d.cliente, endereco:d.endereco, itens:d.itens, total:d.total, frete:d.frete, pagamento:d.pagamento, pago:d.pago,
+    tipo_entrega:d.tipo_entrega, hora:d.hora, data:d.data, empresa:d.empresa, obs:'Lembrete: faltam 25 minutos pro horário combinado, pode ir se deslocando.',
+    entregadorId: v.entregadorId||'', agendamentoId: v.origem==='agendamento'?v.id:'', vendaGrupoId: v.origem==='venda'?(v.grupoId||v.id):''
+  });
+}
+setInterval(checarAvisos25minEntrega, 60000);
 function renderNav(){
   const nav = document.getElementById('nav');
   atualizarEtiquetaDataHoje();
@@ -4851,7 +4891,7 @@ function todosAgendamentosEVendas(){
 }
 function agendamentosTable(lista, mostrarData){
   if(lista.length===0) return '<div class="empty">Nenhuma entrega agendada encontrada.</div>';
-  return '<div class="table-wrap"><table><thead><tr>'+(mostrarData?'<th>Data</th>':'')+'<th>Horário</th><th>Cliente</th><th>Endereço</th><th>Entregador</th><th>Produto</th><th>Entrega</th><th>Empresa</th><th>Pagamento</th><th>Valor</th><th>Status</th><th>Anexos</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><thead><tr><th class="no-print"><input type="checkbox" id="chk-marcar-todas-ag" title="Marcar todas para imprimir"></th>'+(mostrarData?'<th>Data</th>':'')+'<th>Horário</th><th>Cliente</th><th>Endereço</th><th>Entregador</th><th>Produto</th><th>Entrega</th><th>Empresa</th><th>Pagamento</th><th>Valor</th><th>Status</th><th>Anexos</th><th></th></tr></thead><tbody>'+
     lista.map(v=>{
       const statusBadge = v.status==='concluido' ? '<span class="badge pago">entregue</span>' : '<span class="badge fiado">pendente</span>';
       const linkEstagios = v.origem==='agendamento'
@@ -4878,9 +4918,9 @@ function agendamentosTable(lista, mostrarData){
       const entregadorTxt = v.entregadorId ? escapeHtmlCampanha(nomeEntregador(v.entregadorId)) : '<span class="hint">a definir</span>';
       const chaveAnexo = v.origem+':'+v.id;
       const anexosDoAg = anexosDoContexto(v.agendamentoId ? {agendamentoId:v.agendamentoId} : {cliente:v.cliente, data:v.data||''});
-      const linhaAnexos = anexoAgendamentoAberto===chaveAnexo ? '<tr><td colspan="'+(mostrarData?12:11)+'" style="background:var(--blue-tint);white-space:normal;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosDoAg)+'</div></td></tr>' : '';
+      const linhaAnexos = anexoAgendamentoAberto===chaveAnexo ? '<tr><td colspan="'+(mostrarData?13:12)+'" style="background:var(--blue-tint);white-space:normal;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosDoAg)+'</div></td></tr>' : '';
       const enderecoCli = getClienteEndereco(v.cliente);
-      return '<tr>'+(mostrarData?'<td>'+fmtDate(v.data)+'</td>':'')+'<td>'+v.hora+'</td><td title="'+escapeHtmlCampanha(v.cliente||'')+'">'+(v.cliente||'—')+'</td><td title="'+escapeHtmlCampanha(enderecoCli)+'">'+enderecoCli+'</td>'+
+      return '<tr><td class="no-print"><input type="checkbox" class="chk-imprimir-ag" data-imprimir-id="'+v.id+'" data-imprimir-origem="'+v.origem+'" data-imprimir-grupo="'+(v.grupoId||'')+'"></td>'+(mostrarData?'<td>'+fmtDate(v.data)+'</td>':'')+'<td>'+v.hora+'</td><td title="'+escapeHtmlCampanha(v.cliente||'')+'">'+(v.cliente||'—')+'</td><td title="'+escapeHtmlCampanha(enderecoCli)+'">'+enderecoCli+'</td>'+
         '<td>'+entregadorTxt+'</td>'+
         '<td title="'+escapeHtmlCampanha(v.produto||'')+'">'+(v.produto||'—')+'</td><td>'+entregaLabel(v.tipo_entrega)+'</td><td>'+(v.empresa||'—')+'</td>'+
         '<td>'+(v.pagamento||'—')+pagtoStatus+'</td><td>'+(v.valor?fmtMoney(v.valor):'—')+'</td>'+
@@ -4888,6 +4928,59 @@ function agendamentosTable(lista, mostrarData){
         '<td class="cel-acoes"><button type="button" class="act-link" data-ver-anexos-ag="'+chaveAnexo+'">📎 '+anexosDoAg.length+'</button></td>'+
         '<td class="cel-acoes">'+acao+'</td></tr>'+linhaAnexos;
     }).join('')+'</tbody></table></div>';
+}
+function dadosImpressaoEntrega(ref){
+  if(ref.origem==='agendamento'){
+    const a = (state.agendamentos||[]).find(x=>x.id===ref.id);
+    if(!a) return null;
+    return {
+      cliente:a.cliente||'', endereco:getClienteEndereco(a.cliente), telefone:getClienteTelefone(a.cliente),
+      itens:a.produto_nota||'—', total:a.valor||0, frete:a.frete||0, pagamento:a.pagamento||'—', pago:!!a.pago,
+      tipo_entrega:a.tipo_entrega||'—', hora:a.hora||'', data:a.data||'', empresa:a.empresa||'',
+      entregador: a.entregadorId ? nomeEntregador(a.entregadorId) : ''
+    };
+  }
+  const itens = itensDoGrupo(ref.grupoId, ref.id);
+  const primeira = itens[0] || (state.vendas||[]).find(x=>x.id===ref.id);
+  if(!primeira) return null;
+  return {
+    cliente:primeira.cliente||'', endereco:getClienteEndereco(primeira.cliente), telefone:getClienteTelefone(primeira.cliente),
+    itens: itens.length ? itens.map(i=>i.quantidade+'x '+i.produto).join(', ') : '—',
+    total: itens.reduce((s,i)=>s+(i.valor_total||0),0), frete: itens.reduce((s,i)=>s+(i.frete||0),0),
+    pagamento: primeira.pagamento||'—', pago:false,
+    tipo_entrega: primeira.tipo_entrega||'—', hora: primeira.entrega_hora||'', data: primeira.entrega_data||primeira.data||'',
+    empresa: primeira.empresa||'', entregador:''
+  };
+}
+function entregaImprimirCardHtml(d){
+  const totalCobrar = (d.total||0)+(d.frete||0);
+  let statusPag;
+  if(d.pago){ statusPag = '✅ JÁ PAGO — não cobrar nada'; }
+  else if(d.pagamento==='Marcou/Fiado'){ statusPag = '📒 FIADO — não cobrar agora'; }
+  else { statusPag = '💰 COBRAR: '+fmtMoney(totalCobrar)+' ('+(d.pagamento||'combinar com cliente')+')'; }
+  return '<div class="entrega-imprimir-item">'+
+    '<h3>👤 '+escapeHtmlCampanha(d.cliente||'—')+'</h3>'+
+    (d.data||d.hora?'<div class="li">🗓️ '+(d.data?fmtDate(d.data):'')+(d.hora?' às '+d.hora:'')+'</div>':'')+
+    '<div class="li">📍 '+escapeHtmlCampanha(d.endereco||'—')+'</div>'+
+    (d.telefone?'<div class="li">📞 '+escapeHtmlCampanha(d.telefone)+'</div>':'')+
+    '<div class="li">📦 '+escapeHtmlCampanha(d.itens||'—')+'</div>'+
+    '<div class="li">🚚 Entrega: '+escapeHtmlCampanha(d.tipo_entrega||'—')+'</div>'+
+    (d.entregador?'<div class="li">🧑\u200d✈️ Entregador: '+escapeHtmlCampanha(d.entregador)+'</div>':'')+
+    (d.empresa?'<div class="li">🏢 Empresa: '+escapeHtmlCampanha(d.empresa)+'</div>':'')+
+    (d.frete?'<div class="li">🚛 Frete: '+fmtMoney(d.frete)+'</div>':'')+
+    '<div class="entrega-imprimir-cobrar">'+statusPag+'</div>'+
+    '</div>';
+}
+function imprimirEntregasSelecionadas(){
+  const marcadas = Array.from(document.querySelectorAll('.chk-imprimir-ag:checked'));
+  if(marcadas.length===0){ alert('Marque ao menos uma entrega na tabela pra imprimir.'); return; }
+  const dados = marcadas.map(chk=>dadosImpressaoEntrega({id:chk.dataset.imprimirId, origem:chk.dataset.imprimirOrigem, grupoId:chk.dataset.imprimirGrupo})).filter(Boolean);
+  if(dados.length===0){ alert('Não encontrei os dados dessas entregas.'); return; }
+  let alvo = document.getElementById('entregas-imprimir');
+  if(!alvo){ alvo = document.createElement('div'); alvo.id='entregas-imprimir'; document.body.appendChild(alvo); }
+  alvo.innerHTML = '<h2 style="margin:0 0 10px;">Entregas para o entregador — '+fmtDate(todayStr())+'</h2>'+
+    '<div class="entregas-imprimir-grid">'+dados.map(entregaImprimirCardHtml).join('')+'</div>';
+  setTimeout(function(){ window.print(); }, 50);
 }
 function iniciarEditarAgendamento(id){
   const a = state.agendamentos.find(x=>x.id===id);
@@ -5037,9 +5130,11 @@ function viewAgendamentos(){
     '<div class="form-row" style="max-width:420px;align-items:end;">'+
     '<div><label>Data</label><input type="date" id="ag-data" value="'+hoje+'"></div>'+
     '<div><button type="button" class="btn small ghost" id="btn-rota-agendamentos">📍 Ver rota desta data no Maps</button></div>'+
+    '<div><button type="button" class="btn small ghost" id="btn-imprimir-entregas-selecionadas">🖨️ Imprimir selecionadas</button></div>'+
     '</div>'+
-    '<div class="hint" style="margin-top:6px;">Monta a rota com todas as entregas pendentes dessa data (agendadas ou já lançadas), buscando o endereço de cada cliente no cadastro, saindo do ponto de partida configurado na aba <strong>Entregas &gt; Rotas</strong>.</div>'+
-    '<div id="ag-resultado" style="margin-top:14px;">'+agendamentosTable(listaAgendamentosDoDia(hoje))+'</div></div>';
+    '<div class="hint" style="margin-top:6px;">Monta a rota com todas as entregas pendentes dessa data (agendadas ou já lançadas), buscando o endereço de cada cliente no cadastro, saindo do ponto de partida configurado na aba <strong>Entregas &gt; Rotas</strong>. Marque a caixinha das entregas na tabela abaixo (uma ou várias) pra imprimir os dados prontos pro entregador, todas na mesma folha.</div>'+
+    '<div id="ag-resultado" style="margin-top:14px;">'+agendamentosTable(listaAgendamentosDoDia(hoje))+'</div></div>'+
+    '<div id="entregas-imprimir"></div>';
 }
 
 /* ---------- RELATÓRIOS ---------- */
@@ -9218,7 +9313,13 @@ function attachHandlers(){
     const url = montarUrlRotaGoogleMaps(paradas, partida ? partida.endereco : '');
     if(url) window.open(url, '_blank', 'noopener');
   };
+  const btnImprimirEntregasSel = document.getElementById('btn-imprimir-entregas-selecionadas');
+  if(btnImprimirEntregasSel) btnImprimirEntregasSel.onclick = imprimirEntregasSelecionadas;
   const attachAgendamentoRowHandlers = ()=>{
+    const chkTodasAg = document.getElementById('chk-marcar-todas-ag');
+    if(chkTodasAg) chkTodasAg.onchange = ()=>{
+      document.querySelectorAll('.chk-imprimir-ag').forEach(c=>{ c.checked = chkTodasAg.checked; });
+    };
     document.querySelectorAll('[data-edit-ag]').forEach(btn=>btn.onclick=()=>{
       iniciarEditarAgendamento(btn.dataset.editAg);
     });
