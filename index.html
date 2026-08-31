@@ -4205,7 +4205,7 @@ function viewVendas(){
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
 
-  return '<div class="card"><details open><summary><strong>${modoNovaEntrega?'🚚 Nova Entrega — imediata':'Lançamento manual (clique para abrir)'}</strong></summary><h2 style="margin-top:10px;">${modoNovaEntrega?'Nova entrega':'Registrar venda'}</h2><form id="form-venda">'+
+  return '<div class="card"><details open><summary><strong>'+(modoNovaEntrega?'🚚 Nova Entrega — imediata':'Lançamento manual (clique para abrir)')+'</strong></summary><h2 style="margin-top:10px;">'+(modoNovaEntrega?'Nova entrega':'Registrar venda')+'</h2><form id="form-venda">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
