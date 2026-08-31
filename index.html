@@ -477,6 +477,8 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
   }catch(e){}
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}</script>
 </head>
 <body>
 <div id="auth-screen" class="auth-wrap">
@@ -531,7 +533,7 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_30_08_2026";
+const APP_BUILD_HORARIO = "1.2_31_08_2026";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -741,6 +743,7 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Painel', kw:'painel dashboard inicio', tab:'dashboard'},
   {label:'Metas', kw:'metas objetivo vendas mes', tab:'metas'},
   {label:'Comunicados / Avisos', kw:'comunicados avisos banner recado', tab:'comunicados'},
+    {label:'Contas a Pagar', kw:'contas pagar contas a pagar bling boletos fornecedores vencimentos', tab:'contas-pagar'},
   {label:'Vendas', kw:'vendas lancar venda', tab:'vendas'},
   {label:'Despesas', kw:'despesas gastos categoria desperdicio esg energia agua', tab:'despesas'},
   {label:'Veículos', kw:'veiculos moto carro manutencao', tab:'veiculos'},
@@ -748,7 +751,8 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Contas a Pagar', kw:'contas a pagar boleto vencimento', tab:'contaspagar'},
   {label:'Cadastros (Clientes/Empresas/Produtos)', kw:'cadastros clientes empresas conveniadas produtos', tab:'cadastros'},
   {label:'Estoque', kw:'estoque gas agua garrafa vasilhame', tab:'estoque'},
-  {label:'Agendamentos', kw:'agendamentos agenda entrega novo agendamento', tab:'agendamentos'},
+  {label:'Agendamentos', kw:'agendamentos agenda entrega programada', tab:'agendamentos'},
+  {label:'Nova Entrega', kw:'nova entrega imediata agora entregador', tab:'vendas'},
   {label:'Rotas', kw:'rota do dia entregador rota rapida mapa', tab:'rota'},
   {label:'Localização dos Entregadores', kw:'localizacao entregador onde esta rastreio gps mapa ao vivo', tab:'rota'},
   {label:'Acertos de Entrega', kw:'acertos entrega dinheiro pendencia', tab:'acertos'},
@@ -1317,7 +1321,7 @@ let editDespesaId = null, editClienteId = null, editVendaId = null, editFiadoId 
 let editEmpresaId = null, editAgendamentoId = null, pendingEditVendaId = null;
 let editPesquisaManualId = null;
 let clienteExtrato = null, clienteRegistrandoPagamento = null, editFiadoPagamentoId = null;
-let agendamentoParaConcluir = null, prefillVenda = null;
+let agendamentoParaConcluir = null, prefillVenda = null, novaEntregaImediata = false;
 let editProdutoId = null, clienteCredito = null, editCreditoId = null, editEstoqueMovId = null, editComodatoId = null;
 let editComunicadoId = null, telaAnteriorComunicados = 'config';
 let editCategoriaProdutoNome = null, editCategoriaDespesaNome = null;
@@ -2284,7 +2288,7 @@ function viewComissaoEntregadores(){
     (metas ? '<div class="card"><h2>🎯 Meta de vendas por entregador</h2>'+metas+'</div>' : '');
 }
 function viewTempoEntrega(){
-  const lista = (state.temposEntrega||[]).slice().sort((a,b)=>new Date(b.horaConclusao)-new Date(a.horaConclusao));
+  const lista = (state.temposEntrega||[]).filter(t=>!t.agendamentoId && t.entregaTipo!=='programada').slice().sort((a,b)=>new Date(b.horaConclusao)-new Date(a.horaConclusao));
   const fmtHora = iso=> iso ? new Date(iso).toLocaleString('pt-BR') : '—';
   const fmtDur = min=> min==null ? '—' : (min>=60 ? Math.floor(min/60)+'h '+(min%60)+'min' : min+' min');
   const linhas = lista.map(t=>'<tr><td>'+fmtDate(t.data)+'</td><td>'+escapeHtmlCampanha(t.cliente||'')+'</td><td>'+escapeHtmlCampanha(getClienteEndereco(t.cliente)||'—')+'</td><td>'+(getClienteTelefone(t.cliente)||'—')+'</td><td>'+fmtHora(t.horaPedido)+'</td><td>'+fmtHora(t.horaConclusao)+'</td><td><strong>'+fmtDur(t.duracaoMin)+'</strong></td>'+
@@ -2838,7 +2842,16 @@ async function loadAll(){
   }catch(e){ console.error('Erro ao carregar dados', e); alert('Não foi possível carregar os dados do Supabase. Verifique a tabela app_data e as permissões.'); }
   if(!state.estoque || !state.estoque.gas || !state.estoque.agua){ state.estoque = defaultEstoque(); }
   if(!state.agendamentos) state.agendamentos = [];
+  if(Array.isArray(state.vendas)){
+    state.vendas.forEach(v=>{
+      if(v.entrega_hora && !Object.prototype.hasOwnProperty.call(v,'entrega_tipo'))
+        v.entrega_tipo = v.entrega_programada===false ? 'imediata' : 'programada';
+      if(v.entrega_tipo==='programada') v.entrega_programada=true;
+      if(v.entrega_tipo==='imediata') v.entrega_programada=false;
+    });
+  }
   if(!state.empresas) state.empresas = [];
+  if(!state.contasPagar) state.contasPagar = [];
   if(!state.fiadoPagamentos) state.fiadoPagamentos = [];
   if(!state.convenioLancamentos) state.convenioLancamentos = [];
   if(!state.convenioPagamentos) state.convenioPagamentos = [];
@@ -3295,7 +3308,122 @@ function attachLogoInput(){
   };
 }
 
+
+function normalizarValorBling(txt){
+  if(!txt) return 0;
+  let v=String(txt).replace(/\s/g,'').replace(/^R\$/,'').replace(/\./g,'').replace(',','.');
+  const n=parseFloat(v);
+  return Number.isFinite(n)?n:0;
+}
+function normalizarDataBling(txt){
+  const m=String(txt||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+function extrairContasPagarBling(texto){
+  const t=String(texto||'').replace(/\r/g,' ').replace(/\n+/g,' ').replace(/\s{2,}/g,' ').trim();
+  const totalMatch=t.match(/Total\s*=\s*R\$\s*([\d\.,]+)/i);
+  const totalRelatorio=normalizarValorBling(totalMatch?totalMatch[1]:'');
+  const inicio=t.search(/Fornecedor\s+Histórico\s+Nro\.\s+documento\s+Vencimento\s+Situação\s+Saldo/i);
+  if(inicio<0) return {itens:[], totalRelatorio, erro:'Cabeçalho do relatório do Bling não encontrado.'};
+  let corpo=t.slice(inicio);
+  corpo=corpo.replace(/31\/08\/\d{4},\s*\d{2}:\d{2}.*$/i,'').replace(/Bling\s*-\s*Relatório de Contas a Pagar.*$/i,'');
+  const tokens=corpo.split(/\s+/);
+  const situacoes=['Atrasada','Em','Aberta'];
+  const itens=[];
+  for(let i=5;i<tokens.length;i++){
+    if(!/^\d{2}\/\d{2}\/\d{4}$/.test(tokens[i])) continue;
+    const venc=tokens[i];
+    let j=i-1;
+    while(j>=0 && !/^(Atrasada|Em)$/.test(tokens[j])) j--;
+    if(j<1) continue;
+    let situacao='';
+    if(tokens[j]==='Atrasada') situacao='Atrasada';
+    else if(tokens[j]==='Em' && tokens[j+1]==='aberto') situacao='Em aberto';
+    if(!situacao) continue;
+    let k=i+1;
+    if(situacao==='Em aberto') k=i+2;
+    const saldo=tokens[k];
+    if(!/^\d[\d\.]*,\d{2}$/.test(saldo)) continue;
+    const fornecedor=tokens.slice(5,j).join(' ').trim();
+    const historico='';
+    const saldoNum=normalizarValorBling(saldo);
+    if(!fornecedor) continue;
+    itens.push({
+      id:'cp_'+Date.now()+'_'+itens.length,
+      fornecedor,
+      historico,
+      documento:'',
+      vencimento:normalizarDataBling(venc),
+      situacao,
+      saldo:saldoNum,
+      origem:'Bling PDF',
+      importadoEm:new Date().toISOString()
+    });
+    i=k;
+  }
+  return {itens,totalRelatorio};
+}
+function renderContasPagar(){
+  const itens=(state.contasPagar||[]).slice().sort((a,b)=>(a.vencimento||'').localeCompare(b.vencimento||''));
+  const total=itens.reduce((s,x)=>s+Number(x.saldo||0),0);
+  const el=document.getElementById('app');
+  if(!el) return;
+  el.innerHTML=`
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <div><h2 style="margin:0;">💳 Contas a Pagar</h2><div class="hint">Importe o PDF exportado pelo Bling. Os dados ficam salvos no sistema.</div></div>
+      <label class="btn small blue" style="cursor:pointer;">📄 Importar PDF
+        <input id="input-pdf-contas" type="file" accept="application/pdf" style="display:none">
+      </label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="kpis">
+      <div class="kpi"><div>Total importado</div><strong>R$ ${total.toLocaleString('pt-BR',{minimumFractionDigits:2})}</strong></div>
+      <div class="kpi"><div>Lançamentos</div><strong>${itens.length}</strong></div>
+      <div class="kpi"><div>Atrasadas</div><strong>${itens.filter(x=>x.situacao==='Atrasada').length}</strong></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Lançamentos</h3>
+    ${itens.length?`<div class="table-wrap"><table><thead><tr><th>Fornecedor</th><th>Histórico</th><th>Documento</th><th>Vencimento</th><th>Situação</th><th>Saldo</th></tr></thead><tbody>
+    ${itens.map(x=>`<tr><td>${escapeHtml(x.fornecedor)}</td><td>${escapeHtml(x.historico||'')}</td><td>${escapeHtml(x.documento||'')}</td><td>${x.vencimento?formatDateBR(x.vencimento):''}</td><td>${escapeHtml(x.situacao)}</td><td>R$ ${Number(x.saldo||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td></tr>`).join('')}
+    </tbody></table></div>`:'<div class="hint">Nenhuma conta importada ainda.</div>'}
+  </div>`;
+  const input=document.getElementById('input-pdf-contas');
+  if(input) input.onchange=async(e)=>{
+    const file=e.target.files?.[0]; if(!file) return;
+    const buf=await file.arrayBuffer();
+    let texto='';
+    try{
+      if(window.pdfjsLib){
+        const pdfDoc=await window.pdfjsLib.getDocument({data:buf}).promise;
+        for(let p=1;p<=pdfDoc.numPages;p++){
+          const page=await pdfDoc.getPage(p);
+          const tc=await page.getTextContent();
+          texto += tc.items.map(it=>it.str).join(' ')+' ';
+        }
+      }else{
+        alert('O leitor de PDF não está disponível nesta versão. Recarregue o sistema e tente novamente.');
+        return;
+      }
+      const r=extrairContasPagarBling(texto);
+      if(!r.itens.length){
+        alert(r.erro||'Não consegui identificar lançamentos no PDF do Bling.');
+        return;
+      }
+      state.contasPagar=r.itens;
+      await save('contasPagar');
+      alert(`${r.itens.length} contas importadas do Bling.`);
+      renderContasPagar();
+    }catch(err){
+      console.error(err);
+      alert('Erro ao ler o PDF: '+(err?.message||err));
+    }
+  };
+}
 function renderAll(){
+  if(currentTab==='contas-pagar'){ renderContasPagar(); return; }
   renderNav();
   const main = document.getElementById('main');
   if(currentTab==='dashboard') main.innerHTML = viewDashboard();
@@ -4070,12 +4198,14 @@ function catalogoProdutosFiltradoHtml(q){
 
 function viewVendas(){
   const hoje = todayStr();
+  const modoNovaEntrega = novaEntregaImediata;
+  const horaNovaEntrega = new Date().toTimeString().slice(0,5);
   const vendasHoje = state.vendas.filter(v=>v.data===hoje).sort((a,b)=>b.criadoEm-a.criadoEm);
   const totalHoje = vendasHoje.reduce((s,v)=>s+v.valor_total,0);
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
 
-  return '<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
+  return '<div class="card"><details open><summary><strong>${modoNovaEntrega?'🚚 Nova Entrega — imediata':'Lançamento manual (clique para abrir)'}</strong></summary><h2 style="margin-top:10px;">${modoNovaEntrega?'Nova entrega':'Registrar venda'}</h2><form id="form-venda">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
@@ -4123,10 +4253,14 @@ function viewVendas(){
     '<div><label>Valor do frete (R$)</label><input type="number" id="input-frete" name="frete" min="0" step="0.01" placeholder="0,00"></div>'+
     '<div><label>Empresa conveniada (opcional)</label><input list="lista-empresas" name="empresa" placeholder="Nome da empresa"><datalist id="lista-empresas">'+empresasOptions()+'</datalist></div>'+
     '</div>'+
+    (modoNovaEntrega ?
+    '<div class="hint" style="margin-top:8px;padding:9px;border-radius:8px;">🚚 <strong>Entrega imediata:</strong> entra como a próxima entrega e não é considerada agendada.</div>'+
+    '<input type="hidden" name="entrega_data" value="'+hoje+'"><input type="hidden" name="entrega_hora" value="'+horaNovaEntrega+'">'
+    :
     '<div class="form-row">'+
     '<div><label>Agendar entrega — data (opcional)</label><input type="date" name="entrega_data"></div>'+
     '<div><label>Agendar entrega — horário (opcional)</label><input type="time" name="entrega_hora"></div>'+
-    '</div>'+
+    '</div>')+
     '</div>'+
     '<div id="detalhes-falta-retirar-venda" class="item-venda-row" style="display:none;margin-top:10px;border:1px dashed var(--warning,#f59e0b);">'+
     '<div class="hint" style="margin-bottom:6px;">Essa venda ainda está pendente em "Falta retirar". Preencha aqui embaixo só quando o cliente já tiver retirado ou vocês já tiverem entregado — se ainda não aconteceu, deixe "Ainda pendente" e o estoque continua reservado.</div>'+
@@ -4984,7 +5118,7 @@ acoes+
 }
 function viewAgendamentos(){
   const hoje = todayStr();
-  return '<div class="card"><h2>Agendar entrega (sem lançar a venda ainda)</h2>'+ajudaHtml('agendamentos','Agende aqui uma entrega futura pra um cliente já cadastrado, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante. A venda em si (pro caixa) continua sendo lançada pela planilha do fim do dia.')+
+  return '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;"><h2 style="margin-bottom:0;">Agendar entrega (sem lançar a venda ainda)</h2><button type="button" class="btn small green" id="btn-nova-entrega">🚚 Nova Entrega</button></div>'+ajudaHtml('agendamentos','Agende aqui uma entrega futura pra um cliente já cadastrado, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante. A venda em si (pro caixa) continua sendo lançada pela planilha do fim do dia.')+
     '<div class="hint">Use isto pra reservar um horário — por exemplo, agenda hoje pra entregar amanhã. Quando a entrega acontecer de fato, registre a venda normalmente na aba Vendas (os dois ficam juntos aqui na lista do dia).</div>'+
     '<form id="form-agendamento"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-ag" name="cliente" id="ag-cliente-input" required>'+
@@ -7020,6 +7154,9 @@ function attachHandlers(){
   if(fv) fv.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(fv);
+    const dataEntregaAtual = novaEntregaImediata ? todayStr() : (f.get('entrega_data')||'');
+    const horaEntregaAtual = novaEntregaImediata ? new Date().toTimeString().slice(0,5) : (f.get('entrega_hora')||'');
+    const tipoEntregaAtual = novaEntregaImediata ? 'imediata' : (horaEntregaAtual ? 'programada' : '');
     const categoria = f.get('categoria');
     const controlada = isControlada(categoria);
     const produto = controlada ? categoria : (f.get('produto_livre')||'(sem nome)');
@@ -7033,7 +7170,7 @@ function attachHandlers(){
         v.data=f.get('data'); v.cliente=f.get('cliente')||''; v.canal=f.get('canal');
         v.categoria=categoria; v.produto=produto; v.quantidade=quantidade; v.valor_unit=valor_unit; v.valor_total=valor_total;
         v.pagamento=f.get('pagamento'); v.nota=f.get('nota'); v.tipo_entrega=f.get('tipo_entrega'); v.cupom=(f.get('cupom')||'').trim().toUpperCase();
-        v.empresa=f.get('empresa')||''; v.entrega_data=f.get('entrega_data')||(f.get('entrega_hora')?f.get('data'):''); v.entrega_hora=f.get('entrega_hora')||''; v.obs=f.get('obs')||'';
+        v.empresa=f.get('empresa')||''; v.entrega_data=dataEntregaAtual||(horaEntregaAtual?f.get('data'):''); v.entrega_hora=horaEntregaAtual; v.entrega_tipo=tipoEntregaAtual; v.entrega_programada=(tipoEntregaAtual==='programada'); v.obs=f.get('obs')||'';
         v.frete = TIPOS_ENTREGA_COM_FRETE.includes(v.tipo_entrega) ? (Number(f.get('frete'))||0) : 0;
         if(v.entrega_hora && !v.entrega_status) v.entrega_status='pendente';
         if(!v.entrega_hora) v.entrega_status='';
@@ -7078,7 +7215,7 @@ function attachHandlers(){
       const camposComuns = {
         data: f.get('data'), cliente: f.get('cliente')||'', canal: f.get('canal'),
         pagamento: f.get('pagamento'), nota: f.get('nota'), tipo_entrega: f.get('tipo_entrega'), cupom:(f.get('cupom')||'').trim().toUpperCase(),
-        empresa: f.get('empresa')||'', entrega_data: f.get('entrega_data')||(f.get('entrega_hora')?f.get('data'):''), entrega_hora: f.get('entrega_hora')||'',
+        empresa: f.get('empresa')||'', entrega_data: dataEntregaAtual||(horaEntregaAtual?f.get('data'):''), entrega_hora: horaEntregaAtual, entrega_tipo: tipoEntregaAtual,
         obs: f.get('obs')||''
       };
       const freteTotal = TIPOS_ENTREGA_COM_FRETE.includes(camposComuns.tipo_entrega) ? (Number(f.get('frete'))||0) : 0;
@@ -7086,7 +7223,7 @@ function attachHandlers(){
       // na lista de pendências, que o cliente retirou ou que foi entregue.
       const pendenteRetiradaNova = camposComuns.tipo_entrega === 'Falta retirar';
       itens.forEach((item,idx)=>{
-        const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':'', estoqueBaixado: !pendenteRetiradaNova, retirado:false, retiradoForma:'', retiradoEm:null}, camposComuns, item);
+        const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':'', entrega_tipo: tipoEntregaAtual, entrega_programada:(tipoEntregaAtual==='programada'), estoqueBaixado: !pendenteRetiradaNova, retirado:false, retiradoForma:'', retiradoEm:null}, camposComuns, item);
         state.vendas.push(venda);
         if(!pendenteRetiradaNova) ajustaEstoquePorVenda(item.categoria, item.quantidade, false);
       });
@@ -7160,6 +7297,7 @@ function attachHandlers(){
     }
     if(camposComuns.empresa) await garantirEmpresaCadastrada(camposComuns.empresa);
     await save('vendas'); await save('estoque');
+    if(novaEntregaImediata){ novaEntregaImediata=false; }
     renderAll();
   };
   const chkVendaAntigaValorExtra = document.getElementById('chk-venda-antiga-valor-extra');
@@ -9061,6 +9199,14 @@ function attachHandlers(){
       renderAll();
     }
   });
+
+  const btnNovaEntrega = document.getElementById('btn-nova-entrega');
+  if(btnNovaEntrega) btnNovaEntrega.onclick = ()=>{
+    novaEntregaImediata=true;
+    currentTab='vendas';
+    renderAll();
+    setTimeout(()=>{ const form=document.getElementById('form-venda'); if(form) form.closest('details')?.setAttribute('open',''); },50);
+  };
 
   const fa = document.getElementById('form-agendamento');
   if(fa) fa.onsubmit = async(e)=>{
@@ -11047,6 +11193,23 @@ function notificarLocal(titulo, corpo){
     try{ new Notification(titulo, options); }catch(e){ console.error('Notificação falhou', e); }
   }
 }
+let ultimoCheckLembreteAgendamento=0;
+function verificarLembretesAgendamentos(){
+  const agora=new Date(), ms=agora.getTime();
+  if(ms-ultimoCheckLembreteAgendamento<20000) return;
+  ultimoCheckLembreteAgendamento=ms;
+  (state.agendamentos||[]).forEach(a=>{
+    if(!a||a.status==='concluido'||a.status==='cancelado'||!a.data||!a.hora||a.lembrete20Enviado) return;
+    const alvo=new Date(a.data+'T'+a.hora+':00'), diff=(alvo-agora)/60000;
+    if(diff>=19 && diff<=20){
+      a.lembrete20Enviado=true;
+      save('agendamentos');
+      notificarLocal('⏰ Entrega em 20 minutos',(a.cliente||'Cliente')+' — '+a.hora+(a.entregadorId?' — '+nomeEntregador(a.entregadorId):''));
+    }
+  });
+}
+setInterval(verificarLembretesAgendamentos,30000);
+
 function iniciarNotificacoesRealtime(){
   try{
     supabaseClient.channel('app_data_mudancas')
@@ -11239,7 +11402,7 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       marcarRecebido(){ linhas.forEach(l=>l.dinheiro_recebido=true); },
       marcarAtendimento(ok,obs){ linhas.forEach(l=>{l.atendimento_ok=ok; l.atendimento_obs=obs;}); },
       async salvar(){ const { error } = await supabaseClient.from('app_data').upsert({chave:'vendas', valor:registros, atualizado_em:new Date().toISOString()},{onConflict:'chave'}); return !error; },
-      anexoContexto: { vendaGrupoId: id, agendamentoId: null }
+      anexoContexto: { vendaGrupoId: id, agendamentoId: null, tipo: primeira.entrega_tipo||'imediata' }
     };
   } else {
     const ag = registros.find(a=>a.id===id);
@@ -11323,7 +11486,7 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
     const detalheRecebimento = statusRecebimento()==='fiado' ? 'Fiado — nada a receber.' : statusRecebimento()==='jaPago' ? 'Já estava pago.' : statusRecebimento()==='acertado' ? 'Acerto já confirmado pelo financeiro.' : statusRecebimento()==='aguardaAcerto' ? 'Entregador confirmou que recebeu — falta o financeiro conferir o acerto.' : 'Aguardando entregador confirmar o que recebeu na entrega.';
     const detalheAtendimento = entrega.atendimentoOk===true ? 'Entregador confirmou: tudo certo conforme combinado.' : entrega.atendimentoOk===false ? 'Entregador sinalizou problema na entrega.' : 'Aguardando satisfação do entregador.';
     const detalhe = 'Entrega de '+(entrega.cliente||'cliente')+' — '+acaoCaixa+' '+detalheRecebimento+' '+detalheAtendimento;
-    if(!p){ p = {id:uid(), data:todayStr(), tipo:'entrega', campo:'recebimento', valor:entrega.valorTotal||0, detalhe, status:'pendente', agendamentoId:entrega.anexoContexto.agendamentoId||null, vendaGrupoId:entrega.anexoContexto.vendaGrupoId||null}; pendencias.push(p); }
+    if(!p){ p = {id:uid(), data:todayStr(), tipo:'entrega', campo:'recebimento', valor:entrega.valorTotal||0, detalhe, status:'pendente', agendamentoId:entrega.anexoContexto.agendamentoId||null, vendaGrupoId:entrega.anexoContexto.vendaGrupoId||null, entregaTipo:entrega.anexoContexto.tipo||null}; pendencias.push(p); }
     else { p.detalhe = detalhe; p.valor = entrega.valorTotal||0; }
     await salvarPendencias();
   }
