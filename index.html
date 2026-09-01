@@ -369,9 +369,10 @@ table td:last-child{min-width:180px;}
 .auth-form{display:none;}
 .auth-form.active{display:block;}
 #agenda-fab{position:fixed;top:110px;right:16px;z-index:45;background:#142A63;color:#fff;border:none;border-radius:24px;padding:10px 16px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;font-size:13px;}
-#agenda-drawer{position:fixed;top:110px;right:16px;width:360px;max-width:92vw;max-height:75vh;background:var(--card);z-index:2500;box-shadow:0 20px 50px rgba(0,0,0,.3);border-radius:16px;padding:14px;overflow-y:auto;overflow-x:hidden;display:none;}
-#agenda-drawer.open{display:block;}
-.ag-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:move;user-select:none;}
+#agenda-drawer{position:fixed;top:110px;right:16px;width:360px;max-width:92vw;max-height:75vh;background:var(--card);z-index:2500;box-shadow:0 20px 50px rgba(0,0,0,.3);border-radius:16px;padding:0;overflow:hidden;display:none;flex-direction:column;}
+#agenda-drawer.open{display:flex;}
+.ag-head{display:flex;justify-content:space-between;align-items:center;margin:0;padding:14px 14px 10px;cursor:move;user-select:none;flex:0 0 auto;background:var(--card);border-radius:16px 16px 0 0;position:relative;z-index:1;box-shadow:0 2px 6px rgba(0,0,0,.06);}
+.ag-body{overflow-y:auto;overflow-x:hidden;flex:1 1 auto;padding:10px 14px 14px;}
 .ag-head button{width:auto;background:none;border:none;font-size:16px;cursor:pointer;}
 .ag-item{border:1px solid var(--border);border-radius:8px;padding:6px 8px;margin-bottom:6px;font-size:11.5px;overflow:hidden;word-break:break-word;}
 .ag-item .ag-titulo{font-weight:700;font-size:12px;}
@@ -569,6 +570,7 @@ const AUTH_APP_HTML = `
   <button id="agenda-fab">📋 Agenda</button>
   <aside id="agenda-drawer">
     <div class="ag-head"><h3>📋 Agenda</h3><button id="agenda-fechar">✕</button></div>
+    <div class="ag-body">
     <div id="agenda-lista"></div>
     <form id="form-agenda-evento">
       <input type="hidden" name="id">
@@ -611,6 +613,7 @@ const AUTH_APP_HTML = `
       <div class="hint">Feriados nacionais já vêm cadastrados automaticamente.</div>
       <button type="submit" class="btn small" style="margin-top:8px;">+ Adicionar feriado</button>
     </form>
+    </div>
   </aside>
 `;
 document.getElementById('app').innerHTML = AUTH_APP_HTML;
@@ -5728,18 +5731,20 @@ function relatorioComodatos(){
     '<h3 style="margin-top:16px;">Eu devo ao atacadista</h3>'+
     tabelaSaldosComodato('atacadista','Atacadista')+
     '<h3 style="margin-top:16px;">Todos os lançamentos</h3>'+
-    comodatosListaHtml();
+    '<input type="text" id="busca-comodato" class="searchbar" placeholder="Buscar por nome, categoria, item, produto ou observação...">'+
+    '<div id="lista-comodatos-wrap">'+comodatosListaHtml()+'</div>';
 }
-function comodatosListaHtml(){
-  const todos = state.comodatos.slice().sort((a,b)=>b.data.localeCompare(a.data));
+function comodatosListaHtml(lista){
+  const todos = (lista||state.comodatos).slice().sort((a,b)=>b.data.localeCompare(a.data));
   if(todos.length===0) return '<div class="empty">Nenhum comodato lançado ainda.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Direção</th><th>Nome</th><th>Categoria / Item</th><th>Produto</th><th>Data</th><th>Qtd</th><th>Estoque</th><th>Observação</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><colgroup><col style="width:8%"><col style="width:11%"><col style="width:14%"><col style="width:12%"><col style="width:8%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:20%"></colgroup>'+
+    '<thead><tr><th>Direção</th><th>Nome</th><th>Categoria / Item</th><th>Produto</th><th>Data</th><th>Qtd</th><th>Estoque</th><th>Observação</th><th></th></tr></thead><tbody>'+
     todos.map(c=>'<tr><td>'+(c.direcao==='cliente'?'Cliente':'Atacadista')+'</td><td>'+c.nome+(c.whatsapp?'<br><span class="hint">📱 '+c.whatsapp+'</span>':'')+'</td>'+
     '<td>'+c.categoria+' — '+itemComodatoLabel(c.categoria,c.item)+'</td><td>'+c.produto+'</td><td>'+fmtDate(c.data)+'</td>'+
     '<td>'+(c.quantidade>0?'+':'')+c.quantidade+'</td>'+
     '<td>'+(c.baixaEstoque?'<span class="badge status-pago">ajustou</span>':'<span class="badge" style="background:var(--border);color:var(--text2);">não mexeu</span>')+'</td>'+
     '<td>'+(c.obs||'—')+'</td>'+
-    '<td><button class="act-link" data-edit-comodato="'+c.id+'">✎ editar</button><button class="del-link" data-del-comodato="'+c.id+'">🗑 excluir</button>'+
+    '<td class="cel-acoes"><button class="act-link" data-edit-comodato="'+c.id+'">✎ editar</button><button class="del-link" data-del-comodato="'+c.id+'">🗑 excluir</button>'+
     '<br><button class="act-link" data-copiar-comodato="'+c.id+'">📋 copiar</button></td></tr>').join('')+
     '</tbody></table></div>';
 }
@@ -8899,42 +8904,57 @@ function attachHandlers(){
     if(valorSelecionado) cmdItem.value = valorSelecionado;
   };
   if(cmdCategoria) cmdCategoria.onchange = ()=>popularItensComodato(cmdCategoria.value);
-  document.querySelectorAll('[data-edit-comodato]').forEach(btn=>btn.onclick=()=>{
-    const c = state.comodatos.find(x=>x.id===btn.dataset.editComodato);
-    const fcmEl = document.getElementById('form-comodato');
-    if(!c || !fcmEl) return;
-    editComodatoId = c.id;
-    fcmEl.direcao.value=c.direcao; fcmEl.nome.value=c.nome; fcmEl.categoria.value=c.categoria;
-    popularItensComodato(c.categoria, c.item);
-    fcmEl.produto.value=c.produto; fcmEl.quantidade.value=c.quantidade; fcmEl.data.value=c.data; fcmEl.obs.value=c.obs||'';
-    fcmEl.whatsapp.value = c.whatsapp||'';
-    fcmEl.querySelector('#cmd-baixa-estoque').checked = !!c.baixaEstoque;
-    fcmEl.querySelector('button[type=submit]').textContent='Salvar alterações';
-    fcmEl.scrollIntoView({behavior:'smooth'});
-  });
-  document.querySelectorAll('[data-del-comodato]').forEach(btn=>btn.onclick=async()=>{
-    const c = state.comodatos.find(x=>x.id===btn.dataset.delComodato);
-    if(!c) return;
-    if(confirm('Excluir esse lançamento de '+c.nome+' ('+fmtDate(c.data)+')?\n\nEssa ação não pode ser desfeita.')){
-      const reverterEstoque = c.baixaEstoque ? confirm('Esse comodato tinha dado baixa/ajuste no estoque.\n\nDeseja reverter esse ajuste no estoque também?') : false;
-      if(reverterEstoque && c.estoqueLancId){
-        const lancAntigo = state.estoqueLancamentos.find(l=>l.id===c.estoqueLancId);
-        if(lancAntigo){
-          aplicarEfeitoEstoqueLanc(lancAntigo, true);
-          state.estoqueLancamentos = state.estoqueLancamentos.filter(l=>l.id!==c.estoqueLancId);
+  function attachComodatoListaHandlers(){
+    document.querySelectorAll('[data-edit-comodato]').forEach(btn=>btn.onclick=()=>{
+      const c = state.comodatos.find(x=>x.id===btn.dataset.editComodato);
+      const fcmEl = document.getElementById('form-comodato');
+      if(!c || !fcmEl) return;
+      editComodatoId = c.id;
+      fcmEl.direcao.value=c.direcao; fcmEl.nome.value=c.nome; fcmEl.categoria.value=c.categoria;
+      popularItensComodato(c.categoria, c.item);
+      fcmEl.produto.value=c.produto; fcmEl.quantidade.value=c.quantidade; fcmEl.data.value=c.data; fcmEl.obs.value=c.obs||'';
+      fcmEl.whatsapp.value = c.whatsapp||'';
+      fcmEl.querySelector('#cmd-baixa-estoque').checked = !!c.baixaEstoque;
+      fcmEl.querySelector('button[type=submit]').textContent='Salvar alterações';
+      fcmEl.scrollIntoView({behavior:'smooth'});
+    });
+    document.querySelectorAll('[data-del-comodato]').forEach(btn=>btn.onclick=async()=>{
+      const c = state.comodatos.find(x=>x.id===btn.dataset.delComodato);
+      if(!c) return;
+      if(confirm('Excluir esse lançamento de '+c.nome+' ('+fmtDate(c.data)+')?\n\nEssa ação não pode ser desfeita.')){
+        const reverterEstoque = c.baixaEstoque ? confirm('Esse comodato tinha dado baixa/ajuste no estoque.\n\nDeseja reverter esse ajuste no estoque também?') : false;
+        if(reverterEstoque && c.estoqueLancId){
+          const lancAntigo = state.estoqueLancamentos.find(l=>l.id===c.estoqueLancId);
+          if(lancAntigo){
+            aplicarEfeitoEstoqueLanc(lancAntigo, true);
+            state.estoqueLancamentos = state.estoqueLancamentos.filter(l=>l.id!==c.estoqueLancId);
+          }
         }
+        state.comodatos = state.comodatos.filter(x=>x.id!==c.id);
+        await save('comodatos');
+        await save('estoque');
+        await save('estoqueLancamentos');
+        renderAll();
       }
-      state.comodatos = state.comodatos.filter(x=>x.id!==c.id);
-      await save('comodatos');
-      await save('estoque');
-      await save('estoqueLancamentos');
-      renderAll();
-    }
-  });
-  document.querySelectorAll('[data-copiar-comodato]').forEach(btn=>btn.onclick=()=>{
-    const c = state.comodatos.find(x=>x.id===btn.dataset.copiarComodato);
-    if(c) copiarTextoComodato(textoWhatsappComodato(c));
-  });
+    });
+    document.querySelectorAll('[data-copiar-comodato]').forEach(btn=>btn.onclick=()=>{
+      const c = state.comodatos.find(x=>x.id===btn.dataset.copiarComodato);
+      if(c) copiarTextoComodato(textoWhatsappComodato(c));
+    });
+  }
+  attachComodatoListaHandlers();
+  const buscaComodato = document.getElementById('busca-comodato');
+  if(buscaComodato) buscaComodato.oninput = ()=>{
+    const q = buscaComodato.value.toLowerCase().trim();
+    const base = state.comodatos.slice();
+    const filtered = !q ? base : base.filter(c=>{
+      const alvo = (c.nome+' '+c.categoria+' '+itemComodatoLabel(c.categoria,c.item)+' '+c.produto+' '+(c.obs||'')).toLowerCase();
+      return alvo.includes(q);
+    });
+    const wrap = document.getElementById('lista-comodatos-wrap');
+    if(wrap) wrap.innerHTML = comodatosListaHtml(filtered);
+    attachComodatoListaHandlers();
+  };
   const formComodato = document.getElementById('form-comodato');
   const cmdNomeInput = formComodato ? formComodato.querySelector('input[name="nome"]') : null;
   if(cmdNomeInput) cmdNomeInput.addEventListener('change', ()=>{
