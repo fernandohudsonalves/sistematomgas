@@ -1419,11 +1419,51 @@ function nomeMes(mk){
 }
 function metaMensalP13(mk){ return Number(state.metas[mk])||0; }
 function metaDiariaP13(mk){ const m = metaMensalP13(mk); return m>0 ? m/diasNoMes(mk) : 0; }
+/* Meta diária sempre arredondada pra cima (ex: 8,3 cargas/dia -> meta de 9 cargas no dia). */
+function metaDiariaP13Arred(mk){ const m = metaMensalP13(mk); return m>0 ? Math.ceil(m/diasNoMes(mk)) : 0; }
+/* Qualquer carga de gás (P5, P13, P20, P45 e Gás do Povo) conta pra meta, convertida em
+   "equivalente de cargas de P13" pelo peso (ex: 1 carga de P45 = 45/13 ≈ 3,46 cargas de P13).
+   O valor NÃO é arredondado pra cima aqui — arredondar só a meta, nunca o vendido, senão o
+   sistema poderia marcar um dia como batido sem realmente ter atingido a meta. */
+function equivalenteCargasP13(v){
+  const info = CATEGORIAS_ESTOQUE[v.categoria];
+  if(!info || info.grupo!=='gas' || info.tipo!=='carga') return 0;
+  const peso = PESO_GAS_KG[info.chave];
+  if(!peso) return 0;
+  return ((v.quantidade||0) * peso) / 13;
+}
 function p13VendidosNoDia(data){
-  return state.vendas.filter(v=>v.data===data && (v.categoria==='Carga de Gás P13' || v.categoria==='Gás do Povo')).reduce((s,v)=>s+(v.quantidade||0),0);
+  return state.vendas.filter(v=>v.data===data).reduce((s,v)=>s+equivalenteCargasP13(v),0);
 }
 function p13VendidosNoMes(mk){
-  return state.vendas.filter(v=>monthKey(v.data)===mk && (v.categoria==='Carga de Gás P13' || v.categoria==='Gás do Povo')).reduce((s,v)=>s+(v.quantidade||0),0);
+  return state.vendas.filter(v=>monthKey(v.data)===mk).reduce((s,v)=>s+equivalenteCargasP13(v),0);
+}
+/* Gráfico de pilhas (barras) com um dia do mês em cada coluna: verde se bateu a meta diária
+   arredondada pra cima naquele dia, vermelho se não bateu. Dias futuros ficam neutros. */
+function graficoPilhasMetaHtml(mk){
+  const metaDia = metaDiariaP13Arred(mk);
+  if(metaDia<=0) return '';
+  const dias = diasNoMes(mk);
+  const hoje = todayStr();
+  const mkHoje = monthKey(hoje);
+  const diaHojeNum = Number(hoje.slice(8,10));
+  let barras = '';
+  for(let d=1; d<=dias; d++){
+    const dataStr = mk+'-'+String(d).padStart(2,'0');
+    const vendidoDia = p13VendidosNoDia(dataStr);
+    const futuro = (mk>mkHoje) || (mk===mkHoje && d>diaHojeNum);
+    const bateu = !futuro && vendidoDia>=metaDia;
+    const cor = futuro ? 'var(--border)' : (bateu ? 'var(--green)' : 'var(--danger)');
+    const alturaPct = futuro ? 6 : Math.max(6, Math.min(100, Math.round((vendidoDia/metaDia)*100)));
+    barras += '<div style="flex:1;min-width:6px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:92px;" title="Dia '+d+': '+arred1(vendidoDia)+' / '+metaDia+' cargas'+(futuro?' (ainda não chegou)':(bateu?' — bateu a meta':' — não bateu a meta'))+'">'+
+      '<div style="width:100%;max-width:14px;height:'+alturaPct+'%;background:'+cor+';border-radius:3px 3px 0 0;'+(futuro?'opacity:.4;':'')+'"></div>'+
+      '<div style="font-size:8px;color:var(--text3);margin-top:3px;">'+d+'</div>'+
+      '</div>';
+  }
+  return '<div class="card"><h2>📊 Meta dia a dia — '+nomeMes(mk)+'</h2>'+
+    '<div class="hint">Cada barra é um dia do mês (passe o dedo/mouse pra ver o valor). Meta diária arredondada pra cima: <strong>'+metaDia+' cargas/dia</strong>. <span style="color:var(--green);font-weight:700;">Verde</span> = bateu a meta do dia · <span style="color:var(--danger);font-weight:700;">Vermelho</span> = não bateu.</div>'+
+    '<div style="display:flex;align-items:flex-end;gap:2px;height:112px;margin-top:12px;overflow-x:auto;padding-bottom:4px;">'+barras+'</div>'+
+    '</div>';
 }
 function isControlada(cat){ return !!CATEGORIAS_ESTOQUE[cat]; }
 function apenasDigitos(str){ return (str||'').replace(/\D/g,''); }
@@ -3464,7 +3504,7 @@ function barraMetaHtml(vendido, meta, label){
   }
   const pct = Math.max(0, Math.min(100, Math.round((vendido/meta)*1000)/10));
   const completa = vendido>=meta;
-  return '<div class="meta-block"><div class="meta-label"><span>'+label+'</span><span class="meta-pct">'+vendido+' / '+arred1(meta)+' cargas de P13 — '+pct+'%</span></div>'+
+  return '<div class="meta-block"><div class="meta-label"><span>'+label+'</span><span class="meta-pct">'+arred1(vendido)+' / '+arred1(meta)+' cargas de P13 — '+pct+'%</span></div>'+
     '<div class="meta-bar-track"><div class="meta-bar-fill'+(completa?' completa':'')+'" style="width:'+Math.max(pct,4)+'%;"></div></div>'+
     '</div>';
 }
@@ -3472,7 +3512,7 @@ function metaCardDashboardHtml(){
   const mk = monthKey(todayStr());
   const hoje = todayStr();
   const metaMensal = metaMensalP13(mk);
-  const metaDiaria = metaDiariaP13(mk);
+  const metaDiaria = metaDiariaP13Arred(mk);
   const vendidoHoje = p13VendidosNoDia(hoje);
   const vendidoMes = p13VendidosNoMes(mk);
   return '<div class="meta-card" style="position:relative;"><button type="button" class="btn-edit-card on-dark" data-ir-editar-meta="1" title="Editar meta">✎</button><h2>🎯 Meta de cargas de P13 — '+nomeMes(mk)+'</h2>'+
@@ -3488,8 +3528,8 @@ function viewMetas(){
   const linhas = meses.map(function(m){
     const meta = state.metas[m];
     const vendido = p13VendidosNoMes(m);
-    return '<tr><td>'+nomeMes(m)+'</td><td>'+arred1(meta)+' cargas</td><td>'+arred1(meta/diasNoMes(m))+' cargas/dia</td>'+
-      '<td>'+vendido+' vendidas</td>'+
+    return '<tr><td>'+nomeMes(m)+'</td><td>'+arred1(meta)+' cargas</td><td>'+metaDiariaP13Arred(m)+' cargas/dia</td>'+
+      '<td>'+arred1(vendido)+' vendidas</td>'+
       '<td><button class="act-link" data-edit-meta="'+m+'">✎ editar</button><button class="del-link" data-del-meta="'+m+'">🗑 excluir</button></td></tr>';
   }).join('');
   const tabela = meses.length===0 ? '<div class="empty">Nenhuma meta configurada ainda.</div>' :
@@ -3504,12 +3544,13 @@ function viewMetas(){
     '</div>'+
     '<button type="submit" class="btn small" style="margin-top:8px;">Salvar meta</button>'+
     '</form>'+
-    (metaMensalAtual>0 ? '<div class="hint" style="margin-top:10px;">Meta de '+nomeMes(mk)+': <strong>'+arred1(metaMensalAtual)+' cargas</strong> em '+dias+' dias = <strong>'+arred1(metaMensalAtual/dias)+' cargas por dia</strong>.</div>' : '')+
+    (metaMensalAtual>0 ? '<div class="hint" style="margin-top:10px;">Meta de '+nomeMes(mk)+': <strong>'+arred1(metaMensalAtual)+' cargas</strong> em '+dias+' dias = <strong>'+metaDiariaP13Arred(mk)+' cargas por dia</strong> (arredondado pra cima).</div>' : '')+
     '</div>'+
     '<div class="card"><h2>Meta atual</h2>'+
-    barraMetaHtml(p13VendidosNoDia(todayStr()), metaDiariaP13(mk), 'Meta de hoje ('+fmtDate(todayStr())+')')+
+    barraMetaHtml(p13VendidosNoDia(todayStr()), metaDiariaP13Arred(mk), 'Meta de hoje ('+fmtDate(todayStr())+')')+
     barraMetaHtml(p13VendidosNoMes(mk), metaMensalAtual, 'Meta do mês ('+nomeMes(mk)+')')+
     '</div>'+
+    graficoPilhasMetaHtml(mk)+
     '<div class="card"><h2>Histórico de metas</h2>'+tabela+'</div>';
 }
 function viewDashboard(){
@@ -5897,7 +5938,7 @@ function relatorioNovosClientes(){
 function relatorioMeta(){
   const mk = metaRelMesSelecionado || monthKey(todayStr());
   const meta = metaMensalP13(mk);
-  const metaDiaria = metaDiariaP13(mk);
+  const metaDiaria = metaDiariaP13Arred(mk);
   const vendidoMes = p13VendidosNoMes(mk);
   const dias = diasNoMes(mk);
   const hoje = todayStr();
@@ -5916,7 +5957,7 @@ function relatorioMeta(){
     const mVendido = p13VendidosNoMes(m);
     const mPct = mMeta>0 ? Math.round((mVendido/mMeta)*1000)/10 : 0;
     const bateu = mMeta>0 && mVendido>=mMeta;
-    return '<tr><td>'+nomeMes(m)+'</td><td>'+arred1(mMeta)+' cargas</td><td>'+mVendido+' cargas</td>'+
+    return '<tr><td>'+nomeMes(m)+'</td><td>'+arred1(mMeta)+' cargas</td><td>'+arred1(mVendido)+' cargas</td>'+
       '<td>'+(mMeta>0?mPct+'%':'—')+'</td>'+
       '<td>'+(mMeta>0?(bateu?'✅ Bateu':'⚠️ Não bateu'):'—')+'</td></tr>';
   }).join('');
@@ -5930,8 +5971,9 @@ function relatorioMeta(){
       '<div style="display:grid;gap:12px;margin-top:14px;">'+
       '<div class="card" style="margin:0;"><h3>📦 Meta de '+nomeMes(mk)+'</h3>'+
       barraMetaHtml(vendidoMes, meta, 'Meta do mês')+
-      '<div class="hint" style="margin-top:8px;">Meta diária: <strong>'+arred1(metaDiaria)+' cargas/dia</strong> · Vendido até agora: <strong>'+vendidoMes+' cargas</strong> ('+pct+'%) · Faltam: <strong>'+arred1(falta)+' cargas</strong> · <button type="button" class="link-btn" data-ir-metas="1">Configurar em Meta →</button></div>'+
+      '<div class="hint" style="margin-top:8px;">Meta diária: <strong>'+metaDiaria+' cargas/dia</strong> (arredondada pra cima) · Vendido até agora: <strong>'+arred1(vendidoMes)+' cargas</strong> ('+pct+'%) · Faltam: <strong>'+arred1(falta)+' cargas</strong> · <button type="button" class="link-btn" data-ir-metas="1">Configurar em Meta →</button></div>'+
       '</div>'+
+      graficoPilhasMetaHtml(mk)+
       (ehMesAtual ? '<div class="card" style="margin:0;"><h3>📈 Ritmo e projeção</h3>'+
         '<div class="hint">Dias corridos: '+diaDoMes+' de '+dias+' · Dias restantes: '+diasRestantes+'</div>'+
         '<div class="hint" style="margin-top:6px;">Ritmo médio até agora: <strong>'+arred1(ritmoAtual)+' cargas/dia</strong></div>'+
