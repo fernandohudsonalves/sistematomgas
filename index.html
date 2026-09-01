@@ -196,6 +196,10 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 #logo-box img:hover{opacity:.8;}
 
 .table-wrap{overflow-x:auto;}
+/* Histórico de vendas: mantém a rolagem horizontal funcionando (dá pra arrastar pra ver as
+   colunas que não cabem), só esconde a barrinha visual pra ficar mais limpo. */
+#lista-vendas-wrap .table-wrap{scrollbar-width:none;-ms-overflow-style:none;}
+#lista-vendas-wrap .table-wrap::-webkit-scrollbar{display:none;}
 .table-wrap table{width:100%;table-layout:fixed;border-collapse:collapse;}
 .table-wrap th,.table-wrap td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;padding:6px 8px;font-size:12.5px;}
 .table-wrap td.cel-acoes{overflow:visible;max-width:none;white-space:nowrap;}
@@ -5461,6 +5465,10 @@ function viewConfig(){
     '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e repita o mesmo número na coluna <strong>Nº da Venda</strong> — assim o sistema conta como uma venda só. Se deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, numere sempre.</div>'+
     '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
     '<div id="resumo-importacao-diaria"></div>'+
+    '<details style="margin-top:14px;"><summary style="color:var(--danger);"><strong>Zerar lançamentos de hoje</strong></summary>'+
+    '<div class="hint" style="margin-top:8px;">Enquanto a importação diária ainda não roda 100% certinha, use isto pra desfazer tudo que entrou hoje (de importação ou lançamento manual) e tentar de novo do zero: apaga as <strong>vendas de hoje</strong>, as <strong>despesas de hoje</strong> e as linhas de hoje das outras abas do arquivo — <strong>Contas a Pagar</strong> lançadas hoje e o <strong>Fechamento de Caixa</strong> de hoje. Não mexe no cadastro de Clientes nem no catálogo de Produtos — esses não são apagados. Datas de outros dias não são afetadas.</div>'+
+    '<button type="button" class="btn small ghost" id="btn-zerar-dia-importacao" style="margin-top:10px;color:var(--danger);border-color:var(--danger);">🗑️ Zerar vendas, despesas e contas de hoje</button>'+
+    '</details>'+
     '</div>'+
     '<div class="config-group-title">Avançado e segurança</div>'+
     '<div class="card"><h2 style="color:var(--danger);">Ferramentas avançadas</h2>'+
@@ -10346,6 +10354,30 @@ function attachHandlers(){
     renderAll();
   };
 
+  const btnZerarDiaImportacao = document.getElementById('btn-zerar-dia-importacao');
+  if(btnZerarDiaImportacao) btnZerarDiaImportacao.onclick = async ()=>{
+    const hoje = todayStr();
+    const ehHoje = (dataISO)=> String(dataISO||'').slice(0,10)===hoje;
+    const qtdVendas = state.vendas.filter(v=>ehHoje(v.data)).length;
+    const qtdDespesas = state.despesas.filter(d=>ehHoje(d.data)).length;
+    const qtdContas = (state.contasPagar||[]).filter(c=>ehHoje(new Date(c.criadoEm).toISOString())).length;
+    const qtdCaixa = (state.fechamentosCaixa||[]).filter(f=>ehHoje(f.data)).length;
+    if(qtdVendas+qtdDespesas+qtdContas+qtdCaixa===0){ alert('Não há nada lançado hoje ('+fmtDate(hoje)+') pra zerar.'); return; }
+    if(!confirm('Isso vai apagar de hoje ('+fmtDate(hoje)+'):\n- '+qtdVendas+' venda(s)\n- '+qtdDespesas+' despesa(s)\n- '+qtdContas+' conta(s) a pagar lançada(s) hoje\n- '+qtdCaixa+' fechamento(s) de caixa de hoje\n\nClientes e o catálogo de produtos NÃO são afetados. Vendas/despesas de outros dias também não são afetadas. Continuar?')) return;
+    if(!confirm('Tem certeza mesmo? Essa ação não pode ser desfeita.')) return;
+    // Contas a pagar de hoje que já geraram despesa (marcadas como pagas) também precisam ter
+    // essa despesa removida, senão fica um lançamento órfão de despesa sem a conta que o gerou.
+    const idsContasDeHoje = (state.contasPagar||[]).filter(c=>ehHoje(new Date(c.criadoEm).toISOString())).map(c=>c.id);
+    state.vendas = state.vendas.filter(v=>!ehHoje(v.data));
+    state.despesas = state.despesas.filter(d=>!ehHoje(d.data) && !idsContasDeHoje.includes(d.contaPagarId));
+    state.contasPagar = (state.contasPagar||[]).filter(c=>!idsContasDeHoje.includes(c.id));
+    state.fechamentosCaixa = (state.fechamentosCaixa||[]).filter(f=>!ehHoje(f.data));
+    await save('vendas'); await save('despesas'); await save('contasPagar'); await save('fechamentosCaixa');
+    atualizarBadgeApp();
+    alert('Lançamentos de hoje zerados. Já pode reimportar a planilha do zero.');
+    renderAll();
+  };
+
   const btnVoltarComunicados = document.getElementById('btn-voltar-comunicados');
   if(btnVoltarComunicados) btnVoltarComunicados.onclick = ()=>{
     currentTab = telaAnteriorComunicados;
@@ -10538,7 +10570,8 @@ async function gerarModeloImportacaoDiaria(){
     {titulo:'EmpresaConveniada', valores:state.empresas.map(e=>e.nome)},
     {titulo:'FormaPagamentoDespesa', valores:['avista','parcelado']},
     {titulo:'Oficina', valores:state.oficinasManutencao.map(o=>o.nome)},
-    {titulo:'ProdutoCadastrado', valores:state.produtos.map(p=>p.nome)}
+    {titulo:'ProdutoCadastrado', valores:state.produtos.map(p=>p.nome)},
+    {titulo:'PrecoProduto', valores:state.produtos.map(p=>Number(p.preco)||0)}
   ];
   colunasListas.forEach(function(col, idx){
     const letra = String.fromCharCode(65+idx);
@@ -10554,6 +10587,30 @@ async function gerarModeloImportacaoDiaria(){
         type:'list', allowBlank:true, formulae:[faixaLista(letraLista, qtd)],
         showErrorMessage:true, errorStyle:'warning',
         errorTitle:'Valor fora da lista', error:'Escolha uma das opções da lista (ou deixe em branco).'
+      };
+    }
+  }
+  // Dropdown "em cascata": a lista de opções da coluna Produto muda de acordo com o que foi
+  // escolhido na coluna Categoria da MESMA linha (usa os nomes PROD_CAT_0, PROD_CAT_1... criados
+  // acima, um por categoria, via INDIRECT). Continua aceitando digitar um nome que não esteja na
+  // lista (fica só um aviso, não trava) — o sistema resolve nomes novos na tela de confirmação.
+  function aplicarDropdownDependente(ws, colunaLetra, colunaCategoriaLetra, linhaIni, linhaFim){
+    for(let l=linhaIni; l<=linhaFim; l++){
+      ws.getCell(colunaLetra+l).dataValidation = {
+        type:'list', allowBlank:true,
+        formulae:['=INDIRECT("PROD_CAT_"&IFERROR(MATCH($'+colunaCategoriaLetra+l+',CategoriasMap!$A:$A,0),0))'],
+        showErrorMessage:true, errorStyle:'warning',
+        errorTitle:'Valor fora da lista', error:'Escolha um produto da categoria selecionada (ou deixe em branco / digite um nome novo).'
+      };
+    }
+  }
+  // Sugestão automática de preço: puxa o preço já cadastrado do produto (ou da categoria, quando
+  // ela mesma é o item controlado, tipo gás/água) pra coluna Valor Unitário. Continua editável —
+  // se o usuário digitar outro valor por cima, a fórmula é substituída pelo número digitado.
+  function aplicarAutoPreenchimentoPreco(ws, colunaValorLetra, colunaProdutoLetra, colunaCategoriaLetra, linhaIni, linhaFim){
+    for(let l=linhaIni; l<=linhaFim; l++){
+      ws.getCell(colunaValorLetra+l).value = { formula:
+        'IFERROR(VLOOKUP(IF($'+colunaProdutoLetra+l+'<>"",$'+colunaProdutoLetra+l+',$'+colunaCategoriaLetra+l+'),ListasValidas!$P:$Q,2,0),"")'
       };
     }
   }
@@ -10585,16 +10642,20 @@ async function gerarModeloImportacaoDiaria(){
   wsProdPorCat.state = 'veryHidden';
   const wsCatMap = wb.addWorksheet('CategoriasMap');
   wsCatMap.state = 'veryHidden';
+  // PROD_CAT_0 é o fallback usado quando a linha ainda não tem categoria escolhida (mostra todos
+  // os produtos cadastrados, de qualquer categoria, pra não travar a digitação nem dar erro).
   wb.definedNames.add('ListasValidas!$P$2:$P$'+Math.max(state.produtos.length,1)+1, 'PROD_CAT_0');
   categoriasProdutoValidas.forEach(function(cat, i){
     wsCatMap.getCell('A'+(i+1)).value = cat;
     wsCatMap.getCell('B'+(i+1)).value = i+1;
     const nomesDaCategoria = state.produtos.filter(p=>chaveNormalizada(p.categoria)===chaveNormalizada(cat)).map(p=>p.nome);
+    const letra = colunaParaLetra(i+2); // +2 porque a coluna A é reservada pro fallback vazio (PROD_CAT_0)
     if(nomesDaCategoria.length>0){
-      const letra = colunaParaLetra(i+1);
       nomesDaCategoria.forEach(function(nome, j){ wsProdPorCat.getCell(letra+(j+1)).value = nome; });
-      wb.definedNames.add('ProdutosPorCategoria!$'+letra+'$1:$'+letra+'$'+nomesDaCategoria.length, 'PROD_CAT_'+(i+1));
     }
+    // Sempre cria o nome definido pra essa categoria, mesmo sem produtos ainda — evita erro de
+    // referência no Excel quando o usuário escolhe uma categoria que não tem item específico.
+    wb.definedNames.add('ProdutosPorCategoria!$'+letra+'$1:$'+letra+'$'+Math.max(nomesDaCategoria.length,1), 'PROD_CAT_'+(i+1));
   });
 
   // ---- Aba Instruções ----
@@ -10614,7 +10675,8 @@ async function gerarModeloImportacaoDiaria(){
     'Nota (Vendas): '+NOTAS.join(' | '),
     'Tipo de Entrega (Vendas): '+TIPOS_ENTREGA.join(' | '),
     'Categoria/Produto (Vendas): use o nome exato do produto ou categoria já cadastrado no sistema (ex.: P13, P45, Água 20L Safira, etc.) — já vem com dropdown das categorias cadastradas.',
-    'Produto (Vendas): opcional — use pra dizer qual item exato dentro da categoria foi vendido (ex.: categoria "Bebidas", produto "Coca-Cola 2L"), mesmo que esse item não tenha controle de estoque. A setinha dessa coluna já filtra sozinha e mostra só os produtos cadastrados na categoria que você escolheu na coluna anterior — escolha a categoria primeiro. Se digitar um nome que não bate exatamente com o cadastro, o sistema pausa e pergunta antes de importar (igual acontece com Categoria/Produto e Cliente). Deixe em branco se não quiser detalhar o item.',
+    'Produto (Vendas): opcional — use pra dizer qual item exato dentro da categoria foi vendido (ex.: categoria "Bebidas", produto "Coca-Cola 2L"), mesmo que esse item não tenha controle de estoque. Escolha a Categoria primeiro: a setinha dessa coluna já filtra sozinha e mostra só os produtos cadastrados naquela categoria. Se digitar um nome que não bate exatamente com o cadastro, o sistema pausa e pergunta antes de importar (igual acontece com Categoria/Produto e Cliente). Deixe em branco se não quiser detalhar o item.',
+    'Valor Unitário (Vendas): já vem sugerido sozinho com o preço cadastrado assim que você escolhe a Categoria (ou o Produto, quando preenchido) — pode digitar por cima pra usar outro valor (ex.: promoção, desconto).',
     'Nº da Venda (Vendas): opcional, mas importante pro ticket médio. Se a mesma pessoa levou produtos de categorias diferentes numa única compra (ex.: gás + água), repita o MESMO número em todas as linhas dessa venda (ex.: 1, 1, 2, 3, 3, 3...). Se você deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho as linhas do mesmo cliente no mesmo dia. Já em venda de balcão sem nome de cliente, é importante numerar — senão cada linha vira uma venda separada no ticket médio. Preencha o Frete só numa das linhas de cada venda numerada, pra não contar em dobro.',
     'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
     'Indicado Por (Cliente novo) / Aniversário Cliente (Cliente novo) (Vendas): opcionais, só valem quando o cliente da venda ainda não existe e vai ser criado automaticamente. Aniversário no formato AAAA-MM-DD.',
@@ -10637,9 +10699,13 @@ async function gerarModeloImportacaoDiaria(){
   wsVendas.columns.forEach(c=>{ c.width = 16; });
   aplicarDropdown(wsVendas, 'G', 'A', CANAIS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'H', 'E', categoriasProdutoValidas.length, 2, ULTIMA_LINHA);
-  // Coluna "Produto" (item específico) fica livre pra digitar, sem lista suspensa vinculada à
-  // categoria: quando a categoria é nova, essa lista quebrava e o Excel travava a digitação.
-  // O sistema já resolve nomes novos na tela de confirmação da importação diária.
+  // Coluna "Produto" (item específico): dropdown em cascata — só aparece depois de escolher a
+  // Categoria na coluna H, e mostra só os produtos daquela categoria. Continua aceitando digitar
+  // um nome novo (o sistema resolve na tela de confirmação da importação diária).
+  aplicarDropdownDependente(wsVendas, 'I', 'H', 2, ULTIMA_LINHA);
+  // Valor Unitário: já vem sugerido com o preço cadastrado do produto (ou da categoria, se for
+  // item controlado como gás/água). Pode digitar por cima pra sobrescrever.
+  aplicarAutoPreenchimentoPreco(wsVendas, 'K', 'I', 'H', 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'L', 'B', PAGAMENTOS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'M', 'C', NOTAS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'N', 'D', TIPOS_ENTREGA.length, 2, ULTIMA_LINHA);
