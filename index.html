@@ -10715,7 +10715,7 @@ function processarImportacaoDiariaExcel(file){
     const pendentesProdutos = detectarProdutosPendentesVendas(linhasVendas);
     const pendentesClientes = detectarClientesPendentesVendas(linhasVendas);
     const pendentesItensProduto = detectarItensProdutoPendentesVendas(linhasVendas);
-    if(pendentesProdutos.length>0 || pendentesClientes.length>0 || pendentesItensProduto.length>0){
+    if(pendentesProdutos.length>0 || pendentesItensProduto.length>0){
       mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, pendentesItensProduto, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa);
       return;
     }
@@ -10758,26 +10758,43 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         const controlada = isControlada(categoria);
         let produto = controlada ? categoria : textoCategoria;
         const quantidade = r['Quantidade'] ? (Number(String(r['Quantidade']).replace(',','.'))||1) : 1;
-        const valor_unit = r['Valor Unitário'] ? (Number(String(r['Valor Unitário']).replace(/\./g,'').replace(',','.'))||0) : 0;
+        // Resolve primeiro qual produto do catálogo essa linha representa, pra poder puxar o preço
+        // cadastrado dele quando a planilha não trouxer "Valor Unitário" preenchido.
+        const textoItemProduto = (r['Produto']||'').trim();
+        let itemProdutoEncontrado = null, itemEhNovo = false;
+        if(textoItemProduto){
+          const chaveItem = chaveNormalizada(textoItemProduto);
+          itemProdutoEncontrado = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveItem);
+          if(!itemProdutoEncontrado){
+            const resolvidoItem = resolucaoItensProdutoImportacaoDiaria[chaveItem];
+            if(resolvidoItem && resolvidoItem.acao==='existente'){
+              itemProdutoEncontrado = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveNormalizada(resolvidoItem.nome));
+            } else {
+              itemEhNovo = true;
+            }
+          }
+        }
+        const produtoDaCategoria = state.produtos.find(p=>chaveNormalizada(p.categoria)===chaveNormalizada(categoria) && (controlada || chaveNormalizada(p.nome)===chaveNormalizada(produto)));
+        // Valor unitário: usa o que veio na planilha; se vier em branco, puxa o preço já cadastrado
+        // no sistema (do item específico, ou da categoria/produto controlado) — e some pra 0 só se
+        // não achar preço nenhum cadastrado, pra você poder digitar na hora caso tenha esquecido de atualizar.
+        const valorPlanilha = (r['Valor Unitário']||'').toString().trim();
+        const valor_unit = valorPlanilha
+          ? (Number(valorPlanilha.replace(/\./g,'').replace(',','.'))||0)
+          : Number((itemProdutoEncontrado && itemProdutoEncontrado.preco) || (produtoDaCategoria && produtoDaCategoria.preco) || 0);
         if(categoriaEhNova && !controlada){
           const jaTemNoCatalogo = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveNormalizada(produto) && chaveNormalizada(p.categoria)===chaveNormalizada(categoria));
           if(!jaTemNoCatalogo) state.produtos.push({id:uid(), nome:produto, categoria, preco:valor_unit, ativo:true});
         }
         // Coluna "Produto": item específico dentro da categoria (ex.: categoria Bebidas, produto Coca-Cola 2L).
         // Opcional — se preenchida, substitui o "produto" genérico pra ficar detalhado nos relatórios.
-        const textoItemProduto = (r['Produto']||'').trim();
         if(textoItemProduto){
-          const chaveItem = chaveNormalizada(textoItemProduto);
-          const itemExistente = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveItem);
-          if(itemExistente){
-            produto = itemExistente.nome;
+          if(itemProdutoEncontrado){
+            produto = itemProdutoEncontrado.nome;
           } else {
-            const resolvidoItem = resolucaoItensProdutoImportacaoDiaria[chaveItem];
-            if(resolvidoItem && resolvidoItem.acao==='existente'){
-              produto = resolvidoItem.nome;
-            } else {
-              produto = textoItemProduto;
-              const jaTemItem = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveItem && chaveNormalizada(p.categoria)===chaveNormalizada(categoria));
+            produto = textoItemProduto;
+            if(itemEhNovo){
+              const jaTemItem = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveNormalizada(produto) && chaveNormalizada(p.categoria)===chaveNormalizada(categoria));
               if(!jaTemItem) state.produtos.push({id:uid(), nome:produto, categoria, preco:valor_unit, ativo:true});
             }
           }
@@ -10804,6 +10821,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
               criadoEm: Date.now()
             });
             clientesNovosDeVendas++;
+            adicionarPendenciaConferencia('venda','cliente',cliente,'Nome não bateu exatamente com nenhum cliente cadastrado; cadastrado automaticamente — confira se não é duplicata.');
           }
         }
         const canal = (r['Canal']||'').trim() || CANAIS[0];
