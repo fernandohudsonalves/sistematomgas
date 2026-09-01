@@ -6771,8 +6771,13 @@ function evolucaoMensalCompleta(){
   state.despesas.forEach(d=>mesesReais.add(monthKey(d.data)));
   mesesReais.forEach(function(mk){
     const base = porMes[mk] || {};
-    if(chaveVendasCol) base[chaveVendasCol] = state.vendas.filter(v=>monthKey(v.data)===mk).reduce((s,v)=>s+v.valor_total,0);
-    if(chaveDespesasCol) base[chaveDespesasCol] = state.despesas.filter(d=>monthKey(d.data)===mk).reduce((s,d)=>s+d.valor,0);
+    const vendasMes = state.vendas.filter(v=>monthKey(v.data)===mk);
+    const despesasMes = state.despesas.filter(d=>monthKey(d.data)===mk);
+    // Só sobrescreve com o total lançado no sistema se de fato existir lançamento daquele tipo
+    // nesse mês. Sem isso, um mês com só despesas lançadas no sistema (por exemplo) zerava
+    // a coluna de vendas que tinha sido importada da planilha de evolução.
+    if(chaveVendasCol && vendasMes.length>0) base[chaveVendasCol] = vendasMes.reduce((s,v)=>s+v.valor_total,0);
+    if(chaveDespesasCol && despesasMes.length>0) base[chaveDespesasCol] = despesasMes.reduce((s,d)=>s+d.valor,0);
     porMes[mk] = base;
   });
   return porMes;
@@ -10636,6 +10641,13 @@ async function gerarModeloImportacaoDiaria(){
   }
 
   function colunaParaLetra(n){ let s=''; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
+  // Trava as colunas de data como TEXTO. Sem isso, o Excel converte o que foi digitado (ex.:
+  // "01/09/2026") pra um valor de data internamente, usando o formato regional do computador de
+  // quem preencheu — se estiver em inglês (MM/DD), o Excel troca dia por mês sozinho, sem avisar
+  // (01/09 vira 9 de janeiro em vez de 1 de setembro), e é esse valor já errado que chega até o
+  // sistema. Com a coluna em texto, fica exatamente o que a pessoa digitou, e o sistema mesmo
+  // (que já entende DD/MM/AAAA) resolve certo na importação.
+  function formatarColunaComoTexto(ws, colunaLetra){ ws.getColumn(colunaLetra).numFmt = '@'; }
   // Listas de produtos separadas por categoria (pra dropdown dependente: escolheu a categoria em H,
   // a coluna Produto já mostra só os produtos daquela categoria). Fica numa aba oculta à parte.
   const wsProdPorCat = wb.addWorksheet('ProdutosPorCategoria');
@@ -10666,8 +10678,9 @@ async function gerarModeloImportacaoDiaria(){
     '1. Preencha as abas Vendas, Despesas, Clientes e Produtos durante o dia. Deixe em branco a aba que não for usar.',
     '2. No fim do expediente, vá em Configurações > Importação diária e suba este mesmo arquivo.',
     '3. Não mude o nome das abas nem os títulos da primeira linha de cada aba — é assim que o sistema reconhece as colunas.',
-    '4. As colunas com opções fixas ou já cadastradas no sistema (Canal, Forma de Pagamento, Nota, Tipo de Entrega, Categoria, Cliente, Empresa Convênio, Indicado Por, Veículo, Oficina/Empresa) já vêm com uma setinha — clique na célula e escolha da lista. Nas colunas de Cliente/Empresa/Oficina você ainda pode digitar um nome novo se ele ainda não existir; nas demais, escolha sempre uma opção da lista.',
-    '5. Todas as abas de preenchimento (Vendas, Despesas, ContasPagar, FechamentoCaixa, Clientes, Produtos) já vêm formatadas em A4, com linhas/colunas prontas pra imprimir e usar no papel antes de digitar — bom pra fazer a conferência tripla do dia (impresso x planilha x sistema).',
+    '4. Datas: digite no formato DD/MM/AAAA (ex.: 01/09/2026) ou AAAA-MM-DD (ex.: 2026-09-01). As colunas de data já vêm travadas como texto nesta planilha — não mude a formatação da célula pra "Data", senão o Excel pode reinterpretar o que você digitou usando a configuração regional do computador (trocando dia por mês sem avisar).',
+    '5. As colunas com opções fixas ou já cadastradas no sistema (Canal, Forma de Pagamento, Nota, Tipo de Entrega, Categoria, Cliente, Empresa Convênio, Indicado Por, Veículo, Oficina/Empresa) já vêm com uma setinha — clique na célula e escolha da lista. Nas colunas de Cliente/Empresa/Oficina você ainda pode digitar um nome novo se ele ainda não existir; nas demais, escolha sempre uma opção da lista.',
+    '6. Todas as abas de preenchimento (Vendas, Despesas, ContasPagar, FechamentoCaixa, Clientes, Produtos) já vêm formatadas em A4, com linhas/colunas prontas pra imprimir e usar no papel antes de digitar — bom pra fazer a conferência tripla do dia (impresso x planilha x sistema).',
     '',
     'Valores válidos para preencher:',
     'Canal (Vendas): '+CANAIS.join(' | '),
@@ -10712,6 +10725,8 @@ async function gerarModeloImportacaoDiaria(){
   aplicarDropdown(wsVendas, 'C', 'L', state.clientes.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'O', 'M', state.empresas.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'R', 'L', state.clientes.length, 2, ULTIMA_LINHA);
+  formatarColunaComoTexto(wsVendas, 'A'); // Data
+  formatarColunaComoTexto(wsVendas, 'S'); // Aniversário Cliente (Cliente novo)
   configurarImpressaoA4(wsVendas, 19, 45);
 
   // ---- Aba Despesas ----
@@ -10723,6 +10738,9 @@ async function gerarModeloImportacaoDiaria(){
   aplicarDropdown(wsDespesas, 'E', 'I', state.veiculos.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsDespesas, 'F', 'O', state.oficinasManutencao.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsDespesas, 'G', 'N', 2, 2, ULTIMA_LINHA);
+  formatarColunaComoTexto(wsDespesas, 'A'); // Data
+  formatarColunaComoTexto(wsDespesas, 'I'); // Garantia Até
+  formatarColunaComoTexto(wsDespesas, 'J'); // Próxima Manutenção
   configurarImpressaoA4(wsDespesas, 10, 35);
 
   // ---- Aba ContasPagar ----
@@ -10734,6 +10752,8 @@ async function gerarModeloImportacaoDiaria(){
   aplicarDropdown(wsContas, 'E', 'K', 2, 2, ULTIMA_LINHA);
   aplicarDropdown(wsContas, 'F', 'J', 2, 2, ULTIMA_LINHA);
   aplicarDropdown(wsContas, 'H', 'I', state.veiculos.length, 2, ULTIMA_LINHA);
+  formatarColunaComoTexto(wsContas, 'D'); // Vencimento
+  formatarColunaComoTexto(wsContas, 'G'); // Data Pagamento
   configurarImpressaoA4(wsContas, 8, 30);
 
   // ---- Aba FechamentoCaixa ----
@@ -10741,6 +10761,7 @@ async function gerarModeloImportacaoDiaria(){
   wsCaixa.addRow(['Data','Abertura','Dinheiro Contado','Observação']);
   wsCaixa.getRow(1).font = {bold:true};
   wsCaixa.columns.forEach(c=>{ c.width = 18; });
+  formatarColunaComoTexto(wsCaixa, 'A'); // Data
   configurarImpressaoA4(wsCaixa, 4, 10);
 
   // ---- Aba Clientes ----
@@ -10749,6 +10770,7 @@ async function gerarModeloImportacaoDiaria(){
   wsClientes.getRow(1).font = {bold:true};
   wsClientes.columns.forEach(c=>{ c.width = 18; });
   aplicarDropdown(wsClientes, 'F', 'L', state.clientes.length, 2, ULTIMA_LINHA);
+  formatarColunaComoTexto(wsClientes, 'G'); // Aniversário
   configurarImpressaoA4(wsClientes, 7, 25);
 
   // ---- Aba Produtos ----
