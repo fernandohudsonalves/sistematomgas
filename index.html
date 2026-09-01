@@ -11305,7 +11305,7 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
   overlay.id = 'overlay-resolucao-produtos';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px;';
   const opcoesProdutos = ()=> (state.categoriasProdutos||[]).map(c=>'<option value="'+escapeHtmlCampanha(c)+'">'+escapeHtmlCampanha(c)+'</option>').join('');
-  const opcoesClientes = ()=> (state.clientes||[]).map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">'+escapeHtmlCampanha(c.nome)+'</option>').join('');
+  const clientesOrdenados = ()=> (state.clientes||[]).slice().sort((a,b)=>chaveNormalizada(a.nome).localeCompare(chaveNormalizada(b.nome),'pt-BR'));
   let linhasHtml = '';
   if(pendentesProdutos.length>0){
     linhasHtml += '<h3 style="margin-top:16px;">📦 Produtos</h3>';
@@ -11324,12 +11324,20 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
     linhasHtml += '<h3 style="margin-top:16px;">🙍 Clientes</h3>';
     pendentesClientes.forEach(([chave, info])=>{
       const sugestao = sugerirClienteSimilar(info.texto);
+      const nomeSugerido = (sugestao.nome && sugestao.score>=0.5) ? sugestao.nome : '';
       linhasHtml += '<div style="padding:10px 0;border-bottom:1px solid #ddd;">'+
         '<div><strong>"'+escapeHtmlCampanha(info.texto)+'"</strong> <span class="hint">('+info.ocorrencias+'x na planilha)</span></div>'+
-        (sugestao.nome && sugestao.score>=0.5 ? '<div class="hint">Parece com <strong>'+escapeHtmlCampanha(sugestao.nome)+'</strong> ('+Math.round(sugestao.score*100)+'% parecido)</div>' : '')+
+        (nomeSugerido ? '<div class="hint">Parece com <strong>'+escapeHtmlCampanha(nomeSugerido)+'</strong> ('+Math.round(sugestao.score*100)+'% parecido)</div>' : '')+
         '<div class="form-row" style="margin-top:6px;">'+
         '<div><label>O que fazer</label><select class="sel-acao-resolucao-diaria" data-tipo="cliente" data-chave="'+chave+'"><option value="existente"'+(sugestao.score>=0.5?' selected':'')+'>Já existe</option><option value="novo"'+(sugestao.score<0.5?' selected':'')+'>É novo, cadastrar</option></select></div>'+
-        '<div class="wrap-select-existente-diaria"><label>Qual já existe</label><select class="sel-existente-diaria" data-tipo="cliente" data-chave="'+chave+'">'+opcoesClientes()+'</select></div>'+
+        '<div class="wrap-select-existente-diaria">'+
+          '<label>Qual já existe</label>'+
+          '<div class="combo-cliente-diaria" data-chave="'+chave+'" style="position:relative;">'+
+            '<input type="text" class="input-busca-cliente-diaria" data-chave="'+chave+'" placeholder="Digite pra buscar o cliente..." autocomplete="off" value="'+escapeHtmlCampanha(nomeSugerido)+'" style="width:100%;box-sizing:border-box;">'+
+            '<input type="hidden" class="valor-cliente-diaria" data-chave="'+chave+'" value="'+escapeHtmlCampanha(nomeSugerido)+'">'+
+            '<div class="lista-opcoes-cliente-diaria" style="display:none;position:absolute;z-index:10;left:0;right:0;top:100%;background:#fff;border:1px solid #ccc;border-top:none;max-height:180px;overflow:auto;box-shadow:0 4px 10px rgba(0,0,0,.12);"></div>'+
+          '</div>'+
+        '</div>'+
         '</div></div>';
     });
   }
@@ -11350,21 +11358,58 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
     };
     sel.onchange = atualizar; atualizar();
   });
+  // Combobox de busca de cliente: digita pra filtrar, clica na lista pra marcar quem é o cliente certo.
+  document.querySelectorAll('.combo-cliente-diaria').forEach(combo=>{
+    const chave = combo.dataset.chave;
+    const input = combo.querySelector('.input-busca-cliente-diaria');
+    const hidden = combo.querySelector('.valor-cliente-diaria');
+    const lista = combo.querySelector('.lista-opcoes-cliente-diaria');
+    const renderLista = (termo)=>{
+      const termoChave = chaveNormalizada(termo||'');
+      const opcoes = clientesOrdenados().filter(c=>!termoChave || chaveNormalizada(c.nome).includes(termoChave)).slice(0,50);
+      if(opcoes.length===0){
+        lista.innerHTML = '<div style="padding:8px 10px;color:#777;">Nenhum cliente encontrado.</div>';
+      } else {
+        lista.innerHTML = opcoes.map(c=>'<div class="opcao-cliente-diaria" data-chave="'+chave+'" data-nome="'+escapeHtmlCampanha(c.nome)+'" style="padding:8px 10px;cursor:pointer;">'+escapeHtmlCampanha(c.nome)+'</div>').join('');
+      }
+      lista.style.display = '';
+    };
+    input.oninput = ()=>{ hidden.value=''; renderLista(input.value); };
+    input.onfocus = ()=>{ renderLista(input.value); };
+    lista.onclick = (ev)=>{
+      const item = ev.target.closest('.opcao-cliente-diaria');
+      if(!item) return;
+      input.value = item.dataset.nome;
+      hidden.value = item.dataset.nome;
+      lista.style.display = 'none';
+    };
+    document.addEventListener('click', (ev)=>{
+      if(!combo.contains(ev.target)) lista.style.display = 'none';
+    });
+  });
   document.getElementById('btn-marcar-tudo-novo-diaria').onclick = ()=>{
     document.querySelectorAll('.sel-acao-resolucao-diaria').forEach(sel=>{ sel.value='novo'; sel.dispatchEvent(new Event('change')); });
   };
   document.getElementById('btn-cancelar-resolucao-diaria').onclick = ()=>{ overlay.remove(); };
   document.getElementById('btn-confirmar-resolucao-diaria').onclick = async ()=>{
+    let faltaEscolherCliente = false;
     document.querySelectorAll('.sel-acao-resolucao-diaria').forEach(sel=>{
       const chave = sel.dataset.chave, tipo = sel.dataset.tipo;
       const mapa = tipo==='produto' ? resolucaoProdutosImportacaoDiaria : resolucaoClientesImportacaoDiaria;
       if(sel.value==='existente'){
-        const selExist = document.querySelector('.sel-existente-diaria[data-tipo="'+tipo+'"][data-chave="'+chave+'"]');
-        mapa[chave] = tipo==='produto' ? {acao:'existente', categoria:selExist.value} : {acao:'existente', nome:selExist.value};
+        if(tipo==='produto'){
+          const selExist = document.querySelector('.sel-existente-diaria[data-tipo="produto"][data-chave="'+chave+'"]');
+          mapa[chave] = {acao:'existente', categoria:selExist.value};
+        } else {
+          const hidden = document.querySelector('.valor-cliente-diaria[data-chave="'+chave+'"]');
+          if(!hidden.value){ faltaEscolherCliente = true; return; }
+          mapa[chave] = {acao:'existente', nome:hidden.value};
+        }
       } else {
         mapa[chave] = {acao:'novo'};
       }
     });
+    if(faltaEscolherCliente){ alert('Busque e clique no cliente certo pra cada item marcado como "Já existe" antes de continuar.'); return; }
     overlay.remove();
     await continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa);
   };
