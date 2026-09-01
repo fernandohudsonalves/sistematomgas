@@ -586,6 +586,31 @@ const AUTH_APP_HTML = `
       <button type="submit" class="btn small" style="margin-top:8px;">Salvar</button>
       <button type="button" id="agenda-cancelar-edicao" class="btn small ghost" style="display:none;">Cancelar edição</button>
     </form>
+    <hr>
+    <h3 style="margin:10px 0 4px;">🔁 Alarmes recorrentes</h3>
+    <div id="alarmes-rec-lista"></div>
+    <form id="form-alarme-rec">
+      <input type="hidden" name="id">
+      <label>Título *</label><input type="text" name="titulo" required>
+      <div class="form-row"><div><label>Seg</label><input type="time" name="seg"></div><div><label>Ter</label><input type="time" name="ter"></div></div>
+      <div class="form-row"><div><label>Qua</label><input type="time" name="qua"></div><div><label>Qui</label><input type="time" name="qui"></div></div>
+      <div class="form-row"><div><label>Sex</label><input type="time" name="sex"></div><div><label>Sáb</label><input type="time" name="sab"></div></div>
+      <div class="form-row"><div><label>Dom</label><input type="time" name="dom"></div><div><label>Feriado</label><input type="time" name="feriado"></div></div>
+      <div class="hint">Deixe vazio o dia em que não deve tocar. Repete pra sempre. Quando o dia for feriado, vale o horário "Feriado" (mesmo caindo num dia útil).</div>
+      <label><input type="checkbox" name="som" checked style="width:auto;"> Alerta sonoro</label>
+      <button type="submit" class="btn small" style="margin-top:8px;">Salvar alarme</button>
+      <button type="button" id="alarme-rec-cancelar" class="btn small ghost" style="display:none;">Cancelar edição</button>
+    </form>
+    <hr>
+    <h3 style="margin:10px 0 4px;">🟡 Feriados cadastrados</h3>
+    <div id="feriados-lista"></div>
+    <form id="form-feriado">
+      <label>Data</label><input type="date" name="data" required>
+      <label>Nome</label><input type="text" name="nome" placeholder="Ex: Aniversário da cidade" required>
+      <label><input type="checkbox" name="recorrente" checked style="width:auto;"> Repetir todo ano (mesma data)</label>
+      <div class="hint">Feriados nacionais já vêm cadastrados automaticamente.</div>
+      <button type="submit" class="btn small" style="margin-top:8px;">+ Adicionar feriado</button>
+    </form>
   </aside>
 `;
 document.getElementById('app').innerHTML = AUTH_APP_HTML;
@@ -1920,6 +1945,20 @@ function diasComemorativosAno(ano){
     {md:'12-31',nome:'🎊 Véspera de Ano Novo',tipo:'comemorativa'}
   ].sort((a,b)=>a.md.localeCompare(b.md));
 }
+function ehFeriado(dataStr){
+  if(!dataStr) return false;
+  const md = dataStr.slice(5);
+  const nacional = diasComemorativosAno(Number(dataStr.slice(0,4))).some(x=>x.tipo==='feriado' && x.md===md);
+  if(nacional) return true;
+  return (state.feriadosCustom||[]).some(f=> f.data===dataStr || f.md===md);
+}
+function nomeFeriado(dataStr){
+  const md = dataStr.slice(5);
+  const nac = diasComemorativosAno(Number(dataStr.slice(0,4))).find(x=>x.tipo==='feriado' && x.md===md);
+  if(nac) return nac.nome;
+  const cust = (state.feriadosCustom||[]).find(f=> f.data===dataStr || f.md===md);
+  return cust ? cust.nome : '';
+}
 let editorialMk = null, editorialView = 'mes', editEditorialId = null, editorialAno = null, editorialDataSelecionada = null;
 function itensEditorialDoDia(dataStr){
   const md = dataStr.slice(5);
@@ -2892,7 +2931,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -3026,6 +3065,14 @@ async function loadAll(){
   if(!state.envioCampanhaLog) state.envioCampanhaLog = [];
   if(!state.publicos) state.publicos = [];
   if(!state.agendaEventos) state.agendaEventos = [];
+  if(!state.alarmesRecorrentes) state.alarmesRecorrentes = [];
+  if(!state.feriadosCustom) state.feriadosCustom = [];
+  if(!state.alarmeFechamentoCaixaCriado){
+    state.alarmeFechamentoCaixaCriado = true;
+    state.alarmesRecorrentes.push({id:uid(), titulo:'Fechamento de caixa', ativo:true, som:true,
+      seg:'19:30', ter:'19:30', qua:'19:30', qui:'19:30', sex:'19:30', sab:'18:30', dom:'13:30', feriado:'13:30', avisadoData:''});
+    await save('alarmesRecorrentes'); await save('alarmeFechamentoCaixaCriado');
+  }
   if(!state.googleNegocio) state.googleNegocio = {metas:{}, desempenho:{}};
   if(!state.googleNegocio.metas) state.googleNegocio.metas = {};
   if(!state.googleNegocio.desempenho) state.googleNegocio.desempenho = {};
@@ -11855,12 +11902,43 @@ function renderAgendaLista(){
     '</div>'
   ).join('');
 }
+const DIAS_SEMANA_KEYS = ['dom','seg','ter','qua','qui','sex','sab'];
+function horarioDoAlarmeHoje(al, dataStr){
+  if(ehFeriado(dataStr)) return al.feriado||'';
+  const diaKey = DIAS_SEMANA_KEYS[new Date(dataStr+'T00:00:00').getDay()];
+  return al[diaKey]||'';
+}
+function renderAlarmesRecList(){
+  const box = document.getElementById('alarmes-rec-lista');
+  if(!box) return;
+  const al = state.alarmesRecorrentes||[];
+  if(al.length===0){ box.innerHTML = '<div class="empty">Nenhum alarme recorrente.</div>'; return; }
+  box.innerHTML = al.map(a=>
+    '<div class="ag-item">'+
+    '<div class="ag-titulo">'+a.titulo+(a.som?' 🔔':'')+(a.ativo===false?' <span style="color:#DC2626;">(pausado)</span>':'')+'</div>'+
+    '<div class="ag-meta">Seg-Sex '+(a.seg||'--')+' · Sáb '+(a.sab||'--')+' · Dom '+(a.dom||'--')+' · Feriado '+(a.feriado||'--')+'</div>'+
+    '<div class="ag-acoes"><button type="button" data-alarme-editar="'+a.id+'">✎</button>'+
+    '<button type="button" data-alarme-pausar="'+a.id+'">'+(a.ativo===false?'▶':'⏸')+'</button>'+
+    '<button type="button" data-alarme-excluir="'+a.id+'">🗑</button></div></div>'
+  ).join('');
+}
+function renderFeriadosList(){
+  const box = document.getElementById('feriados-lista');
+  if(!box) return;
+  const fs = (state.feriadosCustom||[]).slice().sort((a,b)=>(a.md||a.data).localeCompare(b.md||b.data));
+  if(fs.length===0){ box.innerHTML = '<div class="empty">Nenhum feriado extra cadastrado ainda.</div>'; return; }
+  box.innerHTML = fs.map(f=>
+    '<div class="ag-item"><div class="ag-titulo">'+f.nome+'</div>'+
+    '<div class="ag-meta">'+(f.md? 'Todo dia '+f.md.split('-').reverse().join('/')+' (repete)' : fmtDate(f.data)+' (só esse ano)')+'</div>'+
+    '<div class="ag-acoes"><button type="button" data-feriado-excluir="'+f.id+'">🗑</button></div></div>'
+  ).join('');
+}
 function initAgenda(){
   const fab = document.getElementById('agenda-fab'), drawer = document.getElementById('agenda-drawer'),
     head = drawer ? drawer.querySelector('.ag-head') : null,
     fechar = document.getElementById('agenda-fechar'),
     form = document.getElementById('form-agenda-evento'), cancelarEd = document.getElementById('agenda-cancelar-edicao');
-  function abrir(){ drawer.classList.add('open'); renderAgendaLista(); }
+  function abrir(){ drawer.classList.add('open'); renderAgendaLista(); renderAlarmesRecList(); renderFeriadosList(); }
   function fecharDrawer(){ drawer.classList.remove('open'); }
   if(fab) fab.onclick = abrir;
   if(fechar) fechar.onclick = fecharDrawer;
@@ -11904,6 +11982,86 @@ function initAgenda(){
       renderAgendaLista();
     }
   });
+  // ---- Alarmes recorrentes ----
+  const formAlarme = document.getElementById('form-alarme-rec'), cancelarAlarme = document.getElementById('alarme-rec-cancelar');
+  if(cancelarAlarme) cancelarAlarme.onclick = ()=>{ formAlarme.reset(); formAlarme.id.value=''; cancelarAlarme.style.display='none'; };
+  if(formAlarme) formAlarme.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(formAlarme);
+    const id = f.get('id');
+    const dados = {titulo:f.get('titulo'), som: formAlarme.som.checked,
+      seg:f.get('seg')||'', ter:f.get('ter')||'', qua:f.get('qua')||'', qui:f.get('qui')||'',
+      sex:f.get('sex')||'', sab:f.get('sab')||'', dom:f.get('dom')||'', feriado:f.get('feriado')||''};
+    if(!state.alarmesRecorrentes) state.alarmesRecorrentes = [];
+    if(id){
+      const idx = state.alarmesRecorrentes.findIndex(x=>x.id===id);
+      if(idx>-1) state.alarmesRecorrentes[idx] = Object.assign(state.alarmesRecorrentes[idx], dados);
+    } else {
+      dados.id = uid(); dados.ativo = true; dados.avisadoData = '';
+      state.alarmesRecorrentes.push(dados);
+    }
+    await save('alarmesRecorrentes');
+    formAlarme.reset(); formAlarme.id.value=''; if(cancelarAlarme) cancelarAlarme.style.display='none';
+    renderAlarmesRecList();
+  };
+  document.getElementById('alarmes-rec-lista').addEventListener('click', async(e)=>{
+    const btnEd = e.target.closest('[data-alarme-editar]'), btnEx = e.target.closest('[data-alarme-excluir]'), btnPa = e.target.closest('[data-alarme-pausar]');
+    if(btnEd){
+      const a = state.alarmesRecorrentes.find(x=>x.id===btnEd.dataset.alarmeEditar);
+      if(!a) return;
+      formAlarme.id.value = a.id; formAlarme.titulo.value = a.titulo;
+      ['seg','ter','qua','qui','sex','sab','dom','feriado'].forEach(k=> formAlarme[k].value = a[k]||'');
+      formAlarme.som.checked = !!a.som;
+      if(cancelarAlarme) cancelarAlarme.style.display='inline-block';
+    }
+    if(btnPa){
+      const a = state.alarmesRecorrentes.find(x=>x.id===btnPa.dataset.alarmePausar);
+      if(!a) return;
+      a.ativo = a.ativo===false ? true : false;
+      await save('alarmesRecorrentes');
+      renderAlarmesRecList();
+    }
+    if(btnEx){
+      if(!confirm('Excluir esse alarme recorrente?')) return;
+      state.alarmesRecorrentes = state.alarmesRecorrentes.filter(x=>x.id!==btnEx.dataset.alarmeExcluir);
+      await save('alarmesRecorrentes');
+      renderAlarmesRecList();
+    }
+  });
+  // ---- Feriados ----
+  const formFeriado = document.getElementById('form-feriado');
+  if(formFeriado) formFeriado.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(formFeriado);
+    const data = f.get('data'), recorrente = formFeriado.recorrente.checked;
+    if(!state.feriadosCustom) state.feriadosCustom = [];
+    state.feriadosCustom.push({id:uid(), nome:f.get('nome'), md: recorrente ? data.slice(5) : null, data: recorrente ? null : data});
+    await save('feriadosCustom');
+    formFeriado.reset(); formFeriado.recorrente.checked = true;
+    renderFeriadosList();
+  };
+  document.getElementById('feriados-lista').addEventListener('click', async(e)=>{
+    const btnEx = e.target.closest('[data-feriado-excluir]');
+    if(btnEx){
+      state.feriadosCustom = state.feriadosCustom.filter(x=>x.id!==btnEx.dataset.feriadoExcluir);
+      await save('feriadosCustom');
+      renderFeriadosList();
+    }
+  });
+  // Verifica alarmes recorrentes a cada minuto
+  setInterval(()=>{
+    const agora = new Date(), dataStr = todayStr(), horaAtual = String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0');
+    (state.alarmesRecorrentes||[]).forEach(al=>{
+      if(al.ativo===false) return;
+      const horario = horarioDoAlarmeHoje(al, dataStr);
+      if(!horario || horario!==horaAtual) return;
+      if(al.avisadoData===dataStr) return;
+      al.avisadoData = dataStr;
+      save('alarmesRecorrentes');
+      if(al.som){try{const C=window.AudioContext||window.webkitAudioContext;if(C){const ac=new C(),o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.45);}}catch(err){}}
+      alert('🔔 '+al.titulo+(ehFeriado(dataStr)?' (feriado — '+(nomeFeriado(dataStr)||'hoje')+')':'')+' às '+horario);
+    });
+  }, 60000);
   // Verifica lembretes a cada minuto e toca som se estiver na hora
   setInterval(()=>{
     const agora = new Date();
