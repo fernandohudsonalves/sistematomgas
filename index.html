@@ -1176,6 +1176,15 @@ const CATEGORIAS_CONTROLADAS = [];
    ganhar uma caixinha própria na tela de Estoque. */
 CATEGORIAS_ESTOQUE['Gás do Povo'] = {grupo:'gas', chave:'P13', tipo:'carga'};
 CATEGORIAS_CONTROLADAS.push('Gás do Povo');
+/* Apelidos antigos: cadastros/importações antigas às vezes salvaram só "P13", "P5" etc. como
+   categoria de produto avulsa, em vez do nome controlado correto "Carga de Gás P13". Isso faz
+   esse item errado aparecer solto no dropdown de Categoria (inclusive na planilha de importação).
+   Esse mapa é usado na limpeza automática pra migrar produtos/vendas pro nome certo e remover o
+   item errado da lista. */
+const ALIASES_CATEGORIAS_GAS = {};
+['P5','P13','P20','P45'].forEach(function(t){
+  ALIASES_CATEGORIAS_GAS[chaveNormalizada(t)] = 'Carga de Gás ' + t;
+});
 const CATEGORIAS_OUTRAS = ['Acessórios para Gás','Acessórios para Água','Bandeja de Ovos','Bebidas','Caldos','Camisetas',
   'Carvão','Cosméticos','Dúzia de Ovos','Farofas','Impressões e Xérox','Nhoque','Ovos Soltos','Produtos de Limpeza',
   'Produtos de Mercearia','Serviços Fernando','Suplementos','Terra dos Ventos','Toalhas'];
@@ -3121,7 +3130,8 @@ async function loadAll(){
     CATEGORIAS_CONTROLADAS.forEach(function(c){ chaveControlada[chaveNormalizada(c)] = c; });
     let duplicatasEstoqueRemovidas = 0;
     categoriasNaoControladas().forEach(function(cat){
-      const alvo = chaveControlada[chaveNormalizada(cat)];
+      const chaveCat = chaveNormalizada(cat);
+      const alvo = chaveControlada[chaveCat] || ALIASES_CATEGORIAS_GAS[chaveCat];
       if(alvo){
         renomearCategoriaProduto(cat, alvo);
         state.categoriasProdutos = state.categoriasProdutos.filter(c=>c!==cat);
