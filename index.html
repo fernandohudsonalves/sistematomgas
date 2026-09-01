@@ -10552,6 +10552,25 @@ async function gerarModeloImportacaoDiaria(){
     }
   }
 
+  function colunaParaLetra(n){ let s=''; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
+  // Listas de produtos separadas por categoria (pra dropdown dependente: escolheu a categoria em H,
+  // a coluna Produto já mostra só os produtos daquela categoria). Fica numa aba oculta à parte.
+  const wsProdPorCat = wb.addWorksheet('ProdutosPorCategoria');
+  wsProdPorCat.state = 'veryHidden';
+  const wsCatMap = wb.addWorksheet('CategoriasMap');
+  wsCatMap.state = 'veryHidden';
+  wb.definedNames.add('ListasValidas!$P$2:$P$'+Math.max(state.produtos.length,1)+1, 'PROD_CAT_0');
+  categoriasProdutoValidas.forEach(function(cat, i){
+    wsCatMap.getCell('A'+(i+1)).value = cat;
+    wsCatMap.getCell('B'+(i+1)).value = i+1;
+    const nomesDaCategoria = state.produtos.filter(p=>chaveNormalizada(p.categoria)===chaveNormalizada(cat)).map(p=>p.nome);
+    if(nomesDaCategoria.length>0){
+      const letra = colunaParaLetra(i+1);
+      nomesDaCategoria.forEach(function(nome, j){ wsProdPorCat.getCell(letra+(j+1)).value = nome; });
+      wb.definedNames.add('ProdutosPorCategoria!$'+letra+'$1:$'+letra+'$'+nomesDaCategoria.length, 'PROD_CAT_'+(i+1));
+    }
+  });
+
   // ---- Aba Instruções ----
   const wsInstr = wb.addWorksheet('Instruções');
   wsInstr.getColumn(1).width = 100;
@@ -10569,7 +10588,7 @@ async function gerarModeloImportacaoDiaria(){
     'Nota (Vendas): '+NOTAS.join(' | '),
     'Tipo de Entrega (Vendas): '+TIPOS_ENTREGA.join(' | '),
     'Categoria/Produto (Vendas): use o nome exato do produto ou categoria já cadastrado no sistema (ex.: P13, P45, Água 20L Safira, etc.) — já vem com dropdown das categorias cadastradas.',
-    'Produto (Vendas): opcional — use pra dizer qual item exato dentro da categoria foi vendido (ex.: categoria "Bebidas", produto "Coca-Cola 2L"), mesmo que esse item não tenha controle de estoque. Já vem com dropdown dos produtos cadastrados. Se digitar um nome que não bate exatamente com o cadastro, o sistema pausa e pergunta antes de importar (igual acontece com Categoria/Produto e Cliente). Deixe em branco se não quiser detalhar o item.',
+    'Produto (Vendas): opcional — use pra dizer qual item exato dentro da categoria foi vendido (ex.: categoria "Bebidas", produto "Coca-Cola 2L"), mesmo que esse item não tenha controle de estoque. A setinha dessa coluna já filtra sozinha e mostra só os produtos cadastrados na categoria que você escolheu na coluna anterior — escolha a categoria primeiro. Se digitar um nome que não bate exatamente com o cadastro, o sistema pausa e pergunta antes de importar (igual acontece com Categoria/Produto e Cliente). Deixe em branco se não quiser detalhar o item.',
     'Nº da Venda (Vendas): opcional, mas importante pro ticket médio. Se a mesma pessoa levou produtos de categorias diferentes numa única compra (ex.: gás + água), repita o MESMO número em todas as linhas dessa venda (ex.: 1, 1, 2, 3, 3, 3...). Se você deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho as linhas do mesmo cliente no mesmo dia. Já em venda de balcão sem nome de cliente, é importante numerar — senão cada linha vira uma venda separada no ticket médio. Preencha o Frete só numa das linhas de cada venda numerada, pra não contar em dobro.',
     'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
     'Indicado Por (Cliente novo) / Aniversário Cliente (Cliente novo) (Vendas): opcionais, só valem quando o cliente da venda ainda não existe e vai ser criado automaticamente. Aniversário no formato AAAA-MM-DD.',
@@ -10592,7 +10611,14 @@ async function gerarModeloImportacaoDiaria(){
   wsVendas.columns.forEach(c=>{ c.width = 16; });
   aplicarDropdown(wsVendas, 'G', 'A', CANAIS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'H', 'E', categoriasProdutoValidas.length, 2, ULTIMA_LINHA);
-  aplicarDropdown(wsVendas, 'I', 'P', state.produtos.length, 2, ULTIMA_LINHA);
+  for(let l=2; l<=ULTIMA_LINHA; l++){
+    wsVendas.getCell('I'+l).dataValidation = {
+      type:'list', allowBlank:true, showErrorMessage:true, errorStyle:'warning',
+      errorTitle:'Valor fora da lista',
+      error:'Escolha um produto da lista (ou deixe em branco). Se não aparecer o que você quer, confira a categoria na coluna anterior.',
+      formulae:['=INDIRECT("PROD_CAT_"&IFERROR(VLOOKUP($H'+l+',CategoriasMap!$A:$B,2,0),0))']
+    };
+  }
   aplicarDropdown(wsVendas, 'L', 'B', PAGAMENTOS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'M', 'C', NOTAS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'N', 'D', TIPOS_ENTREGA.length, 2, ULTIMA_LINHA);
