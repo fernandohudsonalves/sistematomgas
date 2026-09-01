@@ -1150,9 +1150,9 @@ const VAPID_PUBLIC_KEY = "BJhtEhjv3z9JMW44Yg3JsfoGYR4lNcINkr1fRzNLxvx-jzxtErj7Ew
 const CANAIS = ['Portaria','WhatsApp','Venda Ativa','Ligação','Hub','Google'];
 const PAGAMENTOS = ['Dinheiro','Débito','Crédito','Vale gás','Gás do povo','Pix','Abateu','Marcou/Fiado','Outros'];
 const NOTAS = ['Nota fiscal','Cupom não fiscal','Já lançado','Não lança'];
-const TIPOS_ENTREGA = ['Retirada','Falta retirar','Entrega a pé','Entrega de carro','Entrega de moto','Entrega de Strada'];
+const TIPOS_ENTREGA = ['Retirada','Falta retirar','Entrega a pé','Entrega de Celta','Entrega de moto','Entrega de Strada'];
 const DIAS_SEMANA_LABEL = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-const TIPOS_ENTREGA_COM_FRETE = ['Entrega de carro','Entrega de moto','Entrega de Strada'];
+const TIPOS_ENTREGA_COM_FRETE = ['Entrega de Celta','Entrega de moto','Entrega de Strada'];
 
 const CATEGORIAS_ESTOQUE = {};
 const CATEGORIAS_CONTROLADAS = [];
@@ -2413,7 +2413,7 @@ const c = cor || '#1E3A8A';
 const imgs = {
     'Retirada': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAPCAYAAADtc08vAAABDklEQVQokZ3Suy6EURQF4G/GpZHQKBRmJB5Ao6KRSOgUvIFGIvEElAoiUYln8ADiATRKCqJEJ2Eq9+uQE3uS35xJzFjJyT75s9ba+6z9l6qTWwJl7GAOyzjQBsoFSk+IK5htR5zQNVCZadw/8YI6NlDL2C1QnGAMq5jALnpzeo6iQRXDGMQ0NjN2CxQN3gv3GyxiJZf8RjdG0BengVpsZA1D2MuUP3hMazzBKNI+11GKIG9xHQ2a8/iKep4mmI/u1RA3CEu4jO2UWhikc58MruJjf9RDTEU+p9nQTSiGWI+6HeMvZOwWKBq84QNn2Md4pwbprU+4i/Be/2OQJniIf+K5U4PU+SiecoHjP9X4BvStN1F8z/edAAAAAElFTkSuQmCC',
     'Entrega a pé': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABDUlEQVR42qXTPyjEcRjH8dfP30L5l7I4BkXsBtvlxHKrJMogi0QG+40kG1bJIoYro1IMFou6GFiv3KjIQGH5Dtd1d37Od3y+z/f9fD7P83yjxPi2/5y6KncduMATxmoBDCCFQUxUSmqoArjDHoZxWAsghSRa8PFXC/PB/0iwshlAsQBt2MUD3vGKOZygMQ5gBj3I4BtN2ME0jhH9Bkgji1u0ohlnmEI+ThNX8Raq32MUB1jAZRwLebxgGZ1BTRo36C5Nrm/vmyzX3AROUQjjLGAxKLuOM8at4H8Fn9gPi7UeVFUFJDGLI1wVxTPowlJxclTmNz6iF0N4LimWQ3/YlYoKclgreQxf2MB5cfAHNuQyW4DWfx4AAAAASUVORK5CYII=',
-    'Entrega de carro': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA7ElEQVR4nHXRPyiEcRzH8dedozxlIFa7gfnHYFVXz2CRTiwUdRObzSRdykhikSTrk8Umg8d2BquFslhueSQpw/2ursOnvvXt0/fd919pfKYB0lBUsYZvTOAN72jhKMuTph6VI7iLUxxjEbc4xzIu0EhDsfALTkMxh+0I32MUn5jCCB6xj5M0FHtpKKY7cKm+tXONKj7wFf0B9EVPXGW4q+kZNiqYjMZgjG71944atYKXMoaisYT6P8Ud1VGL+XwF6zhAE2N4xt0f4CyetD/wis1KlidXaShauIy71bI8eegl01AEHGrfYjXLk5sfjhA8YYbc/r4AAAAASUVORK5CYII=',
+    'Entrega de Celta': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAICAYAAAAm06XyAAAA7ElEQVR4nHXRPyiEcRzH8dedozxlIFa7gfnHYFVXz2CRTiwUdRObzSRdykhikSTrk8Umg8d2BquFslhueSQpw/2ursOnvvXt0/fd919pfKYB0lBUsYZvTOAN72jhKMuTph6VI7iLUxxjEbc4xzIu0EhDsfALTkMxh+0I32MUn5jCCB6xj5M0FHtpKKY7cKm+tXONKj7wFf0B9EVPXGW4q+kZNiqYjMZgjG71944atYKXMoaisYT6P8Ud1VGL+XwF6zhAE2N4xt0f4CyetD/wis1KlidXaShauIy71bI8eegl01AEHGrfYjXLk5sfjhA8YYbc/r4AAAAASUVORK5CYII=',
     'Entrega de moto': 'iVBORw0KGgoAAAANSUhEUgAAABAAAAANCAYAAACgu+4kAAABUElEQVQokZXSMUiVYRTG8Z8aoQ5p6mBBhYK4iYM5XA0c2gprEzEuCYng4KSDS2A6NTjp4iKOJmgUoqBYGYFItEcQFLWUIiIKQaK8t4Mp18AOfHzf+3De/3nOw1dwPfPUP+oSpnEZXfh+VtuFPOVvleF+nBr/F1CELNYxj9d5HVGFecqfuofRmJwAe6G3nAeQXA3F9w5eog8PsBS5nAKU4Aau4UoE1oT3aMA39OImvsQ7exJQiw18xcewv48KdOIxpvAL9dg8EW7Obh0+YRAjaMYKDjCGt3GxOrSf0XvsoBSTuBOBXUQ7isP+IapiyBO04lnASxPgFYaxhQmsBXw30v8dTldjSDneoQ3jCXAXBZF0N24FoAafcTvOP2KFhwHvQUcip50qcTXcJLsJmJ6kP48c0tT+cLiAR9hOgEW8wBzeIBMrzZ7xzyxjBh9yzhk4AgxjR80D8QofAAAAAElFTkSuQmCC',
     'Entrega de Strada': 'iVBORw0KGgoAAAANSUhEUgAAAA8AAAAHCAYAAADXhRcnAAAAxElEQVQYlW3QIU+CYRQF4AfFTTcsjOaG3cEYxQAzaGZkk0ESP8GOhWywWdgIJIgkOhSDREfF5MZEgwp7t5ft2zdOurs7595zTqZY60rhDmV8ooQ5luhjlaQepJU4xBMeMUMH73hAIUnMood84tAZ7vGNc1zHuYIGRhhiGmyvcbLHwT784Bj/aIXPGbxhEOcbXKWUX3jGH07RDnGCOJQwxiJeDrsqjhLiCT6CVdTxust8iRya2MRML7G4HcKDW1zE5hv43QKS8CeKzldLEQAAAABJRU5ErkJggg==',
   };
@@ -2973,6 +2973,12 @@ async function loadAll(){
     await save('avisosProgramados');
   }
   if(!Array.isArray(state.fornecedoresGas)){ state.fornecedoresGas = []; }
+  { // Migração: "Entrega de carro" foi renomeado pra "Entrega de Celta" (é o veículo real usado)
+    let migrouEntregaCelta = false;
+    (state.vendas||[]).forEach(v=>{ if(v.tipo_entrega==='Entrega de carro'){ v.tipo_entrega='Entrega de Celta'; migrouEntregaCelta=true; } });
+    (state.agendamentos||[]).forEach(a=>{ if(a.tipo_entrega==='Entrega de carro'){ a.tipo_entrega='Entrega de Celta'; migrouEntregaCelta=true; } });
+    if(migrouEntregaCelta){ await save('vendas'); await save('agendamentos'); }
+  }
   [{nome:'Toninho', whatsapp:'554399005132'},{nome:'Rafa (filho do Toninho)', whatsapp:'554398610703'},{nome:'Luciano', whatsapp:'554396656840'}].forEach(f=>{
     if(!state.fornecedoresGas.some(x=>x.whatsapp===f.whatsapp)) state.fornecedoresGas.push(Object.assign({id:uid()},f));
   });
@@ -11304,7 +11310,7 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
   const overlay = document.createElement('div');
   overlay.id = 'overlay-resolucao-produtos';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px;';
-  const opcoesProdutos = ()=> (state.categoriasProdutos||[]).map(c=>'<option value="'+escapeHtmlCampanha(c)+'">'+escapeHtmlCampanha(c)+'</option>').join('');
+  const produtosOrdenados = ()=> (state.categoriasProdutos||[]).slice().sort((a,b)=>chaveNormalizada(a).localeCompare(chaveNormalizada(b),'pt-BR'));
   const clientesOrdenados = ()=> (state.clientes||[]).slice().sort((a,b)=>chaveNormalizada(a.nome).localeCompare(chaveNormalizada(b.nome),'pt-BR'));
   let linhasHtml = '';
   if(pendentesProdutos.length>0){
@@ -11314,9 +11320,17 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
       linhasHtml += '<div style="padding:10px 0;border-bottom:1px solid #ddd;">'+
         '<div><strong>"'+escapeHtmlCampanha(info.texto)+'"</strong> <span class="hint">('+info.ocorrencias+'x na planilha)</span></div>'+
         (sugestao.categoria && sugestao.score>=0.5 ? '<div class="hint">Parece com <strong>'+escapeHtmlCampanha(sugestao.categoria)+'</strong> ('+Math.round(sugestao.score*100)+'% parecido)</div>' : '')+
+        '<input type="hidden" class="sugestao-produto-diaria" data-chave="'+chave+'" value="'+(sugestao.categoria && sugestao.score>=0.5?escapeHtmlCampanha(sugestao.categoria):'')+'">'+
         '<div class="form-row" style="margin-top:6px;">'+
         '<div><label>O que fazer</label><select class="sel-acao-resolucao-diaria" data-tipo="produto" data-chave="'+chave+'"><option value="existente"'+(sugestao.score>=0.5?' selected':'')+'>Já existe</option><option value="novo"'+(sugestao.score<0.5?' selected':'')+'>É novo, cadastrar</option></select></div>'+
-        '<div class="wrap-select-existente-diaria"><label>Qual já existe</label><select class="sel-existente-diaria" data-tipo="produto" data-chave="'+chave+'">'+opcoesProdutos()+'</select></div>'+
+        '<div class="wrap-select-existente-diaria">'+
+          '<label>Qual já existe</label>'+
+          '<div class="combo-produto-diaria" data-chave="'+chave+'" style="position:relative;">'+
+            '<input type="text" class="input-busca-produto-diaria" data-chave="'+chave+'" placeholder="Digite pra buscar o produto..." autocomplete="off" style="width:100%;box-sizing:border-box;">'+
+            '<input type="hidden" class="sel-existente-diaria" data-tipo="produto" data-chave="'+chave+'" value="">'+
+            '<div class="lista-opcoes-produto-diaria" style="display:none;position:absolute;z-index:10;left:0;right:0;top:100%;background:#fff;border:1px solid #ccc;border-top:none;max-height:180px;overflow:auto;box-shadow:0 4px 10px rgba(0,0,0,.12);"></div>'+
+          '</div>'+
+        '</div>'+
         '</div></div>';
     });
   }
@@ -11358,6 +11372,35 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
     };
     sel.onchange = atualizar; atualizar();
   });
+  // Combobox de busca de produto: digita pra filtrar (ordem alfabética), clica na lista pra marcar qual já existe.
+  document.querySelectorAll('.combo-produto-diaria').forEach(combo=>{
+    const chave = combo.dataset.chave;
+    const input = combo.querySelector('.input-busca-produto-diaria');
+    const hidden = combo.querySelector('.sel-existente-diaria');
+    const lista = combo.querySelector('.lista-opcoes-produto-diaria');
+    const sugestaoEl = document.querySelector('.sugestao-produto-diaria[data-chave="'+chave+'"]');
+    if(sugestaoEl && sugestaoEl.value){ input.value = sugestaoEl.value; hidden.value = sugestaoEl.value; }
+    const renderLista = (termo)=>{
+      const termoChave = chaveNormalizada(termo||'');
+      const opcoes = produtosOrdenados().filter(c=>!termoChave || chaveNormalizada(c).includes(termoChave)).slice(0,50);
+      lista.innerHTML = opcoes.length===0
+        ? '<div style="padding:8px 10px;color:#777;">Nenhum produto encontrado.</div>'
+        : opcoes.map(c=>'<div class="opcao-produto-diaria" data-chave="'+chave+'" data-nome="'+escapeHtmlCampanha(c)+'" style="padding:8px 10px;cursor:pointer;">'+escapeHtmlCampanha(c)+'</div>').join('');
+      lista.style.display = '';
+    };
+    input.oninput = ()=>{ hidden.value=''; renderLista(input.value); };
+    input.onfocus = ()=>{ renderLista(input.value); };
+    lista.onclick = (ev)=>{
+      const item = ev.target.closest('.opcao-produto-diaria');
+      if(!item) return;
+      input.value = item.dataset.nome;
+      hidden.value = item.dataset.nome;
+      lista.style.display = 'none';
+    };
+    document.addEventListener('click', (ev)=>{
+      if(!combo.contains(ev.target)) lista.style.display = 'none';
+    });
+  });
   // Combobox de busca de cliente: digita pra filtrar, clica na lista pra marcar quem é o cliente certo.
   document.querySelectorAll('.combo-cliente-diaria').forEach(combo=>{
     const chave = combo.dataset.chave;
@@ -11392,13 +11435,14 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
   };
   document.getElementById('btn-cancelar-resolucao-diaria').onclick = ()=>{ overlay.remove(); };
   document.getElementById('btn-confirmar-resolucao-diaria').onclick = async ()=>{
-    let faltaEscolherCliente = false;
+    let faltaEscolherCliente = false, faltaEscolherProduto = false;
     document.querySelectorAll('.sel-acao-resolucao-diaria').forEach(sel=>{
       const chave = sel.dataset.chave, tipo = sel.dataset.tipo;
       const mapa = tipo==='produto' ? resolucaoProdutosImportacaoDiaria : resolucaoClientesImportacaoDiaria;
       if(sel.value==='existente'){
         if(tipo==='produto'){
           const selExist = document.querySelector('.sel-existente-diaria[data-tipo="produto"][data-chave="'+chave+'"]');
+          if(!selExist.value){ faltaEscolherProduto = true; return; }
           mapa[chave] = {acao:'existente', categoria:selExist.value};
         } else {
           const hidden = document.querySelector('.valor-cliente-diaria[data-chave="'+chave+'"]');
@@ -11409,6 +11453,7 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
         mapa[chave] = {acao:'novo'};
       }
     });
+    if(faltaEscolherProduto){ alert('Busque e clique no produto certo pra cada item marcado como "Já existe" antes de continuar.'); return; }
     if(faltaEscolherCliente){ alert('Busque e clique no cliente certo pra cada item marcado como "Já existe" antes de continuar.'); return; }
     overlay.remove();
     await continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa);
