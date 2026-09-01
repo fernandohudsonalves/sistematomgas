@@ -10511,7 +10511,8 @@ async function gerarModeloImportacaoDiaria(){
     {titulo:'ClienteExistente', valores:state.clientes.map(c=>c.nome)},
     {titulo:'EmpresaConveniada', valores:state.empresas.map(e=>e.nome)},
     {titulo:'FormaPagamentoDespesa', valores:['avista','parcelado']},
-    {titulo:'Oficina', valores:state.oficinasManutencao.map(o=>o.nome)}
+    {titulo:'Oficina', valores:state.oficinasManutencao.map(o=>o.nome)},
+    {titulo:'ProdutoCadastrado', valores:state.produtos.map(p=>p.nome)}
   ];
   colunasListas.forEach(function(col, idx){
     const letra = String.fromCharCode(65+idx);
@@ -10568,6 +10569,7 @@ async function gerarModeloImportacaoDiaria(){
     'Nota (Vendas): '+NOTAS.join(' | '),
     'Tipo de Entrega (Vendas): '+TIPOS_ENTREGA.join(' | '),
     'Categoria/Produto (Vendas): use o nome exato do produto ou categoria já cadastrado no sistema (ex.: P13, P45, Água 20L Safira, etc.) — já vem com dropdown das categorias cadastradas.',
+    'Produto (Vendas): opcional — use pra dizer qual item exato dentro da categoria foi vendido (ex.: categoria "Bebidas", produto "Coca-Cola 2L"), mesmo que esse item não tenha controle de estoque. Já vem com dropdown dos produtos cadastrados. Se digitar um nome que não bate exatamente com o cadastro, o sistema pausa e pergunta antes de importar (igual acontece com Categoria/Produto e Cliente). Deixe em branco se não quiser detalhar o item.',
     'Nº da Venda (Vendas): opcional, mas importante pro ticket médio. Se a mesma pessoa levou produtos de categorias diferentes numa única compra (ex.: gás + água), repita o MESMO número em todas as linhas dessa venda (ex.: 1, 1, 2, 3, 3, 3...). Se você deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho as linhas do mesmo cliente no mesmo dia. Já em venda de balcão sem nome de cliente, é importante numerar — senão cada linha vira uma venda separada no ticket médio. Preencha o Frete só numa das linhas de cada venda numerada, pra não contar em dobro.',
     'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
     'Indicado Por (Cliente novo) / Aniversário Cliente (Cliente novo) (Vendas): opcionais, só valem quando o cliente da venda ainda não existe e vai ser criado automaticamente. Aniversário no formato AAAA-MM-DD.',
@@ -10585,18 +10587,19 @@ async function gerarModeloImportacaoDiaria(){
 
   // ---- Aba Vendas ----
   const wsVendas = wb.addWorksheet('Vendas');
-  wsVendas.addRow(['Data','Nº da Venda','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação','Indicado Por (Cliente novo)','Aniversário Cliente (Cliente novo)']);
+  wsVendas.addRow(['Data','Nº da Venda','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação','Indicado Por (Cliente novo)','Aniversário Cliente (Cliente novo)']);
   wsVendas.getRow(1).font = {bold:true};
   wsVendas.columns.forEach(c=>{ c.width = 16; });
   aplicarDropdown(wsVendas, 'G', 'A', CANAIS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'H', 'E', categoriasProdutoValidas.length, 2, ULTIMA_LINHA);
-  aplicarDropdown(wsVendas, 'K', 'B', PAGAMENTOS.length, 2, ULTIMA_LINHA);
-  aplicarDropdown(wsVendas, 'L', 'C', NOTAS.length, 2, ULTIMA_LINHA);
-  aplicarDropdown(wsVendas, 'M', 'D', TIPOS_ENTREGA.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'I', 'P', state.produtos.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'L', 'B', PAGAMENTOS.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'M', 'C', NOTAS.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'N', 'D', TIPOS_ENTREGA.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'C', 'L', state.clientes.length, 2, ULTIMA_LINHA);
-  aplicarDropdown(wsVendas, 'N', 'M', state.empresas.length, 2, ULTIMA_LINHA);
-  aplicarDropdown(wsVendas, 'Q', 'L', state.clientes.length, 2, ULTIMA_LINHA);
-  configurarImpressaoA4(wsVendas, 18, 45);
+  aplicarDropdown(wsVendas, 'O', 'M', state.empresas.length, 2, ULTIMA_LINHA);
+  aplicarDropdown(wsVendas, 'R', 'L', state.clientes.length, 2, ULTIMA_LINHA);
+  configurarImpressaoA4(wsVendas, 19, 45);
 
   // ---- Aba Despesas ----
   const wsDespesas = wb.addWorksheet('Despesas');
@@ -10685,8 +10688,9 @@ function processarImportacaoDiariaExcel(file){
     }
     const pendentesProdutos = detectarProdutosPendentesVendas(linhasVendas);
     const pendentesClientes = detectarClientesPendentesVendas(linhasVendas);
-    if(pendentesProdutos.length>0 || pendentesClientes.length>0){
-      mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa);
+    const pendentesItensProduto = detectarItensProdutoPendentesVendas(linhasVendas);
+    if(pendentesProdutos.length>0 || pendentesClientes.length>0 || pendentesItensProduto.length>0){
+      mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, pendentesItensProduto, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa);
       return;
     }
     await continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa);
@@ -10726,12 +10730,31 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           }
         }
         const controlada = isControlada(categoria);
-        const produto = controlada ? categoria : textoCategoria;
+        let produto = controlada ? categoria : textoCategoria;
         const quantidade = r['Quantidade'] ? (Number(String(r['Quantidade']).replace(',','.'))||1) : 1;
         const valor_unit = r['Valor Unitário'] ? (Number(String(r['Valor Unitário']).replace(/\./g,'').replace(',','.'))||0) : 0;
         if(categoriaEhNova && !controlada){
           const jaTemNoCatalogo = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveNormalizada(produto) && chaveNormalizada(p.categoria)===chaveNormalizada(categoria));
           if(!jaTemNoCatalogo) state.produtos.push({id:uid(), nome:produto, categoria, preco:valor_unit, ativo:true});
+        }
+        // Coluna "Produto": item específico dentro da categoria (ex.: categoria Bebidas, produto Coca-Cola 2L).
+        // Opcional — se preenchida, substitui o "produto" genérico pra ficar detalhado nos relatórios.
+        const textoItemProduto = (r['Produto']||'').trim();
+        if(textoItemProduto){
+          const chaveItem = chaveNormalizada(textoItemProduto);
+          const itemExistente = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveItem);
+          if(itemExistente){
+            produto = itemExistente.nome;
+          } else {
+            const resolvidoItem = resolucaoItensProdutoImportacaoDiaria[chaveItem];
+            if(resolvidoItem && resolvidoItem.acao==='existente'){
+              produto = resolvidoItem.nome;
+            } else {
+              produto = textoItemProduto;
+              const jaTemItem = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveItem && chaveNormalizada(p.categoria)===chaveNormalizada(categoria));
+              if(!jaTemItem) state.produtos.push({id:uid(), nome:produto, categoria, preco:valor_unit, ativo:true});
+            }
+          }
         }
         const valor_total = Math.round(quantidade*valor_unit*100)/100;
         const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
@@ -11316,7 +11339,30 @@ function detectarProdutosPendentesVendas(linhasVendas){
   });
   return [...distintos.entries()];
 }
-function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa){
+let resolucaoItensProdutoImportacaoDiaria = {};
+function detectarItensProdutoPendentesVendas(linhasVendas){
+  const distintos = new Map();
+  linhasVendas.forEach(function(r){
+    const texto = (r['Produto']||'').trim();
+    if(!texto) return;
+    const chave = chaveNormalizada(texto);
+    if(resolucaoItensProdutoImportacaoDiaria[chave]) return;
+    const existente = state.produtos.find(p=>chaveNormalizada(p.nome)===chave);
+    if(existente) return;
+    if(!distintos.has(chave)) distintos.set(chave, {texto, ocorrencias:0});
+    distintos.get(chave).ocorrencias++;
+  });
+  return [...distintos.entries()];
+}
+function sugerirItemProdutoSimilar(texto){
+  let melhor=null, melhorScore=0;
+  (state.produtos||[]).forEach(p=>{
+    const score = similaridadeTexto(texto, p.nome);
+    if(score>melhorScore){ melhorScore=score; melhor=p.nome; }
+  });
+  return {nome:melhor, score:melhorScore};
+}
+function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, pendentesItensProduto, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa){
   const overlay = document.createElement('div');
   overlay.id = 'overlay-resolucao-produtos';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99998;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px;';
@@ -11339,6 +11385,27 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
             '<input type="text" class="input-busca-produto-diaria" data-chave="'+chave+'" placeholder="Digite pra buscar o produto..." autocomplete="off" style="width:100%;box-sizing:border-box;">'+
             '<input type="hidden" class="sel-existente-diaria" data-tipo="produto" data-chave="'+chave+'" value="">'+
             '<div class="lista-opcoes-produto-diaria" style="display:none;position:absolute;z-index:10;left:0;right:0;top:100%;background:#fff;border:1px solid #ccc;border-top:none;max-height:180px;overflow:auto;box-shadow:0 4px 10px rgba(0,0,0,.12);"></div>'+
+          '</div>'+
+        '</div>'+
+        '</div></div>';
+    });
+  }
+  if(pendentesItensProduto.length>0){
+    linhasHtml += '<h3 style="margin-top:16px;">🏷️ Produto (item específico)</h3>';
+    pendentesItensProduto.forEach(([chave, info])=>{
+      const sugestao = sugerirItemProdutoSimilar(info.texto);
+      linhasHtml += '<div style="padding:10px 0;border-bottom:1px solid #ddd;">'+
+        '<div><strong>"'+escapeHtmlCampanha(info.texto)+'"</strong> <span class="hint">('+info.ocorrencias+'x na planilha)</span></div>'+
+        (sugestao.nome && sugestao.score>=0.5 ? '<div class="hint">Parece com <strong>'+escapeHtmlCampanha(sugestao.nome)+'</strong> ('+Math.round(sugestao.score*100)+'% parecido)</div>' : '')+
+        '<input type="hidden" class="sugestao-item-produto-diaria" data-chave="'+chave+'" value="'+(sugestao.nome && sugestao.score>=0.5?escapeHtmlCampanha(sugestao.nome):'')+'">'+
+        '<div class="form-row" style="margin-top:6px;">'+
+        '<div><label>O que fazer</label><select class="sel-acao-resolucao-diaria" data-tipo="item" data-chave="'+chave+'"><option value="existente"'+(sugestao.score>=0.5?' selected':'')+'>Já existe</option><option value="novo"'+(sugestao.score<0.5?' selected':'')+'>É novo, cadastrar</option></select></div>'+
+        '<div class="wrap-select-existente-diaria">'+
+          '<label>Qual já existe</label>'+
+          '<div class="combo-item-produto-diaria" data-chave="'+chave+'" style="position:relative;">'+
+            '<input type="text" class="input-busca-item-produto-diaria" data-chave="'+chave+'" placeholder="Digite pra buscar o produto..." autocomplete="off" style="width:100%;box-sizing:border-box;">'+
+            '<input type="hidden" class="sel-existente-diaria" data-tipo="item" data-chave="'+chave+'" value="">'+
+            '<div class="lista-opcoes-item-produto-diaria" style="display:none;position:absolute;z-index:10;left:0;right:0;top:100%;background:#fff;border:1px solid #ccc;border-top:none;max-height:180px;overflow:auto;box-shadow:0 4px 10px rgba(0,0,0,.12);"></div>'+
           '</div>'+
         '</div>'+
         '</div></div>';
@@ -11411,6 +11478,36 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
       if(!combo.contains(ev.target)) lista.style.display = 'none';
     });
   });
+  // Combobox de busca de produto específico (coluna Produto): mesma lógica, mas contra state.produtos por nome.
+  document.querySelectorAll('.combo-item-produto-diaria').forEach(combo=>{
+    const chave = combo.dataset.chave;
+    const input = combo.querySelector('.input-busca-item-produto-diaria');
+    const hidden = combo.querySelector('.sel-existente-diaria');
+    const lista = combo.querySelector('.lista-opcoes-item-produto-diaria');
+    const sugestaoEl = document.querySelector('.sugestao-item-produto-diaria[data-chave="'+chave+'"]');
+    if(sugestaoEl && sugestaoEl.value){ input.value = sugestaoEl.value; hidden.value = sugestaoEl.value; }
+    const opcoesOrdenadas = ()=> (state.produtos||[]).map(p=>p.nome).sort((a,b)=>chaveNormalizada(a).localeCompare(chaveNormalizada(b),'pt-BR'));
+    const renderLista = (termo)=>{
+      const termoChave = chaveNormalizada(termo||'');
+      const opcoes = opcoesOrdenadas().filter(c=>!termoChave || chaveNormalizada(c).includes(termoChave)).slice(0,50);
+      lista.innerHTML = opcoes.length===0
+        ? '<div style="padding:8px 10px;color:#777;">Nenhum produto encontrado.</div>'
+        : opcoes.map(c=>'<div class="opcao-item-produto-diaria" data-chave="'+chave+'" data-nome="'+escapeHtmlCampanha(c)+'" style="padding:8px 10px;cursor:pointer;">'+escapeHtmlCampanha(c)+'</div>').join('');
+      lista.style.display = '';
+    };
+    input.oninput = ()=>{ hidden.value=''; renderLista(input.value); };
+    input.onfocus = ()=>{ renderLista(input.value); };
+    lista.onclick = (ev)=>{
+      const item = ev.target.closest('.opcao-item-produto-diaria');
+      if(!item) return;
+      input.value = item.dataset.nome;
+      hidden.value = item.dataset.nome;
+      lista.style.display = 'none';
+    };
+    document.addEventListener('click', (ev)=>{
+      if(!combo.contains(ev.target)) lista.style.display = 'none';
+    });
+  });
   // Combobox de busca de cliente: digita pra filtrar, clica na lista pra marcar quem é o cliente certo.
   document.querySelectorAll('.combo-cliente-diaria').forEach(combo=>{
     const chave = combo.dataset.chave;
@@ -11448,12 +11545,16 @@ function mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesCl
     let faltaEscolherCliente = false, faltaEscolherProduto = false;
     document.querySelectorAll('.sel-acao-resolucao-diaria').forEach(sel=>{
       const chave = sel.dataset.chave, tipo = sel.dataset.tipo;
-      const mapa = tipo==='produto' ? resolucaoProdutosImportacaoDiaria : resolucaoClientesImportacaoDiaria;
+      const mapa = tipo==='produto' ? resolucaoProdutosImportacaoDiaria : tipo==='item' ? resolucaoItensProdutoImportacaoDiaria : resolucaoClientesImportacaoDiaria;
       if(sel.value==='existente'){
         if(tipo==='produto'){
           const selExist = document.querySelector('.sel-existente-diaria[data-tipo="produto"][data-chave="'+chave+'"]');
           if(!selExist.value){ faltaEscolherProduto = true; return; }
           mapa[chave] = {acao:'existente', categoria:selExist.value};
+        } else if(tipo==='item'){
+          const selExist = document.querySelector('.sel-existente-diaria[data-tipo="item"][data-chave="'+chave+'"]');
+          if(!selExist.value){ faltaEscolherProduto = true; return; }
+          mapa[chave] = {acao:'existente', nome:selExist.value};
         } else {
           const hidden = document.querySelector('.valor-cliente-diaria[data-chave="'+chave+'"]');
           if(!hidden.value){ faltaEscolherCliente = true; return; }
