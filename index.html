@@ -1389,7 +1389,7 @@ const TABS = [
   {id:'financeiro', label:'Financeiro', filhos:['caixa','vendas','faltaretirar']},
   {id:'caixa', label:'Caixa'},
   {id:'vendas', label:'Vendas'},
-  {id:'faltaretirar', label:iconVasilhame(true,null,15,'P13')+' Falta retirar'},
+  {id:'faltaretirar', label:'Falta retirar'},
   {id:'gastos', label:'Despesas & Contas', filhos:['despesas','contaspagar','veiculos']},
   {id:'despesas', label:'Despesas'},
   {id:'contaspagar', label:'Contas a Pagar'},
@@ -3562,7 +3562,7 @@ function metaCardDashboardHtml(){
   const metaDiaria = metaDiariaP13Arred(mk);
   const vendidoHoje = p13VendidosNoDia(hoje);
   const vendidoMes = p13VendidosNoMes(mk);
-  return '<div class="meta-card" style="position:relative;"><button type="button" class="btn-edit-card on-dark" data-ir-editar-meta="1" title="Editar meta">✎</button><h2>🎯 Meta de cargas de P13 — '+nomeMes(mk)+'</h2>'+
+  return '<div class="meta-card" style="position:relative;"><button type="button" class="btn-edit-card on-dark" data-ir-editar-meta="1" title="Editar meta">✎</button><h2 data-ir-relatorio="meta" style="cursor:pointer;" title="Ver relatório de Meta de Cargas P13">🎯 Meta de cargas de P13 — '+nomeMes(mk)+'</h2>'+
     barraMetaHtml(vendidoHoje, metaDiaria, 'Meta de hoje ('+fmtDate(hoje)+')')+
     barraMetaHtml(vendidoMes, metaMensal, 'Meta do mês ('+nomeMes(mk)+')')+
     '</div>';
@@ -3961,7 +3961,7 @@ function viewEmpresas(){
 function empresasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma empresa conveniada cadastrada ainda.</div>';
   return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Responsável</th><th></th></tr></thead><tbody>'+
-  list.map(e=>'<tr><td>'+e.nome+'</td><td style="max-width:90px;">'+(e.telefone||'—')+'</td><td style="max-width:90px;">'+(e.endereco||'—')+'</td><td>'+(e.responsavel||'—')+'</td>'+
+  list.map(e=>'<tr><td>'+e.nome+'</td><td style="max-width:90px;">'+(e.telefone||'—')+'</td><td style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(e.endereco||'—')+'</td><td style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(e.responsavel||'—')+'</td>'+
   '<td class="cel-acoes">'+botaoWhatsApp(e.telefone)+'<button class="act-link" data-edit-empresa="'+e.id+'">✎ editar</button><button class="del-link" data-del-empresa="'+e.id+'">🗑 excluir</button></td></tr>').join('')+'</tbody></table></div>';
 }
 
@@ -4422,7 +4422,7 @@ function viewFaltaRetirar(){
   const hoje = todayStr();
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
-  return '<div class="card"><h2>'+iconVasilhame(true,null,20,'P13')+' Falta retirar</h2>'+ajudaHtml('falta-retirar','Use esta tela pra gás que já foi vendido/recebido (às vezes de antes do sistema novo, às vezes é só alguém que aproveitou o preço e vai retirar quando o gás dela acabar) mas que ainda falta o cliente retirar ou vocês entregarem. Clique em "✎ editar" em cada pendência pra informar a forma de retirada/entrega, se teve frete e se deve dar baixa no estoque agora — até resolver, o produto continua reservado, sem descontar do estoque disponível, e sem contar como uma venda nova nas métricas. Também dá pra editar os dados do lançamento em si (cliente, quantidade, etc.) ou excluir, se precisar.')+'</div>'+
+  return '<div class="card"><h2>Falta retirar</h2>'+ajudaHtml('falta-retirar','Use esta tela pra gás que já foi vendido/recebido (às vezes de antes do sistema novo, às vezes é só alguém que aproveitou o preço e vai retirar quando o gás dela acabar) mas que ainda falta o cliente retirar ou vocês entregarem. Clique em "✎ editar" em cada pendência pra informar a forma de retirada/entrega, se teve frete e se deve dar baixa no estoque agora — até resolver, o produto continua reservado, sem descontar do estoque disponível, e sem contar como uma venda nova nas métricas. Também dá pra editar os dados do lançamento em si (cliente, quantidade, etc.) ou excluir, se precisar.')+'</div>'+
     '<div class="card"><details><summary><strong>Registrar novo "falta retirar" (clique para abrir)</strong></summary>'+
     '<div class="hint" style="margin-top:8px;">Cliente novo ou já cadastrado, tanto faz. Não lança valor do gás aqui (já foi recebido) — só o valor do frete, se houver, é perguntado depois, na hora de dar baixa.</div>'+
     '<form id="form-falta-retirar-novo" style="margin-top:10px;">'+
@@ -6537,21 +6537,25 @@ function relatorioFiado(){
     '<input type="file" id="csv-fiado-input" accept=".csv,.txt,.tsv,.xlsx,.xls" style="margin-top:8px;"><div id="csv-fiado-mapping"></div>'+
     '</details>'+
     '<h3 style="margin-top:16px;">Fiado por cliente</h3>'+
-    fiadoPorClienteHtml()+painelPagamento+
+    '<input type="text" id="busca-fiado-cliente" class="searchbar" placeholder="Buscar cliente...">'+
+    '<div id="lista-fiado-clientes-wrap">'+fiadoPorClienteHtml()+'</div>'+painelPagamento+
     (clienteExtrato ? extratoClienteHtml(clienteExtrato) : '')+
     '<h3 style="margin-top:16px;">Todos os lançamentos individuais</h3>'+
     '<div class="hint">Total em aberto: '+fmtMoney(totalFiadoAberto())+'</div>'+fiadoListaHtml();
 }
-function fiadoPorClienteHtml(){
-  const linhas = clientesComFiado().map(n=>({nome:n, saldo:saldoDoCliente(n)})).filter(x=>x.saldo>0.004).sort((a,b)=>diasFiadoAtrasado(b.nome)-diasFiadoAtrasado(a.nome));
-  if(linhas.length===0) return '<div class="empty">Nenhum cliente com saldo em aberto no momento.</div>';
-  const muitoAtrasados = linhas.filter(l=>diasFiadoAtrasado(l.nome)>60).length;
-  const acimaDoLimite = linhas.filter(l=>{
+function fiadoPorClienteHtml(filtro){
+  const todasLinhas = clientesComFiado().map(n=>({nome:n, saldo:saldoDoCliente(n)})).filter(x=>x.saldo>0.004).sort((a,b)=>diasFiadoAtrasado(b.nome)-diasFiadoAtrasado(a.nome));
+  if(todasLinhas.length===0) return '<div class="empty">Nenhum cliente com saldo em aberto no momento.</div>';
+  const q = (filtro||'').toLowerCase().trim();
+  const linhas = q ? todasLinhas.filter(l=>l.nome.toLowerCase().includes(q)) : todasLinhas;
+  const muitoAtrasados = todasLinhas.filter(l=>diasFiadoAtrasado(l.nome)>60).length;
+  const acimaDoLimite = todasLinhas.filter(l=>{
     const c = state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(l.nome));
     return c && c.limiteCredito>0 && l.saldo>=c.limiteCredito;
   }).length;
   return (muitoAtrasados>0 ? '<div class="import-conferencia-alert">⚠ '+muitoAtrasados+' cliente(s) com fiado há mais de 60 dias sem pagar nada — considere cobrar.</div>' : '')+
     (acimaDoLimite>0 ? '<div class="import-conferencia-alert">🚫 '+acimaDoLimite+' cliente(s) já atingiram o limite de crédito combinado — mande uma mensagem cobrando.</div>' : '')+
+    (linhas.length===0 ? '<div class="empty">Nenhum cliente encontrado.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Saldo devedor</th><th>Situação</th><th></th></tr></thead><tbody>'+
     linhas.map(l=>{
       const cCli = state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(l.nome));
@@ -6562,7 +6566,7 @@ function fiadoPorClienteHtml(){
     '<button class="act-link" data-enviar-extrato-whats="'+encodeURIComponent(l.nome)+'" style="background:var(--green-tint);color:var(--green);" title="'+(telefoneDoCliente(l.nome)?'Enviar o PDF do extrato pelo WhatsApp':'Cadastre o telefone do cliente para habilitar')+'">'+iconWhatsApp('#25D366',13)+' enviar extrato</button>'+
     '<button class="act-link" data-registrar-pagamento="'+encodeURIComponent(l.nome)+'">💵 registrar pagamento</button></td></tr>';
     }).join('')+
-    '</tbody></table></div>';
+    '</tbody></table></div>');
 }
 function diasFiadoAtrasado(cliente){
   const debitos = debitosDoCliente(cliente).slice().sort((a,b)=>a.data.localeCompare(b.data));
@@ -8189,24 +8193,38 @@ function attachHandlers(){
     renderAll();
   };
 
-  document.querySelectorAll('[data-ver-extrato]').forEach(btn=>btn.onclick=()=>{
-    clienteExtrato = decodeURIComponent(btn.dataset.verExtrato);
-    clienteRegistrandoPagamento = null;
-    editFiadoPagamentoId = null;
-    renderAll();
-    setTimeout(()=>{ const el = document.getElementById('extrato-imprimir'); if(el) el.scrollIntoView({behavior:'smooth'}); }, 50);
-  });
+  const attachFiadoPorClienteHandlers = ()=>{
+    document.querySelectorAll('[data-ver-extrato]').forEach(btn=>btn.onclick=()=>{
+      clienteExtrato = decodeURIComponent(btn.dataset.verExtrato);
+      clienteRegistrandoPagamento = null;
+      editFiadoPagamentoId = null;
+      renderAll();
+      setTimeout(()=>{ const el = document.getElementById('extrato-imprimir'); if(el) el.scrollIntoView({behavior:'smooth'}); }, 50);
+    });
+    document.querySelectorAll('[data-enviar-extrato-whats]').forEach(btn=>btn.onclick=async()=>{
+      const cliente = decodeURIComponent(btn.dataset.enviarExtratoWhats);
+      const textoOriginal = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Gerando PDF...';
+      await enviarExtratoWhatsApp(cliente);
+      btn.disabled = false; btn.textContent = textoOriginal;
+    });
+    document.querySelectorAll('[data-registrar-pagamento]').forEach(btn=>btn.onclick=()=>{
+      clienteRegistrandoPagamento = decodeURIComponent(btn.dataset.registrarPagamento);
+      editFiadoPagamentoId = null;
+      renderAll();
+      setTimeout(()=>{ const el = document.getElementById('form-pagamento-fiado'); if(el) el.scrollIntoView({behavior:'smooth'}); }, 50);
+    });
+  };
+  attachFiadoPorClienteHandlers();
   const btnFecharExtrato = document.getElementById('btn-fechar-extrato');
   if(btnFecharExtrato) btnFecharExtrato.onclick = ()=>{ clienteExtrato=null; renderAll(); };
   const btnImprimirExtrato = document.getElementById('btn-imprimir-extrato');
   if(btnImprimirExtrato) btnImprimirExtrato.onclick = ()=>{ window.print(); };
-  document.querySelectorAll('[data-enviar-extrato-whats]').forEach(btn=>btn.onclick=async()=>{
-    const cliente = decodeURIComponent(btn.dataset.enviarExtratoWhats);
-    const textoOriginal = btn.textContent;
-    btn.disabled = true; btn.textContent = 'Gerando PDF...';
-    await enviarExtratoWhatsApp(cliente);
-    btn.disabled = false; btn.textContent = textoOriginal;
-  });
+  const buscaFiadoCliente = document.getElementById('busca-fiado-cliente');
+  if(buscaFiadoCliente) buscaFiadoCliente.oninput = ()=>{
+    document.getElementById('lista-fiado-clientes-wrap').innerHTML = fiadoPorClienteHtml(buscaFiadoCliente.value);
+    attachFiadoPorClienteHandlers();
+  };
 
   const btnCancelarPagamentoFiado = document.getElementById('btn-cancelar-pagamento-fiado');
   if(btnCancelarPagamentoFiado) btnCancelarPagamentoFiado.onclick = ()=>{ clienteRegistrandoPagamento=null; editFiadoPagamentoId=null; renderAll(); };
