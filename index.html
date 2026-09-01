@@ -3912,6 +3912,11 @@ function ajustaEstoquePorVenda(categoria, qtd, reverter){
 function preencherFormEdicaoVenda(v, fvEl){
   fvEl = fvEl || document.getElementById('form-venda');
   if(!v || !fvEl) return;
+  // O formulário "Lançamento manual" fica dentro de um <details> que começa fechado. Sem forçar
+  // a abertura aqui, os campos eram preenchidos e o scrollIntoView rolava a tela, mas o formulário
+  // continuava escondido — parecia que o botão "editar" não fazia nada.
+  const detalhesVendaManual = fvEl.closest('details');
+  if(detalhesVendaManual) detalhesVendaManual.open = true;
   editVendaId = v.id;
   fvEl.data.value=v.data; fvEl.cliente.value=v.cliente||''; fvEl.canal.value=v.canal;
   if(seletorVendaMain) seletorVendaMain.setValor(v.categoria, v.produto);
@@ -10647,7 +10652,16 @@ async function gerarModeloImportacaoDiaria(){
   // (01/09 vira 9 de janeiro em vez de 1 de setembro), e é esse valor já errado que chega até o
   // sistema. Com a coluna em texto, fica exatamente o que a pessoa digitou, e o sistema mesmo
   // (que já entende DD/MM/AAAA) resolve certo na importação.
-  function formatarColunaComoTexto(ws, colunaLetra){ ws.getColumn(colunaLetra).numFmt = '@'; }
+  function formatarColunaComoTexto(ws, colunaLetra){
+    ws.getColumn(colunaLetra).numFmt = '@';
+    // Reforço célula a célula (não só no nível da coluna): a formatação de bordas de impressão
+    // aplicada depois (configurarImpressaoA4) pode recriar o estilo de cada célula e, ao fazer
+    // isso, perder o formato de texto que só existia no nível da coluna — foi exatamente isso
+    // que causava a coluna Data da aba Vendas voltar a virar número/data (e o Excel/Google Sheets
+    // reinterpretar "01/09/2026" pelo idioma do aparelho, trocando dia por mês). Gravando o
+    // formato de texto direto em cada célula, ele sobrevive a qualquer estilo aplicado depois.
+    for(let l=1; l<=300; l++){ ws.getCell(colunaLetra+l).numFmt = '@'; }
+  }
   // Listas de produtos separadas por categoria (pra dropdown dependente: escolheu a categoria em H,
   // a coluna Produto já mostra só os produtos daquela categoria). Fica numa aba oculta à parte.
   const wsProdPorCat = wb.addWorksheet('ProdutosPorCategoria');
@@ -10725,9 +10739,13 @@ async function gerarModeloImportacaoDiaria(){
   aplicarDropdown(wsVendas, 'C', 'L', state.clientes.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'O', 'M', state.empresas.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'R', 'L', state.clientes.length, 2, ULTIMA_LINHA);
+  configurarImpressaoA4(wsVendas, 19, 45);
+  // IMPORTANTE: o travamento como texto da coluna Data tem que vir DEPOIS de configurarImpressaoA4
+  // (que redesenha o estilo de cada célula pra aplicar as bordas de impressão) — senão a borda
+  // sobrescreve o formato de texto e a coluna volta a virar número/data, é isso que causava a
+  // troca de dia por mês só na aba Vendas.
   formatarColunaComoTexto(wsVendas, 'A'); // Data
   formatarColunaComoTexto(wsVendas, 'S'); // Aniversário Cliente (Cliente novo)
-  configurarImpressaoA4(wsVendas, 19, 45);
 
   // ---- Aba Despesas ----
   const wsDespesas = wb.addWorksheet('Despesas');
@@ -10738,10 +10756,10 @@ async function gerarModeloImportacaoDiaria(){
   aplicarDropdown(wsDespesas, 'E', 'I', state.veiculos.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsDespesas, 'F', 'O', state.oficinasManutencao.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsDespesas, 'G', 'N', 2, 2, ULTIMA_LINHA);
+  configurarImpressaoA4(wsDespesas, 10, 35);
   formatarColunaComoTexto(wsDespesas, 'A'); // Data
   formatarColunaComoTexto(wsDespesas, 'I'); // Garantia Até
   formatarColunaComoTexto(wsDespesas, 'J'); // Próxima Manutenção
-  configurarImpressaoA4(wsDespesas, 10, 35);
 
   // ---- Aba ContasPagar ----
   const wsContas = wb.addWorksheet('ContasPagar');
@@ -10752,17 +10770,17 @@ async function gerarModeloImportacaoDiaria(){
   aplicarDropdown(wsContas, 'E', 'K', 2, 2, ULTIMA_LINHA);
   aplicarDropdown(wsContas, 'F', 'J', 2, 2, ULTIMA_LINHA);
   aplicarDropdown(wsContas, 'H', 'I', state.veiculos.length, 2, ULTIMA_LINHA);
+  configurarImpressaoA4(wsContas, 8, 30);
   formatarColunaComoTexto(wsContas, 'D'); // Vencimento
   formatarColunaComoTexto(wsContas, 'G'); // Data Pagamento
-  configurarImpressaoA4(wsContas, 8, 30);
 
   // ---- Aba FechamentoCaixa ----
   const wsCaixa = wb.addWorksheet('FechamentoCaixa');
   wsCaixa.addRow(['Data','Abertura','Dinheiro Contado','Observação']);
   wsCaixa.getRow(1).font = {bold:true};
   wsCaixa.columns.forEach(c=>{ c.width = 18; });
-  formatarColunaComoTexto(wsCaixa, 'A'); // Data
   configurarImpressaoA4(wsCaixa, 4, 10);
+  formatarColunaComoTexto(wsCaixa, 'A'); // Data
 
   // ---- Aba Clientes ----
   const wsClientes = wb.addWorksheet('Clientes');
@@ -10770,8 +10788,8 @@ async function gerarModeloImportacaoDiaria(){
   wsClientes.getRow(1).font = {bold:true};
   wsClientes.columns.forEach(c=>{ c.width = 18; });
   aplicarDropdown(wsClientes, 'F', 'L', state.clientes.length, 2, ULTIMA_LINHA);
-  formatarColunaComoTexto(wsClientes, 'G'); // Aniversário
   configurarImpressaoA4(wsClientes, 7, 25);
+  formatarColunaComoTexto(wsClientes, 'G'); // Aniversário
 
   // ---- Aba Produtos ----
   const wsProdutos = wb.addWorksheet('Produtos');
@@ -11195,7 +11213,10 @@ function normalizarDataImportada(txt, fallback){
     const serial = parseFloat(s);
     if(serial>15000 && serial<80000){
       const d = new Date(Math.round((serial-25569)*86400*1000));
-      if(!isNaN(d.getTime())) return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      // Usa getUTC* (não getFullYear/getMonth/getDate locais) — o serial do Excel representa uma
+      // meia-noite em UTC, e ler com os métodos locais podia voltar um dia (ex.: em fusos como o
+      // do Brasil, UTC-3) dependendo do horário do aparelho de quem importa.
+      if(!isNaN(d.getTime())) return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
     }
   }
   const soAno = s.match(/^(\d{4})$/);
