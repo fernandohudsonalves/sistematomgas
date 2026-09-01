@@ -17,6 +17,9 @@
 <meta name="apple-mobile-web-app-title" content="Tom Gás">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
 <style>
 :root{
   --royal:#1E3A8A;
@@ -153,6 +156,21 @@ details.card .pill{font-size:11px;font-weight:600;}
 label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin:10px 0 4px;}
 .req{color:var(--danger);font-weight:700;}
 input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);font-family:inherit;}
+input.flatpickr-alt-input{width:100%;}
+.flatpickr-calendar{background:var(--card);color:var(--text);box-shadow:0 4px 16px rgba(0,0,0,.25);border:1px solid var(--border);}
+.flatpickr-calendar.arrowTop:before,.flatpickr-calendar.arrowTop:after{border-bottom-color:var(--card);}
+.flatpickr-months .flatpickr-month{color:var(--text);fill:var(--text);}
+.flatpickr-current-month .flatpickr-monthDropdown-months,.flatpickr-current-month input.cur-year{color:var(--text);background:transparent;}
+.flatpickr-weekdays{background:transparent;}
+span.flatpickr-weekday{color:var(--text);opacity:.7;background:transparent;}
+.flatpickr-day{color:var(--text);}
+.flatpickr-day.flatpickr-disabled,.flatpickr-day.prevMonthDay,.flatpickr-day.nextMonthDay{color:var(--border);}
+.flatpickr-day:hover{background:var(--border);}
+.flatpickr-day.selected,.flatpickr-day.selected:hover{background:var(--neon);border-color:var(--neon);color:#10203E;font-weight:700;}
+.flatpickr-day.today{border-color:var(--neon);}
+.flatpickr-prev-month svg,.flatpickr-next-month svg{fill:var(--text);}
+.numInputWrapper span.arrowUp:after{border-bottom-color:var(--text);}
+.numInputWrapper span.arrowDown:after{border-top-color:var(--text);}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--royal-light);box-shadow:0 0 0 3px var(--blue-tint);}
 .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
 .form-align-fim>div{display:flex;flex-direction:column;justify-content:flex-end;}
@@ -183,6 +201,14 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .table-wrap td.cel-acoes{overflow:visible;max-width:none;white-space:nowrap;}
 .table-wrap td .badge,.table-wrap td .pill{white-space:nowrap;}
 .table-wrap td button{font-size:11.5px;padding:2px 4px;}
+.tabela-vendas th,.tabela-vendas td{font-size:10.5px;padding:4px 5px;max-width:96px;}
+.tabela-vendas .badge{font-size:9px;padding:1px 6px;}
+.tabela-vendas td button{font-size:12px;padding:2px 5px;min-width:22px;}
+.tabela-vendas td.cel-acoes{display:flex;gap:2px;flex-wrap:nowrap;}
+@media (max-width:640px){
+  .tabela-vendas th,.tabela-vendas td{font-size:9.5px;padding:3px 4px;max-width:72px;}
+  .tabela-vendas .badge{font-size:8px;padding:1px 4px;}
+}
 .ajuda-btn{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#f0ad00;color:#fff;border:none;font-weight:bold;font-size:12px;cursor:pointer;margin-left:6px;vertical-align:middle;padding:0;line-height:1;}
 .lapidar-btn{background:#4169E1;font-size:10px;}
 .lapidar-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;background:#4169E1;color:#fff;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;cursor:help;}
@@ -4461,18 +4487,18 @@ function viewFaltaRetirar(){
 }
 function vendasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma venda encontrada.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap tabela-vendas"><table><thead><tr><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
-      const entrega = entregaLabel(v.tipo_entrega, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (v.frete ? ' <span class="badge fiado">frete '+fmtMoney(v.frete)+'</span>' : '');
-      const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber">A receber</span>' : ' <span class="badge status-pago">Pago</span>');
-      return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
+      const entrega = entregaLabel(v.tipo_entrega, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (v.frete ? ' <span class="badge fiado" title="Frete">'+fmtMoney(v.frete)+'</span>' : '');
+      const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>');
+      return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
         '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td>'+v.quantidade+'</td>'+
         '<td>'+fmtMoney(v.valor_total)+'</td><td>'+pagtoTxt+'</td><td><span class="badge nota">'+v.nota+'</span></td>'+
-        '<td><button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
-        (v.entrega_hora ? '<button class="act-link" data-wa-venda="'+v.id+'">💬 whatsapp</button>' : '')+
-        '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>';
+        '<td class="cel-acoes"><button class="act-link" title="Editar" data-edit-venda="'+v.id+'">✎</button>'+
+        (v.entrega_hora ? '<button class="act-link" title="WhatsApp" data-wa-venda="'+v.id+'">💬</button>' : '')+
+        '<button class="del-link" title="Excluir" data-del-venda="'+v.id+'">🗑</button></td></tr>';
     }).join('')+'</tbody></table></div>';
 }
 
@@ -10611,14 +10637,9 @@ async function gerarModeloImportacaoDiaria(){
   wsVendas.columns.forEach(c=>{ c.width = 16; });
   aplicarDropdown(wsVendas, 'G', 'A', CANAIS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'H', 'E', categoriasProdutoValidas.length, 2, ULTIMA_LINHA);
-  for(let l=2; l<=ULTIMA_LINHA; l++){
-    wsVendas.getCell('I'+l).dataValidation = {
-      type:'list', allowBlank:true, showErrorMessage:true, errorStyle:'warning',
-      errorTitle:'Valor fora da lista',
-      error:'Escolha um produto da lista (ou deixe em branco). Se não aparecer o que você quer, confira a categoria na coluna anterior.',
-      formulae:['=INDIRECT("PROD_CAT_"&IFERROR(VLOOKUP($H'+l+',CategoriasMap!$A:$B,2,0),0))']
-    };
-  }
+  // Coluna "Produto" (item específico) fica livre pra digitar, sem lista suspensa vinculada à
+  // categoria: quando a categoria é nova, essa lista quebrava e o Excel travava a digitação.
+  // O sistema já resolve nomes novos na tela de confirmação da importação diária.
   aplicarDropdown(wsVendas, 'L', 'B', PAGAMENTOS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'M', 'C', NOTAS.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'N', 'D', TIPOS_ENTREGA.length, 2, ULTIMA_LINHA);
@@ -12976,6 +12997,29 @@ async function init(){
     document.getElementById('auth-screen').style.display = 'flex';
   }
 }
+// Máscara de data brasileira (dia/mês/ano) pra todos os campos de data do sistema,
+// independente do idioma configurado no Windows/navegador. O campo original continua
+// guardando o valor no formato aaaa-mm-dd (o resto do sistema não precisa mudar nada),
+// só a exibição/digitação passa a ser sempre dd/mm/aaaa via um input visível auxiliar.
+function aplicarMascaraDataBR(raiz){
+  try{
+    (raiz||document).querySelectorAll('input[type="date"]:not([data-fp-ativo])').forEach(function(el){
+      el.setAttribute('data-fp-ativo','1');
+      flatpickr(el, {
+        locale:'pt',
+        dateFormat:'Y-m-d',
+        altInput:true,
+        altFormat:'d/m/Y',
+        allowInput:true,
+        altInputClass: el.className||''
+      });
+    });
+  }catch(e){ /* se a lib não carregar por algum motivo, os campos continuam funcionando normalmente (nativos) */ }
+}
+aplicarMascaraDataBR();
+new MutationObserver(function(muts){
+  for(let i=0;i<muts.length;i++){ if(muts[i].addedNodes && muts[i].addedNodes.length){ aplicarMascaraDataBR(); break; } }
+}).observe(document.body, {childList:true, subtree:true});
 init();
 </script>
 </body>
