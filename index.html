@@ -399,7 +399,7 @@ table td:last-child{min-width:180px;}
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
 #whats-fab{position:fixed;right:18px;bottom:18px;z-index:500;width:56px;height:56px;border-radius:50%;background:#25D366;border:none;box-shadow:0 6px 18px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
-#calc-fab{position:fixed;right:18px;bottom:228px;z-index:500;width:56px;height:56px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 6px 18px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:46px;}
+#calc-fab{position:fixed;right:18px;bottom:228px;z-index:500;width:56px;height:56px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 6px 18px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:34px;line-height:1;padding:0;}
 #calc-fab:hover{transform:scale(1.06);}
 #calc-fab:active{transform:scale(.96);}
 #recado-fab{position:fixed;right:18px;bottom:294px;z-index:500;width:48px;height:48px;border-radius:50%;background:#F5B800;border:none;box-shadow:0 6px 18px rgba(245,184,0,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;}
@@ -2851,7 +2851,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -2874,6 +2874,15 @@ async function loadAll(){
   if(!state.checklistRotina) state.checklistRotina = [];
   if(!state.checklistDias) state.checklistDias = {};
   if(!state.funcionarios) state.funcionarios = [];
+  if(!Array.isArray(state.avisosProgramados)){
+    state.avisosProgramados = [{id:uid(), horario:'19:30', mensagem:'💰 Hora de começar a fechar o caixa! Conte o dinheiro físico da gaveta e confira se todas as entregas em dinheiro já foram acertadas antes de lançar o fechamento.', ativo:true, tipo:'fechamentoCaixa'}];
+    await save('avisosProgramados');
+  }
+  if(!Array.isArray(state.fornecedoresGas)){ state.fornecedoresGas = []; }
+  [{nome:'Toninho', whatsapp:'554399005132'},{nome:'Rafa (filho do Toninho)', whatsapp:'554398610703'},{nome:'Luciano', whatsapp:'554396656840'}].forEach(f=>{
+    if(!state.fornecedoresGas.some(x=>x.whatsapp===f.whatsapp)) state.fornecedoresGas.push(Object.assign({id:uid()},f));
+  });
+  await save('fornecedoresGas');
   if(Array.isArray(state.categoriasDespesas)){
     let mudouCatsESG=false;
     ['Energia Elétrica','Água / Saneamento','Desperdício / Descarte'].forEach(c=>{ if(!state.categoriasDespesas.includes(c)){ state.categoriasDespesas.push(c); mudouCatsESG=true; } });
@@ -3208,19 +3217,21 @@ function ajustarPosicaoNav(){
 window.addEventListener('resize', ajustarPosicaoNav);
 setInterval(atualizarEtiquetaDataHoje, 30000);
 setInterval(()=>{ if(currentTab==='rota' && document.getElementById('card-localizacao-entregadores')) refrescarCardLocalizacaoEntregadores(); }, 20000);
-let ultimoAvisoFechamentoCaixaData = null;
+let avisosProgramadosDisparados = {};
 setInterval(()=>{
   const agora = new Date();
-  const hh = agora.getHours(), mm = agora.getMinutes();
+  const hh = String(agora.getHours()).padStart(2,'0'), mm = String(agora.getMinutes()).padStart(2,'0');
+  const horaAtual = hh+':'+mm;
   const hoje = todayStr();
-  if(hh===19 && mm>=30 && ultimoAvisoFechamentoCaixaData!==hoje){
-    const jaFechou = (state.fechamentosCaixa||[]).some(f=>f.data===hoje);
-    if(!jaFechou){
-      ultimoAvisoFechamentoCaixaData = hoje;
-      try{const C=window.AudioContext||window.webkitAudioContext;if(C){const ac=new C(),o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.45);}}catch(err){}
-      alert('💰 São 19:30 — hora de começar a fechar o caixa! Conte o dinheiro físico da gaveta e confira se todas as entregas em dinheiro já foram acertadas antes de lançar o fechamento.');
-    }
-  }
+  (state.avisosProgramados||[]).forEach(av=>{
+    if(!av.ativo || av.horario!==horaAtual) return;
+    const chave = av.id+':'+hoje;
+    if(avisosProgramadosDisparados[chave]) return;
+    if(av.tipo==='fechamentoCaixa' && (state.fechamentosCaixa||[]).some(f=>f.data===hoje)) return;
+    avisosProgramadosDisparados[chave] = true;
+    try{const C=window.AudioContext||window.webkitAudioContext;if(C){const ac=new C(),o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.45);}}catch(err){}
+    alert(av.mensagem||'⏰ Aviso programado ('+av.horario+')');
+  });
 }, 60000);
 let avisos25minDia = null;
 let avisos25minEnviados = new Set();
@@ -3849,8 +3860,8 @@ function viewEmpresas(){
 function empresasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma empresa conveniada cadastrada ainda.</div>';
   return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Responsável</th><th></th></tr></thead><tbody>'+
-  list.map(e=>'<tr><td>'+e.nome+'</td><td>'+(e.telefone||'—')+'</td><td>'+(e.endereco||'—')+'</td><td>'+(e.responsavel||'—')+'</td>'+
-  '<td>'+botaoWhatsApp(e.telefone)+'<button class="act-link" data-edit-empresa="'+e.id+'">✎ editar</button><button class="del-link" data-del-empresa="'+e.id+'">🗑 excluir</button></td></tr>').join('')+'</tbody></table></div>';
+  list.map(e=>'<tr><td>'+e.nome+'</td><td style="max-width:90px;">'+(e.telefone||'—')+'</td><td style="max-width:90px;">'+(e.endereco||'—')+'</td><td>'+(e.responsavel||'—')+'</td>'+
+  '<td class="cel-acoes">'+botaoWhatsApp(e.telefone)+'<button class="act-link" data-edit-empresa="'+e.id+'">✎ editar</button><button class="del-link" data-del-empresa="'+e.id+'">🗑 excluir</button></td></tr>').join('')+'</tbody></table></div>';
 }
 
 /* ---------- PRODUTOS ---------- */
@@ -4906,7 +4917,9 @@ function viewEstoque(){
       '<tr><td>'+fmtDate(l.data)+'</td><td>'+l.tipo+'</td><td>'+l.item+' — '+l.estado+'</td>'+
       '<td>'+(l.direcao==='entrada'?'<span class="badge pago">entrada</span>':'<span class="badge fiado">saída</span>')+'</td>'+
       '<td>'+(l.direcao==='entrada'?'+':'-')+l.quantidade+'</td><td>'+(l.motivo||'—')+'</td><td>'+l.usuario+'</td>'+
-      '<td><button class="act-link" data-edit-mov-estoque="'+l.id+'">✎ editar</button><button class="del-link" data-del-mov-estoque="'+l.id+'">🗑 excluir</button></td></tr>'
+      '<td class="cel-acoes"><button class="act-link" data-edit-mov-estoque="'+l.id+'">✎ editar</button><button class="del-link" data-del-mov-estoque="'+l.id+'">🗑 excluir</button>'+
+      (state.fornecedoresGas||[]).map(f=>'<button type="button" class="act-link" data-enviar-fornecedor="'+f.id+'" data-mov-id="'+l.id+'" title="Enviar observação pro WhatsApp de '+escapeHtmlCampanha(f.nome)+'">📲 '+escapeHtmlCampanha(f.nome.split(' ')[0])+'</button>').join('')+
+      '</td></tr>'
     ).join('')+'</tbody></table></div>')+
     '</div>'+
     '<div class="card"><h2>Ajustar estoque manualmente</h2>'+
@@ -5257,6 +5270,17 @@ function viewConfig(){
     (permissao==='granted' ? '<button type="button" class="btn small ghost" id="btn-testar-notificacao">Testar agora</button>' : '<button type="button" class="btn small" id="btn-ativar-notificacao">Ativar neste aparelho</button>')+
     '</div>'+
     (permissao==='granted' ? '<details style="margin-top:8px;"><summary>Não chegou nenhuma notificação?</summary><div class="hint" style="margin-top:6px;">Confira em <strong>Configurações do celular → Apps → Tom Gás (ou Chrome) → Notificações</strong> — é uma permissão separada da do navegador.</div></details>' : '')+
+    '</div>'+
+    '<div class="card"><h2>⏰ Avisos programados (alarmes)</h2>'+
+    '<div class="hint">Alarmes que tocam num horário fixo do dia (som + mensagem na tela), pra quem estiver com o sistema aberto no aparelho.</div>'+
+    '<div id="lista-avisos-programados" style="margin-top:10px;">'+(state.avisosProgramados||[]).map(av=>
+      '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">'+
+      '<input type="checkbox" data-aviso-ativo="'+av.id+'" '+(av.ativo?'checked':'')+' title="Ativo">'+
+      '<input type="time" data-aviso-horario="'+av.id+'" value="'+(av.horario||'')+'" style="width:100px;">'+
+      '<input type="text" data-aviso-mensagem="'+av.id+'" value="'+av.mensagem.replace(/"/g,'&quot;')+'" style="flex:1;min-width:180px;">'+
+      '<button type="button" class="del-link" data-del-aviso="'+av.id+'">🗑</button></div>'
+    ).join('')+'</div>'+
+    '<button type="button" class="btn small ghost" id="btn-novo-aviso" style="margin-top:10px;">+ Novo aviso</button>'+
     '</div>'+
     '<div class="card"><h2>📲 Avisos automáticos pro cliente (WhatsApp)</h2>'+
     '<div class="hint">Suba aqui as imagens que vão junto com cada mensagem que o entregador manda pro cliente (pela tela de confirmação de entrega). Cada botão que ele clica manda a imagem + o texto automaticamente pelo WhatsApp do cliente.</div>'+
@@ -8024,6 +8048,13 @@ function attachHandlers(){
     feMov.querySelector('button[type=submit]').textContent = 'Salvar alterações';
     feMov.scrollIntoView({behavior:'smooth'});
   });
+  document.querySelectorAll('[data-enviar-fornecedor]').forEach(btn=>btn.onclick=()=>{
+    const f = (state.fornecedoresGas||[]).find(x=>x.id===btn.dataset.enviarFornecedor);
+    const l = state.estoqueLancamentos.find(x=>x.id===btn.dataset.movId);
+    if(!f || !f.whatsapp || !l) return;
+    const texto = (l.direcao==='entrada'?'Entrada':'Saída')+' de '+l.quantidade+' '+l.tipo+' — '+l.item+' ('+l.estado+') em '+fmtDate(l.data)+(l.motivo?'. Obs: '+l.motivo:'.');
+    window.open('https://wa.me/'+f.whatsapp+'?text='+encodeURIComponent(texto), '_blank');
+  });
   document.querySelectorAll('[data-del-mov-estoque]').forEach(btn=>btn.onclick=async()=>{
     const l = state.estoqueLancamentos.find(x=>x.id===btn.dataset.delMovEstoque);
     if(!l) return;
@@ -8760,8 +8791,9 @@ function attachHandlers(){
   document.querySelectorAll('[data-del-comodato]').forEach(btn=>btn.onclick=async()=>{
     const c = state.comodatos.find(x=>x.id===btn.dataset.delComodato);
     if(!c) return;
-    if(confirm('Excluir esse lançamento de '+c.nome+' ('+fmtDate(c.data)+')?'+(c.baixaEstoque?'\n\nO ajuste que ele fez no estoque também será revertido.':'')+'\n\nEssa ação não pode ser desfeita.')){
-      if(c.baixaEstoque && c.estoqueLancId){
+    if(confirm('Excluir esse lançamento de '+c.nome+' ('+fmtDate(c.data)+')?\n\nEssa ação não pode ser desfeita.')){
+      const reverterEstoque = c.baixaEstoque ? confirm('Esse comodato tinha dado baixa/ajuste no estoque.\n\nDeseja reverter esse ajuste no estoque também?') : false;
+      if(reverterEstoque && c.estoqueLancId){
         const lancAntigo = state.estoqueLancamentos.find(l=>l.id===c.estoqueLancId);
         if(lancAntigo){
           aplicarEfeitoEstoqueLanc(lancAntigo, true);
@@ -10143,6 +10175,26 @@ function attachHandlers(){
     telaAnteriorComunicados = 'config';
     currentTab = 'comunicados';
     renderAll();
+  };
+  document.querySelectorAll('[data-aviso-ativo]').forEach(el=>el.onchange=async()=>{
+    const av=(state.avisosProgramados||[]).find(x=>x.id===el.dataset.avisoAtivo); if(av){ av.ativo=el.checked; await save('avisosProgramados'); }
+  });
+  document.querySelectorAll('[data-aviso-horario]').forEach(el=>el.onchange=async()=>{
+    const av=(state.avisosProgramados||[]).find(x=>x.id===el.dataset.avisoHorario); if(av){ av.horario=el.value; await save('avisosProgramados'); }
+  });
+  document.querySelectorAll('[data-aviso-mensagem]').forEach(el=>el.onchange=async()=>{
+    const av=(state.avisosProgramados||[]).find(x=>x.id===el.dataset.avisoMensagem); if(av){ av.mensagem=el.value; await save('avisosProgramados'); }
+  });
+  document.querySelectorAll('[data-del-aviso]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir esse aviso programado?')) return;
+    state.avisosProgramados=(state.avisosProgramados||[]).filter(x=>x.id!==btn.dataset.delAviso);
+    await save('avisosProgramados'); renderAll();
+  });
+  const btnNovoAviso = document.getElementById('btn-novo-aviso');
+  if(btnNovoAviso) btnNovoAviso.onclick=async()=>{
+    if(!Array.isArray(state.avisosProgramados)) state.avisosProgramados=[];
+    state.avisosProgramados.push({id:uid(), horario:'08:00', mensagem:'Novo aviso', ativo:true, tipo:''});
+    await save('avisosProgramados'); renderAll();
   };
   const btnCancelarComunicado = document.getElementById('btn-cancelar-comunicado');
   if(btnCancelarComunicado) btnCancelarComunicado.onclick = ()=>{ editComunicadoId = null; renderAll(); };
