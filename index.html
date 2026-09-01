@@ -1123,6 +1123,7 @@ const CANAIS = ['Portaria','WhatsApp','Venda Ativa','Ligação','Hub','Google'];
 const PAGAMENTOS = ['Dinheiro','Débito','Crédito','Vale gás','Gás do povo','Pix','Abateu','Marcou/Fiado','Outros'];
 const NOTAS = ['Nota fiscal','Cupom não fiscal','Já lançado','Não lança'];
 const TIPOS_ENTREGA = ['Retirada','Falta retirar','Entrega a pé','Entrega de carro','Entrega de moto','Entrega de Strada'];
+const DIAS_SEMANA_LABEL = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const TIPOS_ENTREGA_COM_FRETE = ['Entrega de carro','Entrega de moto','Entrega de Strada'];
 
 const CATEGORIAS_ESTOQUE = {};
@@ -1359,7 +1360,7 @@ function abaPermitida(tabId){
 
 const TABS = [
   {id:'dashboard', label:'Painel'},
-  {id:'crm', label:'🤝 CRM'},
+  {id:'crm', label:'CRM'},
   {id:'financeiro', label:'Financeiro', filhos:['caixa','vendas','faltaretirar']},
   {id:'caixa', label:'Caixa'},
   {id:'vendas', label:'Vendas'},
@@ -2875,7 +2876,18 @@ async function loadAll(){
   if(!state.checklistDias) state.checklistDias = {};
   if(!state.funcionarios) state.funcionarios = [];
   if(!Array.isArray(state.avisosProgramados)){
-    state.avisosProgramados = [{id:uid(), horario:'19:30', mensagem:'💰 Hora de começar a fechar o caixa! Conte o dinheiro físico da gaveta e confira se todas as entregas em dinheiro já foram acertadas antes de lançar o fechamento.', ativo:true, tipo:'fechamentoCaixa'}];
+    state.avisosProgramados = [{id:uid(), horario:'19:30', mensagem:'💰 Hora de começar a fechar o caixa! Conte o dinheiro físico da gaveta e confira se todas as entregas em dinheiro já foram acertadas antes de lançar o fechamento.', ativo:true, tipo:'fechamentoCaixa', dias:[1,2,3,4,5]}];
+    await save('avisosProgramados');
+  }
+  const avisoAntigoSemDias = (state.avisosProgramados||[]).find(a=>a.tipo==='fechamentoCaixa' && !Array.isArray(a.dias));
+  if(avisoAntigoSemDias){
+    const msgBase = avisoAntigoSemDias.mensagem;
+    state.avisosProgramados = state.avisosProgramados.filter(a=>a.id!==avisoAntigoSemDias.id);
+    state.avisosProgramados.push(
+      {id:uid(), horario:'19:30', mensagem:msgBase, ativo:true, tipo:'fechamentoCaixa', dias:[1,2,3,4,5]},
+      {id:uid(), horario:'18:30', mensagem:msgBase, ativo:true, tipo:'fechamentoCaixa', dias:[6]},
+      {id:uid(), horario:'13:30', mensagem:msgBase, ativo:true, tipo:'fechamentoCaixa', dias:[0]}
+    );
     await save('avisosProgramados');
   }
   if(!Array.isArray(state.fornecedoresGas)){ state.fornecedoresGas = []; }
@@ -3225,6 +3237,7 @@ setInterval(()=>{
   const hoje = todayStr();
   (state.avisosProgramados||[]).forEach(av=>{
     if(!av.ativo || av.horario!==horaAtual) return;
+    if(Array.isArray(av.dias) && !av.dias.includes(agora.getDay())) return;
     const chave = av.id+':'+hoje;
     if(avisosProgramadosDisparados[chave]) return;
     if(av.tipo==='fechamentoCaixa' && (state.fechamentosCaixa||[]).some(f=>f.data===hoje)) return;
@@ -3526,7 +3539,7 @@ function viewDashboard(){
   return comunicadosBannerHtml()+
     (alertasEstoque.length>0 ? '<div class="card" style="border-left:4px solid var(--danger);cursor:pointer;" data-ir-relatorio-estoque="1"><h2 style="color:var(--danger);">⚠️ Estoque baixo — '+alertasEstoque.length+' item(ns)</h2>'+
       '<div class="hint">'+alertasEstoque.map(al=>al.label+' ('+al.atual+'/'+al.min+')').join(' · ')+' — toque para ver na aba Estoque.</div></div>' : '')+
-    '<div class="card" style="border-left:4px solid '+(pendenciasRetiradaDash.length>0?'var(--warning,#f59e0b)':'var(--border)')+';cursor:pointer;" data-ir-falta-retirar="1"><h2>'+iconVasilhame(true,null,20,'P13')+' Falta retirar'+(pendenciasRetiradaDash.length>0?' — '+pendenciasRetiradaDash.length+' pendência(s)':'')+'</h2>'+
+    '<div class="card" style="border-left:4px solid '+(pendenciasRetiradaDash.length>0?'var(--warning,#f59e0b)':'var(--border)')+';cursor:pointer;" data-ir-falta-retirar="1"><h2 style="color:#fff;">Falta retirar'+(pendenciasRetiradaDash.length>0?' — '+pendenciasRetiradaDash.length+' pendência(s)':'')+'</h2>'+
       '<div class="hint">'+(pendenciasRetiradaDash.length>0?'Gás já vendido/recebido que ainda falta o cliente retirar ou vocês entregarem.':'Nenhuma pendência agora.')+' Toque para abrir.</div></div>'+
     metaCardDashboardHtml()+googleCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div></div>'+
@@ -4272,7 +4285,7 @@ function viewVendas(){
 function pendenciasRetiradaTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma pendência de retirada.</div>';
   const opcoesForma = ['Cliente retirou','Entrega a pé'].concat((state.veiculos||[]).map(vc=>'Entrega de '+vc.nome));
-  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd / Valor</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><colgroup><col style="width:72px;"><col style="width:130px;"><col style="width:110px;"><col style="width:90px;"><col></colgroup><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd / Valor</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
@@ -5278,8 +5291,12 @@ function viewConfig(){
       '<input type="checkbox" data-aviso-ativo="'+av.id+'" '+(av.ativo?'checked':'')+' title="Ativo">'+
       '<input type="time" data-aviso-horario="'+av.id+'" value="'+(av.horario||'')+'" style="width:100px;">'+
       '<input type="text" data-aviso-mensagem="'+av.id+'" value="'+av.mensagem.replace(/"/g,'&quot;')+'" style="flex:1;min-width:180px;">'+
+      '<div style="display:flex;gap:3px;">'+DIAS_SEMANA_LABEL.map((lbl,i)=>
+        '<label style="font-size:9px;text-align:center;color:var(--text2);"><input type="checkbox" data-aviso-dia="'+av.id+'" data-dia="'+i+'" '+((!Array.isArray(av.dias)||av.dias.includes(i))?'checked':'')+' style="width:14px;height:14px;display:block;margin:0 auto;"><br>'+lbl+'</label>'
+      ).join('')+'</div>'+
       '<button type="button" class="del-link" data-del-aviso="'+av.id+'">🗑</button></div>'
     ).join('')+'</div>'+
+    '<div class="hint" style="margin-top:6px;">Marque os dias da semana em que cada aviso deve repetir. Ex.: o fechamento de caixa toca de seg a sex às 19:30, sábado às 18:30 e domingo às 13:30.</div>'+
     '<button type="button" class="btn small ghost" id="btn-novo-aviso" style="margin-top:10px;">+ Novo aviso</button>'+
     '</div>'+
     '<div class="card"><h2>📲 Avisos automáticos pro cliente (WhatsApp)</h2>'+
@@ -6042,7 +6059,7 @@ function crmPainelGeral(){
   const linhasAtencao = nomesAtencao.map(x=>'<tr><td>'+escapeHtmlCampanha(x.nome)+'</td><td>'+etiquetaFrequenciaClienteHtml(x.nome)+'</td>'+
     '<td class="cel-acoes">'+botaoWhatsApp(telefoneDoCliente(x.nome))+' <button type="button" class="act-link" data-crm-ver-cliente="'+escapeHtmlCampanha(x.nome)+'">👤 ver ficha</button></td></tr>').join('');
   const nomesClientes = state.clientes.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>c.nome);
-  return '<h3>🤝 CRM — Gestão de Relacionamento com Clientes</h3>'+
+  return '<h3>CRM — Gestão de Relacionamento com Clientes</h3>'+
     ajudaHtml('crm','Um mini-CRM dentro do sistema: escolha um cliente pra abrir a ficha completa (histórico de compras, fiado, crédito, comodato, NPS, indicações e anexos), registre interações (ligação, WhatsApp, visita, reclamação...) e crie follow-ups/lembretes de contato. Aqui no painel geral aparecem os follow-ups pendentes de todos os clientes e os clientes que merecem atenção por estarem há mais tempo sem comprar.')+
     '<div class="card" style="margin:14px 0 0;"><h3>🔎 Abrir ficha de um cliente</h3><select id="select-crm-cliente" style="max-width:360px;">'+opcoesComPlaceholder(nomesClientes,'Selecione um cliente')+'</select></div>'+
     '<div class="card"><h3>⏰ Follow-ups pendentes <span class="pill">'+pendentes.length+'</span></h3>'+
@@ -10185,6 +10202,14 @@ function attachHandlers(){
   document.querySelectorAll('[data-aviso-mensagem]').forEach(el=>el.onchange=async()=>{
     const av=(state.avisosProgramados||[]).find(x=>x.id===el.dataset.avisoMensagem); if(av){ av.mensagem=el.value; await save('avisosProgramados'); }
   });
+  document.querySelectorAll('[data-aviso-dia]').forEach(el=>el.onchange=async()=>{
+    const id = el.dataset.avisoDia;
+    const av=(state.avisosProgramados||[]).find(x=>x.id===id); if(!av) return;
+    const dias=[];
+    document.querySelectorAll('[data-aviso-dia="'+id+'"]').forEach(chk=>{ if(chk.checked) dias.push(Number(chk.dataset.dia)); });
+    av.dias = dias;
+    await save('avisosProgramados');
+  });
   document.querySelectorAll('[data-del-aviso]').forEach(btn=>btn.onclick=async()=>{
     if(!confirm('Excluir esse aviso programado?')) return;
     state.avisosProgramados=(state.avisosProgramados||[]).filter(x=>x.id!==btn.dataset.delAviso);
@@ -10193,7 +10218,7 @@ function attachHandlers(){
   const btnNovoAviso = document.getElementById('btn-novo-aviso');
   if(btnNovoAviso) btnNovoAviso.onclick=async()=>{
     if(!Array.isArray(state.avisosProgramados)) state.avisosProgramados=[];
-    state.avisosProgramados.push({id:uid(), horario:'08:00', mensagem:'Novo aviso', ativo:true, tipo:''});
+    state.avisosProgramados.push({id:uid(), horario:'08:00', mensagem:'Novo aviso', ativo:true, tipo:'', dias:[0,1,2,3,4,5,6]});
     await save('avisosProgramados'); renderAll();
   };
   const btnCancelarComunicado = document.getElementById('btn-cancelar-comunicado');
