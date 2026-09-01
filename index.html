@@ -7731,6 +7731,12 @@ function attachHandlers(){
     const quantidade = Number(f.get('quantidade'));
     const valor_unit = Number(f.get('valor_unit'));
     const valor_total = Math.round(quantidade*valor_unit*100)/100;
+    // Precisa ficar fora do if/else abaixo: "camposComuns" só existe dentro do bloco "else" (venda
+    // nova), então ao EDITAR uma venda (bloco "if(editVendaId)") essa variável nunca era criada —
+    // e a linha lá embaixo que confere "empresa" pra cadastrar automaticamente quebrava com um erro
+    // de JavaScript bem antes de chegar no save('vendas'). Isso travava o salvamento da edição
+    // inteira (os dados até chegavam a mudar na tela, mas nunca eram gravados).
+    const empresaFormVenda = (f.get('empresa')||'').trim();
     if(editVendaId){
       const v = state.vendas.find(x=>x.id===editVendaId);
       if(v){
@@ -7863,7 +7869,7 @@ function attachHandlers(){
         verificarLimiteCreditoCliente(camposComuns.cliente);
       }
     }
-    if(camposComuns.empresa) await garantirEmpresaCadastrada(camposComuns.empresa);
+    if(empresaFormVenda) await garantirEmpresaCadastrada(empresaFormVenda);
     await save('vendas'); await save('estoque');
     renderAll();
   };
@@ -10884,7 +10890,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         }
         const controlada = isControlada(categoria);
         let produto = controlada ? categoria : textoCategoria;
-        const quantidade = r['Quantidade'] ? (Number(String(r['Quantidade']).replace(',','.'))||1) : 1;
+        const quantidade = r['Quantidade'] ? (parseNumeroPlanilha(r['Quantidade'])||1) : 1;
         // Resolve primeiro qual produto do catálogo essa linha representa, pra poder puxar o preço
         // cadastrado dele quando a planilha não trouxer "Valor Unitário" preenchido.
         const textoItemProduto = (r['Produto']||'').trim();
@@ -10905,9 +10911,12 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         // Valor unitário: usa o que veio na planilha; se vier em branco, puxa o preço já cadastrado
         // no sistema (do item específico, ou da categoria/produto controlado) — e some pra 0 só se
         // não achar preço nenhum cadastrado, pra você poder digitar na hora caso tenha esquecido de atualizar.
-        const valorPlanilha = (r['Valor Unitário']||'').toString().trim();
-        const valor_unit = valorPlanilha
-          ? (Number(valorPlanilha.replace(/\./g,'').replace(',','.'))||0)
+        // Usa parseNumeroPlanilha (não um Number() direto) porque a coluna Valor Unitário vem
+        // com fórmula puxando o preço do catálogo, formatada como moeda (ex.: "R$ 85,00") — o "R$"
+        // fazia o Number() virar NaN e o valor chegava zerado mesmo com o preço certo na planilha.
+        const valorPlanilhaNum = parseNumeroPlanilha(r['Valor Unitário']);
+        const valor_unit = valorPlanilhaNum!=null
+          ? valorPlanilhaNum
           : Number((itemProdutoEncontrado && itemProdutoEncontrado.preco) || (produtoDaCategoria && produtoDaCategoria.preco) || 0);
         if(categoriaEhNova && !controlada){
           const jaTemNoCatalogo = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveNormalizada(produto) && chaveNormalizada(p.categoria)===chaveNormalizada(categoria));
@@ -10968,7 +10977,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           if(gruposPorChaveVenda.has(chaveGrupo)){ grupoId = gruposPorChaveVenda.get(chaveGrupo); primeiraLinhaDoGrupo = false; }
           else { grupoId = uid(); gruposPorChaveVenda.set(chaveGrupo, grupoId); }
         } else { grupoId = uid(); }
-        const freteBruto = TIPOS_ENTREGA_COM_FRETE.includes(tipo_entrega) ? (Number(String(r['Frete']||'0').replace(',','.'))||0) : 0;
+        const freteBruto = TIPOS_ENTREGA_COM_FRETE.includes(tipo_entrega) ? (parseNumeroPlanilha(r['Frete'])||0) : 0;
         const frete = primeiraLinhaDoGrupo ? freteBruto : 0;
         const venda = {
           id: uid(), criadoEm: Date.now(), grupoId, fiado_pago:false,
@@ -11015,7 +11024,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
     if(linhasDespesas.length){
       let importadas=0, ignoradas=0;
       linhasDespesas.forEach(function(r){
-        const valor = Number(String(r['Valor']||'0').replace(/\./g,'').replace(',','.'))||0;
+        const valor = parseNumeroPlanilha(r['Valor'])||0;
         if(!valor || valor<=0){ ignoradas++; return; }
         const categoriaTxt = (r['Categoria']||'').trim();
         const categoriaExistente = state.categoriasDespesas.find(c=>chaveNormalizada(c)===chaveNormalizada(categoriaTxt));
@@ -11043,7 +11052,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
       let importadas=0, ignoradas=0, marcadasPagas=0;
       linhasContasPagar.forEach(function(r){
         const descricao = (r['Descrição']||'').trim();
-        const valor = Number(String(r['Valor']||'0').replace(/\./g,'').replace(',','.'))||0;
+        const valor = parseNumeroPlanilha(r['Valor'])||0;
         if(!descricao || !valor || valor<=0){ ignoradas++; return; }
         const categoriaTxt = (r['Categoria']||'').trim();
         const vencimento = r['Vencimento'] ? normalizarDataImportada(r['Vencimento'], hoje) : hoje;
@@ -11071,8 +11080,8 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
       let importados=0;
       linhasFechamentoCaixa.forEach(function(r){
         const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
-        const abertura = Number(String(r['Abertura']||'0').replace(/\./g,'').replace(',','.'))||0;
-        const dinheiroContado = Number(String(r['Dinheiro Contado']||'0').replace(/\./g,'').replace(',','.'))||0;
+        const abertura = parseNumeroPlanilha(r['Abertura'])||0;
+        const dinheiroContado = parseNumeroPlanilha(r['Dinheiro Contado'])||0;
         const resumoDia = resumoCaixaDoDia(data, abertura);
         const dadosFechamento = {data, abertura, totalVendas:resumoDia.totalVendas, totalDespesas:resumoDia.totalDespesas, dinheiroEsperado:resumoDia.dinheiroEsperado, dinheiroContado, observacao:(r['Observação']||'').trim()};
         state.fechamentosCaixa = state.fechamentosCaixa.filter(x=>x.data!==data);
@@ -11106,7 +11115,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         if(!nome){ ignorados++; return; }
         const categoria = (r['Categoria']||'').trim() || 'Outros';
         if(categoriaControladaEquivalente(nome) || categoriaControladaEquivalente(categoria)){ ignorados++; return; }
-        const preco = Number(String(r['Preço']||'0').replace(/\./g,'').replace(',','.'))||0;
+        const preco = parseNumeroPlanilha(r['Preço'])||0;
         const jaExiste = state.produtos.find(p=>chaveNormalizada(p.nome)===chaveNormalizada(nome) && chaveNormalizada(p.categoria)===chaveNormalizada(categoria));
         if(jaExiste){ ignorados++; return; }
         const categoriaJaExistia = state.categoriasProdutos.includes(categoria);
@@ -11184,6 +11193,28 @@ function guessHeaderPriority(headers, groups){
     if(h) return h;
   }
   return '';
+}
+// Converte texto de célula de planilha em número, aceitando tanto "1.234,56" (padrão brasileiro)
+// quanto "1234.56", e tolerando prefixo/sufixo de moeda ou espaços (inclusive não separáveis) —
+// como o texto que o Excel devolve quando a célula tem uma fórmula com formato de moeda aplicado
+// (ex.: "R$ 85,00"). Sem essa limpeza, o "R$" na frente fazia o Number() virar NaN e o valor
+// puxado automaticamente do catálogo (Valor Unitário em Vendas) chegava zerado no sistema.
+// Retorna null quando não dá pra interpretar nada (célula vazia ou sem nenhum dígito).
+function parseNumeroPlanilha(txt){
+  let s = String(txt==null?'':txt).trim();
+  if(!s) return null;
+  s = s.replace(/[^\d,.\-]/g,'');
+  if(!s || s==='-' || s==='.' || s===',') return null;
+  const temVirgula = s.indexOf(',')>-1;
+  const temPonto = s.indexOf('.')>-1;
+  if(temVirgula && temPonto){
+    if(s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g,'').replace(',', '.');
+    else s = s.replace(/,/g,'');
+  } else if(temVirgula){
+    s = s.replace(',', '.');
+  }
+  const n = Number(s);
+  return isNaN(n) ? null : n;
 }
 function normalizarDataImportada(txt, fallback){
   const s = (txt||'').trim();
@@ -11826,9 +11857,9 @@ function renderCsvVendasMapping(){
       const controlada = isControlada(categoria);
       const produto = controlada ? categoria : textoCategoria;
       const quantidade = colQtd && r[colQtd] ? (Number(String(r[colQtd]).replace(',','.'))||1) : 1;
-      let valor_unit = colValorUnit && r[colValorUnit] ? Number(String(r[colValorUnit]).replace(/\./g,'').replace(',','.'))||0 : 0;
+      let valor_unit = colValorUnit && r[colValorUnit] ? (parseNumeroPlanilha(r[colValorUnit])||0) : 0;
       if(!valor_unit && colValorTotal && r[colValorTotal]){
-        const vt = Number(String(r[colValorTotal]).replace(/\./g,'').replace(',','.'))||0;
+        const vt = parseNumeroPlanilha(r[colValorTotal])||0;
         valor_unit = quantidade>0 ? Math.round((vt/quantidade)*100)/100 : vt;
       }
       const valor_total = Math.round(quantidade*valor_unit*100)/100;
@@ -11854,7 +11885,7 @@ function renderCsvVendasMapping(){
       const pagamento = colPagamento && r[colPagamento] ? r[colPagamento].trim() : pagamentoBase;
       const tipo_entrega = colEntrega && r[colEntrega] ? r[colEntrega].trim() : entregaBase;
       const empresa = colEmpresa ? (r[colEmpresa]||'').trim() : '';
-      const frete = (colFrete && r[colFrete] && TIPOS_ENTREGA_COM_FRETE.includes(tipo_entrega)) ? (Number(String(r[colFrete]).replace(',','.'))||0) : 0;
+      const frete = (colFrete && r[colFrete] && TIPOS_ENTREGA_COM_FRETE.includes(tipo_entrega)) ? (parseNumeroPlanilha(r[colFrete])||0) : 0;
       const venda = {
         id: uid(), criadoEm: Date.now(), grupoId: uid(), fiado_pago:false,
         data, cliente, canal, categoria, produto, quantidade, valor_unit, valor_total,
