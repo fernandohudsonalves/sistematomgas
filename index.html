@@ -10824,7 +10824,7 @@ function processarImportacaoDiariaExcel(file){
     const pendentesProdutos = detectarProdutosPendentesVendas(linhasVendas);
     const pendentesClientes = detectarClientesPendentesVendas(linhasVendas);
     const pendentesItensProduto = detectarItensProdutoPendentesVendas(linhasVendas);
-    if(pendentesProdutos.length>0 || pendentesItensProduto.length>0){
+    if(pendentesProdutos.length>0 || pendentesItensProduto.length>0 || pendentesClientes.length>0){
       mostrarResolucaoProdutosImportacaoDiaria(pendentesProdutos, pendentesClientes, pendentesItensProduto, linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa);
       return;
     }
