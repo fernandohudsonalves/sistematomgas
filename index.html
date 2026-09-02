@@ -10896,6 +10896,28 @@ async function gerarModeloImportacaoDiaria(){
     // formato de texto direto em cada célula, ele sobrevive a qualquer estilo aplicado depois.
     for(let l=1; l<=300; l++){ ws.getCell(colunaLetra+l).numFmt = '@'; }
   }
+  // Colunas extras "Total do Dia" e "Total do Mês" — só pra conferência visual enquanto vai
+  // preenchendo a planilha ao longo do dia/mês (não fazem parte da importação: o sistema só lê as
+  // colunas pelo nome que ele conhece, então essas duas ficam de fora sem dar problema nenhum).
+  // O total do dia só aparece na ÚLTIMA linha preenchida daquele dia (a linha seguinte tem data
+  // diferente ou está em branco) — a fórmula sempre recalcula, então conforme você lança mais uma
+  // venda/despesa do mesmo dia, o total "anda sozinho" pra nova última linha. O total do mês
+  // funciona igual, só que olhando pra última linha preenchida da planilha inteira.
+  function aplicarTotalConferencia(ws, colDia, colMes, colData, linhaIni, linhaFim, somaDiaExpr, somaMesExpr){
+    ws.getCell(colDia+'1').value = 'Total do Dia (conferência — não importa)';
+    ws.getCell(colMes+'1').value = 'Total do Mês (conferência — não importa)';
+    ws.getColumn(colDia).width = 20;
+    ws.getColumn(colMes).width = 22;
+    for(let l=linhaIni; l<=linhaFim; l++){
+      const temProxima = l<linhaFim;
+      const proximaData = '$'+colData+(l+1);
+      const condDia = temProxima ? ('$'+colData+l+'<>"",$'+colData+l+'<>'+proximaData) : ('$'+colData+l+'<>""');
+      ws.getCell(colDia+l).value = { formula: 'IF(AND('+condDia+'),'+somaDiaExpr(l)+',"")' };
+      const condMes = temProxima ? ('$'+colData+l+'<>"",'+proximaData+'=""') : ('$'+colData+l+'<>""');
+      ws.getCell(colMes+l).value = { formula: 'IF(AND('+condMes+'),'+somaMesExpr(l)+',"")' };
+      ws.getCell(colDia+l).numFmt = '#,##0.00'; ws.getCell(colMes+l).numFmt = '#,##0.00';
+    }
+  }
   // Listas de produtos separadas por categoria (pra dropdown dependente: escolheu a categoria em H,
   // a coluna Produto já mostra só os produtos daquela categoria). Fica numa aba oculta à parte.
   const wsProdPorCat = wb.addWorksheet('ProdutosPorCategoria');
@@ -10948,7 +10970,9 @@ async function gerarModeloImportacaoDiaria(){
     'FechamentoCaixa: uma linha por dia. Abertura é o troco inicial daquele dia; Dinheiro Contado é o que foi contado na gaveta no fechamento. O sistema recalcula sozinho o resto a partir das vendas e despesas já lançadas naquele dia.',
     'Grupo (Produtos): '+gruposProduto.join(' | ')+' — usado só quando a Categoria da linha ainda não existe no sistema, pra saber em qual das três a nova categoria deve entrar. Se a Categoria já existir, o grupo dela é mantido do jeito que já está cadastrado.',
     'Categoria (Produtos): o "tipo" do produto (ex.: Produtos de Limpeza, Acessórios para Gás). Já vem com dropdown das categorias não controladas cadastradas — gás e água já são controlados pelo Estoque e não entram aqui.',
-    'Indicado Por / Aniversário (Clientes): opcionais. Indicado Por é o nome de quem indicou esse cliente (usado no Programa de Indicação). Aniversário no formato AAAA-MM-DD (usado pra campanha automática de aniversariantes).'
+    'Indicado Por / Aniversário (Clientes): opcionais. Indicado Por é o nome de quem indicou esse cliente (usado no Programa de Indicação). Aniversário no formato AAAA-MM-DD (usado pra campanha automática de aniversariantes).',
+    '',
+    '"Total do Dia" e "Total do Mês" (últimas colunas de Vendas e Despesas): são só pra você acompanhar em tempo real enquanto lança, igual na planilha antiga — NÃO fazem parte da importação (o sistema ignora essas duas colunas). O total do dia some sozinho da linha antiga e aparece na nova última linha assim que você lança mais um item do mesmo dia; o total do mês faz o mesmo olhando pra planilha inteira, sempre na última linha preenchida.'
   ].forEach(function(linha){ wsInstr.addRow([linha]); });
 
   const ULTIMA_LINHA = 300;
@@ -10980,6 +11004,14 @@ async function gerarModeloImportacaoDiaria(){
   // troca de dia por mês só na aba Vendas.
   formatarColunaComoTexto(wsVendas, 'A'); // Data
   formatarColunaComoTexto(wsVendas, 'S'); // Aniversário Cliente (Cliente novo)
+  // Total do Dia (T) = soma de Quantidade×Valor Unitário de todas as linhas do mesmo dia + Frete
+  // (o Frete só é preenchido numa linha por venda numerada, então soma sem repetir).
+  // Total do Mês (U) = mesma conta, mas de TODAS as linhas já preenchidas na planilha, sem filtrar por dia.
+  aplicarTotalConferencia(
+    wsVendas, 'T', 'U', 'A', 2, ULTIMA_LINHA,
+    (l)=>'SUMPRODUCT(($A$2:$A'+l+'=$A'+l+')*$J$2:$J'+l+'*$K$2:$K'+l+')+SUMIF($A$2:$A'+l+',$A'+l+',$P$2:$P'+l+')',
+    (l)=>'SUMPRODUCT($J$2:$J'+l+'*$K$2:$K'+l+')+SUM($P$2:$P'+l+')'
+  );
 
   // ---- Aba Despesas ----
   const wsDespesas = wb.addWorksheet('Despesas');
@@ -10994,6 +11026,13 @@ async function gerarModeloImportacaoDiaria(){
   formatarColunaComoTexto(wsDespesas, 'A'); // Data
   formatarColunaComoTexto(wsDespesas, 'I'); // Garantia Até
   formatarColunaComoTexto(wsDespesas, 'J'); // Próxima Manutenção
+  // Total do Dia (K) = soma da coluna Valor de todas as linhas do mesmo dia.
+  // Total do Mês (L) = soma da coluna Valor de todas as linhas já preenchidas na planilha.
+  aplicarTotalConferencia(
+    wsDespesas, 'K', 'L', 'A', 2, ULTIMA_LINHA,
+    (l)=>'SUMIF($A$2:$A'+l+',$A'+l+',$C$2:$C'+l+')',
+    (l)=>'SUM($C$2:$C'+l+')'
+  );
 
   // ---- Aba ContasPagar ----
   const wsContas = wb.addWorksheet('ContasPagar');
