@@ -4446,9 +4446,17 @@ function viewVendas(){
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje)+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
     '<div class="form-row"><div><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por cliente, produto, empresa, canal ou pagamento..."></div>'+
-    '<div style="max-width:170px;"><input type="date" id="busca-venda-data" title="Filtrar por um dia específico"></div></div>'+
+    '<div style="max-width:170px;"><input type="date" id="busca-venda-data" title="Filtrar por um dia específico"></div>'+
+    '<div style="max-width:130px;"><label style="font-size:11px;">Por página</label><select id="sel-vendas-por-pagina"><option value="30">30</option><option value="50">50</option><option value="100">100</option></select></div></div>'+
     '<div id="lista-vendas-wrap">'+vendasTable(state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).slice(0,30))+'</div>'+
-    '<div class="hint" style="margin-top:8px;">Mostrando as vendas mais recentes. Use a busca ou escolha uma data para ver todas as vendas daquele dia.</div>'+
+    '<div id="paginacao-vendas-wrap" style="display:flex;align-items:center;gap:10px;justify-content:center;margin-top:10px;"></div>'+
+    '<div class="hint" style="margin-top:8px;">Use a busca ou escolha uma data para filtrar; navegue pelas páginas para ver vendas mais antigas.</div>'+
+    '<details style="margin-top:10px;"><summary style="cursor:pointer;color:var(--royal);font-weight:600;font-size:13px;">Corrigir data errada em várias vendas de uma vez</summary>'+
+    '<div class="form-row" style="margin-top:8px;">'+
+    '<div><label>Data errada (atual)</label><input type="date" id="corrigir-data-de"></div>'+
+    '<div><label>Data certa (nova)</label><input type="date" id="corrigir-data-para"></div>'+
+    '<div style="display:flex;align-items:flex-end;"><button type="button" class="btn small" id="btn-corrigir-data-lote">Corrigir todas essa data</button></div>'+
+    '</div></details>'+
     '</div>';
 }
 function pendenciasRetiradaTable(list){
@@ -8805,23 +8813,56 @@ function attachHandlers(){
     ff.scrollIntoView({behavior:'smooth'});
   });
 
-  const buscaVenda = document.getElementById('busca-venda');
-  const buscaVendaData = document.getElementById('busca-venda-data');
+  let paginaVendasHistorico = 1;
   const filtrarListaVendas = ()=>{
     const q = (buscaVenda?buscaVenda.value:'').toLowerCase().trim();
     const dataEscolhida = buscaVendaData ? buscaVendaData.value : '';
+    const porPagina = Number(selVendasPorPagina ? selVendasPorPagina.value : 30) || 30;
     let base = state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm);
     if(dataEscolhida) base = base.filter(v=>v.data===dataEscolhida);
     if(q) base = base.filter(v=>{
       const alvo = (v.produto+' '+(v.cliente||'')+' '+(v.empresa||'')+' '+(v.canal||'')+' '+v.pagamento+' '+(v.obs||'')).toLowerCase();
       return alvo.includes(q);
     });
-    const filtered = (!q && !dataEscolhida) ? base.slice(0,30) : base;
-    document.getElementById('lista-vendas-wrap').innerHTML = vendasTable(filtered);
+    const totalPaginas = Math.max(1, Math.ceil(base.length/porPagina));
+    if(paginaVendasHistorico>totalPaginas) paginaVendasHistorico = totalPaginas;
+    if(paginaVendasHistorico<1) paginaVendasHistorico = 1;
+    const inicio = (paginaVendasHistorico-1)*porPagina;
+    const pagina = base.slice(inicio, inicio+porPagina);
+    document.getElementById('lista-vendas-wrap').innerHTML = vendasTable(pagina);
+    const wrapPag = document.getElementById('paginacao-vendas-wrap');
+    if(wrapPag){
+      wrapPag.innerHTML = base.length===0 ? '' :
+        '<button type="button" class="btn small ghost" id="btn-vendas-pag-anterior" '+(paginaVendasHistorico<=1?'disabled':'')+'>‹ Anteriores</button>'+
+        '<span class="hint" style="margin:0;">Página '+paginaVendasHistorico+' de '+totalPaginas+' — '+base.length+' venda(s)</span>'+
+        '<button type="button" class="btn small ghost" id="btn-vendas-pag-proxima" '+(paginaVendasHistorico>=totalPaginas?'disabled':'')+'>Próximas ›</button>';
+      const btnAnt = document.getElementById('btn-vendas-pag-anterior');
+      const btnProx = document.getElementById('btn-vendas-pag-proxima');
+      if(btnAnt) btnAnt.onclick = ()=>{ paginaVendasHistorico--; filtrarListaVendas(); };
+      if(btnProx) btnProx.onclick = ()=>{ paginaVendasHistorico++; filtrarListaVendas(); };
+    }
     attachVendaRowHandlers();
   };
-  if(buscaVenda) buscaVenda.oninput = filtrarListaVendas;
-  if(buscaVendaData) buscaVendaData.oninput = filtrarListaVendas;
+  const buscaVenda = document.getElementById('busca-venda');
+  const buscaVendaData = document.getElementById('busca-venda-data');
+  const selVendasPorPagina = document.getElementById('sel-vendas-por-pagina');
+  if(buscaVenda) buscaVenda.oninput = ()=>{ paginaVendasHistorico=1; filtrarListaVendas(); };
+  if(buscaVendaData) buscaVendaData.oninput = ()=>{ paginaVendasHistorico=1; filtrarListaVendas(); };
+  if(selVendasPorPagina) selVendasPorPagina.onchange = ()=>{ paginaVendasHistorico=1; filtrarListaVendas(); };
+  if(document.getElementById('lista-vendas-wrap')) filtrarListaVendas();
+  const btnCorrigirDataLote = document.getElementById('btn-corrigir-data-lote');
+  if(btnCorrigirDataLote) btnCorrigirDataLote.onclick = async ()=>{
+    const de = document.getElementById('corrigir-data-de').value;
+    const para = document.getElementById('corrigir-data-para').value;
+    if(!de || !para){ alert('Preencha as duas datas.'); return; }
+    const afetadas = state.vendas.filter(v=>v.data===de);
+    if(afetadas.length===0){ alert('Nenhuma venda encontrada com a data '+fmtDate(de)+'.'); return; }
+    if(!confirm('Isso vai mudar '+afetadas.length+' venda(s) de '+fmtDate(de)+' para '+fmtDate(para)+'. Continuar?')) return;
+    afetadas.forEach(v=>{ v.data=para; });
+    await save('vendas');
+    alert(afetadas.length+' venda(s) corrigida(s)!');
+    renderAll();
+  };
   const buscaDespesa = document.getElementById('busca-despesa');
   if(buscaDespesa) buscaDespesa.oninput = ()=>{
     const q = buscaDespesa.value.toLowerCase().trim();
