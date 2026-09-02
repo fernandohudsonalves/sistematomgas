@@ -6868,20 +6868,19 @@ function evolucaoMensalCompleta(){
   const chaveDespesasCol = colunas.find(c=>/despesas/i.test(c));
   const porMes = {};
   state.historicoMensal.forEach(h=>{ porMes[h.mes] = Object.assign({}, h.dados); });
-  const mesesReais = new Set();
-  state.vendas.forEach(v=>mesesReais.add(monthKey(v.data)));
-  state.despesas.forEach(d=>mesesReais.add(monthKey(d.data)));
-  mesesReais.forEach(function(mk){
-    const base = porMes[mk] || {};
-    const vendasMes = state.vendas.filter(v=>monthKey(v.data)===mk);
-    const despesasMes = state.despesas.filter(d=>monthKey(d.data)===mk);
-    // Só sobrescreve com o total lançado no sistema se de fato existir lançamento daquele tipo
-    // nesse mês. Sem isso, um mês com só despesas lançadas no sistema (por exemplo) zerava
-    // a coluna de vendas que tinha sido importada da planilha de evolução.
-    if(chaveVendasCol && vendasMes.length>0) base[chaveVendasCol] = vendasMes.reduce((s,v)=>s+v.valor_total,0);
-    if(chaveDespesasCol && despesasMes.length>0) base[chaveDespesasCol] = despesasMes.reduce((s,d)=>s+d.valor,0);
-    porMes[mk] = base;
-  });
+  // Só o mês VIGENTE é recalculado ao vivo a partir dos lançamentos do sistema. Meses já
+  // fechados (passados) usam só o valor importado da planilha e nunca são sobrescritos —
+  // antes, qualquer mês passado que ainda tivesse (ou deixasse de ter) lançamentos na tabela
+  // de vendas/despesas era recalculado aqui, e se esses lançamentos fossem apagados/arquivados
+  // depois do fechamento do mês, o total ia a zero mesmo já existindo um valor certo vindo da
+  // planilha importada.
+  const mk = monthKey(todayStr());
+  const base = porMes[mk] || {};
+  const vendasMes = state.vendas.filter(v=>monthKey(v.data)===mk);
+  const despesasMes = state.despesas.filter(d=>monthKey(d.data)===mk);
+  if(chaveVendasCol && vendasMes.length>0) base[chaveVendasCol] = vendasMes.reduce((s,v)=>s+v.valor_total,0);
+  if(chaveDespesasCol && despesasMes.length>0) base[chaveDespesasCol] = despesasMes.reduce((s,d)=>s+d.valor,0);
+  porMes[mk] = base;
   return porMes;
 }
 function seriesCoresEvolucao(){ return ['#1E3A8A','#16A34A','#DC2626','#7C3AED','#B45309','#5BA3F5','#0EA5A4','#E11D48','#4F46E5','#059669','#94A2B8','#B6FF3D']; }
