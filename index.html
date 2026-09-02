@@ -4570,9 +4570,14 @@ function viewDespesas(){
     '<div class="card"><h2>Despesas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('despesas','Registre aqui os gastos do dia (compras, contas, manutenção). Assim como as vendas, a maior parte pode vir automaticamente pela importação da planilha Excel.')+
     '<div id="lista-despesas-hoje-wrap">'+despesasTable(despesasHoje)+'</div></div>'+
     '<div class="card"><h2>Histórico de despesas</h2>'+
+    '<div class="form-row">'+
+    '<div><label>De</label><input type="date" id="despesa-filtro-de" value="'+firstOfMonth()+'"></div>'+
+    '<div><label>Até</label><input type="date" id="despesa-filtro-ate" value="'+hoje+'"></div>'+
+    '<div><label>&nbsp;</label><button type="button" class="btn small ghost" id="despesa-filtro-limpar">Ver todas (sem filtro de data)</button></div>'+
+    '</div>'+
     '<input type="text" id="busca-despesa" class="searchbar" placeholder="Buscar por descrição ou categoria...">'+
-    '<div id="lista-despesas-wrap">'+despesasTable(state.despesas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).slice(0,30))+'</div>'+
-    '<div class="hint" style="margin-top:8px;">Mostrando as despesas mais recentes. Use a busca para encontrar um lançamento específico em qualquer data.</div>'+
+    '<div id="lista-despesas-wrap">'+despesasTable(state.despesas.filter(d=>d.data>=firstOfMonth() && d.data<=hoje).slice().sort((a,b)=>b.criadoEm-a.criadoEm))+'</div>'+
+    '<div class="hint" style="margin-top:8px;">Mostrando o período selecionado acima. Use a busca para refinar dentro do período, ou clique em "ver todas" pra procurar em qualquer data.</div>'+
     '</div>';
 }
 function despesasTable(list){
@@ -8276,10 +8281,14 @@ function attachHandlers(){
     if(!movDevendoPreview) return;
     const qtd = Number(feMov.quantidade.value)||0;
     const devolvidos = Number(movVaziosInput.value)||0;
-    const devendo = Math.max(0, qtd - devolvidos);
-    movDevendoPreview.innerHTML = devendo>0
-      ? '⚠️ Você vai ficar devendo <strong>'+devendo+' vasilhame(s) vazio(s)</strong> ao fornecedor. Isso entra automaticamente em "Comodatos / Empréstimos → Eu devo ao atacadista".'
-      : 'Toda entrada de carga cheia costuma exigir devolver a mesma quantidade de vazio pro fornecedor. Preencha aqui só o que você realmente devolveu agora — a diferença fica registrada como dívida de vazio com o fornecedor.';
+    const devendo = qtd - devolvidos;
+    if(devendo>0){
+      movDevendoPreview.innerHTML = '⚠️ Você vai ficar devendo <strong>'+devendo+' vasilhame(s) vazio(s)</strong> ao fornecedor. Isso entra automaticamente em "Comodatos / Empréstimos → Eu devo ao atacadista".';
+    } else if(devendo<0){
+      movDevendoPreview.innerHTML = '✓ Você está devolvendo <strong>'+Math.abs(devendo)+' vasilhame(s) a mais</strong> do que recebeu agora — isso abate esse tanto da sua dívida antiga com o fornecedor.';
+    } else {
+      movDevendoPreview.innerHTML = 'Toda entrada de carga cheia costuma exigir devolver a mesma quantidade de vazio pro fornecedor. Preencha aqui só o que você realmente devolveu agora — a diferença fica registrada como dívida de vazio com o fornecedor (ou abate dívida antiga, se devolver mais do que recebeu).';
+    }
   }
   if(feMov){
     if(movEstadoSel) movEstadoSel.addEventListener('change', atualizarTrocaVazios);
@@ -8326,7 +8335,9 @@ function attachHandlers(){
       aplicarEfeitoEstoqueLanc(novoLanc, false);
       state.estoqueLancamentos.push(novoLanc);
       if(estado==='Cheio' && direcao==='entrada'){
-        const vaziosDevolvidos = Math.max(0, Math.min(quantidade, Number(f.get('vazios_devolvidos'))||0));
+        // Não limita mais os vazios devolvidos à quantidade recebida agora — dá pra devolver mais
+        // (quitando vazios que já deviam de antes) ou menos (sobra como dívida nova) do fornecedor.
+        const vaziosDevolvidos = Math.max(0, Number(f.get('vazios_devolvidos'))||0);
         if(vaziosDevolvidos>0){
           const lancVazio = {
             id: uid(), criadoEm: Date.now(), data: todayStr(), tipo, item: itemLabel, itemChave, estado:'Vazio',
@@ -8335,11 +8346,19 @@ function attachHandlers(){
           aplicarEfeitoEstoqueLanc(lancVazio, false);
           state.estoqueLancamentos.push(lancVazio);
         }
+        // "devendo" pode ficar negativo quando devolve mais vazios do que recebeu agora — nesse
+        // caso é um abatimento da dívida antiga com o fornecedor, não uma dívida nova.
+        // Usa sempre o nome do fornecedor padrão de gás (Toninho), o mesmo usado nos lançamentos
+        // manuais de comodato, pra não duplicar o saldo em dois nomes diferentes ("Fornecedor" x "Toninho").
         const devendo = quantidade - vaziosDevolvidos;
-        if(devendo>0){
+        if(devendo!==0){
+          const nomeFornecedorPadrao = (state.fornecedoresGas && state.fornecedoresGas[0] && state.fornecedoresGas[0].nome) || 'Toninho';
           state.comodatos.push({
-            id: uid(), direcao:'atacadista', nome:'Fornecedor', categoria: tipo, item: itemChave, produto:'Vasilhame vazio',
-            quantidade: devendo, data: todayStr(), obs:'Gerado automaticamente na entrada de '+quantidade+' '+itemLabel+' cheio(s)'
+            id: uid(), direcao:'atacadista', nome: nomeFornecedorPadrao, categoria: tipo, item: itemChave, produto:'Vasilhame vazio',
+            quantidade: devendo, data: todayStr(),
+            obs: devendo>0
+              ? 'Gerado automaticamente na entrada de '+quantidade+' '+itemLabel+' cheio(s)'
+              : 'Abatimento automático: devolveu '+vaziosDevolvidos+' vazios na entrada de '+quantidade+' '+itemLabel+' cheio(s) (quitando '+Math.abs(devendo)+' de dívida antiga)'
           });
         }
       }
@@ -8876,13 +8895,28 @@ function attachHandlers(){
     alert(afetadas.length+' venda(s) corrigida(s)!');
     renderAll();
   };
-  const buscaDespesa = document.getElementById('busca-despesa');
-  if(buscaDespesa) buscaDespesa.oninput = ()=>{
-    const q = buscaDespesa.value.toLowerCase().trim();
-    const base = state.despesas.slice().sort((a,b)=>b.criadoEm-a.criadoEm);
-    const filtered = !q ? base.slice(0,30) : base.filter(d=>(d.descricao+' '+d.categoria).toLowerCase().includes(q));
-    document.getElementById('lista-despesas-wrap').innerHTML = despesasTable(filtered);
+  function aplicarFiltroDespesas(){
+    const q = (document.getElementById('busca-despesa').value||'').toLowerCase().trim();
+    const de = document.getElementById('despesa-filtro-de').value;
+    const ate = document.getElementById('despesa-filtro-ate').value;
+    let base = state.despesas.slice().sort((a,b)=>b.criadoEm-a.criadoEm);
+    if(de) base = base.filter(d=>d.data>=de);
+    if(ate) base = base.filter(d=>d.data<=ate);
+    if(q) base = base.filter(d=>(d.descricao+' '+d.categoria).toLowerCase().includes(q));
+    document.getElementById('lista-despesas-wrap').innerHTML = despesasTable(base);
     attachDespesaRowHandlers();
+  }
+  const buscaDespesa = document.getElementById('busca-despesa');
+  if(buscaDespesa) buscaDespesa.oninput = aplicarFiltroDespesas;
+  const despesaFiltroDe = document.getElementById('despesa-filtro-de');
+  if(despesaFiltroDe) despesaFiltroDe.onchange = aplicarFiltroDespesas;
+  const despesaFiltroAte = document.getElementById('despesa-filtro-ate');
+  if(despesaFiltroAte) despesaFiltroAte.onchange = aplicarFiltroDespesas;
+  const despesaFiltroLimpar = document.getElementById('despesa-filtro-limpar');
+  if(despesaFiltroLimpar) despesaFiltroLimpar.onclick = ()=>{
+    document.getElementById('despesa-filtro-de').value = '';
+    document.getElementById('despesa-filtro-ate').value = '';
+    aplicarFiltroDespesas();
   };
   const buscaEmpresa = document.getElementById('busca-empresa');
   if(buscaEmpresa) buscaEmpresa.oninput = ()=>{
