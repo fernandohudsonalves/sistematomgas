@@ -5669,6 +5669,7 @@ function viewRelatorios(){
     {id:'compararcampanhas', label:'Comparar Campanhas'},
     {id:'itens', label:'Itens por categoria'},
     {id:'entregas', label:'Entregas por período'},
+    {id:'fretes', label:'Fretes por período'},
     {id:'despesas', label:'Despesas por período'},
     {id:'veiculos', label:'Veículos'},
     {id:'fiado', label:'Fiado / A receber'},
@@ -5700,6 +5701,7 @@ function viewRelatorios(){
   else if(relatorioSub==='ranking') content = relatorioRanking();
   else if(relatorioSub==='itens') content = relatorioItens();
   else if(relatorioSub==='entregas') content = relatorioEntregas();
+  else if(relatorioSub==='fretes') content = relatorioFretes();
   else if(relatorioSub==='despesas') content = relatorioDespesas();
   else if(relatorioSub==='veiculos') content = relatorioVeiculos();
   else if(relatorioSub==='fiado') content = relatorioFiado();
@@ -5911,6 +5913,14 @@ function relatorioEntregas(){
     '<div><label>Até</label><input type="date" id="rent-ate" value="'+todayStr()+'"></div>'+
     '<div><label>Meio de entrega</label><select id="rent-tipo"><option value="">Todos</option>'+TIPOS_ENTREGA.map(t=>'<option>'+t+'</option>').join('')+'</select></div></div>'+
     '<button class="btn small ghost" id="rent-filtrar">Filtrar</button><div id="rent-resultado" style="margin-top:16px;"></div>';
+}
+function relatorioFretes(){
+  return '<h3>Filtrar</h3><div class="form-row">'+
+    '<div><label>De</label><input type="date" id="rfr-de" value="'+firstOfMonth()+'"></div>'+
+    '<div><label>Até</label><input type="date" id="rfr-ate" value="'+todayStr()+'"></div>'+
+    '<div><label>Meio de entrega</label><select id="rfr-tipo"><option value="">Todos</option>'+TIPOS_ENTREGA.map(t=>'<option>'+t+'</option>').join('')+'</select></div>'+
+    '<div><label>Forma de pagamento</label><select id="rfr-pagamento"><option value="">Todas</option>'+PAGAMENTOS.map(p=>'<option>'+p+'</option>').join('')+'</select></div></div>'+
+    '<button class="btn small ghost" id="rfr-filtrar">Filtrar</button><div id="rfr-resultado" style="margin-top:16px;"></div>';
 }
 function relatorioItens(){
   const tipos = categoriasNaoControladas();
@@ -7134,22 +7144,61 @@ function renderRelatorioEntregasResultado(){
   const de = document.getElementById('rent-de').value, ate = document.getElementById('rent-ate').value;
   const tipo = document.getElementById('rent-tipo').value;
   const filtradas = state.vendas.filter(v=> v.data>=de && v.data<=ate && (!tipo || v.tipo_entrega===tipo));
+  // Conta por ENTREGA de verdade (grupoId), não por linha de produto — uma venda com vários itens
+  // de categorias diferentes (ex.: gás + água) é UMA entrega só, mesmo virando várias linhas no
+  // sistema. Sem isso, cada produto extra da mesma visita inflava a contagem de entregas.
   const porTipo = {};
+  const gruposDoPeriodo = new Set();
   filtradas.forEach(v=>{
-    if(!porTipo[v.tipo_entrega]) porTipo[v.tipo_entrega] = {qtd:0, frete:0};
-    porTipo[v.tipo_entrega].qtd += 1;
+    const chave = v.grupoId || v.id;
+    if(!porTipo[v.tipo_entrega]) porTipo[v.tipo_entrega] = {qtd:0, frete:0, vistos:new Set()};
+    if(!porTipo[v.tipo_entrega].vistos.has(chave)){ porTipo[v.tipo_entrega].vistos.add(chave); porTipo[v.tipo_entrega].qtd += 1; }
     porTipo[v.tipo_entrega].frete += (v.frete||0);
+    gruposDoPeriodo.add(chave);
   });
   const linhas = Object.entries(porTipo).sort((a,b)=>b[1].qtd-a[1].qtd);
   const freteTotal = filtradas.reduce((s,v)=>s+(v.frete||0),0);
   document.getElementById('rent-resultado').innerHTML =
     '<div class="grid cols2" style="max-width:420px;margin-bottom:12px;">'+
-    '<div class="metric"><div class="label">Total de entregas no período</div><div class="value">'+filtradas.length+'</div></div>'+
+    '<div class="metric"><div class="label">Total de entregas no período</div><div class="value">'+gruposDoPeriodo.size+'</div></div>'+
     '<div class="metric"><div class="label">Total arrecadado em frete</div><div class="value">'+fmtMoney(freteTotal)+'</div></div>'+
     '</div>'+
     (linhas.length===0?'<div class="empty">Nenhuma entrega encontrada nesse período.</div>':
-    '<div class="table-wrap"><table><thead><tr><th>Meio de entrega</th><th>Quantidade</th><th>Frete arrecadado</th></tr></thead><tbody>'+
+    '<div class="table-wrap"><table><thead><tr><th>Meio de entrega</th><th>Entregas</th><th>Frete arrecadado</th></tr></thead><tbody>'+
     linhas.map(l=>'<tr><td>'+entregaLabel(l[0])+'</td><td>'+l[1].qtd+'</td><td>'+fmtMoney(l[1].frete)+'</td></tr>').join('')+
+    '</tbody></table></div>');
+}
+function renderRelatorioFretesResultado(){
+  const de = document.getElementById('rfr-de').value, ate = document.getElementById('rfr-ate').value;
+  const tipo = document.getElementById('rfr-tipo').value;
+  const pagamento = document.getElementById('rfr-pagamento').value;
+  // Só considera a linha que de fato carrega o frete daquela venda (as outras linhas da mesma
+  // venda, quando tem mais de um produto, já ficam com frete 0 — ver "Repete a venda da linha
+  // de cima?" na importação diária), então cada frete aqui já representa UMA entrega.
+  const filtradas = state.vendas.filter(v=> v.data>=de && v.data<=ate && (v.frete||0)>0
+    && (!tipo || v.tipo_entrega===tipo) && (!pagamento || v.pagamento===pagamento));
+  const total = filtradas.reduce((s,v)=>s+(v.frete||0),0);
+  const porPagamento = {}, porTipo = {};
+  filtradas.forEach(v=>{
+    porPagamento[v.pagamento] = (porPagamento[v.pagamento]||0) + v.frete;
+    porTipo[v.tipo_entrega] = (porTipo[v.tipo_entrega]||0) + v.frete;
+  });
+  const linhasPagamento = Object.entries(porPagamento).sort((a,b)=>b[1]-a[1]);
+  const linhasTipo = Object.entries(porTipo).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('rfr-resultado').innerHTML =
+    '<div class="grid cols2" style="max-width:420px;margin-bottom:12px;">'+
+    '<div class="metric"><div class="label">Fretes no período</div><div class="value">'+filtradas.length+'</div></div>'+
+    '<div class="metric"><div class="label">Total arrecadado em frete</div><div class="value">'+fmtMoney(total)+'</div></div>'+
+    '</div>'+
+    (filtradas.length===0?'<div class="empty">Nenhum frete encontrado nesse período.</div>':
+    '<div class="grid cols2" style="margin-bottom:14px;">'+
+    '<div><h4 style="margin:0 0 6px;">Por forma de pagamento</h4><div class="table-wrap"><table><thead><tr><th>Forma</th><th>Frete</th></tr></thead><tbody>'+
+    linhasPagamento.map(l=>'<tr><td>'+(l[0]||'—')+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+'</tbody></table></div></div>'+
+    '<div><h4 style="margin:0 0 6px;">Por meio de entrega</h4><div class="table-wrap"><table><thead><tr><th>Meio</th><th>Frete</th></tr></thead><tbody>'+
+    linhasTipo.map(l=>'<tr><td>'+entregaLabel(l[0])+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+'</tbody></table></div></div>'+
+    '</div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Meio de entrega</th><th>Forma de pagamento</th><th>Frete</th></tr></thead><tbody>'+
+    filtradas.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+(v.cliente||'—')+'</td><td>'+entregaLabel(v.tipo_entrega)+'</td><td>'+(v.pagamento||'—')+'</td><td>'+fmtMoney(v.frete)+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function renderRelatorioVendasResultado(){
@@ -9831,6 +9880,7 @@ function attachHandlers(){
   const rdFiltrar = document.getElementById('rd-filtrar'); if(rdFiltrar) rdFiltrar.onclick = renderRelatorioDespesasResultado;
   const resgFiltrar = document.getElementById('resg-filtrar'); if(resgFiltrar) resgFiltrar.onclick = renderRelatorioESGResultado;
   const rentFiltrar = document.getElementById('rent-filtrar'); if(rentFiltrar) rentFiltrar.onclick = renderRelatorioEntregasResultado;
+  const rfrFiltrar = document.getElementById('rfr-filtrar'); if(rfrFiltrar) rfrFiltrar.onclick = renderRelatorioFretesResultado;
   const rnFiltrar = document.getElementById('rn-filtrar'); if(rnFiltrar) rnFiltrar.onclick = renderRelatorioNotasResultado;
   const reFiltrar = document.getElementById('re-filtrar'); if(reFiltrar) reFiltrar.onclick = ()=>{
     relEmpresaDe = document.getElementById('re-de').value;
@@ -9887,6 +9937,7 @@ function attachHandlers(){
   if(relatorioSub==='despesas' && document.getElementById('rd-resultado')) renderRelatorioDespesasResultado();
   if(relatorioSub==='esg' && document.getElementById('resg-resultado')) renderRelatorioESGResultado();
   if(relatorioSub==='entregas' && document.getElementById('rent-resultado')) renderRelatorioEntregasResultado();
+  if(relatorioSub==='fretes' && document.getElementById('rfr-resultado')) renderRelatorioFretesResultado();
   if(relatorioSub==='notas' && document.getElementById('rn-resultado')) renderRelatorioNotasResultado();
   if(relatorioSub==='empresas' && document.getElementById('re-resultado')) renderRelatorioEmpresasResultado();
   if(relatorioSub==='itens' && document.getElementById('ri-resultado')) renderRelatorioItensResultado();
