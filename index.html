@@ -11176,7 +11176,7 @@ async function gerarModeloImportacaoDiaria(){
     'Produto (Vendas): opcional — use pra dizer qual item exato dentro da categoria foi vendido (ex.: categoria "Bebidas", produto "Coca-Cola 2L"), mesmo que esse item não tenha controle de estoque. Escolha a Categoria primeiro: a setinha dessa coluna já filtra sozinha e mostra só os produtos cadastrados naquela categoria. Se digitar um nome que não bate exatamente com o cadastro, o sistema pausa e pergunta antes de importar (igual acontece com Categoria/Produto e Cliente). Deixe em branco se não quiser detalhar o item.',
     'Valor Unitário (Vendas): já vem sugerido sozinho com o preço cadastrado assim que você escolhe a Categoria (ou o Produto, quando preenchido) — pode digitar por cima pra usar outro valor (ex.: promoção, desconto).',
     'Nº da Venda (Vendas): opcional. Se a mesma pessoa levou produtos de categorias diferentes numa única compra (ex.: gás + água), dá pra numerar (repita o MESMO número em todas as linhas dessa venda, ex.: 1, 1, 2, 3, 3, 3...) OU, mais fácil, usar a coluna "Repete a venda da linha de cima?" (veja abaixo) — não precisa das duas juntas. Se deixar tudo em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho as linhas do mesmo cliente no mesmo dia. Já em venda de balcão sem nome de cliente, use a numeração ou o "Repete a venda" — senão cada linha vira uma venda separada no ticket médio. Preencha o Frete só numa das linhas de cada venda, pra não contar em dobro.',
-    'Repete a venda da linha de cima? (Vendas): pra quando o mesmo cliente leva mais de um item de categorias diferentes numa única visita (ex.: gás + água) sem precisar redigitar tudo. Marque "sim" nessa coluna e deixe em branco Cliente/Telefone/Endereço/Canal/Forma de Pagamento/Nota/Tipo de Entrega/Empresa Convênio — o sistema copia sozinho da linha de cima. Se digitar algo diferente numa dessas colunas na própria linha (ex.: pagamento diferente pra esse item), vale o que foi digitado ali. Itens da MESMA categoria você pode continuar lançando numa linha só, sem precisar dessa coluna — só mude a Quantidade.',
+    'Repete a venda da linha de cima? (Vendas): pra quando o mesmo cliente leva mais de um item de categorias diferentes numa única visita (ex.: gás + água) sem precisar redigitar tudo. Marque "sim" nessa coluna e deixe em branco Data/Cliente/Telefone/Endereço/Canal/Forma de Pagamento/Nota/Tipo de Entrega/Empresa Convênio — o sistema copia sozinho da linha de cima. Se digitar algo diferente numa dessas colunas na própria linha (ex.: pagamento diferente pra esse item, ou uma data diferente), vale o que foi digitado ali. Itens da MESMA categoria você pode continuar lançando numa linha só, sem precisar dessa coluna — só mude a Quantidade.',
     'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
     'Indicado Por (Cliente novo) / Aniversário Cliente (Cliente novo) (Vendas): opcionais, só valem quando o cliente da venda ainda não existe e vai ser criado automaticamente. Aniversário no formato AAAA-MM-DD.',
     'Categoria (Despesas): '+state.categoriasDespesas.join(' | '),
@@ -11226,12 +11226,25 @@ async function gerarModeloImportacaoDiaria(){
   // troca de dia por mês só na aba Vendas.
   formatarColunaComoTexto(wsVendas, 'A'); // Data
   formatarColunaComoTexto(wsVendas, 'S'); // Aniversário Cliente (Cliente novo)
-  // Total do Dia (U) = soma de Quantidade×Valor Unitário de todas as linhas do mesmo dia + Frete
-  // (o Frete só é preenchido numa linha por venda numerada, então soma sem repetir).
+  // Coluna auxiliar "Data efetiva" (W, oculta): quando a linha marca "Repete a venda da linha de
+  // cima?" e deixa a Data em branco, essa venda pertence ao MESMO dia da linha de cima (é assim
+  // que o sistema importa) — mas as fórmulas de Total do Dia/Mês comparam a Data literal da
+  // célula, então uma linha com Data em branco não batia com nenhum dia e ficava de fora da soma,
+  // subcontando o Total do Dia (e, se fosse a última linha da planilha, também sumia o Total do
+  // Mês). Essa coluna "preenche pra baixo" a data sempre que a célula A estiver vazia, e é ela
+  // (não a coluna A crua) que os totais de conferência usam pra agrupar por dia.
+  wsVendas.getCell('W1').value = 'Data efetiva (auxiliar)';
+  for(let l=2; l<=ULTIMA_LINHA; l++){
+    wsVendas.getCell('W'+l).value = { formula: l===2 ? 'IF($A2<>"",$A2,"")' : 'IF($A'+l+'<>"",$A'+l+',W'+(l-1)+')' };
+  }
+  wsVendas.getColumn('W').hidden = true;
+  // Total do Dia (U) = soma de Quantidade×Valor Unitário de todas as linhas do mesmo dia (usando
+  // a Data efetiva da coluna W, pra não perder linhas com Data em branco por causa do "Repete a
+  // venda") + Frete (o Frete só é preenchido numa linha por venda numerada, então soma sem repetir).
   // Total do Mês (V) = mesma conta, mas de TODAS as linhas já preenchidas na planilha, sem filtrar por dia.
   aplicarTotalConferencia(
-    wsVendas, 'U', 'V', 'A', 2, ULTIMA_LINHA,
-    (l)=>'SUMPRODUCT(($A$2:$A'+l+'=$A'+l+')*$J$2:$J'+l+'*$K$2:$K'+l+')+SUMIF($A$2:$A'+l+',$A'+l+',$P$2:$P'+l+')',
+    wsVendas, 'U', 'V', 'W', 2, ULTIMA_LINHA,
+    (l)=>'SUMPRODUCT(($W$2:$W'+l+'=$W'+l+')*$J$2:$J'+l+'*$K$2:$K'+l+')+SUMIF($W$2:$W'+l+',$W'+l+',$P$2:$P'+l+')',
     (l)=>'SUMPRODUCT($J$2:$J'+l+'*$K$2:$K'+l+')+SUM($P$2:$P'+l+')'
   );
 
@@ -11428,9 +11441,12 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
             }
           }
         }
-        const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
-        const valor_total = Math.round(quantidade*valor_unit*100)/100;
         const repeteVendaAnterior = !!ultimaVendaAncora && chaveNormalizada((r['Repete a venda da linha de cima?']||'').trim())==='sim';
+        // Data: se a linha marcar "Repete a venda da linha de cima?" e deixar a Data em branco,
+        // herda a data da linha de cima (senão a venda cairia errada em "hoje" mesmo quando a
+        // venda ancora foi lançada num outro dia) — igual já acontece com Cliente/Canal/Pagamento/etc.
+        const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : (repeteVendaAnterior ? ultimaVendaAncora.data : hoje);
+        const valor_total = Math.round(quantidade*valor_unit*100)/100;
         let cliente = (r['Cliente']||'').trim();
         if(!cliente && repeteVendaAnterior) cliente = ultimaVendaAncora.cliente;
         if(cliente){
