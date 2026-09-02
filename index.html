@@ -7217,14 +7217,28 @@ function renderRelatorioNotasResultado(){
   const filtradas = state.vendas.filter(v=> v.data>=de && v.data<=ate && (!tipo || v.nota===tipo));
   const total = filtradas.reduce((s,v)=>s+v.valor_total,0);
   const legenda = NOTAS.map(n=>'<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;"><span style="width:12px;height:12px;border-radius:3px;background:'+corNota(n)+';display:inline-block;border:1px solid var(--border);"></span>'+n+'</span>').join('');
+  // Agrupado por tipo de nota e, dentro de cada um, por produto (somando as quantidades) —
+  // pra bater com como se lança no Bling: escolhe o produto e lança a quantidade total, sem
+  // precisar destrinchar venda por venda.
+  const porNota = {};
+  filtradas.forEach(v=>{
+    if(!porNota[v.nota]) porNota[v.nota] = {itens:{}, ids:[]};
+    porNota[v.nota].itens[v.categoria] = (porNota[v.nota].itens[v.categoria]||0) + (v.quantidade||0);
+    porNota[v.nota].ids.push(v.id);
+  });
+  const blocosHtml = NOTAS.filter(n=>porNota[n]).map(n=>{
+    const grupo = porNota[n];
+    const itens = Object.entries(grupo.itens).sort((a,b)=>b[1]-a[1]);
+    return '<div style="background:'+corNota(n)+';color:#10203E;border-radius:10px;padding:12px 16px;margin-bottom:10px;">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;"><div style="font-weight:700;">'+n+'</div>'+
+      ((n!=='Já lançado' && n!=='Não lança')?'<button class="act-link" data-marcar-lancado-grupo="'+grupo.ids.join(',')+'" style="color:#10203E;text-decoration:underline;">✓ marcar já lançado</button>':'')+'</div>'+
+      itens.map(it=>'<div>'+it[1]+' '+it[0]+'</div>').join('')+
+      '</div>';
+  }).join('');
   document.getElementById('rn-resultado').innerHTML =
     '<div class="metric" style="max-width:260px;margin-bottom:12px;"><div class="label">Total no filtro</div><div class="value">'+fmtMoney(total)+'</div></div>'+
     '<div class="hint" style="margin-bottom:10px;">'+legenda+'</div>'+
-    (filtradas.length===0?'<div class="empty">Nada encontrado para esse filtro.</div>':
-    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Valor</th><th>Nota</th><th></th></tr></thead><tbody>'+
-    filtradas.sort((a,b)=>b.data.localeCompare(a.data)).map(v=>'<tr style="background:'+corNota(v.nota)+';"><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td>'+
-    '<td><span class="badge nota">'+v.nota+'</span></td><td>'+(v.nota!=='Já lançado'?'<button class="act-link" data-marcar-lancado="'+v.id+'">✓ marcar já lançado</button>':'')+'</td></tr>').join('')+
-    '</tbody></table></div>');
+    (filtradas.length===0?'<div class="empty">Nada encontrado para esse filtro.</div>':blocosHtml);
 }
 function renderRelatorioEmpresasResultado(){
   const de = document.getElementById('re-de').value, ate = document.getElementById('re-ate').value;
@@ -10048,6 +10062,12 @@ function attachHandlers(){
     const id = btn.dataset.marcarLancado;
     const v = state.vendas.find(x=>x.id===id);
     if(v){ v.nota='Já lançado'; await save('vendas'); renderAll(); }
+  });
+  document.querySelectorAll('[data-marcar-lancado-grupo]').forEach(btn=>btn.onclick=async()=>{
+    const ids = btn.dataset.marcarLancadoGrupo.split(',');
+    ids.forEach(id=>{ const v = state.vendas.find(x=>x.id===id); if(v) v.nota='Já lançado'; });
+    await save('vendas');
+    renderAll();
   });
   document.querySelectorAll('[data-registrar-pagamento]').forEach(btn=>btn.onclick=()=>{
     clienteRegistrandoPagamento = decodeURIComponent(btn.dataset.registrarPagamento);
