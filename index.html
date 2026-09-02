@@ -4445,9 +4445,10 @@ function viewVendas(){
     '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje)+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
-    '<input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por cliente, produto, empresa, canal ou pagamento...">'+
+    '<div class="form-row"><div><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por cliente, produto, empresa, canal ou pagamento..."></div>'+
+    '<div style="max-width:170px;"><input type="date" id="busca-venda-data" title="Filtrar por um dia específico"></div></div>'+
     '<div id="lista-vendas-wrap">'+vendasTable(state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).slice(0,30))+'</div>'+
-    '<div class="hint" style="margin-top:8px;">Mostrando as vendas mais recentes. Use a busca para encontrar um lançamento específico em qualquer data.</div>'+
+    '<div class="hint" style="margin-top:8px;">Mostrando as vendas mais recentes. Use a busca ou escolha uma data para ver todas as vendas daquele dia.</div>'+
     '</div>';
 }
 function pendenciasRetiradaTable(list){
@@ -8805,16 +8806,22 @@ function attachHandlers(){
   });
 
   const buscaVenda = document.getElementById('busca-venda');
-  if(buscaVenda) buscaVenda.oninput = ()=>{
-    const q = buscaVenda.value.toLowerCase().trim();
-    const base = state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm);
-    const filtered = !q ? base.slice(0,30) : base.filter(v=>{
+  const buscaVendaData = document.getElementById('busca-venda-data');
+  const filtrarListaVendas = ()=>{
+    const q = (buscaVenda?buscaVenda.value:'').toLowerCase().trim();
+    const dataEscolhida = buscaVendaData ? buscaVendaData.value : '';
+    let base = state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm);
+    if(dataEscolhida) base = base.filter(v=>v.data===dataEscolhida);
+    if(q) base = base.filter(v=>{
       const alvo = (v.produto+' '+(v.cliente||'')+' '+(v.empresa||'')+' '+(v.canal||'')+' '+v.pagamento+' '+(v.obs||'')).toLowerCase();
       return alvo.includes(q);
     });
+    const filtered = (!q && !dataEscolhida) ? base.slice(0,30) : base;
     document.getElementById('lista-vendas-wrap').innerHTML = vendasTable(filtered);
     attachVendaRowHandlers();
   };
+  if(buscaVenda) buscaVenda.oninput = filtrarListaVendas;
+  if(buscaVendaData) buscaVendaData.oninput = filtrarListaVendas;
   const buscaDespesa = document.getElementById('busca-despesa');
   if(buscaDespesa) buscaDespesa.oninput = ()=>{
     const q = buscaDespesa.value.toLowerCase().trim();
@@ -10659,7 +10666,10 @@ function guessHeader(headers, keywords){
 function celulaParaTexto(v){
   if(v==null) return '';
   if(v instanceof Date){
-    const y=v.getFullYear(), m=String(v.getMonth()+1).padStart(2,'0'), d=String(v.getDate()).padStart(2,'0');
+    // Usa getUTC* (não getFullYear/getMonth/getDate locais): o Excel/SheetJS representa a data
+    // como meia-noite UTC, e ler com os métodos locais podia voltar um dia a menos em fusos como
+    // o do Brasil (UTC-3), dependendo do horário do aparelho de quem importa.
+    const y=v.getUTCFullYear(), m=String(v.getUTCMonth()+1).padStart(2,'0'), d=String(v.getUTCDate()).padStart(2,'0');
     return y+'-'+m+'-'+d;
   }
   return String(v);
@@ -10953,7 +10963,7 @@ function processarImportacaoDiariaExcel(file){
       const nomeReal = wb.SheetNames.find(n=>chaveNormalizada(n)===chaveNormalizada(nome));
       if(!nomeReal) return [];
       const ws = wb.Sheets[nomeReal];
-      const matriz = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, dateNF:'yyyy-mm-dd', blankrows:false});
+      const matriz = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, blankrows:false});
       if(!matriz || matriz.length<2) return [];
       const headers = matriz[0].map(h=>String(h||'').trim());
       const linhas = matriz.slice(1).filter(l=>l.some(c=>c!=null && String(c).trim()!==''));
