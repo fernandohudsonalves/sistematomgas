@@ -5569,7 +5569,7 @@ function viewConfig(){
     '</div>'+
     '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+ajudaHtml('importacao','Suba aqui a planilha do modelo (abas Vendas, Despesas, Clientes, Produtos, ContasPagar e FechamentoCaixa) pra lançar o dia inteiro de uma vez. Se algum produto ou cliente da planilha não bater exatamente com o cadastro, o sistema pausa e pergunta se é algo já existente (com outra grafia) ou novo, numa telinha só, antes de importar de vez. Vendas com cliente identificado que baterem exatamente com uma venda já lançada (mesma data, cliente, produto, quantidade, valor e forma de pagamento) são ignoradas automaticamente pra não duplicar — então pode reimportar a mesma planilha com segurança, ou subir só a venda nova do fim do dia sem medo de duplicar o que já foi lançado antes.')+
     '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong>, <strong>Produtos</strong>, <strong>ContasPagar</strong> e <strong>FechamentoCaixa</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos (incluindo gasto de veículo, se preencher a coluna Veículo); contas a pagar marcadas como "pago" já entram como despesa também; clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
-    '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e repita o mesmo número na coluna <strong>Nº da Venda</strong> — assim o sistema conta como uma venda só. Se deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, numere sempre.</div>'+
+    '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e numere a venda (coluna <strong>Nº da Venda</strong>) OU marque "sim" na coluna <strong>Repete a venda da linha de cima?</strong> nas linhas seguintes — assim o sistema conta como uma venda só. Se deixar tudo em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, use a numeração ou o "Repete a venda".</div>'+
     '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
     '<div id="resumo-importacao-diaria"></div>'+
     '<details style="margin-top:14px;"><summary style="color:var(--danger);"><strong>Zerar lançamentos de hoje</strong></summary>'+
@@ -10960,7 +10960,8 @@ async function gerarModeloImportacaoDiaria(){
     'Categoria/Produto (Vendas): use o nome exato do produto ou categoria já cadastrado no sistema (ex.: P13, P45, Água 20L Safira, etc.) — já vem com dropdown das categorias cadastradas.',
     'Produto (Vendas): opcional — use pra dizer qual item exato dentro da categoria foi vendido (ex.: categoria "Bebidas", produto "Coca-Cola 2L"), mesmo que esse item não tenha controle de estoque. Escolha a Categoria primeiro: a setinha dessa coluna já filtra sozinha e mostra só os produtos cadastrados naquela categoria. Se digitar um nome que não bate exatamente com o cadastro, o sistema pausa e pergunta antes de importar (igual acontece com Categoria/Produto e Cliente). Deixe em branco se não quiser detalhar o item.',
     'Valor Unitário (Vendas): já vem sugerido sozinho com o preço cadastrado assim que você escolhe a Categoria (ou o Produto, quando preenchido) — pode digitar por cima pra usar outro valor (ex.: promoção, desconto).',
-    'Nº da Venda (Vendas): opcional, mas importante pro ticket médio. Se a mesma pessoa levou produtos de categorias diferentes numa única compra (ex.: gás + água), repita o MESMO número em todas as linhas dessa venda (ex.: 1, 1, 2, 3, 3, 3...). Se você deixar em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho as linhas do mesmo cliente no mesmo dia. Já em venda de balcão sem nome de cliente, é importante numerar — senão cada linha vira uma venda separada no ticket médio. Preencha o Frete só numa das linhas de cada venda numerada, pra não contar em dobro.',
+    'Nº da Venda (Vendas): opcional. Se a mesma pessoa levou produtos de categorias diferentes numa única compra (ex.: gás + água), dá pra numerar (repita o MESMO número em todas as linhas dessa venda, ex.: 1, 1, 2, 3, 3, 3...) OU, mais fácil, usar a coluna "Repete a venda da linha de cima?" (veja abaixo) — não precisa das duas juntas. Se deixar tudo em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho as linhas do mesmo cliente no mesmo dia. Já em venda de balcão sem nome de cliente, use a numeração ou o "Repete a venda" — senão cada linha vira uma venda separada no ticket médio. Preencha o Frete só numa das linhas de cada venda, pra não contar em dobro.',
+    'Repete a venda da linha de cima? (Vendas): pra quando o mesmo cliente leva mais de um item de categorias diferentes numa única visita (ex.: gás + água) sem precisar redigitar tudo. Marque "sim" nessa coluna e deixe em branco Cliente/Telefone/Endereço/Canal/Forma de Pagamento/Nota/Tipo de Entrega/Empresa Convênio — o sistema copia sozinho da linha de cima. Se digitar algo diferente numa dessas colunas na própria linha (ex.: pagamento diferente pra esse item), vale o que foi digitado ali. Itens da MESMA categoria você pode continuar lançando numa linha só, sem precisar dessa coluna — só mude a Quantidade.',
     'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
     'Indicado Por (Cliente novo) / Aniversário Cliente (Cliente novo) (Vendas): opcionais, só valem quando o cliente da venda ainda não existe e vai ser criado automaticamente. Aniversário no formato AAAA-MM-DD.',
     'Categoria (Despesas): '+state.categoriasDespesas.join(' | '),
@@ -10979,7 +10980,7 @@ async function gerarModeloImportacaoDiaria(){
 
   // ---- Aba Vendas ----
   const wsVendas = wb.addWorksheet('Vendas');
-  wsVendas.addRow(['Data','Nº da Venda','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação','Indicado Por (Cliente novo)','Aniversário Cliente (Cliente novo)']);
+  wsVendas.addRow(['Data','Nº da Venda','Cliente','Telefone Cliente','Endereço Cliente','Complemento Cliente','Canal','Categoria/Produto','Produto','Quantidade','Valor Unitário','Forma de Pagamento','Nota','Tipo de Entrega','Empresa Convênio','Frete','Observação','Indicado Por (Cliente novo)','Aniversário Cliente (Cliente novo)','Repete a venda da linha de cima?']);
   wsVendas.getRow(1).font = {bold:true};
   wsVendas.columns.forEach(c=>{ c.width = 16; });
   aplicarDropdown(wsVendas, 'G', 'A', CANAIS.length, 2, ULTIMA_LINHA);
@@ -10997,18 +10998,24 @@ async function gerarModeloImportacaoDiaria(){
   aplicarDropdown(wsVendas, 'C', 'L', state.clientes.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'O', 'M', state.empresas.length, 2, ULTIMA_LINHA);
   aplicarDropdown(wsVendas, 'R', 'L', state.clientes.length, 2, ULTIMA_LINHA);
-  configurarImpressaoA4(wsVendas, 19, 45);
+  // "Repete a venda da linha de cima?" (T): marque "sim" nas linhas de baixo quando for outro
+  // produto da MESMA venda/cliente — o sistema puxa sozinho Cliente/Telefone/Endereço/Canal/
+  // Forma de Pagamento/Nota/Tipo de Entrega/Empresa da linha de cima, sem precisar redigitar nem
+  // depender de numerar a venda (que é fácil de esquecer). Se digitar algo diferente numa dessas
+  // colunas na própria linha, vale o que foi digitado ali, não o herdado.
+  aplicarDropdown(wsVendas, 'T', 'K', 2, 2, ULTIMA_LINHA);
+  configurarImpressaoA4(wsVendas, 21, 45);
   // IMPORTANTE: o travamento como texto da coluna Data tem que vir DEPOIS de configurarImpressaoA4
   // (que redesenha o estilo de cada célula pra aplicar as bordas de impressão) — senão a borda
   // sobrescreve o formato de texto e a coluna volta a virar número/data, é isso que causava a
   // troca de dia por mês só na aba Vendas.
   formatarColunaComoTexto(wsVendas, 'A'); // Data
   formatarColunaComoTexto(wsVendas, 'S'); // Aniversário Cliente (Cliente novo)
-  // Total do Dia (T) = soma de Quantidade×Valor Unitário de todas as linhas do mesmo dia + Frete
+  // Total do Dia (U) = soma de Quantidade×Valor Unitário de todas as linhas do mesmo dia + Frete
   // (o Frete só é preenchido numa linha por venda numerada, então soma sem repetir).
-  // Total do Mês (U) = mesma conta, mas de TODAS as linhas já preenchidas na planilha, sem filtrar por dia.
+  // Total do Mês (V) = mesma conta, mas de TODAS as linhas já preenchidas na planilha, sem filtrar por dia.
   aplicarTotalConferencia(
-    wsVendas, 'T', 'U', 'A', 2, ULTIMA_LINHA,
+    wsVendas, 'U', 'V', 'A', 2, ULTIMA_LINHA,
     (l)=>'SUMPRODUCT(($A$2:$A'+l+'=$A'+l+')*$J$2:$J'+l+'*$K$2:$K'+l+')+SUMIF($A$2:$A'+l+',$A'+l+',$P$2:$P'+l+')',
     (l)=>'SUMPRODUCT($J$2:$J'+l+'*$K$2:$K'+l+')+SUM($P$2:$P'+l+')'
   );
@@ -11132,6 +11139,10 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
     if(linhasVendas.length){
       let importadas=0, ignoradas=0, duplicadas=0, clientesNovosDeVendas=0, creditosAlterados=false, fiadosGeradosPorAbate=0;
       const gruposPorChaveVenda = new Map();
+      // Guarda a última venda processada, pra quando a linha de baixo marcar "Repete a venda da
+      // linha de cima?" = sim: aí herda cliente/canal/pagamento/etc. dela em vez de precisar
+      // redigitar tudo (ou depender de numerar a venda, que é fácil de esquecer).
+      let ultimaVendaAncora = null;
       // Fingerprint de vendas já existentes (só as que têm cliente identificado) pra não lançar
       // a mesma venda duas vezes se a planilha for reimportada por engano.
       const fingerprintsVendas = new Set();
@@ -11202,9 +11213,11 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
             }
           }
         }
-        const valor_total = Math.round(quantidade*valor_unit*100)/100;
         const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
+        const valor_total = Math.round(quantidade*valor_unit*100)/100;
+        const repeteVendaAnterior = !!ultimaVendaAncora && chaveNormalizada((r['Repete a venda da linha de cima?']||'').trim())==='sim';
         let cliente = (r['Cliente']||'').trim();
+        if(!cliente && repeteVendaAnterior) cliente = ultimaVendaAncora.cliente;
         if(cliente){
           const chaveCliente = chaveNormalizada(cliente);
           const resolvidoCliente = resolucaoClientesImportacaoDiaria[chaveCliente];
@@ -11227,23 +11240,26 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
             adicionarPendenciaConferencia('venda','cliente',cliente,'Nome não bateu exatamente com nenhum cliente cadastrado; cadastrado automaticamente — confira se não é duplicata.');
           }
         }
-        const canal = (r['Canal']||'').trim() || CANAIS[0];
-        const pagamento = (r['Forma de Pagamento']||'').trim() || PAGAMENTOS[0];
-        const nota = (r['Nota']||'').trim() || 'Não lança';
-        const tipo_entrega = (r['Tipo de Entrega']||'').trim() || TIPOS_ENTREGA[0];
-        const empresa = (r['Empresa Convênio']||'').trim();
+        const canal = (r['Canal']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.canal : '') || CANAIS[0];
+        const pagamento = (r['Forma de Pagamento']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.pagamento : '') || PAGAMENTOS[0];
+        const nota = (r['Nota']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.nota : '') || 'Não lança';
+        const tipo_entrega = (r['Tipo de Entrega']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.tipo_entrega : '') || TIPOS_ENTREGA[0];
+        const empresa = (r['Empresa Convênio']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.empresa : '');
         const obs = (r['Observação']||'').trim();
 
         // Agrupa linhas da mesma compra (ex.: gás + água na mesma venda) pra contar como
         // um único "carrinho" no ticket médio: usa o Nº da Venda quando preenchido, ou
-        // cliente+data como segunda opção. Sem nenhum dos dois, cada linha fica separada.
+        // "Repete a venda da linha de cima?" = sim, ou cliente+data como última opção.
         const numeroVenda = (r['Nº da Venda']||'').trim();
-        const chaveGrupo = numeroVenda ? ('num:'+numeroVenda) : (cliente ? ('cli:'+data+':'+chaveNormalizada(cliente)) : null);
-        let grupoId, primeiraLinhaDoGrupo = true;
-        if(chaveGrupo){
-          if(gruposPorChaveVenda.has(chaveGrupo)){ grupoId = gruposPorChaveVenda.get(chaveGrupo); primeiraLinhaDoGrupo = false; }
-          else { grupoId = uid(); gruposPorChaveVenda.set(chaveGrupo, grupoId); }
-        } else { grupoId = uid(); }
+        let grupoId, primeiraLinhaDoGrupo;
+        if(repeteVendaAnterior && !numeroVenda){
+          grupoId = ultimaVendaAncora.grupoId;
+          primeiraLinhaDoGrupo = false;
+        } else {
+          const chaveGrupo = numeroVenda ? ('num:'+numeroVenda) : (cliente ? ('cli:'+data+':'+chaveNormalizada(cliente)) : null);
+          if(chaveGrupo && gruposPorChaveVenda.has(chaveGrupo)){ grupoId = gruposPorChaveVenda.get(chaveGrupo); primeiraLinhaDoGrupo = false; }
+          else { grupoId = uid(); if(chaveGrupo) gruposPorChaveVenda.set(chaveGrupo, grupoId); primeiraLinhaDoGrupo = true; }
+        }
         const freteBruto = TIPOS_ENTREGA_COM_FRETE.includes(tipo_entrega) ? (parseNumeroPlanilha(r['Frete'])||0) : 0;
         const frete = primeiraLinhaDoGrupo ? freteBruto : 0;
         const venda = {
@@ -11259,6 +11275,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         state.vendas.push(venda);
         if(venda.estoqueBaixado) ajustaEstoquePorVenda(categoria, quantidade, false);
         importadas++;
+        ultimaVendaAncora = venda;
 
         // Se a planilha marcou a venda como "Abateu", desconta automaticamente do crédito em
         // haver do cliente (igual ao lançamento manual) e, se sobrar diferença, lança de fiado —
