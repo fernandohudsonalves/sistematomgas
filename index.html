@@ -273,6 +273,17 @@ table td:last-child{min-width:180px;}
 .mapping-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .mapping-row span{width:120px;font-size:13px;font-weight:600;flex-shrink:0;}
 .pill{display:inline-block;background:var(--blue-tint);color:var(--royal);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;margin-left:6px;}
+#btn-abrir-perfil{background:none;border:2px solid rgba(255,255,255,.55);border-radius:50%;width:36px;height:36px;padding:0;cursor:pointer;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+#btn-abrir-perfil:hover{border-color:#fff;}
+#avatar-perfil-mini{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:var(--neon);color:var(--royal-dark);font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;}
+#avatar-perfil-mini img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.perfil-topo{display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+.perfil-avatar-wrap{position:relative;width:96px;height:96px;flex-shrink:0;}
+.perfil-avatar-grande{width:96px;height:96px;border-radius:50%;object-fit:cover;background:var(--blue-tint);color:var(--royal);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:32px;border:3px solid var(--royal-light);}
+.perfil-avatar-grande img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
+.perfil-avatar-editar{position:absolute;bottom:-2px;right:-2px;background:var(--royal);color:#fff;border:2px solid var(--card);border-radius:50%;width:30px;height:30px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.perfil-nome{font-size:19px;font-weight:800;color:var(--royal);margin:0 0 2px;}
+.perfil-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px;}
 .searchbar{margin-bottom:12px;}
 .hint{font-size:12px;color:var(--text3);margin-top:4px;}
 .config-group-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:26px 0 10px;padding-top:14px;border-top:1px solid var(--border);}
@@ -586,6 +597,7 @@ const AUTH_APP_HTML = `
     <div style="display:flex;align-items:center;gap:16px;">
       <div id="logo-box"></div>
       <button id="theme-toggle" title="Alternar modo escuro">🌙</button>
+      <button id="btn-abrir-perfil" title="Meu perfil"><span id="avatar-perfil-mini"></span></button>
       <button id="btn-logout" class="link-btn" style="color:#fff;">Sair</button>
     </div>
     <input type="file" id="logo-file-input" accept="image/*" style="display:none;">
@@ -1407,10 +1419,22 @@ let dashCharts = {};
 let seriesEvolucaoSelecionadas = null;
 let usuarioAtualNome = 'Usuário';
 let usuarioAtualEmail = null;
+let usuarioAtualFoto = null;
+let usuarioAtualTelefonePerfil = '';
 let usuarioAtualEhAdmin = true;
 let usuarioAtualAbasPermitidas = [];
 let editUsuarioId = null;
-const ABAS_SEMPRE_PERMITIDAS = ['dashboard','config'];
+const ABAS_SEMPRE_PERMITIDAS = ['dashboard','config','meuPerfil'];
+function iniciaisNome(nome){
+  const partes = (nome||'').trim().split(/\s+/).filter(Boolean);
+  if(partes.length===0) return '?';
+  return (partes[0][0]+(partes.length>1?partes[partes.length-1][0]:'')).toUpperCase();
+}
+function renderAvatarHeaderMini(){
+  const el = document.getElementById('avatar-perfil-mini');
+  if(!el) return;
+  el.innerHTML = usuarioAtualFoto ? '<img src="'+usuarioAtualFoto+'" alt="Foto">' : iniciaisNome(usuarioAtualNome);
+}
 function calcularPermissaoAtual(){
   const lista = state.usuariosSistema||[];
   if(lista.length===0){ usuarioAtualEhAdmin = true; usuarioAtualAbasPermitidas=[]; return; }
@@ -3546,6 +3570,8 @@ function renderAll(){
   if(currentTab==='agenda') main.innerHTML = viewAgendaAdmin();
   if(currentTab==='relatorios') main.innerHTML = viewRelatorios();
   if(currentTab==='config') main.innerHTML = viewConfig();
+  if(currentTab==='meuPerfil') main.innerHTML = viewMeuPerfil();
+  renderAvatarHeaderMini();
   attachHandlers();
   renderRecadosFab();
   initNovoAgendamentoFab();
@@ -5372,6 +5398,68 @@ function viewAgendamentos(){
     '<div id="entregas-imprimir"></div>';
 }
 
+/* ---------- MEU PERFIL ---------- */
+function viewMeuPerfil(){
+  const registro = (state.usuariosSistema||[]).find(u=>(u.email||'').toLowerCase()===(usuarioAtualEmail||'').toLowerCase());
+  const diasDeCasa = registro && registro.criadoEm ? Math.max(0, Math.floor((Date.now()-registro.criadoEm)/86400000)) : null;
+  const totalAcoes = (state.logAtividades||[]).filter(l=>l.usuario===usuarioAtualNome).length;
+  const totalVendas = (state.vendas||[]).length;
+  const papelLabel = usuarioAtualEhAdmin ? '👑 Administrador (acesso total)' : '🔒 Restrito ('+usuarioAtualAbasPermitidas.length+' aba(s) liberada(s))';
+  return '<div class="card"><div class="perfil-topo">'+
+    '<div class="perfil-avatar-wrap"><div class="perfil-avatar-grande" id="perfil-avatar-grande">'+
+    (usuarioAtualFoto ? '<img src="'+usuarioAtualFoto+'" alt="Foto de perfil">' : iniciaisNome(usuarioAtualNome))+
+    '</div><button type="button" class="perfil-avatar-editar" id="btn-editar-foto-perfil" title="Trocar foto">✎</button></div>'+
+    '<div><h2 class="perfil-nome" style="margin:0;">'+escapeHtmlCampanha(usuarioAtualNome)+'</h2>'+
+    '<div class="hint" style="margin:0;">'+escapeHtmlCampanha(usuarioAtualEmail||'')+'</div>'+
+    '<span class="pill" style="margin-left:0;margin-top:6px;display:inline-block;">'+papelLabel+'</span>'+
+    (usuarioAtualFoto ? ' <button type="button" class="link-btn" id="btn-remover-foto-perfil" style="color:var(--danger);font-size:12px;">Remover foto</button>' : '')+
+    '</div></div>'+
+    '<input type="file" id="input-foto-perfil" accept="image/*" style="display:none;">'+
+    '<div class="perfil-stats-grid">'+
+    '<div class="metric"><div class="label">Ações registradas por você</div><div class="value">'+totalAcoes+'</div></div>'+
+    '<div class="metric"><div class="label">Vendas no sistema (total)</div><div class="value">'+totalVendas+'</div></div>'+
+    '<div class="metric"><div class="label">Na equipe há</div><div class="value">'+(diasDeCasa===null?'—':diasDeCasa+' dia(s)')+'</div></div>'+
+    '</div></div>'+
+    '<div class="card"><h2>👤 Meus dados</h2>'+
+    '<form id="form-meus-dados">'+
+    '<div class="form-row"><div><label>Nome</label><input type="text" name="nome" value="'+escapeHtmlCampanha(usuarioAtualNome)+'" required></div>'+
+    '<div><label>Telefone/WhatsApp</label><input type="text" name="telefone" value="'+escapeHtmlCampanha(usuarioAtualTelefonePerfil)+'" placeholder="(00) 00000-0000"></div></div>'+
+    '<div><label>E-mail de login</label><input type="text" value="'+escapeHtmlCampanha(usuarioAtualEmail||'')+'" disabled style="opacity:.65;"></div>'+
+    '<div class="hint">O e-mail de login não pode ser trocado por aqui — fale com um administrador se precisar mudar.</div>'+
+    '<button type="submit" class="btn small" style="margin-top:8px;">Salvar dados</button>'+
+    '</form></div>'+
+    '<div class="card"><h2>🔒 Alterar senha</h2>'+
+    '<form id="form-alterar-senha-perfil">'+
+    '<label>Nova senha <span class="req">*</span></label><input type="password" name="senha" minlength="6" required>'+
+    '<label>Confirmar nova senha <span class="req">*</span></label><input type="password" name="senha2" minlength="6" required>'+
+    '<div class="hint">Mínimo de 6 caracteres.</div>'+
+    '<button type="submit" class="btn small" style="margin-top:8px;">Alterar senha</button>'+
+    '</form></div>';
+}
+function processarFotoPerfil(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    const img = new Image();
+    img.onload = async ()=>{
+      const tam = 200;
+      const canvas = document.createElement('canvas');
+      canvas.width = tam; canvas.height = tam;
+      const ctx = canvas.getContext('2d');
+      const escala = Math.max(tam/img.width, tam/img.height);
+      const w = img.width*escala, h = img.height*escala;
+      ctx.drawImage(img, (tam-w)/2, (tam-h)/2, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      try{
+        await supabaseClient.auth.updateUser({ data:{ foto: dataUrl } });
+        usuarioAtualFoto = dataUrl;
+        renderAll();
+      }catch(e){ alert('Não foi possível salvar a foto: '+e.message); }
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 /* ---------- RELATÓRIOS ---------- */
 /* ---------- CONFIGURAÇÕES ---------- */
 function cardUsuariosPermissoes(){
@@ -7496,6 +7584,42 @@ async function enviarExtratoWhatsApp(cliente){
 
 /* ---------- HANDLERS ---------- */
 function attachHandlers(){
+  const btnEditarFotoPerfil = document.getElementById('btn-editar-foto-perfil');
+  const inputFotoPerfil = document.getElementById('input-foto-perfil');
+  if(btnEditarFotoPerfil && inputFotoPerfil){
+    btnEditarFotoPerfil.onclick = ()=>inputFotoPerfil.click();
+    inputFotoPerfil.onchange = ()=>processarFotoPerfil(inputFotoPerfil.files[0]);
+  }
+  const btnRemoverFotoPerfil = document.getElementById('btn-remover-foto-perfil');
+  if(btnRemoverFotoPerfil) btnRemoverFotoPerfil.onclick = async ()=>{
+    if(!confirm('Remover sua foto de perfil?')) return;
+    try{ await supabaseClient.auth.updateUser({ data:{ foto: null } }); usuarioAtualFoto = null; renderAll(); }
+    catch(e){ alert('Erro ao remover foto: '+e.message); }
+  };
+  const formMeusDados = document.getElementById('form-meus-dados');
+  if(formMeusDados) formMeusDados.onsubmit = async (e)=>{
+    e.preventDefault();
+    const f = new FormData(formMeusDados);
+    const nome = (f.get('nome')||'').trim();
+    const telefone = (f.get('telefone')||'').trim();
+    try{
+      await supabaseClient.auth.updateUser({ data:{ nome, telefone_perfil: telefone } });
+      usuarioAtualNome = nome; usuarioAtualTelefonePerfil = telefone;
+      alert('Dados atualizados!');
+      renderAll();
+    }catch(e2){ alert('Erro ao salvar: '+e2.message); }
+  };
+  const formSenhaPerfil = document.getElementById('form-alterar-senha-perfil');
+  if(formSenhaPerfil) formSenhaPerfil.onsubmit = async (e)=>{
+    e.preventDefault();
+    const f = new FormData(formSenhaPerfil);
+    if(f.get('senha') !== f.get('senha2')){ alert('As senhas não conferem.'); return; }
+    try{
+      await supabaseClient.auth.updateUser({ password: f.get('senha') });
+      alert('Senha alterada com sucesso!');
+      formSenhaPerfil.reset();
+    }catch(e2){ alert('Erro ao alterar senha: '+e2.message); }
+  };
   document.querySelectorAll('[data-ajuda-toggle]').forEach(btn=>btn.onclick=(e)=>{
     e.preventDefault();
     const el = document.getElementById('ajuda-'+btn.dataset.ajudaToggle);
@@ -12139,6 +12263,8 @@ async function afterLogin(){
       const meta = user.user_metadata || {};
       usuarioAtualNome = meta.nome || meta.email_real || meta.usuario || meta.telefone || (user.email||'').split('@')[0] || 'Usuário';
       usuarioAtualEmail = user.email || null;
+      usuarioAtualFoto = meta.foto || null;
+      usuarioAtualTelefonePerfil = meta.telefone_perfil || meta.telefone || '';
     }
   }catch(e){ console.error('Erro ao buscar usuário logado', e); }
   await loadAll();
@@ -12158,6 +12284,9 @@ async function afterLogin(){
   atualizarBadgeApp();
   atualizarSinoBadge();
   if(statusPermissaoNotificacao()==='granted') inscreverPush();
+  renderAvatarHeaderMini();
+  const btnAbrirPerfil = document.getElementById('btn-abrir-perfil');
+  if(btnAbrirPerfil) btnAbrirPerfil.onclick = ()=>{ currentTab = 'meuPerfil'; renderAll(); };
   const btnLogout = document.getElementById('btn-logout');
   if(btnLogout) btnLogout.onclick = async ()=>{
     await supabaseClient.auth.signOut();
