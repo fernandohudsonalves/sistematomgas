@@ -6421,7 +6421,10 @@ function relatorioKPIs(){
   const mkAnterior = mesAnterior(mk), mkAnoPassado = mesAnoAnterior(mk);
   const fatAtual = faturamentoMes(mk), fatAnterior = faturamentoMes(mkAnterior), fatAnoPassado = faturamentoMes(mkAnoPassado);
   const vendasMk = (state.vendas||[]).filter(v=>monthKey(v.data)===mk);
-  const ticketMedio = vendasMk.length ? fatAtual/vendasMk.length : 0;
+  // Ticket médio conta por CARRINHO/RETIRADA (grupoId), não por linha de produto — senão uma
+  // compra com vários itens (ex.: gás + água) infla a contagem e derruba o ticket médio.
+  const carrinhosMk = new Set(vendasMk.map(v=>v.grupoId||v.id));
+  const ticketMedio = carrinhosMk.size ? fatAtual/carrinhosMk.size : 0;
   const clientesAtuais = clientesUnicosMes(mk), clientesAnteriores = clientesUnicosMes(mkAnterior);
   const sumidos = [...clientesAnteriores].filter(c=>!clientesAtuais.has(c));
   const taxaSumidos = clientesAnteriores.size ? (sumidos.length/clientesAnteriores.size*100) : 0;
@@ -6459,7 +6462,7 @@ function relatorioKPIs(){
     ajudaHtml('kpis','Indicadores que ajudam a enxergar a saúde do negócio além do dia a dia: quanto o faturamento cresceu ou caiu, quantos clientes deixaram de comprar, quanto cada cliente costuma valer ao longo do tempo (LTV), e em que fase cada cliente está (RFM — Recência, Frequência, Valor). A segmentação usa a última compra de cada cliente: até 20 dias sem comprar = Campeão, até 45 = Regular, até 90 = Em risco, acima disso = Perdido. Quem comprou só uma vez recentemente entra como Novo.')+
     '<div style="display:grid;gap:12px;margin-top:14px;">'+
     '<div class="card" style="margin:0;"><h3>💰 Faturamento do mês</h3>'+fmtMoney(fatAtual)+' — vs mês anterior: '+pctVarHtml(fatAtual,fatAnterior)+' ('+fmtMoney(fatAnterior)+') — vs mesmo mês ano passado: '+pctVarHtml(fatAtual,fatAnoPassado)+' ('+fmtMoney(fatAnoPassado)+')</div>'+
-    '<div class="card" style="margin:0;"><h3>🎟️ Ticket médio do mês</h3><strong>'+fmtMoney(ticketMedio)+'</strong> por venda ('+vendasMk.length+' venda(s))</div>'+
+    '<div class="card" style="margin:0;"><h3>🎟️ Ticket médio do mês</h3><strong>'+fmtMoney(ticketMedio)+'</strong> por venda ('+carrinhosMk.size+' venda(s))</div>'+
     '<div class="card" style="margin:0;"><h3>👥 Clientes ativos no mês</h3>'+clientesAtuais.size+' cliente(s) compraram — mês anterior: '+clientesAnteriores.size+'</div>'+
     '<div class="card" style="margin:0;"><h3>📉 Clientes sumidos</h3>'+sumidos.length+' cliente(s) que compraram no mês anterior e não compraram nesse mês — taxa de '+taxaSumidos.toFixed(1)+'%'+(sumidos.length?'<div class="hint" style="margin-top:4px;">'+sumidos.slice(0,10).join(', ')+(sumidos.length>10?' ...':'')+'</div>':'')+'</div>'+
     '<div class="card" style="margin:0;"><h3>💎 LTV médio (valor histórico por cliente)</h3><strong>'+fmtMoney(ltvMedio)+'</strong>, considerando '+todosClientesComVenda.size+' cliente(s) que já compraram</div>'+
@@ -7038,8 +7041,16 @@ function relatorioAnalises(){
     '<div class="table-wrap"><table><thead><tr><th>Mês</th><th>Este ano</th><th>Ano passado</th><th>Variação</th></tr></thead><tbody>'+linhasComp+'</tbody></table></div></div>';
 
   // 5) Ticket médio por forma de pagamento
+  // Agrupa por CARRINHO/RETIRADA (grupoId) antes de somar por forma de pagamento — senão uma
+  // compra com vários itens (ex.: gás + água) conta como várias vendas e derruba o ticket médio.
+  const carrinhosPagto = {};
+  state.vendas.forEach(v=>{
+    const chave = v.grupoId || v.id;
+    if(!carrinhosPagto[chave]) carrinhosPagto[chave] = {pagamento: v.pagamento||'Outros', total:0};
+    carrinhosPagto[chave].total += (v.valor_total||0)+(v.frete||0);
+  });
   const porPagto = {};
-  state.vendas.forEach(v=>{ const p=v.pagamento||'Outros'; if(!porPagto[p]) porPagto[p]={qtd:0,total:0}; porPagto[p].qtd++; porPagto[p].total+=(v.valor_total||0); });
+  Object.values(carrinhosPagto).forEach(c=>{ const p=c.pagamento; if(!porPagto[p]) porPagto[p]={qtd:0,total:0}; porPagto[p].qtd++; porPagto[p].total+=c.total; });
   const cardTicket = '<div class="card"><h2>🎫 Ticket médio por forma de pagamento</h2>'+
     '<div class="table-wrap"><table><thead><tr><th>Pagamento</th><th>Vendas</th><th>Total</th><th>Ticket médio</th></tr></thead><tbody>'+
     Object.keys(porPagto).map(p=>'<tr><td>'+p+'</td><td>'+porPagto[p].qtd+'</td><td>'+fmtMoney(porPagto[p].total)+'</td><td>'+fmtMoney(porPagto[p].total/porPagto[p].qtd)+'</td></tr>').join('')+
