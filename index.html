@@ -3915,11 +3915,13 @@ function renderDashboardRelatorios(){
     options:{ maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{beginAtZero:true}} }
   });
 
+  // Conta por CARRINHO/RETIRADA (grupoId), não por linha de produto — senão uma compra com
+  // vários itens (ex.: gás + água) infla a contagem de retiradas/entregas.
   const porTipo = {};
-  TIPOS_ENTREGA.forEach(t=>porTipo[t]=0);
-  vendas.forEach(v=>{ if(v.tipo_entrega) porTipo[v.tipo_entrega] = (porTipo[v.tipo_entrega]||0)+1; });
+  TIPOS_ENTREGA.forEach(t=>porTipo[t]={vistos:new Set()});
+  vendas.forEach(v=>{ if(v.tipo_entrega) porTipo[v.tipo_entrega].vistos.add(v.grupoId||v.id); });
   document.getElementById('db-entregas-contador').innerHTML = TIPOS_ENTREGA.map(t=>
-    '<div class="metric"><div class="label" style="display:flex;align-items:center;gap:6px;">'+iconEntrega(t,'#1E3A8A')+'<span>'+t+'</span></div><div class="value">'+(porTipo[t]||0)+'</div></div>').join('');
+    '<div class="metric"><div class="label" style="display:flex;align-items:center;gap:6px;">'+iconEntrega(t,'#1E3A8A')+'<span>'+t+'</span></div><div class="value">'+porTipo[t].vistos.size+'</div></div>').join('');
 }
 
 /* ---------- VENDAS ---------- */
