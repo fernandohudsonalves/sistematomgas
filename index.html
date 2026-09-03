@@ -444,6 +444,9 @@ table td:last-child{min-width:180px;}
 #calc-fab{position:fixed;right:18px;bottom:228px;z-index:500;width:56px;height:56px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 6px 18px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:34px;line-height:1;padding:0;}
 #calc-fab:hover{transform:scale(1.06);}
 #calc-fab:active{transform:scale(.96);}
+#fiado-fab{position:fixed;right:18px;bottom:158px;z-index:500;width:56px;height:56px;border-radius:50%;background:#EA580C;border:none;box-shadow:0 6px 18px rgba(234,88,12,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:28px;line-height:1;padding:0;}
+#fiado-fab:hover{transform:scale(1.06);}
+#fiado-fab:active{transform:scale(.96);}
 #recado-fab{position:fixed;right:18px;bottom:294px;z-index:500;width:48px;height:48px;border-radius:50%;background:#F5B800;border:none;box-shadow:0 6px 18px rgba(245,184,0,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;}
 #recado-fab-badge{position:absolute;top:-4px;right:-4px;background:#DC2626;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 5px;display:none;}
 #recado-panel{position:fixed;right:18px;bottom:350px;z-index:2500;width:270px;max-height:360px;overflow-y:auto;background:#FFF6C9;color:#333;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);display:none;}
@@ -494,7 +497,7 @@ table td:last-child{min-width:180px;}
 .cf-item .cf-detalhe{font-size:13px;color:var(--text);margin:4px 0 8px;}
 .cf-item .cf-valor{font-size:12px;color:var(--text2);margin-bottom:8px;}
 .cf-item .cf-acoes{display:flex;gap:8px;flex-wrap:wrap;}
-#rota-fab{position:fixed;right:18px;bottom:158px;z-index:500;width:56px;height:56px;border-radius:50%;background:#0057B8;border:none;box-shadow:0 6px 18px rgba(0,87,184,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:26px;}
+#rota-fab{position:fixed;right:18px;bottom:88px;z-index:500;width:56px;height:56px;border-radius:50%;background:#0057B8;border:none;box-shadow:0 6px 18px rgba(0,87,184,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:26px;}
 #rota-fab:hover{transform:scale(1.06);}
 #rota-fab:active{transform:scale(.96);}
 #rota-overlay{position:static;}
@@ -581,7 +584,7 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_01_09_2026";
+const APP_BUILD_HORARIO = "1.0_03_09_2026";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -703,6 +706,7 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
 </div>
 <button id="rota-fab" title="Gerar rota rápida">🗺️</button>
 <button id="calc-fab" title="Calculadora">🖩</button>
+<button id="fiado-fab" title="Marcou / Fiados">📒</button>
 <button id="recado-fab" title="Recados / Post-it">📌<span id="recado-fab-badge"></span></button>
 <div id="recado-panel">
   <div id="recado-head">📌 Recados <span style="display:flex;align-items:center;gap:4px;"><button type="button" id="recado-admin-toggle" title="Administrar todos os recados (editar/excluir)">📋</button><button type="button" id="recado-fechar">✕</button></span></div>
@@ -1036,6 +1040,16 @@ function viewRecadosAdmin(){
     (todos.length===0 ? '<div class="empty" style="margin-top:10px;">Nenhum recado ainda.</div>' :
     '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Data</th><th>Recado</th><th>Status</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
+}
+function initFiadoFab(){
+  const fab = document.getElementById('fiado-fab');
+  if(!fab) return;
+  fab.onclick = ()=>{
+    currentTab = 'relatorios';
+    relatorioSub = 'fiado';
+    renderAll();
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
 }
 function initCalculadora(){
   const fab=document.getElementById('calc-fab'), panel=document.getElementById('calc-panel'), head=document.getElementById('calc-head'), display=document.getElementById('calc-display');
@@ -6786,7 +6800,8 @@ function relatorioFiado(){
     '<div id="lista-fiado-clientes-wrap">'+fiadoPorClienteHtml()+'</div>'+painelPagamento+
     (clienteExtrato ? extratoClienteHtml(clienteExtrato) : '')+
     '<h3 style="margin-top:16px;">Todos os lançamentos individuais</h3>'+
-    '<div class="hint">Total em aberto: '+fmtMoney(totalFiadoAberto())+'</div>'+fiadoListaHtml();
+    '<div class="hint">Total em aberto: '+fmtMoney(totalFiadoAberto())+'</div>'+
+    '<div id="lista-fiado-lancamentos-wrap">'+fiadoListaHtml()+'</div>';
 }
 function fiadoPorClienteHtml(filtro){
   const todasLinhas = clientesComFiado().map(n=>({nome:n, saldo:saldoDoCliente(n)})).filter(x=>x.saldo>0.004).sort((a,b)=>diasFiadoAtrasado(b.nome)-diasFiadoAtrasado(a.nome));
@@ -6857,14 +6872,16 @@ function extratoClienteHtml(cliente){
     '<div class="metric"><div class="label">Saldo devedor atual</div><div class="value">'+fmtMoney(saldo)+'</div></div>'+
     '</div></div>';
 }
-function fiadoListaHtml(){
+function fiadoListaHtml(filtro){
   const manuais = state.fiados.map(f=>Object.assign({}, f, {origem:'manual'}));
   const vendasFiado = state.vendas.filter(v=>v.pagamento==='Marcou/Fiado').map(v=>({
     id:v.id, cliente:v.cliente||'(sem nome)', valor:v.valor_total, data:v.data,
     descricao:v.produto, origem:'venda'
   }));
-  const todos = manuais.concat(vendasFiado).sort((a,b)=>b.data.localeCompare(a.data));
-  if(todos.length===0) return '<div class="empty">Nenhum fiado lançado ainda.</div>';
+  let todos = manuais.concat(vendasFiado).sort((a,b)=>b.data.localeCompare(a.data));
+  const q = (filtro||'').toLowerCase().trim();
+  if(q) todos = todos.filter(f=>(f.cliente||'').toLowerCase().includes(q) || (f.descricao||'').toLowerCase().includes(q));
+  if(todos.length===0) return '<div class="empty">'+(q?'Nenhum lançamento encontrado para "'+filtro+'".':'Nenhum fiado lançado ainda.')+'</div>';
   return '<div class="hint" style="margin-bottom:8px;">Esta lista é só o histórico de débitos lançados. Para dar baixa em um pagamento, use "registrar pagamento" na seção "Fiado por cliente" acima.</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Descrição</th><th>Data</th><th>Valor</th><th></th></tr></thead><tbody>'+
     todos.map(f=>{
@@ -8610,6 +8627,22 @@ function attachHandlers(){
     });
   };
   attachFiadoPorClienteHandlers();
+  const attachFiadoListaHandlers = ()=>{
+    document.querySelectorAll('[data-edit-fiado]').forEach(btn=>btn.onclick=()=>{
+      const fi = state.fiados.find(x=>x.id===btn.dataset.editFiado);
+      if(!fi || !ff) return;
+      editFiadoId = fi.id;
+      ff.cliente.value=fi.cliente; ff.valor.value=Number(fi.valor).toFixed(2); ff.data.value=fi.data; ff.descricao.value=fi.descricao||'';
+      ff.querySelector('button[type=submit]').textContent='Salvar alterações';
+      ff.scrollIntoView({behavior:'smooth'});
+    });
+    document.querySelectorAll('[data-del-fiado]').forEach(btn=>btn.onclick=async()=>{
+      const id = btn.dataset.delFiado;
+      const f = state.fiados.find(x=>x.id===id);
+      const aviso = f ? 'Excluir o débito de '+fmtMoney(f.valor)+' de '+f.cliente+' lançado em '+fmtDate(f.data)+'?\n\nIsso reduz o saldo devedor dele imediatamente. Essa ação não pode ser desfeita.' : 'Excluir este lançamento de fiado? Essa ação não pode ser desfeita.';
+      if(confirm(aviso)){ state.fiados = state.fiados.filter(x=>x.id!==id); await save('fiados'); renderAll(); }
+    });
+  };
   const btnFecharExtrato = document.getElementById('btn-fechar-extrato');
   if(btnFecharExtrato) btnFecharExtrato.onclick = ()=>{ clienteExtrato=null; renderAll(); };
   const btnImprimirExtrato = document.getElementById('btn-imprimir-extrato');
@@ -8618,6 +8651,11 @@ function attachHandlers(){
   if(buscaFiadoCliente) buscaFiadoCliente.oninput = ()=>{
     document.getElementById('lista-fiado-clientes-wrap').innerHTML = fiadoPorClienteHtml(buscaFiadoCliente.value);
     attachFiadoPorClienteHandlers();
+    const listaLancamentosWrap = document.getElementById('lista-fiado-lancamentos-wrap');
+    if(listaLancamentosWrap){
+      listaLancamentosWrap.innerHTML = fiadoListaHtml(buscaFiadoCliente.value);
+      attachFiadoListaHandlers();
+    }
   };
 
   const btnCancelarPagamentoFiado = document.getElementById('btn-cancelar-pagamento-fiado');
@@ -12713,6 +12751,7 @@ async function afterLogin(){
   initWhatsFab();
   initRotaFab();
   initCalculadora();
+  initFiadoFab();
   initRecados();
   rodarBackupAutomaticoSeNecessario();
   iniciarNotificacoesRealtime();
