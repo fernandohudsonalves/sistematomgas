@@ -7440,6 +7440,17 @@ function renderRelatorioEntregasResultado(){
   });
   const linhas = Object.entries(porTipo).sort((a,b)=>b[1].qtd-a[1].qtd);
   const freteTotal = filtradas.reduce((s,v)=>s+(v.frete||0),0);
+  // Lista, uma linha por entrega de verdade (um grupoId = uma entrega, não uma linha de produto),
+  // numerada na ordem em que a entrega entrou no sistema — pra dar pra conferir contra a planilha/
+  // controle físico e achar rapidinho se alguma entrega ficou faltando ou duplicada.
+  const porGrupo = {};
+  filtradas.forEach(v=>{
+    const chave = v.grupoId || v.id;
+    if(!porGrupo[chave]) porGrupo[chave] = {data:v.data, cliente:v.cliente||'—', tipo:tipoEntregaEfetivo(v), frete:0, criadoEm:v.criadoEm||0};
+    porGrupo[chave].frete += (v.frete||0);
+    if((v.criadoEm||0) < porGrupo[chave].criadoEm) porGrupo[chave].criadoEm = v.criadoEm||0;
+  });
+  const listaEntregas = Object.values(porGrupo).sort((a,b)=> (a.data===b.data ? (a.criadoEm-b.criadoEm) : a.data.localeCompare(b.data)));
   document.getElementById('rent-resultado').innerHTML =
     '<div class="grid cols2" style="max-width:420px;margin-bottom:12px;">'+
     '<div class="metric"><div class="label">Total de entregas no período</div><div class="value">'+gruposDoPeriodo.size+'</div></div>'+
@@ -7448,6 +7459,11 @@ function renderRelatorioEntregasResultado(){
     (linhas.length===0?'<div class="empty">Nenhuma entrega encontrada nesse período.</div>':
     '<div class="table-wrap"><table><thead><tr><th>Meio de entrega</th><th>Entregas</th><th>Frete arrecadado</th></tr></thead><tbody>'+
     linhas.map(l=>'<tr><td>'+entregaLabel(l[0])+'</td><td>'+l[1].qtd+'</td><td>'+fmtMoney(l[1].frete)+'</td></tr>').join('')+
+    '</tbody></table></div>')+
+    (listaEntregas.length===0?'':
+    '<h4 style="margin:16px 0 6px;">Conferência — entregas do período, uma a uma</h4>'+
+    '<div class="table-wrap"><table><thead><tr><th>#</th><th>Data</th><th>Cliente</th><th>Meio de entrega</th><th>Frete</th></tr></thead><tbody>'+
+    listaEntregas.map((e,i)=>'<tr><td>'+(i+1)+'</td><td>'+fmtDate(e.data)+'</td><td>'+escapeHtmlCampanha(e.cliente)+'</td><td>'+entregaLabel(e.tipo)+'</td><td>'+fmtMoney(e.frete)+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function renderRelatorioFretesResultado(){
@@ -11626,8 +11642,14 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
     const nomesClientesExistentes = new Set(state.clientes.map(c=>chaveNormalizada(c.nome)));
 
     if(linhasVendas.length){
-      let importadas=0, ignoradas=0, duplicadas=0, clientesNovosDeVendas=0, creditosAlterados=false, fiadosGeradosPorAbate=0;
+      let importadas=0, ignoradas=0, duplicadas=0, clientesNovosDeVendas=0, creditosAlterados=false, fiadosGeradosPorAbate=0, tipoEntregaCorrigido=0;
       const gruposPorChaveVenda = new Map();
+      // Se um cliente já teve uma linha marcada "Entrega de Celta" num dia (mesmo cliente+data, ou
+      // mesmo Nº da Venda), as próximas linhas dele nesse mesmo grupo são forçadas pra "Entrega de
+      // Celta" também, mesmo que a planilha tenha digitado outro tipo de entrega por engano — não dá
+      // pra ser "Entrega de Celta" numa linha e "Retirada"/outro tipo na linha seguinte da mesma
+      // visita. O frete continua contando só uma vez (regra de primeiraLinhaDoGrupo, mais abaixo).
+      const celtaPorChaveGrupo = new Map();
       // Guarda a última venda processada, pra quando a linha de baixo marcar "Repete a venda da
       // linha de cima?" = sim: aí herda cliente/canal/pagamento/etc. dela em vez de precisar
       // redigitar tudo (ou depender de numerar a venda, que é fácil de esquecer).
@@ -11735,23 +11757,37 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         const canal = (r['Canal']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.canal : '') || CANAIS[0];
         const pagamento = (r['Forma de Pagamento']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.pagamento : '') || PAGAMENTOS[0];
         const nota = (r['Nota']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.nota : '') || 'Não lança';
-        const tipo_entrega = (r['Tipo de Entrega']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.tipo_entrega : '') || TIPOS_ENTREGA[0];
+        let tipo_entrega = (r['Tipo de Entrega']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.tipo_entrega : '') || TIPOS_ENTREGA[0];
         const empresa = (r['Empresa Convênio']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.empresa : '');
-        const obs = (r['Observação']||'').trim();
+        let obs = (r['Observação']||'').trim();
 
         // Agrupa linhas da mesma compra (ex.: gás + água na mesma venda) pra contar como
         // um único "carrinho" no ticket médio: usa o Nº da Venda quando preenchido, ou
         // "Repete a venda da linha de cima?" = sim, ou cliente+data como última opção.
         const numeroVenda = (r['Nº da Venda']||'').trim();
+        const chaveGrupoCelta = numeroVenda ? ('num:'+numeroVenda) : (cliente ? ('cli:'+data+':'+chaveNormalizada(cliente)) : null);
+        // Se esse mesmo cliente/grupo já teve uma linha de "Entrega de Celta" nessa importação,
+        // força esta linha também pra "Entrega de Celta" — mesmo que a planilha tenha digitado
+        // outro tipo de entrega — pois uma mesma visita/carga não pode ser Celta numa categoria e
+        // Retirada (ou outro tipo) noutra.
+        if(chaveGrupoCelta && celtaPorChaveGrupo.get(chaveGrupoCelta) && tipo_entrega!=='Entrega de Celta'){
+          obs = (obs?obs+' — ':'') + 'Tipo de entrega corrigido automaticamente de "'+tipo_entrega+'" para "Entrega de Celta" (esse cliente já teve entrega de Celta lançada nesse dia).';
+          tipo_entrega = 'Entrega de Celta';
+          tipoEntregaCorrigido++;
+        } else if(chaveGrupoCelta && tipo_entrega==='Entrega de Celta'){
+          celtaPorChaveGrupo.set(chaveGrupoCelta, true);
+        }
         let grupoId, primeiraLinhaDoGrupo;
         if(repeteVendaAnterior && !numeroVenda){
           grupoId = ultimaVendaAncora.grupoId;
           primeiraLinhaDoGrupo = false;
         } else {
-          const chaveGrupo = numeroVenda ? ('num:'+numeroVenda) : (cliente ? ('cli:'+data+':'+chaveNormalizada(cliente)) : null);
+          const chaveGrupo = chaveGrupoCelta;
           if(chaveGrupo && gruposPorChaveVenda.has(chaveGrupo)){ grupoId = gruposPorChaveVenda.get(chaveGrupo); primeiraLinhaDoGrupo = false; }
           else { grupoId = uid(); if(chaveGrupo) gruposPorChaveVenda.set(chaveGrupo, grupoId); primeiraLinhaDoGrupo = true; }
         }
+        // Frete conta só uma vez por grupo (primeiraLinhaDoGrupo) — então mesmo que a correção acima
+        // force várias linhas do mesmo cliente/dia pra "Entrega de Celta", o frete não duplica.
         const freteBruto = TIPOS_ENTREGA_COM_FRETE.includes(tipo_entrega) ? (parseNumeroPlanilha(r['Frete'])||0) : 0;
         const frete = primeiraLinhaDoGrupo ? freteBruto : 0;
         const venda = {
@@ -11793,6 +11829,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
       if(creditosAlterados) await save('creditos');
       if(fiadosGeradosPorAbate>0) await save('fiados');
       resumo.push(importadas+' venda(s) importada(s)'+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem categoria/produto válido)':'')+(duplicadas>0?' — '+duplicadas+' ignorada(s) por já existir (venda repetida com mesmo cliente/produto/valor/data)':''));
+      if(tipoEntregaCorrigido>0) resumo.push('⚠️ '+tipoEntregaCorrigido+' linha(s) com tipo de entrega corrigido automaticamente pra "Entrega de Celta" (cliente já tinha entrega de Celta lançada no mesmo dia) — confira a observação de cada venda.');
       if(clientesNovosDeVendas>0) resumo.push(clientesNovosDeVendas+' cliente(s) novo(s) cadastrado(s) a partir da aba Vendas');
       if(creditosAlterados) resumo.push('Crédito em haver abatido automaticamente nas vendas marcadas como "Abateu"'+(fiadosGeradosPorAbate>0?' ('+fiadosGeradosPorAbate+' com diferença lançada de fiado)':''));
     }
