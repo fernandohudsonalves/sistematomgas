@@ -4143,6 +4143,30 @@ function renomearCategoriaDespesa(oldName, newName){
 function chaveNormalizada(str){
   return (str||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/\s+/g,' ');
 }
+// Fingerprint único de uma venda, usado tanto na importação da planilha (pra nunca lançar a
+// mesma venda duas vezes se o arquivo for reimportado por engano) quanto na ferramenta de
+// limpeza "Vendas duplicadas" em Config. Normaliza texto (maiúscula/acento/espaço), pagamento
+// (antes comparava o texto cru — "pix" digitado na planilha não batia com "Pix" do sistema, o
+// que deixava passar duplicata) e arredonda quantidade/valor pra evitar diferenças de ponto
+// flutuante (ex.: 105 vs 105.00000000001) impedirem a detecção.
+function chaveVendaFingerprint(v){
+  if(!v || !v.cliente) return null;
+  const qtd = Math.round(Number(v.quantidade||0)*1000)/1000;
+  const valor = Math.round(Number(v.valor_unit||0)*100)/100;
+  return [v.data, chaveNormalizada(v.cliente), chaveNormalizada(v.categoria), chaveNormalizada(v.produto), qtd, valor, chaveNormalizada(v.pagamento)].join('|');
+}
+// Agrupa as vendas já salvas por fingerprint e devolve só os grupos com mais de uma venda
+// (as duplicatas de verdade), ordenados por data mais recente primeiro.
+function encontrarGruposVendasDuplicadas(){
+  const grupos = new Map();
+  (state.vendas||[]).forEach(function(v){
+    const fp = chaveVendaFingerprint(v);
+    if(!fp) return;
+    if(!grupos.has(fp)) grupos.set(fp, []);
+    grupos.get(fp).push(v);
+  });
+  return Array.from(grupos.values()).filter(g=>g.length>1).sort((a,b)=> (b[0].data||'').localeCompare(a[0].data||''));
+}
 function mesclarCategoriasDuplicadas(){
   const vistos = {};
   const duplicatas = [];
@@ -4213,6 +4237,12 @@ function categoriasSuspeitasDuplicarEstoque(){
   });
 }
 function viewLimpezaDuplicidades(){
+  const gruposVendasDup = encontrarGruposVendasDuplicadas();
+  const totalVendasExtras = gruposVendasDup.reduce((s,g)=>s+(g.length-1),0);
+  const linhasVendasDup = gruposVendasDup.slice(0,30).map(function(g){
+    const exemplo = g[0];
+    return '<tr><td>'+fmtDate(exemplo.data)+'</td><td>'+exemplo.cliente+'</td><td>'+exemplo.categoria+(exemplo.produto&&exemplo.produto!==exemplo.categoria?' — '+exemplo.produto:'')+'</td><td>'+exemplo.quantidade+'</td><td>'+fmtMoney(exemplo.valor_unit)+'</td><td>'+exemplo.pagamento+'</td><td>'+g.length+' vezes</td></tr>';
+  }).join('');
   const suspeitas = categoriasSuspeitasDuplicarEstoque();
   const checklist = suspeitas.length===0 ? '<div class="empty">Nenhuma categoria de produto parecida com gás ou água 20L (Safira/D\'Fonte) encontrada fora do controle de estoque nativo.</div>' :
     '<div class="cat-checklist">'+suspeitas.map(function(c){
@@ -4221,6 +4251,13 @@ function viewLimpezaDuplicidades(){
   const qtdProdutosNaoControlados = state.produtos.filter(p=>!CATEGORIAS_CONTROLADAS.includes(p.categoria)).length;
   return '<div class="card"><h2>Ferramentas avançadas</h2>'+
     '<div class="hint">Ações em massa no catálogo — alteram os dados salvos no Supabase e não podem ser desfeitas.</div>'+
+    '<details style="margin-top:10px;" open><summary>Vendas duplicadas'+(gruposVendasDup.length>0?' <span class="badge" style="background:var(--danger);">'+totalVendasExtras+'</span>':'')+'</summary>'+
+    '<div class="hint" style="margin-top:8px;">Considera duplicata quando data, cliente, categoria/produto, quantidade, valor unitário e forma de pagamento são iguais (ignorando maiúsculas/acentos) — do jeito que acontece quando a mesma planilha é importada duas vezes. Ao remover, fica só 1 venda de cada grupo (a mais antiga) e o estoque das duplicatas removidas é revertido automaticamente.</div>'+
+    (gruposVendasDup.length===0 ? '<div class="empty" style="margin-top:8px;">Nenhuma venda duplicada encontrada.</div>' :
+      '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Data</th><th>Cliente</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Pagamento</th><th>Repetida</th></tr></thead><tbody>'+linhasVendasDup+'</tbody></table></div>'+
+      (gruposVendasDup.length>30?'<div class="hint" style="margin-top:6px;">Mostrando os 30 grupos mais recentes de '+gruposVendasDup.length+'.</div>':'')+
+      '<button type="button" class="btn small" id="btn-remover-vendas-duplicadas" style="margin-top:10px;background:var(--danger);">Remover '+totalVendasExtras+' venda(s) duplicada(s) agora</button>')+
+    '</details>'+
     '<details style="margin-top:10px;"><summary>Unificar nomes repetidos</summary>'+
     '<div class="hint" style="margin-top:8px;">Junta categorias e produtos com o mesmo nome (ignorando maiúsculas, acentos e espaços extras) em um único cadastro. Vendas, despesas e agendamentos que usavam o nome duplicado passam a apontar pro nome que ficar.</div>'+
     '<button type="button" class="btn small ghost" id="btn-unificar-duplicados" style="margin-top:8px;">Unificar duplicados agora</button>'+
@@ -7983,6 +8020,25 @@ function attachHandlers(){
     renderAll();
   });
 
+  const btnRemoverVendasDuplicadas = document.getElementById('btn-remover-vendas-duplicadas');
+  if(btnRemoverVendasDuplicadas) btnRemoverVendasDuplicadas.onclick = async ()=>{
+    const grupos = encontrarGruposVendasDuplicadas();
+    if(grupos.length===0){ alert('Nenhuma venda duplicada encontrada.'); return; }
+    const totalExtras = grupos.reduce((s,g)=>s+(g.length-1),0);
+    if(!confirm('Isso vai remover '+totalExtras+' venda(s) duplicada(s), mantendo só a mais antiga de cada grupo, e reverter o estoque das que forem removidas. Essa ação não pode ser desfeita. Continuar?')) return;
+    const idsRemover = new Set();
+    grupos.forEach(function(g){
+      const ordenado = g.slice().sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
+      ordenado.slice(1).forEach(function(v){ idsRemover.add(v.id); });
+    });
+    state.vendas.forEach(function(v){
+      if(idsRemover.has(v.id) && v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
+    });
+    state.vendas = state.vendas.filter(v=>!idsRemover.has(v.id));
+    await save('vendas'); await save('estoque');
+    alert('Pronto! '+idsRemover.size+' venda(s) duplicada(s) removida(s).');
+    renderAll();
+  };
   const btnUnificarDuplicados = document.getElementById('btn-unificar-duplicados');
   if(btnUnificarDuplicados) btnUnificarDuplicados.onclick = async ()=>{
     if(!confirm('Isso vai juntar categorias e produtos com nomes repetidos (ignorando maiúsculas, acentos e espaços). Não pode ser desfeito. Continuar?')) return;
@@ -11431,9 +11487,9 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
       // redigitar tudo (ou depender de numerar a venda, que é fácil de esquecer).
       let ultimaVendaAncora = null;
       // Fingerprint de vendas já existentes (só as que têm cliente identificado) pra não lançar
-      // a mesma venda duas vezes se a planilha for reimportada por engano.
+      // a mesma venda duas vezes se a planilha for reimportada por engano (função global
+      // chaveVendaFingerprint, reaproveitada também pela ferramenta de limpeza em Config).
       const fingerprintsVendas = new Set();
-      const chaveVendaFingerprint = (v)=> v.cliente ? [v.data, chaveNormalizada(v.cliente), chaveNormalizada(v.categoria), chaveNormalizada(v.produto), v.quantidade, v.valor_unit, v.pagamento].join('|') : null;
       state.vendas.forEach(v=>{ const fp = chaveVendaFingerprint(v); if(fp) fingerprintsVendas.add(fp); });
       linhasVendas.forEach(function(r){
         const textoCategoria = (r['Categoria/Produto']||'').trim();
