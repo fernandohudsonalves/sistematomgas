@@ -1204,7 +1204,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 const VAPID_PUBLIC_KEY = "BJhtEhjv3z9JMW44Yg3JsfoGYR4lNcINkr1fRzNLxvx-jzxtErj7EwqIavO8LkwIFFETGSg2NGZKTQjWo-xXA1s";
 
 const CANAIS = ['Portaria','WhatsApp','Venda Ativa','Ligação','Hub','Google'];
-const PAGAMENTOS = ['Dinheiro','Débito','Crédito','Vale gás','Gás do povo','Pix','Abateu','Marcou/Fiado','Outros'];
+const PAGAMENTOS = ['Dinheiro','Débito','Crédito','Convênio','Vale gás','Gás do povo','Pix','Abateu','Marcou/Fiado','Outros'];
 const NOTAS = ['Nota fiscal','Cupom não fiscal','Já lançado','Não lança'];
 const TIPOS_ENTREGA = ['Retirada','Falta retirar','Entrega a pé','Entrega de Celta','Entrega de moto','Entrega de Strada'];
 const DIAS_SEMANA_LABEL = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -2824,15 +2824,33 @@ function toggleDetalhesEntregaVenda(){
   if(!mostrar){
     const freteEl = document.getElementById('input-frete');
     if(freteEl) freteEl.value = '';
-    const empresaEl = wrap.querySelector('[name="empresa"]');
     const dataEl = wrap.querySelector('[name="entrega_data"]');
     const horaEl = wrap.querySelector('[name="entrega_hora"]');
-    if(empresaEl) empresaEl.value = '';
     if(dataEl) dataEl.value = '';
     if(horaEl) horaEl.value = '';
     atualizarTotalCarrinho();
   }
+  toggleEmpresaConvenioVenda();
   toggleDetalhesFaltaRetirarVenda();
+}
+// "Empresa conveniada" (venda): fica visível — e portanto disponível pra preencher — sempre que a
+// entrega tem frete (moto/carro/Strada) OU a forma de pagamento escolhida é "Convênio". Antes esse
+// campo só aparecia junto do frete, então uma venda "Retirada" paga por convênio não tinha como ser
+// vinculada à empresa e ficava de fora do relatório de Empresas conveniadas — o relatório sempre foi
+// baseado só nesse campo (não na forma de pagamento), mas sem o campo visível não dava pra preencher.
+function toggleEmpresaConvenioVenda(){
+  const selEntrega = document.getElementById('sel-tipo-entrega');
+  const selPagamento = document.getElementById('sel-forma-pagamento');
+  const wrap = document.getElementById('wrap-empresa-convenio-venda');
+  if(!wrap) return;
+  const entregaComFrete = selEntrega && TIPOS_ENTREGA_COM_FRETE.includes(selEntrega.value);
+  const pagamentoConvenio = selPagamento && selPagamento.value === 'Convênio';
+  const mostrar = entregaComFrete || pagamentoConvenio;
+  wrap.style.display = mostrar ? 'block' : 'none';
+  if(!mostrar){
+    const empresaEl = wrap.querySelector('[name="empresa"]');
+    if(empresaEl) empresaEl.value = '';
+  }
 }
 function toggleDetalhesFaltaRetirarVenda(){
   const sel = document.getElementById('sel-tipo-entrega');
@@ -2866,6 +2884,21 @@ function toggleDetalhesEntregaAgendamento(){
   if(!mostrar){
     const freteEl = document.getElementById('input-frete-ag');
     if(freteEl) freteEl.value = '';
+  }
+  toggleEmpresaConvenioAgendamento();
+}
+// Mesma lógica da venda avulsa (toggleEmpresaConvenioVenda): a empresa conveniada fica disponível
+// pra preencher sempre que a entrega tem frete OU a forma de pagamento é "Convênio", não só entrega.
+function toggleEmpresaConvenioAgendamento(){
+  const selEntrega = document.getElementById('sel-tipo-entrega-ag');
+  const selPagamento = document.getElementById('sel-forma-pagamento-ag');
+  const wrap = document.getElementById('wrap-empresa-convenio-ag');
+  if(!wrap) return;
+  const entregaComFrete = selEntrega && TIPOS_ENTREGA_COM_FRETE.includes(selEntrega.value);
+  const pagamentoConvenio = selPagamento && selPagamento.value === 'Convênio';
+  const mostrar = entregaComFrete || pagamentoConvenio;
+  wrap.style.display = mostrar ? 'block' : 'none';
+  if(!mostrar){
     const empresaEl = wrap.querySelector('[name="empresa"]');
     if(empresaEl) empresaEl.value = '';
   }
@@ -4552,12 +4585,15 @@ function viewVendas(){
     '<div class="hint" style="margin-bottom:6px;">Detalhes da entrega</div>'+
     '<div class="form-row">'+
     '<div><label>Valor do frete (R$)</label><input type="number" id="input-frete" name="frete" min="0" step="0.01" placeholder="0,00"></div>'+
-    '<div><label>Empresa conveniada (opcional)</label><input list="lista-empresas" name="empresa" placeholder="Nome da empresa"><datalist id="lista-empresas">'+empresasOptions()+'</datalist></div>'+
     '</div>'+
     '<div class="form-row">'+
     '<div><label>Agendar entrega — data (opcional)</label><input type="date" name="entrega_data"></div>'+
     '<div><label>Agendar entrega — horário (opcional)</label><input type="time" name="entrega_hora"></div>'+
     '</div>'+
+    '</div>'+
+    '<div id="wrap-empresa-convenio-venda" class="item-venda-row" style="display:none;margin-top:10px;">'+
+    '<div><label>Empresa conveniada</label><input list="lista-empresas" name="empresa" placeholder="Nome da empresa"><datalist id="lista-empresas">'+empresasOptions()+'</datalist>'+
+    '<div class="hint">Aparece automaticamente quando a entrega tem frete (moto/carro/Strada) ou quando a forma de pagamento é "Convênio". Se ficar em branco, essa venda não entra no relatório de Empresas conveniadas.</div></div>'+
     '</div>'+
     '<div id="detalhes-falta-retirar-venda" class="item-venda-row" style="display:none;margin-top:10px;border:1px dashed var(--warning,#f59e0b);">'+
     '<div class="hint" style="margin-bottom:6px;">Essa venda ainda está pendente em "Falta retirar". Preencha aqui embaixo só quando o cliente já tiver retirado ou vocês já tiverem entregado — se ainda não aconteceu, deixe "Ainda pendente" e o estoque continua reservado.</div>'+
@@ -5536,7 +5572,7 @@ function viewAgendamentos(){
     '</div>'+
     '<div class="form-row">'+
     '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega-ag" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
-    '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select></div>'+
+    '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento-ag" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select></div>'+
     '<div><label>Entregador</label><select name="entregadorId">'+entregadoresOptionsHtml(entregadorPrincipal()?entregadorPrincipal().id:'')+'</select></div>'+
     '</div>'+
     '<div class="form-row"><div style="display:flex;align-items:center;gap:8px;"><input type="checkbox" name="pago" id="chk-ag-pago" style="width:auto;"><label for="chk-ag-pago" style="margin:0;">Cliente já pagou (entregador NÃO precisa cobrar)</label></div></div>'+
@@ -5545,9 +5581,11 @@ function viewAgendamentos(){
     '<div class="hint" style="margin-bottom:6px;">Detalhes da entrega</div>'+
     '<div class="form-row">'+
     '<div><label>Valor do frete (R$)</label><input type="number" id="input-frete-ag" name="frete" min="0" step="0.01" placeholder="0,00"></div>'+
-    '<div><label>Empresa conveniada (opcional)</label><input list="lista-empresas-ag" name="empresa">'+
-    '<datalist id="lista-empresas-ag">'+empresasOptions()+'</datalist></div>'+
     '</div></div>'+
+    '<div id="wrap-empresa-convenio-ag" class="item-venda-row" style="display:none;margin-top:10px;">'+
+    '<div><label>Empresa conveniada</label><input list="lista-empresas-ag" name="empresa">'+
+    '<datalist id="lista-empresas-ag">'+empresasOptions()+'</datalist></div>'+
+    '</div>'+
     '<button type="submit" class="btn small" style="margin-top:12px;">Registrar entrega</button></form></div>'+
     '<div class="card"><h2>Entregas</h2>'+
     '<input type="text" id="busca-agendamento" class="searchbar" placeholder="Buscar por cliente, produto ou empresa (em todas as datas)...">'+
@@ -8314,6 +8352,8 @@ function attachHandlers(){
   if(fv && fv.cliente) fv.cliente.oninput = atualizarBoxCreditoVenda;
   const selTipoEntrega = document.getElementById('sel-tipo-entrega');
   if(selTipoEntrega) selTipoEntrega.onchange = toggleDetalhesEntregaVenda;
+  const selFormaPagamentoVenda = document.getElementById('sel-forma-pagamento');
+  if(selFormaPagamentoVenda) selFormaPagamentoVenda.onchange = toggleEmpresaConvenioVenda;
   const inputFrete = document.getElementById('input-frete');
   if(inputFrete) inputFrete.oninput = atualizarTotalCarrinho;
   const inputFreteFR = document.getElementById('input-frete-falta-retirar');
@@ -10499,6 +10539,8 @@ function attachHandlers(){
   };
   const selTipoEntregaAg = document.getElementById('sel-tipo-entrega-ag');
   if(selTipoEntregaAg) selTipoEntregaAg.onchange = toggleDetalhesEntregaAgendamento;
+  const selFormaPagamentoAg = document.getElementById('sel-forma-pagamento-ag');
+  if(selFormaPagamentoAg) selFormaPagamentoAg.onchange = toggleEmpresaConvenioAgendamento;
   toggleDetalhesEntregaAgendamento();
   const chkAgAgendado = document.getElementById('chk-ag-agendado');
   if(chkAgAgendado) chkAgAgendado.onchange = toggleHoraAgendamento;
@@ -11345,10 +11387,11 @@ async function gerarModeloImportacaoDiaria(){
   // colunas na própria linha, vale o que foi digitado ali, não o herdado.
   aplicarDropdown(wsVendas, 'T', 'K', 2, 2, ULTIMA_LINHA);
   // Repetição visual ao vivo: marcando "sim" na coluna T, Data/Cliente/Telefone/Endereço/
-  // Complemento/Canal/Forma de Pagamento/Nota/Tipo de Entrega/Empresa Convênio já copiam sozinhos
-  // da linha de cima (ver aplicarRepetePreenchimento). Categoria/Produto/Quantidade/Valor
-  // Unitário ficam de fora de propósito — são o que muda de item pra item na mesma venda.
-  aplicarRepetePreenchimento(wsVendas, ['A','C','D','E','F','G','L','M','N','O'], 'T', 2, ULTIMA_LINHA);
+  // Complemento/Canal/Produto/Forma de Pagamento/Nota/Tipo de Entrega/Empresa Convênio já copiam
+  // sozinhos da linha de cima (ver aplicarRepetePreenchimento). Produto (I) entra aqui a pedido —
+  // fica só como sugestão editável por cima, útil quando a mesma venda repete item. Categoria (H),
+  // Quantidade e Valor Unitário ficam de fora de propósito — são o que mais muda de item pra item.
+  aplicarRepetePreenchimento(wsVendas, ['A','C','D','E','F','G','I','L','M','N','O'], 'T', 2, ULTIMA_LINHA);
   configurarImpressaoA4(wsVendas, 21, 45);
   // IMPORTANTE: o travamento como texto da coluna Data tem que vir DEPOIS de configurarImpressaoA4
   // (que redesenha o estilo de cada célula pra aplicar as bordas de impressão) — senão a borda
