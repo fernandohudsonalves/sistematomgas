@@ -11644,12 +11644,13 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
     if(linhasVendas.length){
       let importadas=0, ignoradas=0, duplicadas=0, clientesNovosDeVendas=0, creditosAlterados=false, fiadosGeradosPorAbate=0, tipoEntregaCorrigido=0;
       const gruposPorChaveVenda = new Map();
-      // Se um cliente já teve uma linha marcada "Entrega de Celta" num dia (mesmo cliente+data, ou
-      // mesmo Nº da Venda), as próximas linhas dele nesse mesmo grupo são forçadas pra "Entrega de
-      // Celta" também, mesmo que a planilha tenha digitado outro tipo de entrega por engano — não dá
-      // pra ser "Entrega de Celta" numa linha e "Retirada"/outro tipo na linha seguinte da mesma
-      // visita. O frete continua contando só uma vez (regra de primeiraLinhaDoGrupo, mais abaixo).
-      const celtaPorChaveGrupo = new Map();
+      // Se um cliente já teve uma linha com um certo tipo de entrega marcado num dia (mesmo
+      // cliente+data, ou mesmo Nº da Venda), as próximas linhas dele nesse mesmo grupo são
+      // forçadas pro MESMO tipo de entrega da primeira linha — mesmo que a planilha tenha digitado
+      // outro tipo por engano numa linha seguinte — pois não dá pra uma mesma visita/carga ser, por
+      // exemplo, "Entrega de Celta" numa categoria e "Retirada" (ou qualquer outro tipo) noutra.
+      // O frete continua contando só uma vez (regra de primeiraLinhaDoGrupo, mais abaixo).
+      const tipoEntregaPorChaveGrupo = new Map();
       // Guarda a última venda processada, pra quando a linha de baixo marcar "Repete a venda da
       // linha de cima?" = sim: aí herda cliente/canal/pagamento/etc. dela em vez de precisar
       // redigitar tudo (ou depender de numerar a venda, que é fácil de esquecer).
@@ -11757,7 +11758,8 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         const canal = (r['Canal']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.canal : '') || CANAIS[0];
         const pagamento = (r['Forma de Pagamento']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.pagamento : '') || PAGAMENTOS[0];
         const nota = (r['Nota']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.nota : '') || 'Não lança';
-        let tipo_entrega = (r['Tipo de Entrega']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.tipo_entrega : '') || TIPOS_ENTREGA[0];
+        const tipoEntregaDigitado = (r['Tipo de Entrega']||'').trim();
+        let tipo_entrega = tipoEntregaDigitado || (repeteVendaAnterior ? ultimaVendaAncora.tipo_entrega : '') || TIPOS_ENTREGA[0];
         const empresa = (r['Empresa Convênio']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.empresa : '');
         let obs = (r['Observação']||'').trim();
 
@@ -11765,24 +11767,30 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         // um único "carrinho" no ticket médio: usa o Nº da Venda quando preenchido, ou
         // "Repete a venda da linha de cima?" = sim, ou cliente+data como última opção.
         const numeroVenda = (r['Nº da Venda']||'').trim();
-        const chaveGrupoCelta = numeroVenda ? ('num:'+numeroVenda) : (cliente ? ('cli:'+data+':'+chaveNormalizada(cliente)) : null);
-        // Se esse mesmo cliente/grupo já teve uma linha de "Entrega de Celta" nessa importação,
-        // força esta linha também pra "Entrega de Celta" — mesmo que a planilha tenha digitado
-        // outro tipo de entrega — pois uma mesma visita/carga não pode ser Celta numa categoria e
-        // Retirada (ou outro tipo) noutra.
-        if(chaveGrupoCelta && celtaPorChaveGrupo.get(chaveGrupoCelta) && tipo_entrega!=='Entrega de Celta'){
-          obs = (obs?obs+' — ':'') + 'Tipo de entrega corrigido automaticamente de "'+tipo_entrega+'" para "Entrega de Celta" (esse cliente já teve entrega de Celta lançada nesse dia).';
-          tipo_entrega = 'Entrega de Celta';
-          tipoEntregaCorrigido++;
-        } else if(chaveGrupoCelta && tipo_entrega==='Entrega de Celta'){
-          celtaPorChaveGrupo.set(chaveGrupoCelta, true);
+        const chaveGrupoTipoEntrega = numeroVenda ? ('num:'+numeroVenda) : (cliente ? ('cli:'+data+':'+chaveNormalizada(cliente)) : null);
+        // A primeira linha de cada grupo (mesmo cliente+data, ou mesmo Nº da Venda) define o tipo
+        // de entrega daquele grupo inteiro. Qualquer linha seguinte do MESMO cliente/grupo é
+        // obrigatoriamente forçada pro mesmo tipo — mesmo que a planilha tenha digitado outro tipo
+        // de entrega por engano — pois não dá pra uma mesma visita/carga ter, por exemplo,
+        // "Entrega de Celta" numa categoria comprada e "Retirada" (ou qualquer outro tipo) noutra.
+        if(chaveGrupoTipoEntrega){
+          const tipoJaTravado = tipoEntregaPorChaveGrupo.get(chaveGrupoTipoEntrega);
+          if(tipoJaTravado && tipoJaTravado!==tipo_entrega){
+            if(tipoEntregaDigitado && tipoEntregaDigitado!==tipoJaTravado){
+              obs = (obs?obs+' — ':'') + 'Tipo de entrega corrigido automaticamente de "'+tipoEntregaDigitado+'" para "'+tipoJaTravado+'" (esse cliente já teve esse tipo de entrega lançado nesse dia).';
+              tipoEntregaCorrigido++;
+            }
+            tipo_entrega = tipoJaTravado;
+          } else if(!tipoJaTravado){
+            tipoEntregaPorChaveGrupo.set(chaveGrupoTipoEntrega, tipo_entrega);
+          }
         }
         let grupoId, primeiraLinhaDoGrupo;
         if(repeteVendaAnterior && !numeroVenda){
           grupoId = ultimaVendaAncora.grupoId;
           primeiraLinhaDoGrupo = false;
         } else {
-          const chaveGrupo = chaveGrupoCelta;
+          const chaveGrupo = chaveGrupoTipoEntrega;
           if(chaveGrupo && gruposPorChaveVenda.has(chaveGrupo)){ grupoId = gruposPorChaveVenda.get(chaveGrupo); primeiraLinhaDoGrupo = false; }
           else { grupoId = uid(); if(chaveGrupo) gruposPorChaveVenda.set(chaveGrupo, grupoId); primeiraLinhaDoGrupo = true; }
         }
@@ -11829,7 +11837,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
       if(creditosAlterados) await save('creditos');
       if(fiadosGeradosPorAbate>0) await save('fiados');
       resumo.push(importadas+' venda(s) importada(s)'+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem categoria/produto válido)':'')+(duplicadas>0?' — '+duplicadas+' ignorada(s) por já existir (venda repetida com mesmo cliente/produto/valor/data)':''));
-      if(tipoEntregaCorrigido>0) resumo.push('⚠️ '+tipoEntregaCorrigido+' linha(s) com tipo de entrega corrigido automaticamente pra "Entrega de Celta" (cliente já tinha entrega de Celta lançada no mesmo dia) — confira a observação de cada venda.');
+      if(tipoEntregaCorrigido>0) resumo.push('⚠️ '+tipoEntregaCorrigido+' linha(s) com tipo de entrega corrigido automaticamente pra bater com o tipo já lançado antes pro mesmo cliente/dia — confira a observação de cada venda.');
       if(clientesNovosDeVendas>0) resumo.push(clientesNovosDeVendas+' cliente(s) novo(s) cadastrado(s) a partir da aba Vendas');
       if(creditosAlterados) resumo.push('Crédito em haver abatido automaticamente nas vendas marcadas como "Abateu"'+(fiadosGeradosPorAbate>0?' ('+fiadosGeradosPorAbate+' com diferença lançada de fiado)':''));
     }
