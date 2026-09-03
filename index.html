@@ -4611,7 +4611,7 @@ function viewVendas(){
     '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje)+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
-    '<div class="form-row"><div><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por cliente, produto, empresa, canal ou pagamento..."></div>'+
+    '<div class="form-row" style="align-items:end;"><div><label style="font-size:11px;visibility:hidden;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por cliente, produto, empresa, canal ou pagamento..."></div>'+
     '<div style="max-width:150px;"><label style="font-size:11px;">De</label><input type="date" id="busca-venda-data-de" title="Filtrar a partir desta data"></div>'+
     '<div style="max-width:150px;"><label style="font-size:11px;">Até</label><input type="date" id="busca-venda-data-ate" title="Filtrar até esta data"></div>'+
     '<div style="max-width:130px;"><label style="font-size:11px;">Por página</label><select id="sel-vendas-por-pagina"><option value="30">30</option><option value="50">50</option><option value="100">100</option></select></div></div>'+
@@ -4696,15 +4696,25 @@ function viewFaltaRetirar(){
     '<div class="card"><h2>Pendentes ('+pendenciasRetirada.length+')</h2>'+
     '<div id="lista-pendencias-retirada-wrap">'+pendenciasRetiradaTable(pendenciasRetirada)+'</div></div>';
 }
+// Calcula o número sequencial da venda dentro do próprio dia (1ª venda do dia, 2ª, etc.),
+// contando só as vendas que realmente existem em state.vendas nesse momento (ou seja,
+// vendas excluídas — inclusive por uma restauração de backup — nunca entram na contagem).
+// A ordem usada é a ordem de lançamento (criadoEm), então o número reflete a sequência real
+// de lançamento do dia, útil pra bater contra retiradas/entregas na hora de achar um erro.
+function numeroVendaDoDia(v){
+  const doDia = state.vendas.filter(x=>x.data===v.data).slice().sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
+  const idx = doDia.findIndex(x=>x.id===v.id);
+  return idx>=0 ? (idx+1) : '—';
+}
 function vendasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma venda encontrada.</div>';
-  return '<div class="table-wrap tabela-vendas"><table><thead><tr><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap tabela-vendas"><table><thead><tr><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
       const entrega = entregaLabel(v.tipo_entrega, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (v.frete ? ' <span class="badge fiado" title="Frete">'+fmtMoney(v.frete)+'</span>' : '');
       const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>');
-      return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
+      return '<tr><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
         '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td>'+v.quantidade+'</td>'+
         '<td>'+fmtMoney(v.valor_total)+'</td><td>'+pagtoTxt+'</td><td><span class="badge nota">'+v.nota+'</span></td>'+
         '<td class="cel-acoes"><button class="act-link" title="Editar" data-edit-venda="'+v.id+'">✎</button>'+
@@ -7425,8 +7435,8 @@ function renderRelatorioVendasResultado(){
     '</tbody></table></div>')+
     (filtradas.length===0?'<div class="empty">Nenhuma venda encontrada.</div>':
     '<h4 style="margin-bottom:6px;">Lançamentos individuais</h4>'+
-    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Valor</th><th>Pagto</th></tr></thead><tbody>'+
-    filtradas.slice().sort((a,b)=> a.categoria.localeCompare(b.categoria) || b.data.localeCompare(a.data)).map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+(v.canal||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td><td>'+v.pagamento+'</td></tr>').join('')+
+    '<div class="table-wrap"><table><thead><tr><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Valor</th><th>Pagto</th></tr></thead><tbody>'+
+    filtradas.slice().sort((a,b)=> a.categoria.localeCompare(b.categoria) || b.data.localeCompare(a.data)).map(v=>'<tr><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+(v.canal||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td><td>'+v.pagamento+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function renderRelatorioRankingResultado(){
