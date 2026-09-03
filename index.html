@@ -11073,6 +11073,22 @@ async function gerarModeloImportacaoDiaria(){
       };
     }
   }
+  // "Repete a venda da linha de cima?": antes essa coluna só era lida na hora de IMPORTAR a
+  // planilha pro sistema (o texto "sim" ficava só marcado, sem preencher nada visualmente na
+  // hora de digitar) — por isso parecia "não funcionar" ao testar no WPS/Excel: nada mudava na
+  // tela até importar. Agora cada coluna listada em `colunas` já vem com uma fórmula que copia
+  // sozinha o valor da MESMA coluna da linha de cima assim que a pessoa escolhe "sim" na coluna
+  // de repetição — dá pra ver a linha se preenchendo na hora, igual já acontece com o Valor
+  // Unitário sugerido. Se a pessoa digitar algo diferente por cima (ex.: outra forma de
+  // pagamento só nessa linha), o Excel/WPS troca a fórmula pelo texto digitado, e vale o que foi
+  // digitado ali — mesma regra que já valia na importação.
+  function aplicarRepetePreenchimento(ws, colunas, colunaRepete, primeiraLinhaDados, linhaFim){
+    for(let l=primeiraLinhaDados+1; l<=linhaFim; l++){
+      colunas.forEach(function(colLetra){
+        ws.getCell(colLetra+l).value = { formula: 'IF($'+colunaRepete+l+'="sim",'+colLetra+(l-1)+',"")' };
+      });
+    }
+  }
   function configurarImpressaoA4(ws, qtdColunas, ultimaLinhaImpressao){
     ws.pageSetup.paperSize = 9; // A4
     ws.pageSetup.orientation = qtdColunas>8 ? 'landscape' : 'portrait';
@@ -11176,7 +11192,7 @@ async function gerarModeloImportacaoDiaria(){
     'Produto (Vendas): opcional — use pra dizer qual item exato dentro da categoria foi vendido (ex.: categoria "Bebidas", produto "Coca-Cola 2L"), mesmo que esse item não tenha controle de estoque. Escolha a Categoria primeiro: a setinha dessa coluna já filtra sozinha e mostra só os produtos cadastrados naquela categoria. Se digitar um nome que não bate exatamente com o cadastro, o sistema pausa e pergunta antes de importar (igual acontece com Categoria/Produto e Cliente). Deixe em branco se não quiser detalhar o item.',
     'Valor Unitário (Vendas): já vem sugerido sozinho com o preço cadastrado assim que você escolhe a Categoria (ou o Produto, quando preenchido) — pode digitar por cima pra usar outro valor (ex.: promoção, desconto).',
     'Nº da Venda (Vendas): opcional. Se a mesma pessoa levou produtos de categorias diferentes numa única compra (ex.: gás + água), dá pra numerar (repita o MESMO número em todas as linhas dessa venda, ex.: 1, 1, 2, 3, 3, 3...) OU, mais fácil, usar a coluna "Repete a venda da linha de cima?" (veja abaixo) — não precisa das duas juntas. Se deixar tudo em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho as linhas do mesmo cliente no mesmo dia. Já em venda de balcão sem nome de cliente, use a numeração ou o "Repete a venda" — senão cada linha vira uma venda separada no ticket médio. Preencha o Frete só numa das linhas de cada venda, pra não contar em dobro.',
-    'Repete a venda da linha de cima? (Vendas): pra quando o mesmo cliente leva mais de um item de categorias diferentes numa única visita (ex.: gás + água) sem precisar redigitar tudo. Marque "sim" nessa coluna e deixe em branco Data/Cliente/Telefone/Endereço/Canal/Forma de Pagamento/Nota/Tipo de Entrega/Empresa Convênio — o sistema copia sozinho da linha de cima. Se digitar algo diferente numa dessas colunas na própria linha (ex.: pagamento diferente pra esse item, ou uma data diferente), vale o que foi digitado ali. Itens da MESMA categoria você pode continuar lançando numa linha só, sem precisar dessa coluna — só mude a Quantidade.',
+    'Repete a venda da linha de cima? (Vendas): pra quando o mesmo cliente leva mais de um item de categorias diferentes numa única visita (ex.: gás + água) sem precisar redigitar tudo. Marque "sim" nessa coluna: Data/Cliente/Telefone/Endereço/Complemento/Canal/Forma de Pagamento/Nota/Tipo de Entrega/Empresa Convênio já preenchem sozinhos, copiando da linha de cima na hora — não precisa esperar importar pra ver preenchido. Se digitar algo diferente numa dessas colunas na própria linha (ex.: pagamento diferente pra esse item, ou uma data diferente), vale o que foi digitado ali. Itens da MESMA categoria você pode continuar lançando numa linha só, sem precisar dessa coluna — só mude a Quantidade.',
     'Telefone Cliente / Endereço Cliente / Complemento Cliente (Vendas): opcionais — se o cliente da venda ainda não existir no cadastro, o sistema já cadastra ele automaticamente usando esses dados. Se o cliente já existir (mesmo nome), não duplica.',
     'Indicado Por (Cliente novo) / Aniversário Cliente (Cliente novo) (Vendas): opcionais, só valem quando o cliente da venda ainda não existe e vai ser criado automaticamente. Aniversário no formato AAAA-MM-DD.',
     'Categoria (Despesas): '+state.categoriasDespesas.join(' | '),
@@ -11219,6 +11235,11 @@ async function gerarModeloImportacaoDiaria(){
   // depender de numerar a venda (que é fácil de esquecer). Se digitar algo diferente numa dessas
   // colunas na própria linha, vale o que foi digitado ali, não o herdado.
   aplicarDropdown(wsVendas, 'T', 'K', 2, 2, ULTIMA_LINHA);
+  // Repetição visual ao vivo: marcando "sim" na coluna T, Data/Cliente/Telefone/Endereço/
+  // Complemento/Canal/Forma de Pagamento/Nota/Tipo de Entrega/Empresa Convênio já copiam sozinhos
+  // da linha de cima (ver aplicarRepetePreenchimento). Categoria/Produto/Quantidade/Valor
+  // Unitário ficam de fora de propósito — são o que muda de item pra item na mesma venda.
+  aplicarRepetePreenchimento(wsVendas, ['A','C','D','E','F','G','L','M','N','O'], 'T', 2, ULTIMA_LINHA);
   configurarImpressaoA4(wsVendas, 21, 45);
   // IMPORTANTE: o travamento como texto da coluna Data tem que vir DEPOIS de configurarImpressaoA4
   // (que redesenha o estilo de cada célula pra aplicar as bordas de impressão) — senão a borda
