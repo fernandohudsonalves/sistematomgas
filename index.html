@@ -4167,6 +4167,27 @@ function encontrarGruposVendasDuplicadas(){
   });
   return Array.from(grupos.values()).filter(g=>g.length>1).sort((a,b)=> (b[0].data||'').localeCompare(a[0].data||''));
 }
+// Ação compartilhada: usada tanto pelo botão de atalho na aba Vendas quanto pela ferramenta
+// avançada em Config > Categorias. Mantém sempre a venda mais antiga de cada grupo duplicado
+// e reverte automaticamente o estoque das vendas removidas que já tinham dado baixa.
+async function removerVendasDuplicadas(){
+  const grupos = encontrarGruposVendasDuplicadas();
+  if(grupos.length===0){ alert('Nenhuma venda duplicada encontrada.'); return; }
+  const totalExtras = grupos.reduce((s,g)=>s+(g.length-1),0);
+  if(!confirm('Isso vai remover '+totalExtras+' venda(s) duplicada(s), mantendo só a mais antiga de cada grupo, e reverter o estoque das que forem removidas. Essa ação não pode ser desfeita. Continuar?')) return;
+  const idsRemover = new Set();
+  grupos.forEach(function(g){
+    const ordenado = g.slice().sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
+    ordenado.slice(1).forEach(function(v){ idsRemover.add(v.id); });
+  });
+  state.vendas.forEach(function(v){
+    if(idsRemover.has(v.id) && v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
+  });
+  state.vendas = state.vendas.filter(v=>!idsRemover.has(v.id));
+  await save('vendas'); await save('estoque');
+  alert('Pronto! '+idsRemover.size+' venda(s) duplicada(s) removida(s). O estoque das vendas removidas foi revertido automaticamente.');
+  renderAll();
+}
 function mesclarCategoriasDuplicadas(){
   const vistos = {};
   const duplicatas = [];
@@ -4475,8 +4496,17 @@ function viewVendas(){
   const totalHoje = vendasHoje.reduce((s,v)=>s+v.valor_total,0);
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
+  const gruposVendasDupTopo = encontrarGruposVendasDuplicadas();
+  const totalVendasExtrasTopo = gruposVendasDupTopo.reduce((s,g)=>s+(g.length-1),0);
+  const cardVendasDuplicadasTopo = gruposVendasDupTopo.length===0 ? '' :
+    '<div class="card" style="border:1px solid var(--danger);">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'+
+    '<div><strong style="color:var(--danger);">⚠ '+totalVendasExtrasTopo+' venda(s) comprovadamente duplicada(s)</strong>'+
+    '<div class="hint" style="margin-top:4px;">Mesma data, cliente, produto, quantidade, valor unitário e forma de pagamento — como acontece quando a mesma planilha é importada duas vezes. Ao excluir, fica só a venda mais antiga de cada grupo e o estoque das removidas é revertido automaticamente.</div></div>'+
+    '<button type="button" class="btn small" id="btn-remover-vendas-duplicadas-topo" style="background:var(--danger);white-space:nowrap;">🗑 Excluir '+totalVendasExtrasTopo+' duplicada(s) agora</button>'+
+    '</div></div>';
 
-  return '<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
+  return cardVendasDuplicadasTopo+'<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
@@ -8021,24 +8051,7 @@ function attachHandlers(){
   });
 
   const btnRemoverVendasDuplicadas = document.getElementById('btn-remover-vendas-duplicadas');
-  if(btnRemoverVendasDuplicadas) btnRemoverVendasDuplicadas.onclick = async ()=>{
-    const grupos = encontrarGruposVendasDuplicadas();
-    if(grupos.length===0){ alert('Nenhuma venda duplicada encontrada.'); return; }
-    const totalExtras = grupos.reduce((s,g)=>s+(g.length-1),0);
-    if(!confirm('Isso vai remover '+totalExtras+' venda(s) duplicada(s), mantendo só a mais antiga de cada grupo, e reverter o estoque das que forem removidas. Essa ação não pode ser desfeita. Continuar?')) return;
-    const idsRemover = new Set();
-    grupos.forEach(function(g){
-      const ordenado = g.slice().sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
-      ordenado.slice(1).forEach(function(v){ idsRemover.add(v.id); });
-    });
-    state.vendas.forEach(function(v){
-      if(idsRemover.has(v.id) && v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
-    });
-    state.vendas = state.vendas.filter(v=>!idsRemover.has(v.id));
-    await save('vendas'); await save('estoque');
-    alert('Pronto! '+idsRemover.size+' venda(s) duplicada(s) removida(s).');
-    renderAll();
-  };
+  if(btnRemoverVendasDuplicadas) btnRemoverVendasDuplicadas.onclick = removerVendasDuplicadas;
   const btnUnificarDuplicados = document.getElementById('btn-unificar-duplicados');
   if(btnUnificarDuplicados) btnUnificarDuplicados.onclick = async ()=>{
     if(!confirm('Isso vai juntar categorias e produtos com nomes repetidos (ignorando maiúsculas, acentos e espaços). Não pode ser desfeito. Continuar?')) return;
@@ -8735,6 +8748,8 @@ function attachHandlers(){
   };
 
   const attachVendaRowHandlers = ()=>{
+    const btnRemoverVendasDuplicadasTopo = document.getElementById('btn-remover-vendas-duplicadas-topo');
+    if(btnRemoverVendasDuplicadasTopo) btnRemoverVendasDuplicadasTopo.onclick = removerVendasDuplicadas;
     document.querySelectorAll('[data-edit-venda]').forEach(btn=>btn.onclick=()=>{
       const v = state.vendas.find(x=>x.id===btn.dataset.editVenda);
       if(!v) return;
