@@ -2551,6 +2551,16 @@ function entregaLabel(tipo, hora, pendente){
   const destaque = pendente ? 'font-weight:700;' : '';
   return '<span style="display:inline-flex;align-items:center;gap:5px;'+destaque+'">'+iconEntrega(tipo,'#1E3A8A')+'<span>'+tipo+(hora?' às '+hora:'')+'</span>'+(pendente?' <span class="badge" style="background:var(--border);color:var(--text2);">pendente</span>':'')+'</span>';
 }
+// Uma venda lançada como "Falta retirar" guarda o meio de entrega REAL (Cliente retirou / Entrega
+// a pé / Entrega de <veículo>) só no campo retiradoForma, quando é resolvida em "✔ Confirmar
+// retirada" — o campo tipo_entrega da venda nunca é atualizado. Sem isso, toda venda resolvida
+// continuava contando pra sempre como "Falta retirar" em qualquer relatório que agrupa por
+// tipo_entrega (Relatório de Entregas, Relatório de Fretes, coluna "Entrega" da tabela de vendas),
+// escondendo o meio de entrega verdadeiro e batendo errado contra contagens feitas por fora.
+function tipoEntregaEfetivo(v){
+  if(v.tipo_entrega==='Falta retirar' && v.retirado && v.retiradoForma) return v.retiradoForma;
+  return v.tipo_entrega;
+}
 function novoItemVendaRow(opts){
   opts = opts || {};
   const compact = !!opts.compact;
@@ -4221,6 +4231,39 @@ async function removerVendasDuplicadas(){
   alert('Pronto! '+idsRemover.size+' venda(s) duplicada(s) removida(s). O estoque das vendas removidas foi revertido automaticamente.');
   renderAll();
 }
+// Encontra vendas do MESMO cliente no MESMO dia que estão espalhadas em mais de um grupoId
+// (ou seja, cada produto virou uma "venda" separada em vez de uma só, igual acontece com o
+// frete/entregas). É o mesmo critério que a importação diária já usa como fallback pra juntar
+// linhas (Nº da Venda > "Repete a venda de cima" > cliente+data) — só que aplicado aos
+// lançamentos que já estão salvos, pra corrigir depois de já terem entrado separados.
+function encontrarClientesComVendasSeparadas(){
+  const porClienteData = new Map();
+  (state.vendas||[]).forEach(function(v){
+    if(!v.cliente) return;
+    const chave = v.data+'|'+chaveNormalizada(v.cliente);
+    if(!porClienteData.has(chave)) porClienteData.set(chave, []);
+    porClienteData.get(chave).push(v);
+  });
+  const resultado = [];
+  porClienteData.forEach(function(vendas){
+    const gruposDistintos = new Set(vendas.map(v=>v.grupoId||v.id));
+    if(gruposDistintos.size>1){
+      resultado.push({data:vendas[0].data, cliente:vendas[0].cliente, vendas:vendas, qtdLinhas:vendas.length, qtdGrupos:gruposDistintos.size});
+    }
+  });
+  return resultado.sort((a,b)=> b.data.localeCompare(a.data) || a.cliente.localeCompare(b.cliente,'pt-BR'));
+}
+// Junta um cluster de vendas (mesmo cliente/dia, grupoId diferentes) num único grupoId — o da
+// venda mais antiga do cluster (por criadoEm), pra manter o histórico de impressão/entrega já
+// gerado a partir desse grupoId. Não mexe em valor, frete nem estoque de cada linha — só liga
+// as linhas como sendo uma venda só. Confira o frete depois de juntar: se cada linha já tinha
+// frete lançado separadamente, pode ter ficado somando em dobro nos relatórios por carrinho.
+async function juntarVendasDoCliente(vendasArr){
+  const ordenado = vendasArr.slice().sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
+  const grupoComum = ordenado[0].grupoId || ordenado[0].id;
+  vendasArr.forEach(function(v){ v.grupoId = grupoComum; });
+  await save('vendas');
+}
 function mesclarCategoriasDuplicadas(){
   const vistos = {};
   const duplicatas = [];
@@ -4525,7 +4568,9 @@ function catalogoProdutosFiltradoHtml(q){
 
 function viewVendas(){
   const hoje = todayStr();
-  const vendasHoje = state.vendas.filter(v=>v.data===hoje).sort((a,b)=>b.criadoEm-a.criadoEm);
+  // Ordem crescente (mais antiga primeiro) pra bater com a numeração "Venda do dia" —
+  // a 1ª venda lançada no dia aparece no topo com o número 1, crescendo pra baixo.
+  const vendasHoje = state.vendas.filter(v=>v.data===hoje).sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
   const totalHoje = vendasHoje.reduce((s,v)=>s+v.valor_total,0);
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
@@ -4538,8 +4583,17 @@ function viewVendas(){
     '<div class="hint" style="margin-top:4px;">Mesma data, cliente, produto, quantidade, valor unitário e forma de pagamento — como acontece quando a mesma planilha é importada duas vezes. Ao excluir, fica só a venda mais antiga de cada grupo e o estoque das removidas é revertido automaticamente.</div></div>'+
     '<button type="button" class="btn small" id="btn-remover-vendas-duplicadas-topo" style="background:var(--danger);white-space:nowrap;">🗑 Excluir '+totalVendasExtrasTopo+' duplicada(s) agora</button>'+
     '</div></div>';
+  const clientesSeparados = encontrarClientesComVendasSeparadas();
+  const cardVendasSeparadas = clientesSeparados.length===0 ? '' :
+    '<div class="card" style="border:1px solid var(--amber);">'+
+    '<strong style="color:var(--amber);">⚠ '+clientesSeparados.length+' cliente(s) com venda separada em mais de uma "venda" no mesmo dia</strong>'+
+    '<div class="hint" style="margin-top:4px;">Mesmo cliente e mesma data, mas os produtos ficaram em carrinhos (vendas) diferentes — normalmente porque a planilha do dia não marcou "Repete a venda da linha de cima?" nem preencheu "Nº da Venda" pra essas linhas. Isso infla a contagem de "vendas do dia" (cada produto conta como uma venda em vez de todos juntos contarem como uma só). Reveja cada caso antes de juntar — só junte se for realmente a mesma visita/compra; se o cliente comprou duas vezes de verdade no mesmo dia, deixe separado.</div>'+
+    '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Data</th><th>Cliente</th><th>Linhas</th><th>Virou quantas vendas</th><th></th></tr></thead><tbody>'+
+    clientesSeparados.map((c,i)=>'<tr><td>'+fmtDate(c.data)+'</td><td>'+c.cliente+'</td><td>'+c.qtdLinhas+'</td><td>'+c.qtdGrupos+'</td>'+
+      '<td><button type="button" class="btn small ghost" data-juntar-vendas-cliente="'+i+'">🔗 Juntar em 1 venda</button></td></tr>').join('')+
+    '</tbody></table></div></div>';
 
-  return cardVendasDuplicadasTopo+'<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
+  return cardVendasDuplicadasTopo+cardVendasSeparadas+'<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
@@ -4699,11 +4753,21 @@ function viewFaltaRetirar(){
 // Calcula o número sequencial da venda dentro do próprio dia (1ª venda do dia, 2ª, etc.),
 // contando só as vendas que realmente existem em state.vendas nesse momento (ou seja,
 // vendas excluídas — inclusive por uma restauração de backup — nunca entram na contagem).
-// A ordem usada é a ordem de lançamento (criadoEm), então o número reflete a sequência real
-// de lançamento do dia, útil pra bater contra retiradas/entregas na hora de achar um erro.
+// Conta por VENDA/CARRINHO (grupoId), não por linha de produto — uma compra com vários itens
+// (ex.: gás + água na mesma visita) é UMA venda só e todas as linhas dela recebem o mesmo número,
+// senão a mesma venda aparecia espalhada em números diferentes. A ordem usada é a ordem de
+// lançamento (criadoEm) da primeira linha de cada carrinho, então o número reflete a sequência
+// real em que as vendas aconteceram no dia.
 function numeroVendaDoDia(v){
   const doDia = state.vendas.filter(x=>x.data===v.data).slice().sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
-  const idx = doDia.findIndex(x=>x.id===v.id);
+  const gruposOrdenados = [];
+  const vistos = new Set();
+  doDia.forEach(x=>{
+    const chave = x.grupoId || x.id;
+    if(!vistos.has(chave)){ vistos.add(chave); gruposOrdenados.push(chave); }
+  });
+  const chaveGrupo = v.grupoId || v.id;
+  const idx = gruposOrdenados.indexOf(chaveGrupo);
   return idx>=0 ? (idx+1) : '—';
 }
 function vendasTable(list){
@@ -4712,7 +4776,9 @@ function vendasTable(list){
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
-      const entrega = entregaLabel(v.tipo_entrega, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (v.frete ? ' <span class="badge fiado" title="Frete">'+fmtMoney(v.frete)+'</span>' : '');
+      const tipoEfetivo = tipoEntregaEfetivo(v);
+      const foiResolvidaDeFaltaRetirar = v.tipo_entrega==='Falta retirar' && v.retirado && v.retiradoForma;
+      const entrega = entregaLabel(tipoEfetivo, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (foiResolvidaDeFaltaRetirar ? ' <span class="hint" style="font-size:10.5px;">(era Falta retirar)</span>' : '') + (v.frete ? ' <span class="badge fiado" title="Frete">'+fmtMoney(v.frete)+'</span>' : '');
       const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>');
       return '<tr><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
         '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td>'+v.quantidade+'</td>'+
@@ -7356,17 +7422,20 @@ function renderRelatorioItensResultado(){
 function renderRelatorioEntregasResultado(){
   const de = document.getElementById('rent-de').value, ate = document.getElementById('rent-ate').value;
   const tipo = document.getElementById('rent-tipo').value;
-  const filtradas = state.vendas.filter(v=> v.data>=de && v.data<=ate && (!tipo || v.tipo_entrega===tipo));
+  const filtradas = state.vendas.filter(v=> v.data>=de && v.data<=ate && (!tipo || tipoEntregaEfetivo(v)===tipo));
   // Conta por ENTREGA de verdade (grupoId), não por linha de produto — uma venda com vários itens
   // de categorias diferentes (ex.: gás + água) é UMA entrega só, mesmo virando várias linhas no
   // sistema. Sem isso, cada produto extra da mesma visita inflava a contagem de entregas.
+  // Agrupa pelo tipo EFETIVO (tipoEntregaEfetivo) e não pelo tipo_entrega bruto, pra vendas que
+  // foram "Falta retirar" e já foram resolvidas contarem no meio de entrega real, não em "Falta retirar".
   const porTipo = {};
   const gruposDoPeriodo = new Set();
   filtradas.forEach(v=>{
     const chave = v.grupoId || v.id;
-    if(!porTipo[v.tipo_entrega]) porTipo[v.tipo_entrega] = {qtd:0, frete:0, vistos:new Set()};
-    if(!porTipo[v.tipo_entrega].vistos.has(chave)){ porTipo[v.tipo_entrega].vistos.add(chave); porTipo[v.tipo_entrega].qtd += 1; }
-    porTipo[v.tipo_entrega].frete += (v.frete||0);
+    const tipoEf = tipoEntregaEfetivo(v);
+    if(!porTipo[tipoEf]) porTipo[tipoEf] = {qtd:0, frete:0, vistos:new Set()};
+    if(!porTipo[tipoEf].vistos.has(chave)){ porTipo[tipoEf].vistos.add(chave); porTipo[tipoEf].qtd += 1; }
+    porTipo[tipoEf].frete += (v.frete||0);
     gruposDoPeriodo.add(chave);
   });
   const linhas = Object.entries(porTipo).sort((a,b)=>b[1].qtd-a[1].qtd);
@@ -7389,12 +7458,12 @@ function renderRelatorioFretesResultado(){
   // venda, quando tem mais de um produto, já ficam com frete 0 — ver "Repete a venda da linha
   // de cima?" na importação diária), então cada frete aqui já representa UMA entrega.
   const filtradas = state.vendas.filter(v=> v.data>=de && v.data<=ate && (v.frete||0)>0
-    && (!tipo || v.tipo_entrega===tipo) && (!pagamento || v.pagamento===pagamento));
+    && (!tipo || tipoEntregaEfetivo(v)===tipo) && (!pagamento || v.pagamento===pagamento));
   const total = filtradas.reduce((s,v)=>s+(v.frete||0),0);
   const porPagamento = {}, porTipo = {};
   filtradas.forEach(v=>{
     porPagamento[v.pagamento] = (porPagamento[v.pagamento]||0) + v.frete;
-    porTipo[v.tipo_entrega] = (porTipo[v.tipo_entrega]||0) + v.frete;
+    porTipo[tipoEntregaEfetivo(v)] = (porTipo[tipoEntregaEfetivo(v)]||0) + v.frete;
   });
   const linhasPagamento = Object.entries(porPagamento).sort((a,b)=>b[1]-a[1]);
   const linhasTipo = Object.entries(porTipo).sort((a,b)=>b[1]-a[1]);
@@ -8800,6 +8869,15 @@ function attachHandlers(){
   const attachVendaRowHandlers = ()=>{
     const btnRemoverVendasDuplicadasTopo = document.getElementById('btn-remover-vendas-duplicadas-topo');
     if(btnRemoverVendasDuplicadasTopo) btnRemoverVendasDuplicadasTopo.onclick = removerVendasDuplicadas;
+    document.querySelectorAll('[data-juntar-vendas-cliente]').forEach(btn=>btn.onclick=async()=>{
+      const idx = Number(btn.dataset.juntarVendasCliente);
+      const clusters = encontrarClientesComVendasSeparadas();
+      const c = clusters[idx];
+      if(!c) return;
+      if(!confirm('Juntar as '+c.qtdLinhas+' linha(s) de '+c.cliente+' em '+fmtDate(c.data)+' numa única venda? Confirme antes que é mesmo a mesma visita/compra — se ele comprou duas vezes de verdade nesse dia, cancele.')) return;
+      await juntarVendasDoCliente(c.vendas);
+      renderAll();
+    });
     document.querySelectorAll('[data-edit-venda]').forEach(btn=>btn.onclick=()=>{
       const v = state.vendas.find(x=>x.id===btn.dataset.editVenda);
       if(!v) return;
