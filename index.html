@@ -195,6 +195,16 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 #logo-box img{cursor:pointer;transition:opacity .15s;}
 #logo-box img:hover{opacity:.8;}
 
+.filtro-vendas-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;}
+.filtro-vendas-row>div{min-width:0;}
+.filtro-vendas-row input,.filtro-vendas-row select,.filtro-vendas-row summary{box-sizing:border-box;width:100%;height:34px;}
+.filtro-coluna{position:relative;}
+.filtro-coluna summary{list-style:none;cursor:pointer;border:1px solid var(--border,#ccc);border-radius:6px;padding:6px 10px;font-size:12.5px;display:flex;align-items:center;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.filtro-coluna summary::-webkit-details-marker{display:none;}
+.filtro-coluna summary::after{content:'▾';margin-left:auto;padding-left:6px;}
+.filtro-coluna-lista{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;background:#fff;border:1px solid var(--border,#ccc);border-radius:6px;padding:8px;max-height:220px;overflow-y:auto;min-width:200px;box-shadow:0 4px 10px rgba(0,0,0,.12);}
+.filtro-coluna-lista label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:normal;padding:3px 0;white-space:nowrap;}
+.filtro-coluna-lista .filtro-coluna-acoes{display:flex;gap:8px;margin-bottom:6px;border-bottom:1px solid var(--border,#eee);padding-bottom:6px;}
 .table-wrap{overflow-x:auto;}
 /* Histórico de vendas: mantém a rolagem horizontal funcionando (dá pra arrastar pra ver as
    colunas que não cabem), só esconde a barrinha visual pra ficar mais limpo. */
@@ -205,12 +215,12 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .table-wrap td.cel-acoes{overflow:visible;max-width:none;white-space:nowrap;}
 .table-wrap td .badge,.table-wrap td .pill{white-space:nowrap;}
 .table-wrap td button{font-size:11.5px;padding:2px 4px;}
-.tabela-vendas th,.tabela-vendas td{font-size:10.5px;padding:4px 5px;max-width:96px;}
+.tabela-vendas th,.tabela-vendas td{font-size:10.5px;padding:4px 5px;max-width:none;}
 .tabela-vendas .badge{font-size:9px;padding:1px 6px;}
 .tabela-vendas td button{font-size:12px;padding:2px 5px;min-width:22px;}
 .tabela-vendas td.cel-acoes{display:flex;gap:2px;flex-wrap:nowrap;}
 @media (max-width:640px){
-  .tabela-vendas th,.tabela-vendas td{font-size:9.5px;padding:3px 4px;max-width:72px;}
+  .tabela-vendas th,.tabela-vendas td{font-size:9.5px;padding:3px 4px;max-width:none;}
   .tabela-vendas .badge{font-size:8px;padding:1px 4px;}
 }
 .ajuda-btn{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border-radius:50%;background:#f0ad00;color:#fff;border:none;font-weight:bold;font-size:12px;cursor:pointer;margin-left:6px;vertical-align:middle;padding:0;line-height:1;}
@@ -584,7 +594,7 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_03_09_2026";
+const APP_BUILD_HORARIO = "1.0_04_09_2026";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -4665,10 +4675,16 @@ function viewVendas(){
     '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje)+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
-    '<div class="form-row" style="align-items:end;"><div><label style="font-size:11px;visibility:hidden;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por cliente, produto, empresa, canal ou pagamento..."></div>'+
-    '<div style="max-width:150px;"><label style="font-size:11px;">De</label><input type="date" id="busca-venda-data-de" title="Filtrar a partir desta data"></div>'+
-    '<div style="max-width:150px;"><label style="font-size:11px;">Até</label><input type="date" id="busca-venda-data-ate" title="Filtrar até esta data"></div>'+
-    '<div style="max-width:130px;"><label style="font-size:11px;">Por página</label><select id="sel-vendas-por-pagina"><option value="30">30</option><option value="50">50</option><option value="100">100</option></select></div></div>'+
+    '<div class="filtro-vendas-row">'+
+    '<div style="flex:2 1 220px;"><label style="font-size:11px;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por cliente, produto, empresa, canal ou pagamento..."></div>'+
+    '<div style="flex:1 1 130px;"><label style="font-size:11px;">De</label><input type="date" id="busca-venda-data-de" title="Filtrar a partir desta data"></div>'+
+    '<div style="flex:1 1 130px;"><label style="font-size:11px;">Até</label><input type="date" id="busca-venda-data-ate" title="Filtrar até esta data"></div>'+
+    '<div style="flex:1 1 170px;position:relative;"><label style="font-size:11px;">Produto</label>'+
+    '<details id="filtro-produto-venda-details" class="filtro-coluna"><summary id="filtro-produto-venda-resumo">Todos os produtos</summary>'+
+    '<div id="filtro-produto-venda-lista" class="filtro-coluna-lista"></div></details></div>'+
+    '<div style="flex:0 1 110px;"><label style="font-size:11px;">Por página</label><select id="sel-vendas-por-pagina"><option value="30">30</option><option value="50">50</option><option value="100">100</option></select></div>'+
+    '<div style="flex:0 0 auto;display:flex;align-items:flex-end;"><button type="button" class="btn small ghost" id="btn-vendas-filtro-limpar">Limpar filtros</button></div>'+
+    '</div>'+
     '<div id="lista-vendas-wrap">'+vendasTable(state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).slice(0,30))+'</div>'+
     '<div id="paginacao-vendas-wrap" style="display:flex;align-items:center;gap:10px;justify-content:center;margin-top:10px;"></div>'+
     '<div class="hint" style="margin-top:8px;">Use a busca ou o período (De/Até) para filtrar; navegue pelas páginas para ver vendas mais antigas.</div>'+
@@ -4772,7 +4788,7 @@ function numeroVendaDoDia(v){
 }
 function vendasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma venda encontrada.</div>';
-  return '<div class="table-wrap tabela-vendas"><table><thead><tr><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:5%;"><col style="width:7%;"><col style="width:22%;"><col style="width:8%;"><col style="width:11%;"><col style="width:11%;"><col style="width:5%;"><col style="width:7%;"><col style="width:8%;"><col style="width:6%;"><col style="width:10%;"></colgroup><thead><tr><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
@@ -8946,6 +8962,9 @@ function attachHandlers(){
       const detalhesEl = fdEl.closest('details');
       if(detalhesEl) detalhesEl.open = true;
       fdEl.data.value=d.data; fdEl.categoria.value=d.categoria; fdEl.valor.value=Number(d.valor).toFixed(2).replace('.', ','); fdEl.descricao.value=d.descricao;
+      const wrapVeicEdit = document.getElementById('wrap-veiculo-despesa');
+      if(wrapVeicEdit) wrapVeicEdit.style.display = categoriaParaceVeiculo(d.categoria) ? 'block' : 'none';
+      if(fdEl.veiculoId) fdEl.veiculoId.value = d.veiculoId || '';
       fdEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       fdEl.scrollIntoView({behavior:'smooth'});
     });
@@ -9257,6 +9276,34 @@ function attachHandlers(){
   });
 
   let paginaVendasHistorico = 1;
+  let produtosVendaSelecionados = [];
+  const detalhesFiltroProdutoVenda = document.getElementById('filtro-produto-venda-details');
+  const listaFiltroProdutoVenda = document.getElementById('filtro-produto-venda-lista');
+  const resumoFiltroProdutoVenda = document.getElementById('filtro-produto-venda-resumo');
+  const atualizarResumoFiltroProdutoVenda = ()=>{
+    if(!resumoFiltroProdutoVenda) return;
+    resumoFiltroProdutoVenda.textContent = produtosVendaSelecionados.length===0 ? 'Todos os produtos' :
+      (produtosVendaSelecionados.length===1 ? produtosVendaSelecionados[0] : produtosVendaSelecionados.length+' produtos selecionados');
+  };
+  const montarFiltroProdutoVenda = ()=>{
+    if(!listaFiltroProdutoVenda) return;
+    const produtos = Array.from(new Set(state.vendas.map(v=>v.produto).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
+    listaFiltroProdutoVenda.innerHTML = '<div class="filtro-coluna-acoes"><button type="button" class="link-btn" id="btn-filtro-produto-todos">Marcar todos</button><button type="button" class="link-btn" id="btn-filtro-produto-nenhum">Limpar</button></div>'+
+      produtos.map(p=>'<label><input type="checkbox" class="chk-filtro-produto-venda" value="'+p.replace(/"/g,'&quot;')+'" '+(produtosVendaSelecionados.includes(p)?'checked':'')+'> '+p+'</label>').join('');
+    const btnTodos = document.getElementById('btn-filtro-produto-todos');
+    const btnNenhum = document.getElementById('btn-filtro-produto-nenhum');
+    if(btnTodos) btnTodos.onclick = ()=>{ listaFiltroProdutoVenda.querySelectorAll('.chk-filtro-produto-venda').forEach(c=>c.checked=true); produtosVendaSelecionados = produtos.slice(); atualizarResumoFiltroProdutoVenda(); paginaVendasHistorico=1; filtrarListaVendas(); };
+    if(btnNenhum) btnNenhum.onclick = ()=>{ listaFiltroProdutoVenda.querySelectorAll('.chk-filtro-produto-venda').forEach(c=>c.checked=false); produtosVendaSelecionados = []; atualizarResumoFiltroProdutoVenda(); paginaVendasHistorico=1; filtrarListaVendas(); };
+    listaFiltroProdutoVenda.querySelectorAll('.chk-filtro-produto-venda').forEach(chk=>{
+      chk.onchange = ()=>{
+        produtosVendaSelecionados = Array.from(listaFiltroProdutoVenda.querySelectorAll('.chk-filtro-produto-venda:checked')).map(c=>c.value);
+        atualizarResumoFiltroProdutoVenda();
+        paginaVendasHistorico = 1;
+        filtrarListaVendas();
+      };
+    });
+  };
+  if(detalhesFiltroProdutoVenda) montarFiltroProdutoVenda();
   const filtrarListaVendas = ()=>{
     const q = (buscaVenda?buscaVenda.value:'').toLowerCase().trim();
     const dataDe = buscaVendaDataDe ? buscaVendaDataDe.value : '';
@@ -9265,6 +9312,7 @@ function attachHandlers(){
     let base = state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm);
     if(dataDe) base = base.filter(v=>v.data>=dataDe);
     if(dataAte) base = base.filter(v=>v.data<=dataAte);
+    if(produtosVendaSelecionados.length>0) base = base.filter(v=>produtosVendaSelecionados.includes(v.produto));
     if(q) base = base.filter(v=>{
       const alvo = (v.produto+' '+(v.cliente||'')+' '+(v.empresa||'')+' '+(v.canal||'')+' '+v.pagamento+' '+(v.obs||'')).toLowerCase();
       return alvo.includes(q);
@@ -9296,6 +9344,18 @@ function attachHandlers(){
   if(buscaVendaDataDe) buscaVendaDataDe.onchange = ()=>{ paginaVendasHistorico=1; filtrarListaVendas(); };
   if(buscaVendaDataAte) buscaVendaDataAte.onchange = ()=>{ paginaVendasHistorico=1; filtrarListaVendas(); };
   if(selVendasPorPagina) selVendasPorPagina.onchange = ()=>{ paginaVendasHistorico=1; filtrarListaVendas(); };
+  const btnVendasFiltroLimpar = document.getElementById('btn-vendas-filtro-limpar');
+  if(btnVendasFiltroLimpar) btnVendasFiltroLimpar.onclick = ()=>{
+    if(buscaVenda) buscaVenda.value='';
+    if(buscaVendaDataDe) buscaVendaDataDe.value='';
+    if(buscaVendaDataAte) buscaVendaDataAte.value='';
+    produtosVendaSelecionados = [];
+    if(detalhesFiltroProdutoVenda) detalhesFiltroProdutoVenda.open = false;
+    montarFiltroProdutoVenda();
+    atualizarResumoFiltroProdutoVenda();
+    paginaVendasHistorico=1;
+    filtrarListaVendas();
+  };
   if(document.getElementById('lista-vendas-wrap')) filtrarListaVendas();
   const btnCorrigirDataLote = document.getElementById('btn-corrigir-data-lote');
   if(btnCorrigirDataLote) btnCorrigirDataLote.onclick = async ()=>{
