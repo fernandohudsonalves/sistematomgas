@@ -2337,13 +2337,6 @@ function viewRotaDoDia(){
         })+'</div></div></td></tr>' : '');
   }).join('');
 
-  const botoesEnviarRota = (state.entregadores||[]).filter(e=>!filtroAtivo || filtroAtivo===e.id).map(e=>{
-    const paradasDele = todasParadasBruto.filter(p=>(p.entregadorId||'')===e.id);
-    if(paradasDele.length===0) return '';
-    const urlDele = montarUrlRotaGoogleMaps(paradasDele, partida ? partida.endereco : '');
-    return '<button type="button" class="btn small green" data-enviar-rota-entregador="'+e.id+'" data-rota-data="'+dataAtual+'" style="margin-top:8px;margin-right:8px;">💬 Enviar rota pro '+escapeHtmlCampanha(e.nome.split(' ')[0])+'</button>';
-  }).join('');
-
   return '<details class="card" id="details-entregadores-cadastro"'+(entregadoresCadastroAberto?' open':'')+'><summary>🚚 Entregadores <span class="pill">'+(state.entregadores||[]).length+'</span> '+ajudaHtml('entregadores','Cadastre aqui quem faz as entregas (nome e WhatsApp). Isso permite escolher pra quem vai cada entrega, mandar a rota certinha pro WhatsApp de cada um, e filtrar a Rota do dia por entregador.')+'</summary>'+
     '<div class="hint" style="margin-top:10px;">Cadastre quem faz as entregas pra poder escolher pra quem vai cada rota ou entrega, e enviar direto pro WhatsApp de cada um.</div>'+
     '<div style="margin-top:10px;">'+(state.entregadores||[]).map(e=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="flex:1;font-size:13px;"><strong>'+escapeHtmlCampanha(e.nome)+'</strong><br><span class="hint">'+(e.whatsapp?escapeHtmlCampanha(e.whatsapp):'sem WhatsApp cadastrado')+' · Comissão: '+(e.tipoComissao==='percentual'?(Number(e.valorComissao||0)+'% do frete'):fmtMoney(Number(e.valorComissao||0))+' por entrega')+'</span></span><button type="button" class="act-link" data-editar-whatsapp-entregador="'+e.id+'">✎ whatsapp</button><button type="button" class="act-link" data-editar-comissao-entregador="'+e.id+'">✎ comissão</button><button type="button" class="del-link" data-del-entregador="'+e.id+'">🗑</button></div>').join('')+'</div>'+
@@ -2379,7 +2372,6 @@ function viewRotaDoDia(){
     linhasTabela+
     '</tbody></table></div>')+
     (urlRota ? '<a class="btn" href="'+urlRota+'" target="_blank" rel="noopener" style="margin-top:12px;display:inline-block;">📍 Abrir rota no Google Maps</a>' : '<div class="hint" style="margin-top:10px;">Adicione pelo menos um endereço pra poder abrir a rota.</div>')+
-    (botoesEnviarRota ? '<div style="margin-top:10px;">'+botoesEnviarRota+'</div>' : '')+
     '</div>'+
     (isHistorico ? '' : '<div class="card"><h2>'+(paradaEditando?'Editar parada':'Adicionar parada extra')+'</h2>'+
     '<div class="hint">Escolha um cliente cadastrado pra já puxar o endereço dele, ou preencha manualmente pra outro motivo (ex: buscar ovos, ir ao mecânico).</div>'+
@@ -5311,12 +5303,12 @@ function viewMapaDeposito(){
 }
 function movimentacoesEstoqueTable(lista){
   if(lista.length===0) return '<div class="empty">Nenhuma movimentação encontrada.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Item</th><th>Data</th><th>Movimento</th><th>Quantidade</th><th>Motivo</th><th>Lançado por</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:28%;"><col style="width:12%;"><col style="width:14%;"><col style="width:24%;"><col style="width:12%;"><col style="width:10%;"></colgroup><thead><tr><th>Item</th><th>Data</th><th>Mov.</th><th>Motivo</th><th>Por</th><th></th></tr></thead><tbody>'+
   lista.map(l=>
-    '<tr><td>'+l.tipo+'</td><td>'+l.item+' — '+l.estado+'</td><td>'+fmtDate(l.data)+'</td>'+
-    '<td>'+(l.direcao==='entrada'?'<span class="badge pago">entrada</span>':'<span class="badge fiado">saída</span>')+'</td>'+
-    '<td>'+(l.direcao==='entrada'?'+':'-')+l.quantidade+'</td><td>'+(l.motivo||'—')+'</td><td>'+l.usuario+'</td>'+
-    '<td class="cel-acoes"><button class="act-link" data-edit-mov-estoque="'+l.id+'">✎ editar</button><button class="del-link" data-del-mov-estoque="'+l.id+'">🗑 excluir</button>'+
+    '<tr><td>'+l.item+' — '+l.estado+' <span class="hint">('+l.tipo+')</span></td><td>'+fmtDate(l.data)+'</td>'+
+    '<td>'+(l.direcao==='entrada'?'<span class="badge pago">+'+l.quantidade+'</span>':'<span class="badge fiado">-'+l.quantidade+'</span>')+'</td>'+
+    '<td>'+(l.motivo||'—')+'</td><td>'+l.usuario+'</td>'+
+    '<td class="cel-acoes"><button class="act-link" data-edit-mov-estoque="'+l.id+'" title="editar">✎</button><button class="del-link" data-del-mov-estoque="'+l.id+'" title="excluir">🗑</button>'+
     '</td></tr>'
   ).join('')+'</tbody></table></div>';
 }
@@ -10123,17 +10115,6 @@ function attachHandlers(){
     rotaFiltroEntregadorId = btn.dataset.rotaFiltroEntregador||'';
     anexoAbertoParadaKey = null;
     renderAll();
-  });
-  document.querySelectorAll('[data-enviar-rota-entregador]').forEach(btn=>btn.onclick=()=>{
-    const entregadorId = btn.dataset.enviarRotaEntregador;
-    const dataRota = btn.dataset.rotaData || todayStr();
-    const {paradasEntrega, extras} = paradasDoDiaHtml(dataRota);
-    const todasBruto = paradasEntrega.concat(extras.map(p=>({tipo:'extra', nome:p.nome, endereco:p.endereco, obs:p.obs, id:p.id, entregadorId:p.entregadorId||''})));
-    const paradasDele = todasBruto.filter(p=>(p.entregadorId||'')===entregadorId);
-    if(paradasDele.length===0) return;
-    const partida = pontoPartidaAtual();
-    const urlDele = montarUrlRotaGoogleMaps(paradasDele, partida ? partida.endereco : '');
-    enviarRotaCompletaWhatsApp(entregadorId, paradasDele, urlDele, dataRota);
   });
   const btnRotaVoltarHoje = document.getElementById('btn-rota-voltar-hoje');
   if(btnRotaVoltarHoje) btnRotaVoltarHoje.onclick = ()=>{ rotaHistoricoData=''; anexoAbertoParadaKey=null; renderAll(); };
