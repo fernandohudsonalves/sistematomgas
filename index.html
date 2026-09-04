@@ -4778,9 +4778,36 @@ function numeroVendaDoDia(v){
   const idx = gruposOrdenados.indexOf(chaveGrupo);
   return idx>=0 ? (idx+1) : '—';
 }
+// Legenda de bolinhas coloridas por forma de pagamento: ajuda a bater o olho na
+// tabela e conferir rápido a forma de pagamento de cada linha, sem precisar ler o texto.
+// Só as formas abaixo ganham cor (as demais - dinheiro/débito/crédito/pix/outros - ficam
+// sem bolinha, já que não foram pedidas e o texto "Pagto" já deixa claro).
+const LEGENDA_PAGAMENTOS = [
+  {pagamento:'Convênio', cor:'#FFEB3B'},
+  {pagamento:'Abateu', cor:'#e9c46a'},
+  {pagamento:'Vale gás', cor:'#39FF14'},
+  {pagamento:'Gás do povo', cor:'#00a8ff'},
+  {pagamento:'Marcou/Fiado', cor:'#B266FF'}
+];
+function corBolinhaPagamento(pagamento){
+  const item = LEGENDA_PAGAMENTOS.find(l=>l.pagamento===pagamento);
+  return item ? item.cor : null;
+}
+function bolinhaPagamentoHtml(pagamento){
+  const cor = corBolinhaPagamento(pagamento);
+  if(!cor) return '';
+  return '<span title="'+escapeHtmlCampanha(pagamento)+'" style="display:inline-block;width:13px;height:13px;border-radius:50%;background:'+cor+';border:1px solid rgba(0,0,0,0.35);vertical-align:middle;"></span>';
+}
+function legendaBolinhasPagamentoHtml(){
+  return '<div class="legenda-bolinhas-pagamento" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:11.5px;color:var(--muted,#666);margin-bottom:8px;">'+
+    '<strong style="font-size:11.5px;">Legenda:</strong>'+
+    LEGENDA_PAGAMENTOS.map(l=>'<span style="display:inline-flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+l.cor+';border:1px solid rgba(0,0,0,0.35);"></span>'+escapeHtmlCampanha(l.pagamento)+'</span>').join('')+
+    '</div>';
+}
 function vendasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma venda encontrada.</div>';
-  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:5%;"><col style="width:7%;"><col style="width:20%;"><col style="width:8%;"><col style="width:10%;"><col style="width:11%;"><col style="width:7%;"><col style="width:7%;"><col style="width:8%;"><col style="width:6%;"><col style="width:10%;"></colgroup><thead><tr><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
+  return legendaBolinhasPagamentoHtml()+
+    '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:4%;"><col style="width:5%;"><col style="width:7%;"><col style="width:19%;"><col style="width:8%;"><col style="width:9%;"><col style="width:10%;"><col style="width:6%;"><col style="width:7%;"><col style="width:8%;"><col style="width:6%;"><col style="width:10%;"></colgroup><thead><tr><th title="Legenda da forma de pagamento">●</th><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
@@ -4788,7 +4815,7 @@ function vendasTable(list){
       const foiResolvidaDeFaltaRetirar = v.tipo_entrega==='Falta retirar' && v.retirado && v.retiradoForma;
       const entrega = entregaLabel(tipoEfetivo, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (foiResolvidaDeFaltaRetirar ? ' <span class="hint" style="font-size:10.5px;">(era Falta retirar)</span>' : '') + (v.frete ? ' <span class="badge fiado" title="Frete">'+fmtMoney(v.frete)+'</span>' : '');
       const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>');
-      return '<tr><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
+      return '<tr><td style="text-align:center;">'+bolinhaPagamentoHtml(v.pagamento)+'</td><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
         '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td style="text-align:center;">'+v.quantidade+'</td>'+
         '<td style="text-align:right;">'+fmtMoney(v.valor_total)+'</td><td>'+pagtoTxt+'</td><td><span class="badge nota">'+v.nota+'</span></td>'+
         '<td class="cel-acoes"><button class="act-link" title="Editar" data-edit-venda="'+v.id+'">✎</button>'+
@@ -5303,11 +5330,11 @@ function viewMapaDeposito(){
 }
 function movimentacoesEstoqueTable(lista){
   if(lista.length===0) return '<div class="empty">Nenhuma movimentação encontrada.</div>';
-  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:28%;"><col style="width:12%;"><col style="width:14%;"><col style="width:24%;"><col style="width:12%;"><col style="width:10%;"></colgroup><thead><tr><th>Item</th><th>Data</th><th>Mov.</th><th>Motivo</th><th>Por</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:50%;"><col style="width:14%;"><col style="width:20%;"><col style="width:16%;"></colgroup><thead><tr><th>Item</th><th>Mov.</th><th>Por</th><th></th></tr></thead><tbody>'+
   lista.map(l=>
-    '<tr><td>'+l.item+' — '+l.estado+' <span class="hint">('+l.tipo+')</span></td><td>'+fmtDate(l.data)+'</td>'+
+    '<tr><td>'+l.item+' — '+l.estado+' <span class="hint">('+l.tipo+')</span><br><span class="hint" style="font-size:10px;">'+fmtDate(l.data)+(l.motivo?' · '+l.motivo:'')+'</span></td>'+
     '<td>'+(l.direcao==='entrada'?'<span class="badge pago">+'+l.quantidade+'</span>':'<span class="badge fiado">-'+l.quantidade+'</span>')+'</td>'+
-    '<td>'+(l.motivo||'—')+'</td><td>'+l.usuario+'</td>'+
+    '<td>'+l.usuario+'</td>'+
     '<td class="cel-acoes"><button class="act-link" data-edit-mov-estoque="'+l.id+'" title="editar">✎</button><button class="del-link" data-del-mov-estoque="'+l.id+'" title="excluir">🗑</button>'+
     '</td></tr>'
   ).join('')+'</tbody></table></div>';
