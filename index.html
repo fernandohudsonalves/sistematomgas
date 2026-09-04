@@ -199,11 +199,11 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .filtro-vendas-row>div{min-width:0;}
 .filtro-vendas-row input,.filtro-vendas-row select,.filtro-vendas-row summary{box-sizing:border-box;width:100%;height:34px;}
 .filtro-coluna{position:relative;}
-.filtro-coluna summary{list-style:none;cursor:pointer;border:1px solid var(--border,#ccc);border-radius:6px;padding:6px 10px;font-size:12.5px;display:flex;align-items:center;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.filtro-coluna summary{list-style:none;cursor:pointer;border:1px solid var(--border,#ccc);border-radius:6px;padding:6px 10px;font-size:12.5px;display:flex;align-items:center;background:var(--card,#fff);color:var(--text,#222);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .filtro-coluna summary::-webkit-details-marker{display:none;}
 .filtro-coluna summary::after{content:'▾';margin-left:auto;padding-left:6px;}
-.filtro-coluna-lista{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;background:#fff;border:1px solid var(--border,#ccc);border-radius:6px;padding:8px;max-height:220px;overflow-y:auto;min-width:200px;box-shadow:0 4px 10px rgba(0,0,0,.12);}
-.filtro-coluna-lista label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:normal;padding:3px 0;white-space:nowrap;}
+.filtro-coluna-lista{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;background:var(--card,#fff);color:var(--text,#222);border:1px solid var(--border,#ccc);border-radius:6px;padding:8px;max-height:220px;overflow-y:auto;min-width:200px;box-shadow:0 4px 10px rgba(0,0,0,.12);}
+.filtro-coluna-lista label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:normal;padding:3px 0;white-space:nowrap;color:var(--text,#222);}
 .filtro-coluna-lista .filtro-coluna-acoes{display:flex;gap:8px;margin-bottom:6px;border-bottom:1px solid var(--border,#eee);padding-bottom:6px;}
 .table-wrap{overflow-x:auto;}
 /* Histórico de vendas: mantém a rolagem horizontal funcionando (dá pra arrastar pra ver as
@@ -4788,7 +4788,7 @@ function numeroVendaDoDia(v){
 }
 function vendasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma venda encontrada.</div>';
-  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:5%;"><col style="width:7%;"><col style="width:22%;"><col style="width:8%;"><col style="width:11%;"><col style="width:11%;"><col style="width:5%;"><col style="width:7%;"><col style="width:8%;"><col style="width:6%;"><col style="width:10%;"></colgroup><thead><tr><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:5%;"><col style="width:7%;"><col style="width:20%;"><col style="width:8%;"><col style="width:10%;"><col style="width:11%;"><col style="width:7%;"><col style="width:7%;"><col style="width:8%;"><col style="width:6%;"><col style="width:10%;"></colgroup><thead><tr><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
@@ -4797,8 +4797,8 @@ function vendasTable(list){
       const entrega = entregaLabel(tipoEfetivo, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (foiResolvidaDeFaltaRetirar ? ' <span class="hint" style="font-size:10.5px;">(era Falta retirar)</span>' : '') + (v.frete ? ' <span class="badge fiado" title="Frete">'+fmtMoney(v.frete)+'</span>' : '');
       const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>');
       return '<tr><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
-        '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td>'+v.quantidade+'</td>'+
-        '<td>'+fmtMoney(v.valor_total)+'</td><td>'+pagtoTxt+'</td><td><span class="badge nota">'+v.nota+'</span></td>'+
+        '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td style="text-align:center;">'+v.quantidade+'</td>'+
+        '<td style="text-align:right;">'+fmtMoney(v.valor_total)+'</td><td>'+pagtoTxt+'</td><td><span class="badge nota">'+v.nota+'</span></td>'+
         '<td class="cel-acoes"><button class="act-link" title="Editar" data-edit-venda="'+v.id+'">✎</button>'+
         (v.entrega_hora ? '<button class="act-link" title="WhatsApp" data-wa-venda="'+v.id+'">💬</button>' : '')+
         '<button class="del-link" title="Excluir" data-del-venda="'+v.id+'">🗑</button></td></tr>';
@@ -4969,14 +4969,14 @@ function viewFechamentoCaixa(){
     '<form id="form-fechamento-caixa" data-editid="'+(editando?editando.id:'')+'">'+
     '<div class="form-row">'+
     '<div><label>Data</label><input type="date" name="data" value="'+dataForm+'" id="input-fechamento-data"></div>'+
-    '<div><label>Abertura do caixa hoje (troco inicial)</label><input type="text" inputmode="decimal" name="abertura" id="input-fechamento-abertura" value="'+String(aberturaForm).replace('.',',')+'"></div>'+
+    '<div><label>Abertura do caixa hoje (troco inicial)</label><input type="text" inputmode="decimal" name="abertura" id="input-fechamento-abertura" value="'+Number(aberturaForm).toFixed(2).replace('.',',')+'"></div>'+
     '</div>'+
     '<div id="resumo-fechamento-caixa">'+
     '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Forma de pagamento</th><th>Total recebido</th></tr></thead><tbody>'+linhasForma+'</tbody></table></div>'+
     '<div class="hint" style="margin-top:8px;">Total de vendas (exceto fiado): <strong>'+fmtMoney(resumo.totalVendas)+'</strong> · Despesas pagas hoje: <strong>'+fmtMoney(resumo.totalDespesas)+'</strong></div>'+
     '<div class="hint">💵 Dinheiro esperado no caixa (abertura + vendas em dinheiro − despesas em dinheiro): <strong>'+fmtMoney(resumo.dinheiroEsperado)+'</strong></div>'+
     '</div>'+
-    '<label style="margin-top:10px;">Dinheiro contado no caixa (no fim do dia)</label><input type="text" inputmode="decimal" name="dinheiroContado" placeholder="0,00" value="'+(editando?String(editando.dinheiroContado).replace('.',','):'')+'" required>'+
+    '<label style="margin-top:10px;">Dinheiro contado no caixa (no fim do dia)</label><input type="text" inputmode="decimal" name="dinheiroContado" placeholder="0,00" value="'+(editando?Number(editando.dinheiroContado).toFixed(2).replace('.',','):'')+'" required>'+
     '<label>Observação</label><textarea name="observacao" rows="2" placeholder="Ex: faltou troco, sobrou de gorjeta, etc">'+(editando?(editando.observacao||''):'')+'</textarea>'+
     '<button type="submit" class="btn" style="margin-top:10px;">'+(editando?'Salvar alterações':'Fechar caixa do dia')+'</button>'+
     (editando?' <button type="button" class="link-btn" id="btn-cancelar-fechamento">cancelar edição</button>':'')+
@@ -5311,13 +5311,12 @@ function viewMapaDeposito(){
 }
 function movimentacoesEstoqueTable(lista){
   if(lista.length===0) return '<div class="empty">Nenhuma movimentação encontrada.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Movimento</th><th>Quantidade</th><th>Motivo</th><th>Lançado por</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Item</th><th>Data</th><th>Movimento</th><th>Quantidade</th><th>Motivo</th><th>Lançado por</th><th></th></tr></thead><tbody>'+
   lista.map(l=>
-    '<tr><td>'+fmtDate(l.data)+'</td><td>'+l.tipo+'</td><td>'+l.item+' — '+l.estado+'</td>'+
+    '<tr><td>'+l.tipo+'</td><td>'+l.item+' — '+l.estado+'</td><td>'+fmtDate(l.data)+'</td>'+
     '<td>'+(l.direcao==='entrada'?'<span class="badge pago">entrada</span>':'<span class="badge fiado">saída</span>')+'</td>'+
     '<td>'+(l.direcao==='entrada'?'+':'-')+l.quantidade+'</td><td>'+(l.motivo||'—')+'</td><td>'+l.usuario+'</td>'+
     '<td class="cel-acoes"><button class="act-link" data-edit-mov-estoque="'+l.id+'">✎ editar</button><button class="del-link" data-del-mov-estoque="'+l.id+'">🗑 excluir</button>'+
-    (state.fornecedoresGas||[]).map(f=>'<button type="button" class="act-link" data-enviar-fornecedor="'+f.id+'" data-mov-id="'+l.id+'" title="Enviar observação pro WhatsApp de '+escapeHtmlCampanha(f.nome)+'">📲 '+escapeHtmlCampanha(f.nome.split(' ')[0])+'</button>').join('')+
     '</td></tr>'
   ).join('')+'</tbody></table></div>';
 }
@@ -8762,13 +8761,6 @@ function attachHandlers(){
       feMov.querySelector('button[type=submit]').textContent = 'Salvar alterações';
       feMov.scrollIntoView({behavior:'smooth'});
     });
-    document.querySelectorAll('[data-enviar-fornecedor]').forEach(btn=>btn.onclick=()=>{
-      const f = (state.fornecedoresGas||[]).find(x=>x.id===btn.dataset.enviarFornecedor);
-      const l = state.estoqueLancamentos.find(x=>x.id===btn.dataset.movId);
-      if(!f || !f.whatsapp || !l) return;
-      const texto = (l.direcao==='entrada'?'Entrada':'Saída')+' de '+l.quantidade+' '+l.tipo+' — '+l.item+' ('+l.estado+') em '+fmtDate(l.data)+(l.motivo?'. Obs: '+l.motivo:'.');
-      window.open('https://wa.me/'+f.whatsapp+'?text='+encodeURIComponent(texto), '_blank');
-    });
     document.querySelectorAll('[data-del-mov-estoque]').forEach(btn=>btn.onclick=async()=>{
       const l = state.estoqueLancamentos.find(x=>x.id===btn.dataset.delMovEstoque);
       if(!l) return;
@@ -9116,7 +9108,7 @@ function attachHandlers(){
         '<div class="hint">💵 Dinheiro esperado no caixa (abertura + vendas em dinheiro − despesas em dinheiro): <strong>'+fmtMoney(resumo.dinheiroEsperado)+'</strong></div>';
     };
     if(inputDataCaixa) inputDataCaixa.onchange = ()=>{
-      if(inputAberturaCaixa) inputAberturaCaixa.value = String(sugerirAberturaCaixa(inputDataCaixa.value)).replace('.',',');
+      if(inputAberturaCaixa) inputAberturaCaixa.value = Number(sugerirAberturaCaixa(inputDataCaixa.value)).toFixed(2).replace('.',',');
       recalcularResumoCaixa();
     };
     if(inputAberturaCaixa) inputAberturaCaixa.oninput = recalcularResumoCaixa;
