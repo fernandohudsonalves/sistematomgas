@@ -2585,6 +2585,7 @@ function novoItemVendaRow(opts){
     '<div id="'+manualId+'" style="display:none;margin-top:8px;"><label>Nome do produto (digite)</label><input type="text" class="iv-produto-livre" placeholder="Nome do item"></div></div>'+
     '<div><label>Quantidade</label><div class="qty-stepper"><button type="button" class="qty-btn qty-minus">−</button><input type="number" class="iv-quantidade" min="1" value="1" step="1"><button type="button" class="qty-btn qty-plus">+</button></div></div>'+
     '<div><label>Valor unitário (R$)</label><input type="number" class="iv-valor-unit" min="0" step="0.01" placeholder="0,00"></div>'+
+    '<div><label>Nota (para o Bling)</label><select class="iv-nota">'+opcoesComPlaceholder(NOTAS,'Selecione o tipo de nota')+'</select></div>'+
     '<div style="align-self:end;"><button type="button" class="del-link iv-remove">remover item</button></div>'+
     '</div>';
   const catHiddenEl = div.querySelector('#'+catHiddenId);
@@ -2592,7 +2593,7 @@ function novoItemVendaRow(opts){
   const produtoLivreInput = div.querySelector('.iv-produto-livre');
   const valorUnitInput = div.querySelector('.iv-valor-unit');
   wireSeletorCategoria({
-    grupoId:grupoId, etiquetaWrapId:etiquetaWrapId, etiquetaId:etiquetaId,
+    root:div, grupoId:grupoId, etiquetaWrapId:etiquetaWrapId, etiquetaId:etiquetaId,
     produtoWrapId:produtoWrapId, produtoId:selId, categoriaHiddenId:catHiddenId, manualWrapId:manualId,
     produtoLivreEl:produtoLivreInput, valorUnitEl:valorUnitInput
   });
@@ -2661,8 +2662,8 @@ function produtosFixosDoGrupo(grupo){
   return state.produtos.filter(p=>p.fixo && CATEGORIAS_ESTOQUE[p.categoria] && CATEGORIAS_ESTOQUE[p.categoria].grupo===grupo)
     .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
 }
-function popularSelectProdutoFixo(selectId, grupo){
-  const sel = document.getElementById(selectId);
+function popularSelectProdutoFixo(selectId, grupo, root){
+  const sel = (root||document).querySelector('#'+selectId);
   if(!sel) return;
   const produtos = produtosFixosDoGrupo(grupo);
   sel.innerHTML = '<option value="" selected disabled>Selecione o produto</option>'+
@@ -2677,13 +2678,17 @@ function htmlSeletorCategoria(p){
     opcoesComPlaceholder(categoriasNaoControladas(),'Selecione o tipo')+'</select></div>';
 }
 function wireSeletorCategoria(cfg){
-  const grupoEl = document.getElementById(cfg.grupoId);
-  const etiquetaWrapEl = document.getElementById(cfg.etiquetaWrapId);
-  const etiquetaEl = document.getElementById(cfg.etiquetaId);
-  const produtoWrapEl = document.getElementById(cfg.produtoWrapId);
-  const produtoEl = document.getElementById(cfg.produtoId);
-  const categoriaHiddenEl = document.getElementById(cfg.categoriaHiddenId);
-  const manualWrapEl = cfg.manualWrapId ? document.getElementById(cfg.manualWrapId) : null;
+  // "root" permite ligar os selects num elemento ainda não inserido no documento
+  // (é o caso do item extra da venda, montado antes de entrar na tela) —
+  // document.getElementById não enxerga elementos fora da árvore do documento.
+  const root = cfg.root || document;
+  const grupoEl = root.querySelector('#'+cfg.grupoId);
+  const etiquetaWrapEl = root.querySelector('#'+cfg.etiquetaWrapId);
+  const etiquetaEl = root.querySelector('#'+cfg.etiquetaId);
+  const produtoWrapEl = root.querySelector('#'+cfg.produtoWrapId);
+  const produtoEl = root.querySelector('#'+cfg.produtoId);
+  const categoriaHiddenEl = root.querySelector('#'+cfg.categoriaHiddenId);
+  const manualWrapEl = cfg.manualWrapId ? root.querySelector('#'+cfg.manualWrapId) : null;
   if(!grupoEl || !produtoEl || !categoriaHiddenEl) return null;
 
   const handleProdutoChange = ()=>{
@@ -2711,7 +2716,7 @@ function wireSeletorCategoria(cfg){
 
   const atualizarEtiqueta = (produtoPreSelecionado)=>{
     if(!etiquetaEl) return;
-    const unico = popularSelectProdutoCatalogo(cfg.produtoId, etiquetaEl.value);
+    const unico = popularSelectProdutoCatalogo(cfg.produtoId, etiquetaEl.value, root);
     if(produtoWrapEl) produtoWrapEl.style.display = 'block';
     if(manualWrapEl) manualWrapEl.style.display = 'none';
     if(produtoPreSelecionado){ produtoEl.value = produtoPreSelecionado; handleProdutoChange(); }
@@ -2735,7 +2740,7 @@ function wireSeletorCategoria(cfg){
       if(etiquetaWrapEl) etiquetaWrapEl.style.display = 'none';
       if(produtoWrapEl) produtoWrapEl.style.display = 'block';
       if(manualWrapEl) manualWrapEl.style.display = 'none';
-      popularSelectProdutoFixo(cfg.produtoId, grupoEl.value);
+      popularSelectProdutoFixo(cfg.produtoId, grupoEl.value, root);
       if(produtoPre){ produtoEl.value = produtoPre; handleProdutoChange(); }
     } else {
       if(etiquetaWrapEl) etiquetaWrapEl.style.display = 'none';
@@ -2755,8 +2760,8 @@ function wireSeletorCategoria(cfg){
     }
   };
 }
-function popularSelectProdutoCatalogo(selectId, categoria){
-  const sel = document.getElementById(selectId);
+function popularSelectProdutoCatalogo(selectId, categoria, root){
+  const sel = (root||document).querySelector('#'+selectId);
   if(!sel) return null;
   const produtos = produtosDaCategoria(categoria);
   sel.innerHTML = '<option value="" selected disabled>Selecione o produto</option>'+
@@ -3374,9 +3379,9 @@ async function existeBackup(chave){
     return !!(data && data.length>0);
   }catch(e){ console.error('Erro ao checar backup', e); return true; }
 }
-async function criarBackupComChave(chave, tipo){
+async function criarBackupComChave(chave, tipo, observacao){
   try{
-    const valor = { tipo: tipo, criado_em: new Date().toISOString(), dados: montarSnapshotBackup() };
+    const valor = { tipo: tipo, criado_em: new Date().toISOString(), dados: montarSnapshotBackup(), observacao: observacao||'' };
     const { error } = await supabaseClient.from('app_data')
       .upsert({ chave: chave, valor: valor, atualizado_em: new Date().toISOString() }, { onConflict:'chave' });
     if(error) throw error;
@@ -3384,9 +3389,9 @@ async function criarBackupComChave(chave, tipo){
     return true;
   }catch(e){ console.error('Erro ao criar backup', e); return false; }
 }
-async function criarBackup(tipo){
+async function criarBackup(tipo, observacao){
   const chave = tipo==='manual' ? chaveBackupAgora() : chaveBackupHoje();
-  return criarBackupComChave(chave, tipo);
+  return criarBackupComChave(chave, tipo, observacao);
 }
 function chaveBackupAgora(){
   const d = new Date();
@@ -3434,13 +3439,14 @@ async function renderListaBackups(){
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').like('chave','backup:%').order('chave',{ascending:false}).limit(30);
     if(error) throw error;
     if(!data || data.length===0){ container.innerHTML = '<div class="empty">Nenhum backup ainda.</div>'; return; }
-    container.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Hora</th><th>Tipo</th><th></th></tr></thead><tbody>'+
+    container.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Hora</th><th>Tipo</th><th>Observação</th><th></th></tr></thead><tbody>'+
       data.map(function(row){
         const partes = row.chave.replace('backup:','').split('T');
         const dataStr = partes[0];
         const horaStr = partes[1] ? (partes[1].slice(0,2)+':'+partes[1].slice(2,4)+':'+partes[1].slice(4,6)) : '—';
         const tipo = row.valor && row.valor.tipo==='manual' ? 'Manual' : 'Automático';
-        return '<tr><td>'+fmtDate(dataStr)+'</td><td>'+horaStr+'</td><td>'+tipo+'</td>'+
+        const obs = row.valor && row.valor.observacao ? row.valor.observacao : '—';
+        return '<tr><td>'+fmtDate(dataStr)+'</td><td>'+horaStr+'</td><td>'+tipo+'</td><td>'+obs+'</td>'+
           '<td><button class="act-link" data-baixar-backup="'+row.chave+'">⬇ baixar</button>'+
           '<button class="del-link" data-restaurar-backup="'+row.chave+'">↺ restaurar</button></td></tr>';
       }).join('')+'</tbody></table></div>';
@@ -4618,6 +4624,7 @@ function viewVendas(){
     '<div id="wrap-produto-manual" style="display:none;margin-top:8px;"><label>Nome do produto (digite) <span class="req">*</span></label><input type="text" name="produto_livre" placeholder="Nome do item"></div></div>'+
     '<div><label>Quantidade <span class="req">*</span></label><div class="qty-stepper"><button type="button" class="qty-btn qty-minus">−</button><input type="number" name="quantidade" min="1" value="1" step="1" required><button type="button" class="qty-btn qty-plus">+</button></div></div>'+
     '<div><label>Valor unitário (R$) <span class="req">*</span></label><input type="number" name="valor_unit" min="0" step="0.01" placeholder="0,00" required></div>'+
+    '<div><label>Nota (para o Bling) <span class="req">*</span></label><select name="nota" required>'+opcoesComPlaceholder(NOTAS,'Selecione o tipo de nota')+'</select></div>'+
     '</div>'+
     '<button type="button" class="link-btn" id="btn-nova-cat-produto" style="margin-top:8px;">+ novo tipo de categoria (Outros)</button>'+
     '<div id="nova-cat-produto-wrap" style="display:none;"><div class="inline-add">'+
@@ -4633,7 +4640,6 @@ function viewVendas(){
     '<div id="carrinho-total" class="carrinho-total-badge">Total do carrinho: R$ 0,00</div>'+
     '<div class="form-row" style="margin-top:14px;">'+
     '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select><div class="hint" id="hint-forma-pagamento">"Abateu" desconta automaticamente do crédito em haver do cliente selecionado, limitado ao saldo disponível — se o crédito não cobrir tudo, a diferença já entra como fiado (a receber) sozinha.</div></div>'+
-    '<div><label>Nota (para o Bling) <span class="req">*</span></label><select name="nota" required>'+opcoesComPlaceholder(NOTAS,'Selecione o tipo de nota')+'</select></div>'+
     '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
     '<div><label>Cupom usado (opcional)</label><input type="text" name="cupom" placeholder="Ex: TOMGAS10" style="text-transform:uppercase;"></div>'+
     '</div>'+
@@ -4700,7 +4706,7 @@ function pendenciasRetiradaTable(list){
         '<td class="cel-acoes"><button type="button" class="btn small green" data-retirar-toggle="'+v.id+'">🚚 Retirar</button> '+
         '<button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
         '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>'+
-        '<tr id="linha-retirar-'+v.id+'" style="display:none;"><td colspan="5" style="background:var(--bg2,#f8f8f8);">'+
+        '<tr id="linha-retirar-'+v.id+'" style="display:none;"><td colspan="5" style="background:var(--card);color:var(--text);">'+
         '<div class="form-row">'+
         '<div><label>Quem está retirando <span class="req">*</span></label><select id="sel-retirar-forma-'+v.id+'">'+opcoesComPlaceholder(opcoesForma,'Selecione')+'</select></div>'+
         '<div><label>Teve frete? Valor (R$)</label><input type="number" id="input-retirar-frete-'+v.id+'" min="0" step="0.01" placeholder="0,00"></div>'+
@@ -5861,6 +5867,7 @@ function viewConfig(){
     '<div class="card"><h2>Backup</h2>'+
     '<div class="hint">Todo dia, na primeira vez que alguém abre o sistema, é feito um backup automático com o <strong>fechamento do dia anterior</strong> — guardado no próprio Supabase, mantendo os últimos 30. Você também pode clicar em "Fazer backup agora" quantas vezes quiser, na hora que quiser (por exemplo, ao fechar o caixa do dia) — cada um fica salvo com data <strong>e hora exatas</strong>, e também baixa um arquivo no seu aparelho.</div>'+
     (ultimoBackupAutomaticoQuando ? ('<div class="hint" style="margin-top:6px;">Última tentativa de backup automático nesta sessão: '+(ultimoBackupAutomaticoOk?'✅ deu certo':'❌ falhou')+' às '+ultimoBackupAutomaticoQuando.toLocaleTimeString()+'.</div>') : '<div class="hint" style="margin-top:6px;">Ainda não rodou o backup automático nesta sessão — abra essa tela de novo depois de recarregar a página.</div>')+
+    '<div style="margin-top:10px;max-width:420px;"><label>Observação (opcional)</label><input type="text" id="input-obs-backup-manual" placeholder="Ex: backup feito antes de importar planilha"></div>'+
     '<button type="button" class="btn small" id="btn-backup-manual" style="margin-top:10px;">Fazer backup agora</button>'+
     '<details style="margin-top:18px;" id="details-lista-backups"'+(backupsListaAberta?' open':'')+'><summary><strong>Backups salvos</strong></summary>'+
     '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
@@ -8309,20 +8316,21 @@ function attachHandlers(){
       editVendaId = null;
     } else {
       const grupoId = uid();
-      const itens = [{categoria, produto, quantidade, valor_unit, valor_total}];
+      const itens = [{categoria, produto, quantidade, valor_unit, valor_total, nota: f.get('nota')}];
       document.querySelectorAll('.iv-extra-row').forEach(row=>{
         const cat = row.querySelector('.iv-categoria').value;
         const cont = isControlada(cat);
         const prod = cont ? cat : (row.querySelector('.iv-produto-livre').value || '(sem nome)');
         const qtd = Number(row.querySelector('.iv-quantidade').value)||0;
         const vUnit = Number(row.querySelector('.iv-valor-unit').value)||0;
+        const notaItem = (row.querySelector('.iv-nota')||{}).value || f.get('nota');
         if(qtd>0){
-          itens.push({categoria:cat, produto:prod, quantidade:qtd, valor_unit:vUnit, valor_total: Math.round(qtd*vUnit*100)/100});
+          itens.push({categoria:cat, produto:prod, quantidade:qtd, valor_unit:vUnit, valor_total: Math.round(qtd*vUnit*100)/100, nota: notaItem});
         }
       });
       const camposComuns = {
         data: f.get('data'), cliente: f.get('cliente')||'', canal: f.get('canal'),
-        pagamento: f.get('pagamento'), nota: f.get('nota'), tipo_entrega: f.get('tipo_entrega'), cupom:(f.get('cupom')||'').trim().toUpperCase(),
+        pagamento: f.get('pagamento'), tipo_entrega: f.get('tipo_entrega'), cupom:(f.get('cupom')||'').trim().toUpperCase(),
         empresa: f.get('empresa')||'', entrega_data: f.get('entrega_data')||(f.get('entrega_hora')?f.get('data'):''), entrega_hora: f.get('entrega_hora')||'',
         obs: f.get('obs')||''
       };
@@ -11011,13 +11019,16 @@ function attachHandlers(){
   });
   const btnCancelarUsuario = document.getElementById('btn-cancelar-usuario'); if(btnCancelarUsuario) btnCancelarUsuario.onclick=()=>{ editUsuarioId=null; renderAll(); };
   if(btnBackupManual) btnBackupManual.onclick = async ()=>{
+    const inputObsBackup = document.getElementById('input-obs-backup-manual');
+    const obsBackup = inputObsBackup ? inputObsBackup.value.trim() : '';
     btnBackupManual.disabled = true;
     const textoOriginal = btnBackupManual.textContent;
     btnBackupManual.textContent = 'Fazendo backup...';
-    const ok = await criarBackup('manual');
-    baixarJson('backup-tomgas-'+todayStr()+'.json', { tipo:'manual', criado_em:new Date().toISOString(), dados: montarSnapshotBackup() });
+    const ok = await criarBackup('manual', obsBackup);
+    baixarJson('backup-tomgas-'+todayStr()+'.json', { tipo:'manual', criado_em:new Date().toISOString(), dados: montarSnapshotBackup(), observacao: obsBackup });
     btnBackupManual.disabled = false;
     btnBackupManual.textContent = textoOriginal;
+    if(inputObsBackup) inputObsBackup.value = '';
     if(ok){ alert('Backup feito com sucesso! Salvo no Supabase e baixado no seu aparelho.'); } else { alert('O arquivo local foi baixado, mas houve um erro ao salvar o backup no Supabase. Guarde bem o arquivo baixado.'); }
     backupsListaAberta = true;
     const detalhesBackups2 = document.getElementById('details-lista-backups');
