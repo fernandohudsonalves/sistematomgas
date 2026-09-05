@@ -4696,7 +4696,7 @@ function viewVendas(){
     '<div id="novo-cliente-venda-wrap" class="item-venda-row" style="display:none;">'+
     '<div class="form-row">'+
     '<div><label>Nome <span class="req">*</span></label><input type="text" id="ncv-nome"></div>'+
-    '<div><label>Telefone/Whats <span class="req">*</span></label><input type="text" id="ncv-telefone"></div>'+
+    '<div><label>Telefone/Whats (opcional)</label><input type="text" id="ncv-telefone"></div>'+
     '<div><label>Endereço</label><input type="text" id="ncv-endereco"></div>'+
     '<div><label>Complemento</label><input type="text" id="ncv-complemento"></div>'+
     '</div><button type="button" class="btn small ghost" id="btn-salvar-cliente-venda">Salvar cliente</button></div>'+
@@ -8737,7 +8737,6 @@ function attachHandlers(){
     const nome = document.getElementById('ncv-nome').value.trim();
     const telefoneNovo = document.getElementById('ncv-telefone').value.trim();
     if(!nome){ alert('Informe o nome do cliente.'); return; }
-    if(!telefoneNovo){ alert('Informe o telefone/WhatsApp do cliente.'); return; }
     const novoCli = {id:uid(), nome, telefone:telefoneNovo, endereco:document.getElementById('ncv-endereco').value||'', complemento:document.getElementById('ncv-complemento').value||'', obs:'', criadoEm:Date.now()};
     state.clientes.push(novoCli);
     await save('clientes');
