@@ -7120,15 +7120,18 @@ function fiadoPorClienteHtml(filtro){
   return (muitoAtrasados>0 ? '<div class="import-conferencia-alert">⚠ '+muitoAtrasados+' cliente(s) com fiado há mais de 60 dias sem pagar nada — considere cobrar.</div>' : '')+
     (acimaDoLimite>0 ? '<div class="import-conferencia-alert">🚫 '+acimaDoLimite+' cliente(s) já atingiram o limite de crédito combinado — mande uma mensagem cobrando.</div>' : '')+
     (linhas.length===0 ? '<div class="empty">Nenhum cliente encontrado.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Saldo devedor</th><th>Situação</th><th></th></tr></thead><tbody>'+
+    '<div class="table-wrap tabela-vendas tabela-fiado-cliente"><table><thead><tr><th>Cliente</th><th>Saldo devedor</th><th>Situação</th><th></th></tr></thead><tbody>'+
     linhas.map(l=>{
       const cCli = state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(l.nome));
       const acimaLimite = cCli && cCli.limiteCredito>0 && l.saldo>=cCli.limiteCredito;
       const etiquetaLimite = acimaLimite ? ' <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:var(--danger-tint);color:var(--danger);">🚫 acima do limite ('+fmtMoney(cCli.limiteCredito)+')</span>' : '';
       return '<tr><td>'+l.nome+(telefoneDoCliente(l.nome)?' <a href="'+linkWhatsApp(telefoneDoCliente(l.nome))+'" target="_blank" title="Chamar '+l.nome+' no WhatsApp" style="vertical-align:middle;">'+iconWhatsApp('#25D366',15)+'</a>':'')+'</td><td>'+fmtMoney(l.saldo)+'</td><td>'+etiquetaAtrasoFiadoHtml(l.nome)+etiquetaLimite+'</td>'+
-    '<td><button class="act-link" data-ver-extrato="'+encodeURIComponent(l.nome)+'">📄 ver extrato / gerar PDF</button>'+
-    '<button class="act-link" data-enviar-extrato-whats="'+encodeURIComponent(l.nome)+'" style="background:var(--green-tint);color:var(--green);" title="'+(telefoneDoCliente(l.nome)?'Enviar o PDF do extrato pelo WhatsApp':'Cadastre o telefone do cliente para habilitar')+'">'+iconWhatsApp('#25D366',13)+' enviar extrato</button>'+
-    '<button class="act-link" data-registrar-pagamento="'+encodeURIComponent(l.nome)+'">💵 registrar pagamento</button></td></tr>';
+    '<td class="cel-acoes">'+
+    '<button class="act-link" title="Ver extrato / gerar PDF" data-ver-extrato="'+encodeURIComponent(l.nome)+'">📄</button>'+
+    '<button class="act-link" title="'+(telefoneDoCliente(l.nome)?'Enviar o PDF do extrato pelo WhatsApp':'Cadastre o telefone do cliente para habilitar')+'" style="background:var(--green-tint);color:var(--green);" data-enviar-extrato-whats="'+encodeURIComponent(l.nome)+'">'+iconWhatsApp('#25D366',13)+'</button>'+
+    '<button class="act-link" title="Registrar pagamento" data-registrar-pagamento="'+encodeURIComponent(l.nome)+'">💵</button>'+
+    '<button class="act-link" title="Corrigir nome do cliente (lançou fiado pro cliente errado)" data-editar-cliente-fiado="'+encodeURIComponent(l.nome)+'">✎</button>'+
+    '</td></tr>';
     }).join('')+
     '</tbody></table></div>');
 }
@@ -8997,6 +9000,27 @@ function attachHandlers(){
       editFiadoPagamentoId = null;
       renderAll();
       setTimeout(()=>{ const el = document.getElementById('form-pagamento-fiado'); if(el) el.scrollIntoView({behavior:'smooth'}); }, 50);
+    });
+    // Corrige o nome do cliente quando o fiado foi lançado pro cliente errado. Corrige de uma vez
+    // os fiados manuais, os pagamentos já registrados e — se o fiado veio de uma venda (inclusive
+    // de antes desse sistema novo) — a própria venda também, sem precisar caçar e editar cada uma.
+    document.querySelectorAll('[data-editar-cliente-fiado]').forEach(btn=>btn.onclick=async()=>{
+      const nomeAntigo = decodeURIComponent(btn.dataset.editarClienteFiado);
+      const novoNome = prompt('Lançou esse fiado pro cliente errado?\n\nDigite o nome correto de "'+nomeAntigo+'". Isso corrige o nome em todos os fiados dele e nos pagamentos já registrados — e também na(s) venda(s) de fiado lançada(s) com esse nome, caso existam (mesmo se for de antes do sistema novo):', nomeAntigo);
+      if(novoNome===null) return;
+      const nomeCorrigido = novoNome.trim();
+      if(!nomeCorrigido || nomeCorrigido===nomeAntigo) return;
+      let qtdFiados=0, qtdVendas=0, qtdPagamentos=0;
+      state.fiados.forEach(f=>{ if(f.cliente===nomeAntigo){ f.cliente=nomeCorrigido; qtdFiados++; } });
+      state.vendas.forEach(v=>{ if(v.cliente===nomeAntigo && v.pagamento==='Marcou/Fiado'){ v.cliente=nomeCorrigido; qtdVendas++; } });
+      state.fiadoPagamentos.forEach(p=>{ if(p.cliente===nomeAntigo){ p.cliente=nomeCorrigido; qtdPagamentos++; } });
+      if(qtdFiados===0 && qtdVendas===0 && qtdPagamentos===0){ alert('Nada encontrado com o nome "'+nomeAntigo+'".'); return; }
+      if(qtdFiados>0) await save('fiados');
+      if(qtdVendas>0) await save('vendas');
+      if(qtdPagamentos>0) await save('fiadoPagamentos');
+      alert('Corrigido para "'+nomeCorrigido+'"!'+(qtdVendas>0?'\n\nA(s) venda(s) que gerou(aram) esse fiado também foi(ram) corrigida(s) automaticamente.':''));
+      clienteExtrato = null;
+      renderAll();
     });
   };
   attachFiadoPorClienteHandlers();
