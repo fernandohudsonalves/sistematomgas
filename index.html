@@ -1426,6 +1426,7 @@ let state = {
   categoriasProdutos: CATEGORIAS_PRODUTO_PADRAO.slice(),
   categoriasProdutosGrupo: Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO),
   categoriasDespesas: CATEGORIAS_DESPESA_PADRAO.slice(),
+  categoriasDespesasFixas: ['Aluguel','Salário'],
   gruposCruzamento: [],
   categoriasVeiculoExtra: [],
   logAtividades: [],
@@ -1463,6 +1464,8 @@ let resumoDiaData = null;
 let kpiMesSelecionado = null;
 let metaRelMesSelecionado = null;
 let gestaoCanalMesSelecionado = null;
+let diasTrabalhoMesSelecionado = null;
+let diasTrabalhoQtdManual = {};
 let gestaoEntregadorMesSelecionado = null;
 let crmClienteSelecionado = null;
 let relatorioNovosClientesMes = null;
@@ -3215,7 +3218,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -3268,6 +3271,13 @@ async function loadAll(){
     let mudouCatsESG=false;
     ['Energia Elétrica','Água / Saneamento','Desperdício / Descarte'].forEach(c=>{ if(!state.categoriasDespesas.includes(c)){ state.categoriasDespesas.push(c); mudouCatsESG=true; } });
     if(mudouCatsESG) save('categoriasDespesas');
+  }
+  if(!Array.isArray(state.categoriasDespesasFixas)){
+    // Primeira vez que essa versão roda num sistema já existente: sugere Aluguel/Salário como
+    // ponto de partida (contas que costumam ter valor certo todo mês) — o resto fica pra ele
+    // marcar em Configurações > Categorias de despesas, já que só ele sabe o que é fixo no negócio dele.
+    state.categoriasDespesasFixas = ['Aluguel','Salário'].filter(c=>state.categoriasDespesas.includes(c));
+    await save('categoriasDespesasFixas');
   }
   if(state.checklistRotina.length===0){
     const itensPadrao = [
@@ -4672,19 +4682,23 @@ function viewGerenciarCategorias(){
 }
 function viewCadastroDespesas(){
   const catsDesp = state.categoriasDespesas;
+  const fixas = state.categoriasDespesasFixas || [];
   const linhasDesp = catsDesp.map(function(cat){
     const qtd = despesasDaCategoria(cat).length;
+    const ehFixa = fixas.includes(cat);
     if(editCategoriaDespesaNome===cat){
-      return '<tr><td><input type="text" id="input-edit-cat-despesa" value="'+cat+'"></td><td>'+qtd+' despesa(s)</td>'+
+      return '<tr><td><input type="text" id="input-edit-cat-despesa" value="'+cat+'"></td><td>'+qtd+' despesa(s)</td><td></td>'+
         '<td><button class="act-link" data-save-cat-despesa="'+cat+'">✓ salvar</button><button class="del-link" data-cancel-cat-despesa="'+cat+'">cancelar</button></td></tr>';
     }
     return '<tr><td>'+iconeCategoriaDespesaHtml(cat)+cat+'</td><td>'+qtd+' despesa(s)</td>'+
+      '<td><label class="checkbox-item" style="font-weight:normal;"><input type="checkbox" class="chk-cat-despesa-fixa" data-cat-despesa-fixa="'+escapeHtmlCampanha(cat)+'" '+(ehFixa?'checked':'')+'> Conta fixa</label></td>'+
       '<td><button class="act-link" data-edit-cat-despesa="'+cat+'">✎ editar</button><button class="del-link" data-del-cat-despesa="'+cat+'">🗑 excluir</button></td></tr>';
   }).join('');
   const tabelaDesp = catsDesp.length===0 ? '<div class="empty">Nenhuma categoria de despesa cadastrada ainda.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Despesas</th><th></th></tr></thead><tbody>'+linhasDesp+'</tbody></table></div>';
+    '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Despesas</th><th>Custo fixo?</th><th></th></tr></thead><tbody>'+linhasDesp+'</tbody></table></div>';
   return '<div class="card"><h2>Categorias de despesas</h2>'+
     '<div class="hint">Editar o nome atualiza automaticamente as despesas que já usam essa categoria.</div>'+
+    '<div class="hint" style="margin-top:6px;">Marque "Conta fixa" nas categorias com valor mais ou menos previsível todo mês (ex: Aluguel, Salário) — são essas que entram no relatório "Dias de trabalho pra pagar as contas". Deixe desmarcado categorias com valor e frequência variáveis, tipo Fornecedor/Reposição (compra de gás), já que ali nunca dá pra saber quanto nem quantas vezes vai comprar no mês.</div>'+
     tabelaDesp+
     '<h3 style="margin-top:16px;">Adicionar categoria de despesa</h3>'+
     '<div class="inline-add"><input type="text" id="nova-cat-despesa-config-input" placeholder="Nome da nova categoria">'+
@@ -6204,6 +6218,7 @@ function viewRelatorios(){
     {id:'fretes', label:'Fretes por período'},
     {id:'combustivelfrete', label:'Combustível x Frete'},
     {id:'despesas', label:'Despesas por período'},
+    {id:'diastrabalho', label:'Dias de trabalho p/ pagar contas'},
     {id:'veiculos', label:'Veículos'},
     {id:'fiado', label:'Fiado / A receber'},
     {id:'creditos', label:'Créditos em haver'},
@@ -6238,6 +6253,7 @@ function viewRelatorios(){
   else if(relatorioSub==='fretes') content = relatorioFretes();
   else if(relatorioSub==='combustivelfrete') content = relatorioCombustivelFrete();
   else if(relatorioSub==='despesas') content = relatorioDespesas();
+  else if(relatorioSub==='diastrabalho') content = relatorioDiasTrabalho();
   else if(relatorioSub==='veiculos') content = relatorioVeiculos();
   else if(relatorioSub==='fiado') content = relatorioFiado();
   else if(relatorioSub==='creditos') content = relatorioCreditos();
@@ -7176,6 +7192,51 @@ function relatorioDespesas(){
     '<div><label>De</label><input type="date" id="rd-de" value="'+firstOfMonth()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rd-ate" value="'+todayStr()+'"></div></div>'+
     '<button class="btn small ghost" id="rd-filtrar">Filtrar</button><div id="rd-resultado" style="margin-top:16px;"></div>';
+}
+function relatorioDiasTrabalho(){
+  const mk = diasTrabalhoMesSelecionado || monthKey(todayStr());
+  const catsFixas = state.categoriasDespesasFixas||[];
+  const vendasMes = (state.vendas||[]).filter(v=>monthKey(v.data)===mk);
+  const totalVendidoMes = Math.round(vendasMes.reduce((s,v)=>s+vendaValor(v),0)*100)/100;
+  const diasComVendaSet = new Set(vendasMes.map(v=>v.data));
+  const diasComVenda = diasComVendaSet.size;
+  const diasTrabalhados = (diasTrabalhoQtdManual[mk]!=null) ? diasTrabalhoQtdManual[mk] : (diasComVenda||diasNoMes(mk));
+  const receitaDiaria = diasTrabalhados>0 ? totalVendidoMes/diasTrabalhados : 0;
+  const despesasMes = (state.despesas||[]).filter(d=>monthKey(d.data)===mk);
+
+  const linhasFixas = catsFixas.map(cat=>{
+    const valorMes = Math.round(despesasMes.filter(d=>d.categoria===cat).reduce((s,d)=>s+d.valor,0)*100)/100;
+    const diasNecessarios = (receitaDiaria>0 && valorMes>0) ? Math.ceil(valorMes/receitaDiaria) : (valorMes>0 ? null : 0);
+    return {cat, valorMes, diasNecessarios};
+  });
+  const totalFixasMes = Math.round(linhasFixas.reduce((s,l)=>s+l.valorMes,0)*100)/100;
+  const totalDiasFixas = (receitaDiaria>0 && totalFixasMes>0) ? Math.ceil(totalFixasMes/receitaDiaria) : (totalFixasMes>0?null:0);
+  const diasSobrando = (totalDiasFixas!=null) ? Math.max(0, diasTrabalhados - totalDiasFixas) : null;
+
+  const tabelaFixas = catsFixas.length===0 ?
+    '<div class="empty">Nenhuma categoria marcada como "conta fixa" ainda. <button type="button" class="link-btn" data-ir-categorias-despesa="1">Marcar categorias fixas →</button></div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Conta fixa</th><th>Gasto em '+nomeMes(mk)+'</th><th>Dias de trabalho pra pagar</th></tr></thead><tbody>'+
+    linhasFixas.map(l=>'<tr><td>'+iconeCategoriaDespesaHtml(l.cat)+l.cat+'</td><td>'+fmtMoney(l.valorMes)+'</td>'+
+      '<td>'+(l.valorMes<=0?'—':(l.diasNecessarios!=null?l.diasNecessarios+' dia(s)':'—'))+'</td></tr>').join('')+
+    '</tbody></table></div>';
+
+  return '<h3>💪 Dias de trabalho pra pagar as contas</h3>'+
+    ajudaHtml('diastrabalho','Pega o total vendido no mês, divide pelos dias trabalhados e acha a receita média por dia. A partir disso, mostra quantos dias de trabalho são necessários pra cobrir cada conta fixa (aluguel, salário etc.). Contas com valor e frequência variáveis — como compra de gás/reposição — ficam de fora de propósito, porque não têm um valor fixo pra "converter" em dias; marque quais categorias são fixas em Configurações > Categorias de despesas.')+
+    '<div class="form-row" style="max-width:520px;margin-top:10px;">'+
+    '<div><label>Mês de referência</label><input type="month" id="input-mes-dias-trabalho" value="'+mk+'"></div>'+
+    '<div><label>Dias trabalhados no mês</label><input type="number" id="input-dias-trabalhados-mes" min="1" step="1" value="'+diasTrabalhados+'"></div>'+
+    '</div>'+
+    '<div class="hint" style="margin-top:6px;">Sugestão automática: '+diasComVenda+' dia(s) com venda registrada em '+nomeMes(mk)+'. Pode digitar por cima se você não trabalha todo dia do mês (folgas, domingo fechado etc.).</div>'+
+    '<div style="display:grid;gap:12px;margin-top:14px;">'+
+    '<div class="card" style="margin:0;">'+
+    '<div class="hint">Vendido em '+nomeMes(mk)+': <strong>'+fmtMoney(totalVendidoMes)+'</strong> ÷ '+diasTrabalhados+' dia(s) trabalhado(s) = <strong>'+fmtMoney(receitaDiaria)+'/dia</strong> em média.</div>'+
+    '</div>'+
+    '<div class="card" style="margin:0;"><h3>📋 Contas fixas</h3>'+tabelaFixas+
+    (catsFixas.length>0 ? '<div class="hint" style="margin-top:10px;font-weight:700;">Total das contas fixas: '+fmtMoney(totalFixasMes)+' — precisa trabalhar <strong>'+(totalDiasFixas!=null?totalDiasFixas+' dia(s)':'—')+'</strong> no mês só pra cobrir tudo isso.'+
+      (diasSobrando!=null ? ' Sobram '+diasSobrando+' dia(s) de trabalho pro resto (fornecedor/reposição, variáveis e lucro).' : '')+
+      '</div>' : '')+
+    '</div>'+
+    '</div>';
 }
 function relatorioVeiculos(){
   const veiculos = state.veiculos||[];
@@ -8596,6 +8657,8 @@ function attachHandlers(){
     if(newName!==oldName && state.categoriasDespesas.includes(newName)){ alert('Já existe uma categoria com esse nome.'); return; }
     if(newName!==oldName){
       renomearCategoriaDespesa(oldName, newName);
+      const idxFixa = (state.categoriasDespesasFixas||[]).indexOf(oldName);
+      if(idxFixa>-1){ state.categoriasDespesasFixas[idxFixa] = newName; await save('categoriasDespesasFixas'); }
       await save('categoriasDespesas'); await save('despesas');
     }
     editCategoriaDespesaNome = null;
@@ -8610,7 +8673,18 @@ function attachHandlers(){
     if(!confirm(msg)) return;
     state.categoriasDespesas = state.categoriasDespesas.filter(c=>c!==cat);
     await save('categoriasDespesas');
+    if((state.categoriasDespesasFixas||[]).includes(cat)){
+      state.categoriasDespesasFixas = state.categoriasDespesasFixas.filter(c=>c!==cat);
+      await save('categoriasDespesasFixas');
+    }
     renderAll();
+  });
+  document.querySelectorAll('[data-cat-despesa-fixa]').forEach(chk=>chk.onchange=async()=>{
+    const cat = chk.dataset.catDespesaFixa;
+    if(!Array.isArray(state.categoriasDespesasFixas)) state.categoriasDespesasFixas = [];
+    if(chk.checked){ if(!state.categoriasDespesasFixas.includes(cat)) state.categoriasDespesasFixas.push(cat); }
+    else { state.categoriasDespesasFixas = state.categoriasDespesasFixas.filter(c=>c!==cat); }
+    await save('categoriasDespesasFixas');
   });
 
   const btnRemoverVendasDuplicadas = document.getElementById('btn-remover-vendas-duplicadas');
@@ -11053,6 +11127,15 @@ function attachHandlers(){
     renderEvolucaoMensalChart();
   }
   document.querySelectorAll('[data-ir-metas]').forEach(btn=>btn.onclick=()=>{ currentTab='metas'; renderAll(); });
+  document.querySelectorAll('[data-ir-categorias-despesa]').forEach(btn=>btn.onclick=()=>{ currentTab='cadastros'; cadastroSub='cadastrodespesas'; renderAll(); });
+  const inputMesDiasTrabalho = document.getElementById('input-mes-dias-trabalho');
+  if(inputMesDiasTrabalho) inputMesDiasTrabalho.onchange = ()=>{ diasTrabalhoMesSelecionado = inputMesDiasTrabalho.value; renderAll(); };
+  const inputDiasTrabalhadosMes = document.getElementById('input-dias-trabalhados-mes');
+  if(inputDiasTrabalhadosMes) inputDiasTrabalhadosMes.onchange = ()=>{
+    const mkAtual = diasTrabalhoMesSelecionado || monthKey(todayStr());
+    diasTrabalhoQtdManual[mkAtual] = Math.max(1, Number(inputDiasTrabalhadosMes.value)||1);
+    renderAll();
+  };
   document.querySelectorAll('[data-ir-relatorio-estoque]').forEach(btn=>btn.onclick=()=>{ currentTab='estoque'; renderAll(); });
   document.querySelectorAll('[data-ir-falta-retirar]').forEach(btn=>btn.onclick=()=>{ currentTab='faltaretirar'; renderAll(); });
   document.querySelectorAll('[data-ir-relatorio]').forEach(btn=>btn.onclick=()=>{
