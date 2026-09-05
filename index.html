@@ -1630,10 +1630,10 @@ function iconWhatsApp(cor, tamanho){
   const s = tamanho || 14;
   return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 32 32" fill="'+c+'" style="vertical-align:-2px;"><path d="M16.004 3C9.106 3 3.5 8.606 3.5 15.504c0 2.418.678 4.727 1.958 6.727L3 29l6.94-2.396a12.44 12.44 0 0 0 6.064 1.547h.005c6.897 0 12.503-5.606 12.503-12.504C28.512 8.606 22.906 3 16.004 3zm0 22.86h-.004a10.34 10.34 0 0 1-5.27-1.444l-.378-.224-3.917 1.352 1.372-3.816-.246-.392a10.31 10.31 0 0 1-1.588-5.498c0-5.707 4.646-10.353 10.36-10.353 2.767 0 5.367 1.078 7.323 3.036a10.29 10.29 0 0 1 3.033 7.325c0 5.707-4.646 10.353-10.357 10.353zm5.68-7.76c-.31-.156-1.842-.909-2.128-1.013-.286-.104-.494-.156-.702.156-.208.312-.804 1.013-.986 1.221-.182.208-.364.234-.674.078-.31-.156-1.31-.483-2.494-1.538-.922-.822-1.545-1.837-1.727-2.149-.182-.312-.02-.48.136-.636.14-.14.31-.364.466-.546.156-.182.208-.312.312-.52.104-.208.052-.39-.026-.546-.078-.156-.702-1.69-.962-2.316-.253-.61-.51-.527-.702-.537l-.598-.01c-.208 0-.546.078-.832.39-.286.312-1.09 1.066-1.09 2.6 0 1.534 1.116 3.016 1.272 3.224.156.208 2.196 3.354 5.32 4.703.744.321 1.324.513 1.777.657.746.237 1.425.204 1.962.124.599-.09 1.842-.753 2.102-1.481.26-.728.26-1.352.182-1.482-.078-.13-.286-.208-.596-.364z"/></svg>';
 }
-function botaoWhatsApp(telefone){
+function botaoWhatsApp(telefone, compact){
   const link = linkWhatsApp(telefone);
   if(!link) return '';
-  return '<a class="act-link" href="'+link+'" target="_blank" rel="noopener" style="background:var(--green-tint);color:var(--green);">'+iconWhatsApp('#25D366',13)+' whats</a>';
+  return '<a class="act-link" href="'+link+'" target="_blank" rel="noopener" style="background:var(--green-tint);color:var(--green);" title="Chamar no WhatsApp">'+iconWhatsApp('#25D366',13)+(compact?'':' whats')+'</a>';
 }
 function linkWhatsAppComTexto(telefone, texto){
   let d = apenasDigitos(telefone);
@@ -5293,13 +5293,13 @@ function viewClientes(){
 
 function clientesTable(list){
   if(list.length===0) return '<div class="empty">Nenhum cliente cadastrado ainda.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Apelidos</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Indicado por</th><th>Anexos</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:13%;"><col style="width:9%;"><col style="width:9%;"><col style="width:9%;"><col style="width:7%;"><col style="width:12%;"><col style="width:9%;"><col style="width:7%;"><col style="width:7%;"><col style="width:18%;"></colgroup><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Apelidos</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Indicado por</th><th>Anexos</th><th></th></tr></thead><tbody>'+
   list.map(c=>{
     const anexosCli = anexosDoContexto({cliente:c.nome});
     const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="10" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
     return '<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+etiquetaFrequenciaClienteHtml(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+(((c.apelidos||[]).map(a=>'<span class="pill">'+escapeHtmlCampanha(a)+'</span>').join(' '))||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td><td>'+(c.indicadoPor?escapeHtmlCampanha(c.indicadoPor):'—')+'</td>'+
-    '<td><button type="button" class="act-link" data-ver-anexos-cliente="'+escapeHtmlCampanha(c.nome)+'">📎 '+anexosCli.length+'</button></td>'+
-    '<td class="cel-acoes">'+botaoWhatsApp(c.telefone)+'<button type="button" class="act-link" data-ir-crm-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Abrir ficha no CRM">🤝</button><button class="act-link" data-edit-cliente="'+c.id+'">✎</button><button class="del-link" data-del-cliente="'+c.id+'">🗑</button></td></tr>'+linhaAnexos;
+    '<td><button type="button" class="act-link" data-ver-anexos-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Ver anexos">📎'+anexosCli.length+'</button></td>'+
+    '<td class="cel-acoes">'+botaoWhatsApp(c.telefone, true)+'<button type="button" class="act-link" data-ir-crm-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Abrir ficha no CRM">🤝</button><button class="act-link" data-edit-cliente="'+c.id+'" title="editar">✎</button><button class="del-link" data-del-cliente="'+c.id+'" title="excluir">🗑</button></td></tr>'+linhaAnexos;
   }).join('')+'</tbody></table></div>';
 }
 
@@ -5424,14 +5424,14 @@ function viewMapaDeposito(){
 }
 function movimentacoesEstoqueTable(lista){
   if(lista.length===0) return '<div class="empty">Nenhuma movimentação encontrada.</div>';
-  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:50%;"><col style="width:14%;"><col style="width:20%;"><col style="width:16%;"></colgroup><thead><tr><th>Item</th><th>Mov.</th><th>Por</th><th></th></tr></thead><tbody>'+
-  lista.map(l=>
-    '<tr><td>'+l.item+' — '+l.estado+' <span class="hint">('+l.tipo+')</span><br><span class="hint" style="font-size:10px;">'+fmtDate(l.data)+(l.motivo?' · '+l.motivo:'')+'</span></td>'+
-    '<td>'+(l.direcao==='entrada'?'<span class="badge pago">+'+l.quantidade+'</span>':'<span class="badge fiado">-'+l.quantidade+'</span>')+'</td>'+
-    '<td>'+l.usuario+'</td>'+
+  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:50%;"><col style="width:24%;"><col style="width:26%;"></colgroup><thead><tr><th>Item</th><th>Mov. / Por</th><th></th></tr></thead><tbody>'+
+  lista.map(l=>{
+    const tituloItem = l.item+' — '+l.estado+' ('+l.tipo+') · '+fmtDate(l.data)+(l.motivo?' · '+l.motivo:'');
+    return '<tr><td title="'+escapeHtmlCampanha(tituloItem)+'">'+l.item+' — '+l.estado+' <span class="hint">('+l.tipo+')</span><br><span class="hint" style="font-size:10px;">'+fmtDate(l.data)+(l.motivo?' · '+l.motivo:'')+'</span></td>'+
+    '<td>'+(l.direcao==='entrada'?'<span class="badge pago">+'+l.quantidade+'</span>':'<span class="badge fiado">-'+l.quantidade+'</span>')+'<br><span class="hint" style="font-size:10px;">'+l.usuario+'</span></td>'+
     '<td class="cel-acoes"><button class="act-link" data-edit-mov-estoque="'+l.id+'" title="editar">✎</button><button class="del-link" data-del-mov-estoque="'+l.id+'" title="excluir">🗑</button>'+
-    '</td></tr>'
-  ).join('')+'</tbody></table></div>';
+    '</td></tr>';
+  }).join('')+'</tbody></table></div>';
 }
 function viewEstoque(){
   const g = state.estoque.gas, a = state.estoque.agua;
@@ -6064,6 +6064,7 @@ function viewRelatorios(){
     {id:'itens', label:'Itens por categoria'},
     {id:'entregas', label:'Entregas por período'},
     {id:'fretes', label:'Fretes por período'},
+    {id:'combustivelfrete', label:'Combustível x Frete'},
     {id:'despesas', label:'Despesas por período'},
     {id:'veiculos', label:'Veículos'},
     {id:'fiado', label:'Fiado / A receber'},
@@ -6096,6 +6097,7 @@ function viewRelatorios(){
   else if(relatorioSub==='itens') content = relatorioItens();
   else if(relatorioSub==='entregas') content = relatorioEntregas();
   else if(relatorioSub==='fretes') content = relatorioFretes();
+  else if(relatorioSub==='combustivelfrete') content = relatorioCombustivelFrete();
   else if(relatorioSub==='despesas') content = relatorioDespesas();
   else if(relatorioSub==='veiculos') content = relatorioVeiculos();
   else if(relatorioSub==='fiado') content = relatorioFiado();
@@ -6315,6 +6317,16 @@ function relatorioFretes(){
     '<div><label>Meio de entrega</label><select id="rfr-tipo"><option value="">Todos</option>'+TIPOS_ENTREGA.map(t=>'<option>'+t+'</option>').join('')+'</select></div>'+
     '<div><label>Forma de pagamento</label><select id="rfr-pagamento"><option value="">Todas</option>'+PAGAMENTOS.map(p=>'<option>'+p+'</option>').join('')+'</select></div></div>'+
     '<button class="btn small ghost" id="rfr-filtrar">Filtrar</button><div id="rfr-resultado" style="margin-top:16px;"></div>';
+}
+function ehDespesaCombustivel(d){ return chaveNormalizada(d.categoria||'').includes('combust'); }
+function relatorioCombustivelFrete(){
+  return ajudaHtml('combustivelfrete','Compara quanto foi gasto com combustível dos veículos (despesas na categoria "Transporte / Combustível", ou qualquer categoria com "combustível" no nome) com quanto foi arrecadado em frete cobrado dos clientes nas entregas — no mesmo período. Ajuda a ver se o frete cobrado está cobrindo o gasto de combustível ou se está saindo do caixa geral.')+
+    '<h3>Filtrar</h3><div class="form-row">'+
+    '<div><label>De</label><input type="date" id="rcf-de" value="'+firstOfMonth()+'"></div>'+
+    '<div><label>Até</label><input type="date" id="rcf-ate" value="'+todayStr()+'"></div>'+
+    '<div><label>Veículo (opcional)</label><select id="rcf-veiculo"><option value="">Todos</option>'+state.veiculos.map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></div>'+
+    '</div>'+
+    '<button class="btn small ghost" id="rcf-filtrar">Filtrar</button><div id="rcf-resultado" style="margin-top:16px;"></div>';
 }
 function relatorioItens(){
   const tipos = categoriasNaoControladas();
@@ -7644,6 +7656,65 @@ function renderRelatorioFretesResultado(){
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Meio de entrega</th><th>Forma de pagamento</th><th>Frete</th></tr></thead><tbody>'+
     filtradas.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+(v.cliente||'—')+'</td><td>'+entregaLabel(v.tipo_entrega)+'</td><td>'+(v.pagamento||'—')+'</td><td>'+fmtMoney(v.frete)+'</td></tr>').join('')+
     '</tbody></table></div>');
+}
+function renderRelatorioCombustivelFreteResultado(){
+  const de = document.getElementById('rcf-de').value, ate = document.getElementById('rcf-ate').value;
+  const veiculoId = document.getElementById('rcf-veiculo').value;
+
+  const despesasCombustivel = state.despesas.filter(d=> d.data>=de && d.data<=ate && ehDespesaCombustivel(d) && (!veiculoId || d.veiculoId===veiculoId));
+  const totalCombustivel = despesasCombustivel.reduce((s,d)=>s+d.valor,0);
+  // Frete não é lançado por veículo (só o entregador/tipo de entrega), então o total arrecadado
+  // em frete considera o período inteiro, sem filtrar por veículo — só o gasto de combustível
+  // filtra por veículo quando escolhido.
+  const vendasComFrete = state.vendas.filter(v=> v.data>=de && v.data<=ate && (v.frete||0)>0);
+  const totalFrete = vendasComFrete.reduce((s,v)=>s+(v.frete||0),0);
+  const saldo = totalFrete - totalCombustivel;
+  const pctCombustivelDoFrete = totalFrete>0.004 ? Math.round((totalCombustivel/totalFrete)*100) : null;
+
+  const porVeiculo = {};
+  despesasCombustivel.forEach(d=>{
+    const nome = d.veiculoId ? ((state.veiculos.find(v=>v.id===d.veiculoId)||{}).nome || 'Veículo removido') : 'Sem veículo definido';
+    porVeiculo[nome] = (porVeiculo[nome]||0) + d.valor;
+  });
+  const linhasVeiculo = Object.entries(porVeiculo).sort((a,b)=>b[1]-a[1]);
+
+  // Comparativo mês a mês: os 6 meses que terminam no mês do "até" escolhido no filtro.
+  const dataAte = new Date(ate+'T12:00:00');
+  const mesesChave = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date(dataAte.getFullYear(), dataAte.getMonth()-i, 1);
+    mesesChave.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  }
+  const porMes = {}; mesesChave.forEach(mk=>porMes[mk]={combustivel:0, frete:0});
+  state.despesas.forEach(d=>{
+    if(ehDespesaCombustivel(d) && (!veiculoId || d.veiculoId===veiculoId)){
+      const mk = monthKey(d.data);
+      if(porMes[mk]) porMes[mk].combustivel += d.valor;
+    }
+  });
+  state.vendas.forEach(v=>{
+    if((v.frete||0)>0){
+      const mk = monthKey(v.data);
+      if(porMes[mk]) porMes[mk].frete += v.frete;
+    }
+  });
+  const linhasMes = mesesChave.map(mk=>Object.assign({mk}, porMes[mk]));
+
+  document.getElementById('rcf-resultado').innerHTML =
+    '<div class="grid cols4" style="margin-bottom:14px;">'+
+    '<div class="metric"><div class="label">Gasto com combustível</div><div class="value" style="color:var(--danger);">'+fmtMoney(totalCombustivel)+'</div></div>'+
+    '<div class="metric"><div class="label">Arrecadado em frete</div><div class="value" style="color:var(--green);">'+fmtMoney(totalFrete)+'</div></div>'+
+    '<div class="metric"><div class="label">Saldo (frete − combustível)</div><div class="value"'+(saldo<0?' style="color:var(--danger);"':'')+'>'+fmtMoney(saldo)+'</div></div>'+
+    '<div class="metric"><div class="label">% do frete que foi pra combustível</div><div class="value">'+(pctCombustivelDoFrete!=null?pctCombustivelDoFrete+'%':'—')+'</div></div>'+
+    '</div>'+
+    (saldo<0 ? '<div class="import-conferencia-alert">⚠ Nesse período o combustível gastou mais do que o frete arrecadou — a diferença de '+fmtMoney(Math.abs(saldo))+' saiu de outra parte do caixa.</div>' : '')+
+    '<h4 style="margin-top:10px;">Comparativo mês a mês</h4>'+
+    '<div class="table-wrap"><table><thead><tr><th>Mês</th><th>Combustível</th><th>Frete</th><th>Saldo</th></tr></thead><tbody>'+
+    linhasMes.map(l=>'<tr><td>'+nomeMes(l.mk)+'</td><td>'+fmtMoney(l.combustivel)+'</td><td>'+fmtMoney(l.frete)+'</td><td'+((l.frete-l.combustivel)<0?' style="color:var(--danger);"':'')+'>'+fmtMoney(l.frete-l.combustivel)+'</td></tr>').join('')+
+    '</tbody></table></div>'+
+    (linhasVeiculo.length>0 ? '<h4 style="margin-top:14px;">Combustível por veículo (no período filtrado acima)</h4><div class="table-wrap"><table><thead><tr><th>Veículo</th><th>Gasto</th></tr></thead><tbody>'+
+    linhasVeiculo.map(l=>'<tr><td>'+escapeHtmlCampanha(l[0])+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+
+    '</tbody></table></div>' : '<div class="hint" style="margin-top:10px;">Nenhuma despesa de combustível encontrada nesse período (confira se a categoria da despesa tem "Combustível" no nome).</div>');
 }
 function renderRelatorioVendasResultado(){
   const de = document.getElementById('rv-de').value, ate = document.getElementById('rv-ate').value;
@@ -10560,6 +10631,7 @@ function attachHandlers(){
   const resgFiltrar = document.getElementById('resg-filtrar'); if(resgFiltrar) resgFiltrar.onclick = renderRelatorioESGResultado;
   const rentFiltrar = document.getElementById('rent-filtrar'); if(rentFiltrar) rentFiltrar.onclick = renderRelatorioEntregasResultado;
   const rfrFiltrar = document.getElementById('rfr-filtrar'); if(rfrFiltrar) rfrFiltrar.onclick = renderRelatorioFretesResultado;
+  const rcfFiltrar = document.getElementById('rcf-filtrar'); if(rcfFiltrar) rcfFiltrar.onclick = renderRelatorioCombustivelFreteResultado;
   const rnFiltrar = document.getElementById('rn-filtrar'); if(rnFiltrar) rnFiltrar.onclick = renderRelatorioNotasResultado;
   const reFiltrar = document.getElementById('re-filtrar'); if(reFiltrar) reFiltrar.onclick = ()=>{
     relEmpresaDe = document.getElementById('re-de').value;
@@ -10617,6 +10689,7 @@ function attachHandlers(){
   if(relatorioSub==='esg' && document.getElementById('resg-resultado')) renderRelatorioESGResultado();
   if(relatorioSub==='entregas' && document.getElementById('rent-resultado')) renderRelatorioEntregasResultado();
   if(relatorioSub==='fretes' && document.getElementById('rfr-resultado')) renderRelatorioFretesResultado();
+  if(relatorioSub==='combustivelfrete' && document.getElementById('rcf-resultado')) renderRelatorioCombustivelFreteResultado();
   if(relatorioSub==='notas' && document.getElementById('rn-resultado')) renderRelatorioNotasResultado();
   if(relatorioSub==='empresas' && document.getElementById('re-resultado')) renderRelatorioEmpresasResultado();
   if(relatorioSub==='itens' && document.getElementById('ri-resultado')) renderRelatorioItensResultado();
