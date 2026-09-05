@@ -225,6 +225,7 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .tabela-vendas-compacta td button{font-size:10.5px;padding:1px 3px;min-width:18px;}
 .tabela-vendas-compacta .hint{font-size:9px;}
 .tabela-vendas td.cel-acoes{display:flex;gap:2px;flex-wrap:nowrap;}
+.tabela-fiado-lista td.cel-acoes{flex-wrap:wrap;align-items:center;}
 @media (max-width:640px){
   .tabela-vendas th,.tabela-vendas td{font-size:9.5px;padding:3px 4px;max-width:none;}
   .tabela-vendas .badge{font-size:8px;padding:1px 4px;}
@@ -7131,13 +7132,16 @@ function relatorioFiado(){
   if(clienteRegistrandoPagamento){
     const saldoAtual = saldoDoCliente(clienteRegistrandoPagamento);
     const editando = editFiadoPagamentoId ? state.fiadoPagamentos.find(p=>p.id===editFiadoPagamentoId) : null;
+    const baseSaldoPagamento = saldoAtual + (editando ? (Number(editando.valor)||0) : 0);
     painelPagamento = '<div class="item-venda-row" style="margin-top:10px;"><h4 style="margin-top:0;">'+(editando?'Editar pagamento':'Registrar pagamento')+' — '+clienteRegistrandoPagamento+'</h4>'+
-      '<div class="hint">Saldo devedor atual: <strong>'+fmtMoney(saldoAtual)+'</strong>'+(editando?'':'. Se a pessoa pagou só uma parte, lance aqui só o valor que ela pagou — o restante continua em aberto.')+'</div>'+
-      '<form id="form-pagamento-fiado"><div class="form-row">'+
-      '<div><label>Valor pago (R$) <span class="req">*</span></label><input type="number" name="valor" min="0.01" step="0.01" value="'+(editando?editando.valor:'')+'" required></div>'+
+      '<div class="hint">Saldo devedor atual: <strong>'+fmtMoney(saldoAtual)+'</strong>'+(editando?'':'. Se a pessoa pagou só uma parte, lance aqui só o valor que ela pagou — o restante continua em aberto. Se ela pagou tudo, o saldo zera e ela sai da lista de fiado sozinha.')+'</div>'+
+      '<form id="form-pagamento-fiado" data-base-saldo="'+baseSaldoPagamento+'"><div class="form-row">'+
+      '<div><label>Valor pago (R$) <span class="req">*</span></label><input type="number" id="input-valor-pagamento-fiado" name="valor" min="0.01" step="0.01" value="'+(editando?editando.valor:'')+'" required></div>'+
       '<div><label>Forma de pagamento</label><select name="forma_pagamento">'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(p=>'<option'+(editando&&editando.forma_pagamento===p?' selected':'')+'>'+p+'</option>').join('')+'</select></div>'+
       '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+(editando?editando.data:todayStr())+'" required></div></div>'+
-      '<button type="submit" class="btn small">'+(editando?'Salvar alterações':'Registrar pagamento')+'</button> '+(function(){const c=state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(clienteRegistrandoPagamento));return c&&c.telefone?botaoWhatsApp(c.telefone):'';})()+' '
+      '<div style="margin:-6px 0 12px;"><button type="button" class="link-btn" id="btn-quitar-tudo-fiado">Preencher com o valor total (quitação total)</button></div>'+
+      '<div id="fiado-pagamento-resto" class="hint" style="font-weight:700;margin-bottom:12px;min-height:16px;"></div>'+
+      '<button type="submit" class="btn small">'+(editando?'Salvar alterações':'Registrar pagamento')+'</button> '+(function(){const c=state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(clienteRegistrandoPagamento));return c&&c.telefone?botaoWhatsApp(c.telefone):'';})()+' '+
       '<button type="button" class="link-btn" id="btn-cancelar-pagamento-fiado">cancelar</button></form></div>';
   }
   return '<h3>Lançar fiado existente (sem precisar registrar uma venda)</h3>'+
@@ -7246,14 +7250,14 @@ function fiadoListaHtml(filtro){
   if(q) todos = todos.filter(f=>(f.cliente||'').toLowerCase().includes(q) || (f.descricao||'').toLowerCase().includes(q));
   if(todos.length===0) return '<div class="empty">'+(q?'Nenhum lançamento encontrado para "'+filtro+'".':'Nenhum fiado lançado ainda.')+'</div>';
   return '<div class="hint" style="margin-bottom:8px;">Esta lista é só o histórico de débitos lançados. Para dar baixa em um pagamento, use "registrar pagamento" na seção "Fiado por cliente" acima.</div>'+
-    '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Descrição</th><th>Data</th><th>Valor</th><th></th></tr></thead><tbody>'+
+    '<div class="table-wrap tabela-vendas tabela-fiado-lista"><table><colgroup><col style="width:20%;"><col style="width:28%;"><col style="width:12%;"><col style="width:13%;"><col style="width:27%;"></colgroup><thead><tr><th>Cliente</th><th>Descrição</th><th>Data</th><th>Valor</th><th></th></tr></thead><tbody>'+
     todos.map(f=>{
       const acoes = f.origem==='manual' ?
         '<button class="act-link" data-edit-fiado="'+f.id+'">✎ editar</button><button class="del-link" data-del-fiado="'+f.id+'">🗑 excluir</button>' :
         '<button class="act-link" data-editar-venda-fiado="'+f.id+'">✎ editar venda</button> <span class="hint">lançado por venda</span>';
       return '<tr><td>'+f.cliente+'</td><td>'+(f.descricao||'—')+(f.origem==='venda'?' <span class="pill">venda</span>':'')+'</td>'+
         '<td>'+fmtDate(f.data)+'</td><td>'+fmtMoney(f.valor)+'</td>'+
-        '<td>'+acoes+'</td></tr>';
+        '<td class="cel-acoes">'+acoes+'</td></tr>';
     }).join('')+'</tbody></table></div>';
 }
 function relatorioNotas(){
@@ -9184,6 +9188,29 @@ function attachHandlers(){
   const btnCancelarPagamentoFiado = document.getElementById('btn-cancelar-pagamento-fiado');
   if(btnCancelarPagamentoFiado) btnCancelarPagamentoFiado.onclick = ()=>{ clienteRegistrandoPagamento=null; editFiadoPagamentoId=null; renderAll(); };
   const fpg = document.getElementById('form-pagamento-fiado');
+  if(fpg){
+    const inputValorPagamentoFiado = document.getElementById('input-valor-pagamento-fiado');
+    const restoPagamentoFiadoDiv = document.getElementById('fiado-pagamento-resto');
+    const baseSaldoPagamentoFiado = Number(fpg.dataset.baseSaldo)||0;
+    const atualizarRestoPagamentoFiado = ()=>{
+      if(!restoPagamentoFiadoDiv || !inputValorPagamentoFiado) return;
+      const valorDigitado = Number(inputValorPagamentoFiado.value)||0;
+      if(valorDigitado<=0){ restoPagamentoFiadoDiv.textContent=''; return; }
+      const resto = baseSaldoPagamentoFiado - valorDigitado;
+      if(resto<=0.004){
+        restoPagamentoFiadoDiv.style.color = 'var(--green)';
+        restoPagamentoFiadoDiv.innerHTML = '✅ Fica quitado!'+(resto<-0.004?' (pagou '+fmtMoney(Math.abs(resto))+' a mais)':'')+' Ela sai da lista de fiado automaticamente.';
+      } else {
+        restoPagamentoFiadoDiv.style.color = '';
+        restoPagamentoFiadoDiv.innerHTML = 'Depois desse pagamento, ela continua devendo: <strong>'+fmtMoney(resto)+'</strong>';
+      }
+    };
+    if(inputValorPagamentoFiado){ inputValorPagamentoFiado.oninput = atualizarRestoPagamentoFiado; atualizarRestoPagamentoFiado(); }
+    const btnQuitarTudoFiado = document.getElementById('btn-quitar-tudo-fiado');
+    if(btnQuitarTudoFiado) btnQuitarTudoFiado.onclick = ()=>{
+      if(inputValorPagamentoFiado){ inputValorPagamentoFiado.value = baseSaldoPagamentoFiado.toFixed(2); atualizarRestoPagamentoFiado(); }
+    };
+  }
   if(fpg) fpg.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(fpg);
