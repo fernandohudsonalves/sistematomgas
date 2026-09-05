@@ -2871,6 +2871,37 @@ function atualizarTotalCarrinho(){
       'Total do carrinho: '+fmtMoney(total);
   }catch(e){ console.error('Erro ao calcular total do carrinho', e); }
   try{ atualizarBoxCreditoVenda(); }catch(e){ console.error('Erro ao atualizar box de crédito', e); }
+  try{ atualizarHintDivisaoPagamento(); }catch(e){ console.error('Erro ao atualizar divisão de pagamento', e); }
+}
+function toggleDivisaoPagamentoVenda(){
+  const chk = document.getElementById('chk-dividir-pagamento');
+  const wrap = document.getElementById('detalhes-divisao-pagamento');
+  if(!chk || !wrap) return;
+  wrap.style.display = chk.checked ? 'block' : 'none';
+  if(chk.checked){
+    const inputV1 = document.getElementById('input-valor-forma1');
+    if(inputV1 && !inputV1.value){
+      const {total, frete} = calcularTotalCarrinho();
+      const totalVenda = Math.round((total+frete)*100)/100;
+      if(totalVenda>0) inputV1.value = totalVenda;
+    }
+  }
+  atualizarHintDivisaoPagamento();
+}
+function atualizarHintDivisaoPagamento(){
+  const chk = document.getElementById('chk-dividir-pagamento');
+  const hint = document.getElementById('hint-divisao-pagamento');
+  if(!chk || !hint) return;
+  if(!chk.checked){ hint.textContent = ''; return; }
+  const {total, frete} = calcularTotalCarrinho();
+  const totalVenda = Math.round((total+frete)*100)/100;
+  const inputV1 = document.getElementById('input-valor-forma1');
+  const v1 = inputV1 ? (Number(inputV1.value)||0) : 0;
+  const restante = Math.max(0, Math.round((totalVenda - v1)*100)/100);
+  const selForma2 = document.getElementById('sel-forma2-pagamento');
+  const forma2 = selForma2 ? selForma2.value : '';
+  if(restante<=0.004){ hint.textContent = 'Cobre o valor total ('+fmtMoney(totalVenda)+') — nada mais a pagar.'; return; }
+  hint.textContent = 'Restante de '+fmtMoney(restante)+(forma2 ? (' vai para "'+(forma2==='Marcou/Fiado'?'Fiado (a receber)':forma2)+'"') : ' — selecione a forma de pagamento do restante.');
 }
 function atualizarBoxCreditoVenda(){
   const box = document.getElementById('credito-cliente-box');
@@ -4203,6 +4234,20 @@ function preencherFormEdicaoVenda(v, fvEl){
     if(wrapFormaPagtoFREdit) wrapFormaPagtoFREdit.style.display = (v.frete>0) ? 'block' : 'none';
     if(chkBaixaFREdit) chkBaixaFREdit.checked = !!v.estoqueBaixado;
   }
+  const chkDividirEdit = document.getElementById('chk-dividir-pagamento');
+  const inputValorForma1Edit = document.getElementById('input-valor-forma1');
+  const selForma2Edit = document.getElementById('sel-forma2-pagamento');
+  if(chkDividirEdit){
+    chkDividirEdit.checked = !!v.pagamentoSplit;
+    if(v.pagamentoSplit){
+      // O select "Forma de pagamento" precisa mostrar a forma 1 (não o rótulo combinado tipo
+      // "Dinheiro + Fiado" salvo em v.pagamento, que não existe como opção da lista).
+      fvEl.pagamento.value = v.pagamentoSplit.forma1;
+      if(inputValorForma1Edit) inputValorForma1Edit.value = v.pagamentoSplit.valor1;
+      if(selForma2Edit) selForma2Edit.value = v.pagamentoSplit.forma2;
+    } else if(inputValorForma1Edit){ inputValorForma1Edit.value = ''; }
+    toggleDivisaoPagamentoVenda();
+  }
   fvEl.querySelector('button[type=submit]').textContent='Salvar alterações';
   const itensExtraEl = document.getElementById('itens-extra-lista'); if(itensExtraEl) itensExtraEl.innerHTML='';
   toggleDetalhesEntregaVenda();
@@ -4791,6 +4836,17 @@ function viewVendas(){
     '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
     '<div><label>Cupom usado (opcional)</label><input type="text" name="cupom" placeholder="Ex: TOMGAS10" style="text-transform:uppercase;"></div>'+
     '</div>'+
+    '<div id="wrap-divisao-pagamento" class="item-venda-row" style="margin-top:10px;">'+
+    '<label class="checkbox-item"><input type="checkbox" id="chk-dividir-pagamento"> Dividir esta venda em duas formas de pagamento</label>'+
+    '<div class="hint">Use quando o cliente pagou parte com uma forma e o restante com outra (ex: parte no crédito, parte em dinheiro), ou quando só pagou uma parte agora — nesse caso, escolha "Fica de fiado (a receber)" na forma do restante e o sistema lança sozinho a diferença no fiado. Não use junto com "Abateu": pra usar o crédito em haver do cliente, essa opção já aparece automaticamente aqui embaixo quando ele tiver saldo.</div>'+
+    '<div id="detalhes-divisao-pagamento" style="display:none;margin-top:8px;">'+
+    '<div class="form-row">'+
+    '<div><label>Valor pago com a forma acima (R$)</label><input type="number" id="input-valor-forma1" min="0" step="0.01" placeholder="0,00"></div>'+
+    '<div><label>Forma de pagamento do restante</label><select id="sel-forma2-pagamento">'+opcoesComPlaceholder(['Marcou/Fiado'].concat(PAGAMENTOS.filter(p=>p!=='Abateu'&&p!=='Marcou/Fiado')),'Selecione')+'</select></div>'+
+    '</div>'+
+    '<div class="hint" id="hint-divisao-pagamento" style="font-weight:700;"></div>'+
+    '</div>'+
+    '</div>'+
     '<div id="detalhes-entrega-venda" class="item-venda-row" style="display:none;margin-top:10px;">'+
     '<div class="hint" style="margin-bottom:6px;">Detalhes da entrega</div>'+
     '<div class="form-row">'+
@@ -5056,6 +5112,19 @@ function resumoCaixaDoDia(data, abertura){
   const porFormaPagamento = {};
   let totalVendas = 0;
   vendasDia.forEach(v=>{
+    // Venda com pagamento dividido em duas formas: soma cada parte na sua própria forma (em vez
+    // de jogar o valor inteiro no rótulo combinado tipo "Dinheiro + Fiado") — senão o dinheiro
+    // realmente recebido nessa venda sumia da conferência de caixa.
+    if(v.pagamentoSplit){
+      const {forma1, valor1, forma2, valor2} = v.pagamentoSplit;
+      if(valor1>0.004){ porFormaPagamento[forma1] = (porFormaPagamento[forma1]||0)+valor1; totalVendas += valor1; }
+      if(valor2>0.004){
+        const chave2 = forma2||'Outros';
+        porFormaPagamento[chave2] = (porFormaPagamento[chave2]||0)+valor2;
+        if(chave2!=='Marcou/Fiado') totalVendas += valor2;
+      }
+      return;
+    }
     const p = v.pagamento || 'Outros';
     const val = (v.valor_total||0)+(v.frete||0);
     porFormaPagamento[p] = (porFormaPagamento[p]||0)+val;
@@ -8609,6 +8678,35 @@ function attachHandlers(){
         v.pagamento=f.get('pagamento'); v.nota=f.get('nota'); v.tipo_entrega=f.get('tipo_entrega'); v.cupom=(f.get('cupom')||'').trim().toUpperCase();
         v.empresa=f.get('empresa')||''; v.entrega_data=f.get('entrega_data')||(f.get('entrega_hora')?f.get('data'):''); v.entrega_hora=f.get('entrega_hora')||''; v.obs=f.get('obs')||'';
         v.frete = TIPOS_ENTREGA_COM_FRETE.includes(v.tipo_entrega) ? (Number(f.get('frete'))||0) : 0;
+        const chkDividirPagamentoEdit = document.getElementById('chk-dividir-pagamento');
+        if(chkDividirPagamentoEdit && chkDividirPagamentoEdit.checked){
+          const valorForma1Edit = Number((document.getElementById('input-valor-forma1')||{}).value)||0;
+          const selForma2EditEl = document.getElementById('sel-forma2-pagamento');
+          const forma2Edit = selForma2EditEl ? selForma2EditEl.value : '';
+          const totalVendaEdit = Math.round((v.valor_total+(v.frete||0))*100)/100;
+          const restanteEdit = Math.max(0, Math.round((totalVendaEdit - valorForma1Edit)*100)/100);
+          if(restanteEdit>0.004 && forma2Edit==='Marcou/Fiado' && !v.cliente){
+            alert('Pra lançar o restante no fiado, informe o cliente da venda.');
+          } else {
+            const forma1LabelEdit = v.pagamento;
+            v.pagamento = restanteEdit>0.004 ? forma1LabelEdit+' + '+(forma2Edit==='Marcou/Fiado'?'Fiado':forma2Edit) : forma1LabelEdit;
+            const fiadoIdAnterior = v.pagamentoSplit && v.pagamentoSplit.fiadoId;
+            v.pagamentoSplit = {forma1:forma1LabelEdit, valor1:valorForma1Edit, forma2:forma2Edit, valor2:restanteEdit};
+            if(restanteEdit>0.004 && forma2Edit==='Marcou/Fiado'){
+              const fiadoExistente = fiadoIdAnterior ? state.fiados.find(x=>x.id===fiadoIdAnterior) : null;
+              if(fiadoExistente){ fiadoExistente.valor = restanteEdit; fiadoExistente.cliente = v.cliente; v.pagamentoSplit.fiadoId = fiadoExistente.id; }
+              else {
+                const novoFiadoEdit = {id:uid(), cliente:v.cliente, valor:restanteEdit, data:v.data,
+                  descricao:'Restante da venda de '+fmtMoney(totalVendaEdit)+' (parte paga com '+forma1LabelEdit+')', status:'aberto'};
+                state.fiados.push(novoFiadoEdit);
+                v.pagamentoSplit.fiadoId = novoFiadoEdit.id;
+              }
+              await save('fiados');
+            }
+          }
+        } else if(v.pagamentoSplit){
+          delete v.pagamentoSplit;
+        }
         if(v.entrega_hora && !v.entrega_status) v.entrega_status='pendente';
         if(!v.entrega_hora) v.entrega_status='';
         // "Falta retirar" só desconta do estoque quando o cliente realmente retirar/for entregue
@@ -8696,6 +8794,7 @@ function attachHandlers(){
         obs: f.get('obs')||''
       };
       const freteTotal = TIPOS_ENTREGA_COM_FRETE.includes(camposComuns.tipo_entrega) ? (Number(f.get('frete'))||0) : 0;
+      const totalVendaGeral = Math.round((itens.reduce((s,i)=>s+i.valor_total,0) + freteTotal)*100)/100;
       // "Falta retirar" fica com o estoque reservado (não desconta ainda) até alguém confirmar,
       // na lista de pendências, que o cliente retirou ou que foi entregue.
       const pendenteRetiradaNova = camposComuns.tipo_entrega === 'Falta retirar';
@@ -8741,6 +8840,34 @@ function attachHandlers(){
           await save('fiados');
           state.vendas.filter(v=>v.grupoId===grupoId).forEach(v=>{ v.pagamento = 'Abateu + Fiado'; });
           alert(camposComuns.cliente+' tinha '+fmtMoney(saldoAntes)+' de crédito em haver. Abatemos '+fmtMoney(abatido)+' e os '+fmtMoney(diferenca)+' restantes foram lançados como fiado (a receber).');
+        }
+      } else if(document.getElementById('chk-dividir-pagamento') && document.getElementById('chk-dividir-pagamento').checked){
+        // Venda com pagamento dividido em duas formas (ex: parte crédito + parte dinheiro, ou só
+        // uma parte paga agora e o restante lançado sozinho no fiado).
+        const valorForma1 = Number(document.getElementById('input-valor-forma1').value)||0;
+        const selForma2El = document.getElementById('sel-forma2-pagamento');
+        const forma2 = selForma2El ? selForma2El.value : '';
+        const restanteDivisao = Math.max(0, Math.round((totalVendaGeral - valorForma1)*100)/100);
+        if(restanteDivisao>0.004 && !forma2){
+          alert('Selecione a forma de pagamento do restante ('+fmtMoney(restanteDivisao)+').');
+        } else if(restanteDivisao>0.004 && forma2==='Marcou/Fiado' && !camposComuns.cliente){
+          alert('Pra lançar o restante no fiado, selecione o cliente da venda.');
+        } else {
+          const forma1Label = camposComuns.pagamento;
+          const labelCombinado = restanteDivisao>0.004 ? forma1Label+' + '+(forma2==='Marcou/Fiado'?'Fiado':forma2) : forma1Label;
+          const vendasDoGrupoDivisao = state.vendas.filter(v=>v.grupoId===grupoId);
+          vendasDoGrupoDivisao.forEach((v,idx)=>{
+            v.pagamento = labelCombinado;
+            if(idx===0) v.pagamentoSplit = {forma1:forma1Label, valor1:valorForma1, forma2:forma2, valor2:restanteDivisao};
+          });
+          if(restanteDivisao>0.004 && forma2==='Marcou/Fiado'){
+            const novoFiadoDivisao = {id:uid(), cliente:camposComuns.cliente, valor:restanteDivisao, data:camposComuns.data,
+              descricao:'Restante da venda de '+fmtMoney(totalVendaGeral)+' (parte paga com '+forma1Label+')', status:'aberto'};
+            state.fiados.push(novoFiadoDivisao);
+            if(vendasDoGrupoDivisao[0]) vendasDoGrupoDivisao[0].pagamentoSplit.fiadoId = novoFiadoDivisao.id;
+            await save('fiados');
+            if(camposComuns.cliente) verificarLimiteCreditoCliente(camposComuns.cliente);
+          }
         }
       }
       const veioDeAgendamento = !!agendamentoParaConcluir;
@@ -8858,6 +8985,12 @@ function attachHandlers(){
   if(selTipoEntrega) selTipoEntrega.onchange = toggleDetalhesEntregaVenda;
   const selFormaPagamentoVenda = document.getElementById('sel-forma-pagamento');
   if(selFormaPagamentoVenda) selFormaPagamentoVenda.onchange = toggleEmpresaConvenioVenda;
+  const chkDividirPagamentoVenda = document.getElementById('chk-dividir-pagamento');
+  if(chkDividirPagamentoVenda) chkDividirPagamentoVenda.onchange = toggleDivisaoPagamentoVenda;
+  const inputValorForma1Venda = document.getElementById('input-valor-forma1');
+  if(inputValorForma1Venda) inputValorForma1Venda.oninput = atualizarHintDivisaoPagamento;
+  const selForma2PagamentoVenda = document.getElementById('sel-forma2-pagamento');
+  if(selForma2PagamentoVenda) selForma2PagamentoVenda.onchange = atualizarHintDivisaoPagamento;
   const inputFrete = document.getElementById('input-frete');
   if(inputFrete) inputFrete.oninput = atualizarTotalCarrinho;
   const inputFreteFR = document.getElementById('input-frete-falta-retirar');
