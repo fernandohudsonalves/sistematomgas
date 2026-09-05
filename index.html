@@ -6273,6 +6273,20 @@ function relatorioResumoDia(){
   const despesasDia = (state.despesas||[]).filter(d=>d.data===data);
   const totalDespesas = despesasDia.reduce((s,d)=>s+(d.formaPagamento==='parcelado'?0:d.valor),0);
   const agConcluidos = (state.agendamentos||[]).filter(a=>a.status==='concluido' && a.criadoEm && a.criadoEm.slice(0,10)<=data).length;
+  // O contador de "Entregas" antes só olhava state.temposEntrega — que só ganha registro quando a
+  // entrega passa pelo fluxo de rastreamento do app do entregador (saiu/chegou/concluído). Uma
+  // venda lançada com tipo_entrega "Entrega de Celta" (manual ou pela planilha diária), sem passar
+  // por esse fluxo, nunca vira um registro em temposEntrega — e o dia aparecia com "0 entregas"
+  // mesmo tendo entregas de verdade. Agora conta pelas vendas do dia (mesma lógica do Dashboard),
+  // que é a fonte confiável; o tempo médio rastreado pelo app do entregador continua mostrado à parte.
+  const gruposEntregaDia = {};
+  TIPOS_ENTREGA.forEach(t=>gruposEntregaDia[t]=new Set());
+  vendasDia.forEach(v=>{
+    const tipoEf = tipoEntregaEfetivo(v);
+    if(gruposEntregaDia[tipoEf]) gruposEntregaDia[tipoEf].add(v.grupoId||v.id);
+  });
+  const totalEntregasReais = Object.entries(gruposEntregaDia).filter(([t])=>t!=='Retirada' && t!=='Falta retirar').reduce((s,[,set])=>s+set.size,0);
+  const detalheEntregasPorTipo = Object.entries(gruposEntregaDia).filter(([t,set])=>t!=='Retirada' && t!=='Falta retirar' && set.size>0).map(([t,set])=>t+': '+set.size).join(' · ');
   const temposDia = (state.temposEntrega||[]).filter(t=>{
     if(t.data!==data) return false;
     if(!t.agendamentoId) return true;
@@ -6295,7 +6309,7 @@ function relatorioResumoDia(){
     '<div class="card" style="margin:0;"><h3>💰 Vendas</h3>Total do dia: <strong>'+fmtMoney(totalVendas)+'</strong> em '+vendasDia.length+' venda(s)<br>'+
       Object.entries(porForma).map(([p,v])=>p+': '+fmtMoney(v)).join(' · ')+'</div>'+
     '<div class="card" style="margin:0;"><h3>💸 Despesas</h3>Total pago em dinheiro/à vista: <strong>'+fmtMoney(totalDespesas)+'</strong> em '+despesasDia.length+' lançamento(s)</div>'+
-    '<div class="card" style="margin:0;"><h3>🚚 Entregas</h3>'+temposDia.length+' entrega(s) concluída(s) hoje'+(tempoMedio!=null?' · tempo médio: <strong>'+tempoMedio+' min</strong>':'')+'</div>'+
+    '<div class="card" style="margin:0;"><h3>🚚 Entregas</h3>'+totalEntregasReais+' entrega(s) feita(s) hoje'+(detalheEntregasPorTipo?' — '+detalheEntregasPorTipo:'')+(tempoMedio!=null?'<br><span class="hint">Tempo médio rastreado pelo app do entregador: <strong>'+tempoMedio+' min</strong> ('+temposDia.length+' entrega(s) com tempo registrado)</span>':'')+'</div>'+
     '<div class="card" style="margin:0;"><h3>🤝 Acertos</h3>'+acertosDia.length+' gerado(s) hoje — '+acertosPendentes+' pendente(s), '+acertosConfirmados+' confirmado(s)</div>'+
     '<div class="card" style="margin:0;"><h3>🧾 Fechamento de caixa</h3>'+(fechamento?('Esperado: '+fmtMoney(fechamento.dinheiroEsperado)+' · Contado: '+fmtMoney(fechamento.dinheiroContado)+' · Diferença: <strong>'+fmtMoney(fechamento.dinheiroContado-fechamento.dinheiroEsperado)+'</strong>'):'Caixa desse dia ainda não foi fechado.')+'</div>'+
     '<div class="card" style="margin:0;"><h3>📑 Contas a pagar</h3>'+contasPagasHoje+' conta(s) marcada(s) como paga hoje</div>'+
@@ -7121,7 +7135,7 @@ function fiadoListaHtml(filtro){
     todos.map(f=>{
       const acoes = f.origem==='manual' ?
         '<button class="act-link" data-edit-fiado="'+f.id+'">✎ editar</button><button class="del-link" data-del-fiado="'+f.id+'">🗑 excluir</button>' :
-        '<span class="hint">lançado por venda</span>';
+        '<button class="act-link" data-editar-venda-fiado="'+f.id+'">✎ editar venda</button> <span class="hint">lançado por venda</span>';
       return '<tr><td>'+f.cliente+'</td><td>'+(f.descricao||'—')+(f.origem==='venda'?' <span class="pill">venda</span>':'')+'</td>'+
         '<td>'+fmtDate(f.data)+'</td><td>'+fmtMoney(f.valor)+'</td>'+
         '<td>'+acoes+'</td></tr>';
@@ -8945,7 +8959,17 @@ function attachHandlers(){
       const aviso = f ? 'Excluir o débito de '+fmtMoney(f.valor)+' de '+f.cliente+' lançado em '+fmtDate(f.data)+'?\n\nIsso reduz o saldo devedor dele imediatamente. Essa ação não pode ser desfeita.' : 'Excluir este lançamento de fiado? Essa ação não pode ser desfeita.';
       if(confirm(aviso)){ state.fiados = state.fiados.filter(x=>x.id!==id); await save('fiados'); renderAll(); }
     });
+    // Débito lançado por uma venda (não um fiado manual): leva direto pra edição daquela venda,
+    // pra corrigir na hora um lançamento errado sem precisar caçá-la no histórico de vendas.
+    document.querySelectorAll('[data-editar-venda-fiado]').forEach(btn=>btn.onclick=()=>{
+      const v = state.vendas.find(x=>x.id===btn.dataset.editarVendaFiado);
+      if(!v) return;
+      const fvEl = document.getElementById('form-venda');
+      if(!fvEl){ pendingEditVendaId = v.id; currentTab='vendas'; renderAll(); return; }
+      preencherFormEdicaoVenda(v, fvEl);
+    });
   };
+  attachFiadoListaHandlers();
   const btnFecharExtrato = document.getElementById('btn-fechar-extrato');
   if(btnFecharExtrato) btnFecharExtrato.onclick = ()=>{ clienteExtrato=null; renderAll(); };
   const btnImprimirExtrato = document.getElementById('btn-imprimir-extrato');
