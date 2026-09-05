@@ -218,6 +218,12 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .tabela-vendas th,.tabela-vendas td{font-size:10.5px;padding:4px 5px;max-width:none;}
 .tabela-vendas .badge{font-size:9px;padding:1px 6px;}
 .tabela-vendas td button{font-size:12px;padding:2px 5px;min-width:22px;}
+/* Vendas de hoje: ainda mais compacta que o histórico, pra caber tudo na tela sem
+   precisar rolar (nem pro lado, nem pra baixo) — geralmente é uma lista curta do dia. */
+.tabela-vendas-compacta th,.tabela-vendas-compacta td{font-size:9.5px;padding:2px 3px;line-height:1.25;}
+.tabela-vendas-compacta .badge{font-size:8px;padding:0 4px;}
+.tabela-vendas-compacta td button{font-size:10.5px;padding:1px 3px;min-width:18px;}
+.tabela-vendas-compacta .hint{font-size:9px;}
 .tabela-vendas td.cel-acoes{display:flex;gap:2px;flex-wrap:nowrap;}
 @media (max-width:640px){
   .tabela-vendas th,.tabela-vendas td{font-size:9.5px;padding:3px 4px;max-width:none;}
@@ -1421,6 +1427,7 @@ function parseValorBR(str){
   return Number(str);
 }
 let despesaManualAberta = false;
+let vendaManualAberta = false;
 let veiculoSelecionado = null, editManutencaoId = null, comprovantesSelecionadosVeiculo = [], comissaoMesSelecionado = null;
 let editKmId = null;
 let simuladorReajusteDe = null, simuladorReajusteAte = null, simuladorReajusteCategoria = null, simuladorReajusteValor = null;
@@ -2587,7 +2594,12 @@ function novoItemVendaRow(opts){
     '<div><label>Valor unitário (R$)</label><input type="number" class="iv-valor-unit" min="0" step="0.01" placeholder="0,00"></div>'+
     '<div><label>Nota (para o Bling)</label><select class="iv-nota">'+opcoesComPlaceholder(NOTAS,'Selecione o tipo de nota')+'</select></div>'+
     '<div style="align-self:end;"><button type="button" class="del-link iv-remove">remover item</button></div>'+
-    '</div>';
+    '</div>'+
+    '<div class="form-row" style="margin-top:6px;">'+
+    '<div><label>Canal deste item</label><select class="iv-canal">'+opcoesComPlaceholder(CANAIS,'Mesmo canal acima')+'</select></div>'+
+    '<div><label>Forma de pagamento deste item</label><select class="iv-pagamento">'+opcoesComPlaceholder(PAGAMENTOS,'Mesma forma acima')+'</select></div>'+
+    '</div>'+
+    '<div class="hint" style="margin-top:2px;">Deixe em branco pra usar o mesmo canal/forma de pagamento escolhidos no topo — só preencha se ESTE item específico veio de outro canal ou foi pago de outro jeito (ex: item 1 veio do Hub, item 2 foi uma venda ativa da entregadora).</div>';
   const catHiddenEl = div.querySelector('#'+catHiddenId);
   if(catHiddenEl) catHiddenEl.classList.add('iv-categoria');
   const produtoLivreInput = div.querySelector('.iv-produto-livre');
@@ -4075,8 +4087,6 @@ function preencherFormEdicaoVenda(v, fvEl){
   }
   fvEl.querySelector('button[type=submit]').textContent='Salvar alterações';
   const itensExtraEl = document.getElementById('itens-extra-lista'); if(itensExtraEl) itensExtraEl.innerHTML='';
-  const btnAddItemEl = document.getElementById('btn-add-item-venda'); if(btnAddItemEl) btnAddItemEl.style.display='none';
-  const btnAddItemMesmaCatEl = document.getElementById('btn-add-item-mesma-categoria'); if(btnAddItemMesmaCatEl) btnAddItemMesmaCatEl.style.display='none';
   toggleDetalhesEntregaVenda();
   atualizarTotalCarrinho();
   fvEl.scrollIntoView({behavior:'smooth'});
@@ -4601,7 +4611,7 @@ function viewVendas(){
       '<td><button type="button" class="btn small ghost" data-juntar-vendas-cliente="'+i+'">🔗 Juntar em 1 venda</button></td></tr>').join('')+
     '</tbody></table></div></div>';
 
-  return cardVendasDuplicadasTopo+cardVendasSeparadas+'<div class="card"><details><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
+  return cardVendasDuplicadasTopo+cardVendasSeparadas+'<div class="card"><details id="details-venda-manual"'+(vendaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
@@ -4671,7 +4681,7 @@ function viewVendas(){
     '<button type="submit" class="btn">Registrar venda</button></form></details></div>'+
     formLancamentoVendaAnteriorHtml(clienteOpts)+
     '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
-    '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje)+'</div></div>'+
+    '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje, {compacta:true})+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
     '<div class="filtro-vendas-row">'+
     '<div style="flex:2 1 220px;"><label style="font-size:11px;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por cliente, produto, empresa, canal ou pagamento..."></div>'+
@@ -4810,10 +4820,12 @@ function legendaBolinhasPagamentoHtml(){
     LEGENDA_PAGAMENTOS.map(l=>'<span style="display:inline-flex;align-items:center;gap:5px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:'+l.cor+';border:1px solid rgba(0,0,0,0.35);"></span>'+escapeHtmlCampanha(l.pagamento)+'</span>').join('')+
     '</div>';
 }
-function vendasTable(list){
+function vendasTable(list, opts){
+  opts = opts || {};
   if(list.length===0) return '<div class="empty">Nenhuma venda encontrada.</div>';
+  const classeWrap = 'table-wrap tabela-vendas'+(opts.compacta?' tabela-vendas-compacta':'');
   return legendaBolinhasPagamentoHtml()+
-    '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:4%;"><col style="width:5%;"><col style="width:7%;"><col style="width:19%;"><col style="width:8%;"><col style="width:9%;"><col style="width:10%;"><col style="width:6%;"><col style="width:7%;"><col style="width:8%;"><col style="width:6%;"><col style="width:10%;"></colgroup><thead><tr><th title="Legenda da forma de pagamento">●</th><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
+    '<div class="'+classeWrap+'"><table><colgroup><col style="width:4%;"><col style="width:5%;"><col style="width:7%;"><col style="width:19%;"><col style="width:8%;"><col style="width:9%;"><col style="width:10%;"><col style="width:6%;"><col style="width:7%;"><col style="width:8%;"><col style="width:6%;"><col style="width:10%;"></colgroup><thead><tr><th title="Legenda da forma de pagamento">●</th><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Qtd</th><th>Valor</th><th>Pagto</th><th>Nota</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
@@ -8263,6 +8275,8 @@ function attachHandlers(){
   };
 
   const fv = document.getElementById('form-venda');
+  const detalhesVendaManual = document.getElementById('details-venda-manual');
+  if(detalhesVendaManual) detalhesVendaManual.ontoggle = ()=>{ vendaManualAberta = detalhesVendaManual.open; };
   if(fv) fv.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(fv);
@@ -8312,6 +8326,36 @@ function attachHandlers(){
           if(!v.retirado){ v.retirado = true; v.retiradoForma = 'Editado manualmente'; v.retiradoEm = Date.now(); }
         }
         if(v.cliente && (v.pagamento||'').includes('Fiado')) verificarLimiteCreditoCliente(v.cliente);
+        // Permite acrescentar mais produtos a esta mesma venda na hora de editar, igual dá pra
+        // fazer no lançamento normal — cada item extra vira um novo registro de venda ligado ao
+        // mesmo grupoId (mesma venda), com os mesmos dados de cliente/pagamento/entrega já salvos acima.
+        const grupoIdVendaEditada = v.grupoId || v.id;
+        const pendenteRetiradaEdit = v.tipo_entrega === 'Falta retirar' && !v.estoqueBaixado;
+        document.querySelectorAll('.iv-extra-row').forEach(row=>{
+          const catExtra = row.querySelector('.iv-categoria').value;
+          if(!catExtra) return;
+          const contExtra = isControlada(catExtra);
+          const prodExtra = contExtra ? catExtra : (row.querySelector('.iv-produto-livre').value || '(sem nome)');
+          const qtdExtra = Number(row.querySelector('.iv-quantidade').value)||0;
+          const vUnitExtra = Number(row.querySelector('.iv-valor-unit').value)||0;
+          const notaExtra = (row.querySelector('.iv-nota')||{}).value || v.nota;
+          if(qtdExtra<=0) return;
+          // Canal/pagamento do item extra: em branco = repete o canal/forma da venda que está sendo
+          // editada (comportamento de antes); só diverge se o usuário escolher algo específico pra
+          // este item (ex: item novo entrou como venda ativa da entregadora, enquanto o item
+          // original veio do Hub) — assim os dois ficam corretos mesmo dentro da mesma venda.
+          const canalExtra = (row.querySelector('.iv-canal')||{}).value || v.canal;
+          const pagamentoExtra = (row.querySelector('.iv-pagamento')||{}).value || v.pagamento;
+          const novoItemDaVenda = {
+            id:uid(), criadoEm:Date.now(), grupoId:grupoIdVendaEditada, fiado_pago:false, frete:0,
+            entrega_status: v.entrega_hora?'pendente':'', estoqueBaixado: !pendenteRetiradaEdit, retirado: !pendenteRetiradaEdit, retiradoForma: pendenteRetiradaEdit?'':'Editado manualmente', retiradoEm: pendenteRetiradaEdit?null:Date.now(),
+            data:v.data, cliente:v.cliente, canal:canalExtra, pagamento:pagamentoExtra, tipo_entrega:v.tipo_entrega, cupom:v.cupom,
+            empresa:v.empresa, entrega_data:v.entrega_data, entrega_hora:v.entrega_hora, obs:v.obs,
+            categoria:catExtra, produto:prodExtra, quantidade:qtdExtra, valor_unit:vUnitExtra, valor_total: Math.round(qtdExtra*vUnitExtra*100)/100, nota: notaExtra
+          };
+          state.vendas.push(novoItemDaVenda);
+          if(!pendenteRetiradaEdit) ajustaEstoquePorVenda(catExtra, qtdExtra, false);
+        });
       }
       editVendaId = null;
     } else {
@@ -8324,8 +8368,17 @@ function attachHandlers(){
         const qtd = Number(row.querySelector('.iv-quantidade').value)||0;
         const vUnit = Number(row.querySelector('.iv-valor-unit').value)||0;
         const notaItem = (row.querySelector('.iv-nota')||{}).value || f.get('nota');
+        // Canal/pagamento do item: em branco = usa o mesmo canal/forma escolhido no topo do
+        // formulário (comportamento de antes). Só diverge quando o usuário escolhe algo específico
+        // pra ESTE item — ex: um item veio do Hub e outro foi uma venda ativa da entregadora, tudo
+        // dentro da mesma "venda" (mesmo grupoId) pra não perder essa informação em relatórios.
+        const canalItem = (row.querySelector('.iv-canal')||{}).value || '';
+        const pagamentoItem = (row.querySelector('.iv-pagamento')||{}).value || '';
         if(qtd>0){
-          itens.push({categoria:cat, produto:prod, quantidade:qtd, valor_unit:vUnit, valor_total: Math.round(qtd*vUnit*100)/100, nota: notaItem});
+          const itemObj = {categoria:cat, produto:prod, quantidade:qtd, valor_unit:vUnit, valor_total: Math.round(qtd*vUnit*100)/100, nota: notaItem};
+          if(canalItem) itemObj.canal = canalItem;
+          if(pagamentoItem) itemObj.pagamento = pagamentoItem;
+          itens.push(itemObj);
         }
       });
       const camposComuns = {
@@ -8413,7 +8466,13 @@ function attachHandlers(){
     }
     if(empresaFormVenda) await garantirEmpresaCadastrada(empresaFormVenda);
     await save('vendas'); await save('estoque');
+    // Mantém o painel de lançamento manual aberto e volta a tela pra ele — sem isso, depois de
+    // registrar a venda o formulário fechava e a página voltava pro topo, dando a impressão de
+    // que tinha "sumido" a tela, quando na verdade dava pra continuar lançando a próxima venda.
+    vendaManualAberta = true;
     renderAll();
+    const detalhesVendaManualPos = document.getElementById('details-venda-manual');
+    if(detalhesVendaManualPos) detalhesVendaManualPos.scrollIntoView({behavior:'smooth', block:'start'});
   };
   const chkVendaAntigaValorExtra = document.getElementById('chk-venda-antiga-valor-extra');
   const wrapVendaAntigaValorExtra = document.getElementById('wrap-venda-antiga-valor-extra');
@@ -8517,7 +8576,12 @@ function attachHandlers(){
     await save('clientes');
     if(fv) fv.cliente.value = nome;
     novoClienteVendaWrap.style.display = 'none';
-    const dl = document.getElementById('lista-clientes'); if(dl) dl.innerHTML = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
+    // Atualiza TODO datalist de cliente que estiver na tela agora (não só o do lançamento
+    // manual) — a tela de Vendas também tem o formulário "Lançar venda de dia anterior"
+    // logo abaixo, com o seu próprio datalist, que antes ficava com a lista velha até
+    // recarregar a página inteira.
+    const opcoesClientesAtualizadas = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
+    document.querySelectorAll('datalist[id^="lista-clientes"]').forEach(dl=>{ dl.innerHTML = opcoesClientesAtualizadas; });
     atualizarBoxCreditoVenda();
   };
   document.querySelectorAll('[data-wa-venda]').forEach(btn=>btn.onclick=()=>{
