@@ -3819,6 +3819,7 @@ function viewDashboard(){
   const fiadoAberto = totalFiadoAberto();
   const emHaver = totalEmHaver();
   const conveniosMes = totalConveniosMes(mk);
+  const mediaVendasDiaMes = mediaVendasPorDiaMes(mk, totalVendasMes);
   const alertasEstoque = itensAbaixoDoMinimo();
 
   const pendenciasRetiradaDash = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado);
@@ -3839,6 +3840,7 @@ function viewDashboard(){
     '<div class="metric metric-link" data-ir-relatorio="fiado"><div class="label">A receber</div><div class="value">'+fmtMoney(fiadoAberto)+'</div></div>'+
     '<div class="metric metric-link" data-ir-relatorio="creditos"><div class="label">Em haver</div><div class="value">'+fmtMoney(emHaver)+'</div></div>'+
     '<div class="metric metric-link" data-ir-relatorio="empresas"><div class="label">Convênios no mês</div><div class="value">'+fmtMoney(conveniosMes)+'</div></div>'+
+    '<div class="metric"><div class="label">Média de vendas por dia</div><div class="value">'+fmtMoney(mediaVendasDiaMes)+'</div></div>'+
     '</div></div>'+
     '<div class="card"><h2>Vendas do mês por categoria</h2><div class="grid cols4">'+
     '<div class="metric"><div class="label"><span class="badge gas">Gás</span></div><div class="value">'+fmtMoney(gasMes)+'</div></div>'+
@@ -3930,6 +3932,16 @@ function totalConveniosMes(mk){
   const vendasConvenio = state.vendas.filter(v=>monthKey(v.data)===mk && v.empresa).reduce((s,v)=>s+v.valor_total,0);
   const lancConvenio = state.convenioLancamentos.filter(c=>monthKey(c.data)===mk).reduce((s,c)=>s+c.valor,0);
   return vendasConvenio + lancConvenio;
+}
+// "Dias que já trabalhou" = dias corridos do mês até hoje (você trabalha todos os dias).
+// Uso a data local do aparelho (getDate/getMonth), e não todayStr()/toISOString(), porque
+// todayStr() calcula em UTC — isso faz o sistema já considerar "outro dia" a partir das
+// ~21h no horário do Brasil (UTC-3), o que bagunçaria essa contagem perto do fim do dia.
+function diaMesLocal(){ return new Date().getDate(); }
+function mesAtualLocal(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function mediaVendasPorDiaMes(mk, totalVendasMes){
+  const diasTrabalhados = (mesAtualLocal()===mk) ? diaMesLocal() : diasNoMes(mk);
+  return diasTrabalhados>0 ? totalVendasMes/diasTrabalhados : 0;
 }
 
 
@@ -4684,9 +4696,11 @@ function viewVendas(){
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje, {compacta:true})+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
     '<div class="filtro-vendas-row">'+
-    '<div style="flex:2 1 220px;"><label style="font-size:11px;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por cliente, produto, empresa, canal ou pagamento..."></div>'+
+    '<div style="flex:2 1 220px;"><label style="font-size:11px;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por produto, categoria, cliente, empresa, canal, pagamento, entrega, nota, cupom, data, valor..."></div>'+
     '<div style="flex:1 1 130px;"><label style="font-size:11px;">De</label><input type="date" id="busca-venda-data-de" title="Filtrar a partir desta data"></div>'+
     '<div style="flex:1 1 130px;"><label style="font-size:11px;">Até</label><input type="date" id="busca-venda-data-ate" title="Filtrar até esta data"></div>'+
+    '<div style="flex:1 1 130px;"><label style="font-size:11px;">Categoria</label><select id="sel-filtro-categoria-venda"><option value="">Todas</option><option value="gas">Gás</option><option value="agua">Água</option><option value="outros">Outros</option></select></div>'+
+    '<div style="flex:1 1 170px;"><label style="font-size:11px;">Tipo da categoria</label><select id="sel-filtro-tipo-venda"><option value="">Todos</option></select></div>'+
     '<div style="flex:1 1 170px;position:relative;"><label style="font-size:11px;">Produto</label>'+
     '<details id="filtro-produto-venda-details" class="filtro-coluna"><summary id="filtro-produto-venda-resumo">Todos os produtos</summary>'+
     '<div id="filtro-produto-venda-lista" class="filtro-coluna-lista"></div></details></div>'+
@@ -9384,6 +9398,10 @@ function attachHandlers(){
 
   let paginaVendasHistorico = 1;
   let produtosVendaSelecionados = [];
+  let categoriaVendaSelecionada = '';
+  let tipoVendaSelecionado = '';
+  const selFiltroCategoriaVenda = document.getElementById('sel-filtro-categoria-venda');
+  const selFiltroTipoVenda = document.getElementById('sel-filtro-tipo-venda');
   const detalhesFiltroProdutoVenda = document.getElementById('filtro-produto-venda-details');
   const listaFiltroProdutoVenda = document.getElementById('filtro-produto-venda-lista');
   const resumoFiltroProdutoVenda = document.getElementById('filtro-produto-venda-resumo');
@@ -9392,10 +9410,18 @@ function attachHandlers(){
     resumoFiltroProdutoVenda.textContent = produtosVendaSelecionados.length===0 ? 'Todos os produtos' :
       (produtosVendaSelecionados.length===1 ? produtosVendaSelecionados[0] : produtosVendaSelecionados.length+' produtos selecionados');
   };
+  // Lista de vendas já filtrada pela Categoria e pelo Tipo da categoria escolhidos acima —
+  // é a partir dela que a lista de Produtos é montada, então o dropdown de produto só mostra
+  // o que faz sentido pra o que já foi escolhido (em vez de todo produto já vendido no sistema).
+  const vendasParaFiltroProduto = ()=> state.vendas.filter(v=>
+    (!categoriaVendaSelecionada || grupoDaCategoria(v.categoria)===categoriaVendaSelecionada) &&
+    (!tipoVendaSelecionado || v.categoria===tipoVendaSelecionado));
   const montarFiltroProdutoVenda = ()=>{
     if(!listaFiltroProdutoVenda) return;
-    const produtos = Array.from(new Set(state.vendas.map(v=>v.produto).filter(Boolean))).sort((a,b)=>a.localeCompare(b));
-    listaFiltroProdutoVenda.innerHTML = '<div class="filtro-coluna-acoes"><button type="button" class="link-btn" id="btn-filtro-produto-todos">Marcar todos</button><button type="button" class="link-btn" id="btn-filtro-produto-nenhum">Limpar</button></div>'+
+    const produtos = Array.from(new Set(vendasParaFiltroProduto().map(v=>v.produto).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    produtosVendaSelecionados = produtosVendaSelecionados.filter(p=>produtos.includes(p));
+    listaFiltroProdutoVenda.innerHTML = produtos.length===0 ? '<div class="hint" style="margin:0;">Nenhum produto encontrado.</div>' :
+      '<div class="filtro-coluna-acoes"><button type="button" class="link-btn" id="btn-filtro-produto-todos">Marcar todos</button><button type="button" class="link-btn" id="btn-filtro-produto-nenhum">Limpar</button></div>'+
       produtos.map(p=>'<label><input type="checkbox" class="chk-filtro-produto-venda" value="'+p.replace(/"/g,'&quot;')+'" '+(produtosVendaSelecionados.includes(p)?'checked':'')+'> '+p+'</label>').join('');
     const btnTodos = document.getElementById('btn-filtro-produto-todos');
     const btnNenhum = document.getElementById('btn-filtro-produto-nenhum');
@@ -9410,6 +9436,31 @@ function attachHandlers(){
       };
     });
   };
+  // Tipo da categoria: só mostra os tipos que pertencem à Categoria (Gás/Água/Outros) escolhida.
+  // Sem Categoria escolhida, mostra todos os tipos que já apareceram em alguma venda.
+  const montarFiltroTipoVenda = ()=>{
+    if(!selFiltroTipoVenda) return;
+    const tipos = Array.from(new Set(state.vendas.filter(v=>!categoriaVendaSelecionada || grupoDaCategoria(v.categoria)===categoriaVendaSelecionada).map(v=>v.categoria).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    if(tipoVendaSelecionado && !tipos.includes(tipoVendaSelecionado)) tipoVendaSelecionado = '';
+    selFiltroTipoVenda.innerHTML = '<option value="">Todos</option>'+tipos.map(t=>'<option value="'+t.replace(/"/g,'&quot;')+'"'+(t===tipoVendaSelecionado?' selected':'')+'>'+t+'</option>').join('');
+  };
+  if(selFiltroCategoriaVenda) selFiltroCategoriaVenda.onchange = ()=>{
+    categoriaVendaSelecionada = selFiltroCategoriaVenda.value;
+    tipoVendaSelecionado = '';
+    montarFiltroTipoVenda();
+    montarFiltroProdutoVenda();
+    atualizarResumoFiltroProdutoVenda();
+    paginaVendasHistorico = 1;
+    filtrarListaVendas();
+  };
+  if(selFiltroTipoVenda) selFiltroTipoVenda.onchange = ()=>{
+    tipoVendaSelecionado = selFiltroTipoVenda.value;
+    montarFiltroProdutoVenda();
+    atualizarResumoFiltroProdutoVenda();
+    paginaVendasHistorico = 1;
+    filtrarListaVendas();
+  };
+  montarFiltroTipoVenda();
   if(detalhesFiltroProdutoVenda) montarFiltroProdutoVenda();
   const filtrarListaVendas = ()=>{
     const q = (buscaVenda?buscaVenda.value:'').toLowerCase().trim();
@@ -9419,10 +9470,14 @@ function attachHandlers(){
     let base = state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm);
     if(dataDe) base = base.filter(v=>v.data>=dataDe);
     if(dataAte) base = base.filter(v=>v.data<=dataAte);
+    if(categoriaVendaSelecionada) base = base.filter(v=>grupoDaCategoria(v.categoria)===categoriaVendaSelecionada);
+    if(tipoVendaSelecionado) base = base.filter(v=>v.categoria===tipoVendaSelecionado);
     if(produtosVendaSelecionados.length>0) base = base.filter(v=>produtosVendaSelecionados.includes(v.produto));
     if(q) base = base.filter(v=>{
-      const alvo = (v.produto+' '+(v.cliente||'')+' '+(v.empresa||'')+' '+(v.canal||'')+' '+v.pagamento+' '+(v.obs||'')).toLowerCase();
-      return alvo.includes(q);
+      const alvo = chaveNormalizada([v.produto, v.categoria, v.cliente, v.empresa, v.canal, v.pagamento,
+        v.tipo_entrega, v.nota, v.cupom, v.obs, fmtDate(v.data), v.quantidade, fmtMoney(v.valor_total)]
+        .filter(x=>x!==undefined && x!==null && x!=='').join(' '));
+      return alvo.includes(chaveNormalizada(q));
     });
     const totalPaginas = Math.max(1, Math.ceil(base.length/porPagina));
     if(paginaVendasHistorico>totalPaginas) paginaVendasHistorico = totalPaginas;
@@ -9456,6 +9511,10 @@ function attachHandlers(){
     if(buscaVenda) buscaVenda.value='';
     if(buscaVendaDataDe) buscaVendaDataDe.value='';
     if(buscaVendaDataAte) buscaVendaDataAte.value='';
+    categoriaVendaSelecionada = '';
+    tipoVendaSelecionado = '';
+    if(selFiltroCategoriaVenda) selFiltroCategoriaVenda.value='';
+    montarFiltroTipoVenda();
     produtosVendaSelecionados = [];
     if(detalhesFiltroProdutoVenda) detalhesFiltroProdutoVenda.open = false;
     montarFiltroProdutoVenda();
