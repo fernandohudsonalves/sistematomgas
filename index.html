@@ -1257,10 +1257,40 @@ const ALIASES_CATEGORIAS_GAS = {};
 ['P5','P13','P20','P45'].forEach(function(t){
   ALIASES_CATEGORIAS_GAS[chaveNormalizada(t)] = 'Carga de Gás ' + t;
 });
+// Apelidos de categorias NÃO controladas (Outros): quando alguém digita um nome diferente do
+// oficial na planilha de Importação diária (coluna "Categoria/Produto"), o sistema entende que é
+// a categoria já cadastrada à direita, em vez de criar uma categoria nova e duplicada.
+const ALIASES_CATEGORIAS_OUTRAS = {};
+ALIASES_CATEGORIAS_OUTRAS[chaveNormalizada('mercearia')] = 'Produtos de Mercearia';
+// Categorias antigas que não existem mais e devem ser removidas automaticamente (junto com os
+// produtos cadastrados nelas) se ainda sobrarem no sistema — vendas já lançadas no passado com
+// essas categorias continuam no histórico normalmente, só a categoria em si some da lista.
+const CATEGORIAS_LEGADO_EXCLUIR = ['Salgados/Snacks'];
 const CATEGORIAS_OUTRAS = ['Acessórios para Gás','Acessórios para Água','Bandeja de Ovos','Bebidas','Caldos','Camisetas',
   'Carvão','Cosméticos','Dúzia de Ovos','Farofas','Impressões e Xérox','Nhoque','Ovos Soltos','Produtos de Limpeza',
   'Produtos de Mercearia','Serviços Fernando','Suplementos','Terra dos Ventos','Toalhas'];
 const CATEGORIAS_PRODUTO_PADRAO = CATEGORIAS_CONTROLADAS.concat(CATEGORIAS_OUTRAS);
+// Ícone pequeno que representa cada categoria (Tipo da categoria) nas telas de relatório —
+// por enquanto só no quadro "Vendas por categoria no período" do Painel. Mantido num mapa à
+// parte pra facilitar adicionar/trocar ícone de categoria nova sem mexer na tela em si.
+const ICONES_CATEGORIA = {};
+['P5','P13','P20','P45'].forEach(function(t){
+  ICONES_CATEGORIA['Carga de Gás ' + t] = '🔥';
+  ICONES_CATEGORIA['Vasilhame de Gás ' + t] = '🛢️';
+});
+ICONES_CATEGORIA['Gás do Povo'] = '🔥';
+[['dfonte',"Água D'Fonte"],['safira','Água Safira']].forEach(function(par){
+  var label = par[1];
+  ICONES_CATEGORIA['Carga de ' + label + ' 20L'] = '💧';
+  ICONES_CATEGORIA['Vasilhame de ' + label + ' 20L'] = '🫙';
+});
+Object.assign(ICONES_CATEGORIA, {
+  'Acessórios para Gás':'🔧','Acessórios para Água':'🚰',
+  'Bandeja de Ovos':'🥚','Dúzia de Ovos':'🥚','Ovos Soltos':'🥚',
+  'Bebidas':'🥤','Caldos':'🍲','Camisetas':'👕','Carvão':'🪨','Cosméticos':'💄',
+  'Farofas':'🌾','Impressões e Xérox':'🖨️','Nhoque':'🍝','Produtos de Limpeza':'🧼',
+  'Produtos de Mercearia':'🛒','Serviços Fernando':'🛠️','Suplementos':'💊','Terra dos Ventos':'📦','Toalhas':'🧻'
+});
 /* Grupo (Gás / Água / Outros) de cada subcategoria não controlada — usado pra organizar o catálogo
    e a planilha de importação. Subcategorias sem entrada aqui caem em "Outros" por padrão. */
 const CATEGORIAS_OUTRAS_GRUPO_PADRAO = {'Acessórios para Gás':'gas','Acessórios para Água':'agua'};
@@ -3297,6 +3327,18 @@ async function loadAll(){
     if(categoriasMudaram){
       await save('categoriasProdutos'); await save('produtos'); await save('vendas'); await save('agendamentos');
     }
+    let categoriasLegadoRemovidas = false;
+    CATEGORIAS_LEGADO_EXCLUIR.forEach(function(cat){
+      if(state.categoriasProdutos.includes(cat)){
+        state.categoriasProdutos = state.categoriasProdutos.filter(c=>c!==cat);
+        state.produtos = state.produtos.filter(p=>p.categoria!==cat);
+        if(state.categoriasProdutosGrupo) delete state.categoriasProdutosGrupo[cat];
+        categoriasLegadoRemovidas = true;
+      }
+    });
+    if(categoriasLegadoRemovidas){
+      await save('categoriasProdutos'); await save('produtos'); await save('categoriasProdutosGrupo');
+    }
     const catsUnif = mesclarCategoriasDuplicadas();
     const despUnif = mesclarCategoriasDespesasDuplicadas();
     const prodUnif = mesclarProdutosDuplicados();
@@ -3975,7 +4017,7 @@ function renderDashboardRelatorios(){
   const linhasCategoria = Object.entries(porCategoria).sort((a,b)=>b[1]-a[1]);
   document.getElementById('db-vendas-categoria').innerHTML = linhasCategoria.length===0 ? '<div class="empty">Nada vendido no período.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Total</th></tr></thead><tbody>'+
-    linhasCategoria.map(l=>'<tr><td>'+l[0]+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+'</tbody></table></div>';
+    linhasCategoria.map(l=>'<tr><td>'+(ICONES_CATEGORIA[l[0]]?'<span style="font-size:12px;margin-right:5px;">'+ICONES_CATEGORIA[l[0]]+'</span>':'')+l[0]+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+'</tbody></table></div>';
 
   const carrinhos = {};
   vendas.forEach(v=>{ const chave = v.grupoId || v.id; carrinhos[chave] = (carrinhos[chave]||0) + v.valor_total + (v.frete||0); });
@@ -11890,6 +11932,9 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           if(resolvido && resolvido.acao==='existente'){
             categoria = resolvido.categoria;
           } else if(categoriaControladaEquivalente(textoCategoria)){ ignoradas++; return; }
+          else if(ALIASES_CATEGORIAS_OUTRAS[chaveTexto] && state.categoriasProdutos.includes(ALIASES_CATEGORIAS_OUTRAS[chaveTexto])){
+            categoria = ALIASES_CATEGORIAS_OUTRAS[chaveTexto];
+          }
           else {
             categoria = textoCategoria;
             if(!state.categoriasProdutos.includes(categoria)) state.categoriasProdutos.push(categoria);
@@ -12601,6 +12646,7 @@ function detectarProdutosPendentesVendas(linhasVendas){
     const existente = state.categoriasProdutos.find(c=>chaveNormalizada(c)===chave);
     if(existente) return;
     if(categoriaControladaEquivalente(texto)) return;
+    if(ALIASES_CATEGORIAS_OUTRAS[chave] && state.categoriasProdutos.includes(ALIASES_CATEGORIAS_OUTRAS[chave])) return;
     if(!distintos.has(chave)) distintos.set(chave, {texto, ocorrencias:0});
     distintos.get(chave).ocorrencias++;
   });
