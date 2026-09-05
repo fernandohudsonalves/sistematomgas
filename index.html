@@ -1298,6 +1298,27 @@ const GRUPOS_PRODUTO = [{chave:'gas',label:'Gás'},{chave:'agua',label:'Água'},
 function labelGrupoProduto(g){ const info = GRUPOS_PRODUTO.find(x=>x.chave===g); return info ? info.label : 'Outros'; }
 function chaveGrupoProduto(label){ const info = GRUPOS_PRODUTO.find(x=>chaveNormalizada(x.label)===chaveNormalizada(String(label||''))); return info ? info.chave : 'outros'; }
 const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Combustível','Salário','Aluguel','Manutenção','IPVA','Seguro do veículo','Peças / Pneus / Óleo','Energia Elétrica','Água / Saneamento','Desperdício / Descarte','Outros'];
+// Ícone de cada categoria de despesa, igual já existe pras categorias de produto (ICONES_CATEGORIA).
+// Categorias que o usuário cadastrar por conta própria (fora dessa lista padrão) simplesmente não
+// mostram ícone, do mesmo jeito que já acontece com categoria de produto nova.
+const ICONES_CATEGORIA_DESPESA = {
+  'Fornecedor / Reposição':'📦','Transporte / Combustível':'⛽','Salário':'💵','Aluguel':'🏠',
+  'Manutenção':'🔧','IPVA':'📋','Seguro do veículo':'🛡️','Peças / Pneus / Óleo':'🛠️',
+  'Energia Elétrica':'💡','Água / Saneamento':'🚿','Desperdício / Descarte':'🗑️','Outros':'📁'
+};
+function iconeCategoriaDespesaHtml(cat){
+  const ic = ICONES_CATEGORIA_DESPESA[cat];
+  return ic ? '<span style="font-size:12px;margin-right:5px;">'+ic+'</span>' : '';
+}
+// Monta as <option> de uma lista de categorias de despesa com o ícone na frente do texto, mas
+// mantendo o value= igual ao nome puro da categoria (sem o ícone) — senão o formulário salvaria
+// a categoria com o emoji junto e quebraria a comparação em todo o resto do sistema.
+function optsCategoriaDespesaComIcone(lista, selecionada){
+  return lista.map(function(cat){
+    const ic = ICONES_CATEGORIA_DESPESA[cat];
+    return '<option value="'+escapeHtmlCampanha(cat)+'"'+(selecionada===cat?' selected':'')+'>'+(ic?ic+' ':'')+cat+'</option>';
+  }).join('');
+}
 function ehCategoriaESG(cat){ return cat==='Energia Elétrica' || cat==='Água / Saneamento' || /^Desperdício/i.test(cat||''); }
 const PALAVRAS_CHAVE_VEICULO = ['combust','manuten','ipva','seguro','pneu','oleo','peca','peça','oficina','revis','veicul','licenciamento'];
 function categoriaParaceVeiculo(cat){ const k=chaveNormalizada(cat); return PALAVRAS_CHAVE_VEICULO.some(p=>k.includes(chaveNormalizada(p))); }
@@ -4569,7 +4590,7 @@ function viewCadastroDespesas(){
       return '<tr><td><input type="text" id="input-edit-cat-despesa" value="'+cat+'"></td><td>'+qtd+' despesa(s)</td>'+
         '<td><button class="act-link" data-save-cat-despesa="'+cat+'">✓ salvar</button><button class="del-link" data-cancel-cat-despesa="'+cat+'">cancelar</button></td></tr>';
     }
-    return '<tr><td>'+cat+'</td><td>'+qtd+' despesa(s)</td>'+
+    return '<tr><td>'+iconeCategoriaDespesaHtml(cat)+cat+'</td><td>'+qtd+' despesa(s)</td>'+
       '<td><button class="act-link" data-edit-cat-despesa="'+cat+'">✎ editar</button><button class="del-link" data-del-cat-despesa="'+cat+'">🗑 excluir</button></td></tr>';
   }).join('');
   const tabelaDesp = catsDesp.length===0 ? '<div class="empty">Nenhuma categoria de despesa cadastrada ainda.</div>' :
@@ -4929,7 +4950,7 @@ function viewDespesas(){
     '<form id="form-despesa">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
-    '<div><label>Categoria <span class="req">*</span></label><select name="categoria" required>'+opcoesComPlaceholder(state.categoriasDespesas,'Escolha uma categoria')+'</select>'+
+    '<div><label>Categoria <span class="req">*</span></label><select name="categoria" required><option value="" selected disabled>Escolha uma categoria</option>'+optsCategoriaDespesaComIcone(state.categoriasDespesas)+'</select>'+
     '<button type="button" class="link-btn" id="btn-nova-cat-despesa">+ nova categoria de despesa</button></div>'+
     '<div><label>Valor (R$) <span class="req">*</span></label><input type="text" inputmode="decimal" name="valor" placeholder="0,00" required></div>'+
     '</div>'+
@@ -4957,7 +4978,7 @@ function despesasTable(list){
   return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Veículo</th><th>Valor</th><th></th></tr></thead><tbody>'+
   list.map(d=>{
     const v = d.veiculoId ? (state.veiculos||[]).find(x=>x.id===d.veiculoId) : null;
-    return '<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+(d.contaPagarId?' <span class="hint" title="Gerada a partir de Contas a Pagar">📑</span>':'')+'</td><td>'+d.categoria+'</td><td>'+(v?(iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)):'—')+'</td><td>'+fmtMoney(d.valor)+'</td>'+
+    return '<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+(d.contaPagarId?' <span class="hint" title="Gerada a partir de Contas a Pagar">📑</span>':'')+'</td><td>'+iconeCategoriaDespesaHtml(d.categoria)+d.categoria+'</td><td>'+(v?(iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)):'—')+'</td><td>'+fmtMoney(d.valor)+'</td>'+
     '<td><button class="act-link" data-edit-despesa="'+d.id+'">✎ editar</button><button class="del-link" data-del-despesa="'+d.id+'">🗑 excluir</button></td></tr>';
   }).join('')+'</tbody></table></div>';
 }
@@ -5035,7 +5056,7 @@ function viewContasPagar(){
   const editando = editContaPagarId ? state.contasPagar.find(x=>x.id===editContaPagarId) : null;
   const lista = state.contasPagar.slice().sort((a,b)=> (a.status==='pago')-(b.status==='pago') || a.vencimento.localeCompare(b.vencimento));
   const vencidas = lista.filter(c=>c.status!=='pago' && diasEntre(todayStr(),c.vencimento)<0).length;
-  const optsCategoria = state.categoriasDespesas.map(cat=>'<option'+(editando&&editando.categoria===cat?' selected':'')+'>'+cat+'</option>').join('');
+  const optsCategoria = optsCategoriaDespesaComIcone(state.categoriasDespesas, editando?editando.categoria:null);
   return '<div class="card"><h2>📑 Contas a pagar</h2>'+ajudaHtml('contaspagar','Use esta aba só pra AGENDAR o que você deve e acompanhar vencimentos (aluguel, salário, parcelas, fornecedores) — ela não é um lançamento de gasto por si só. Quando marcar como "paga", o sistema cria a despesa correspondente sozinho, na data que você informar; não lance essa mesma conta de novo em Despesas. Se for uma conta que se repete todo mês, marque "recorrente" e a próxima já é criada sozinha.')+
     (vencidas>0 ? '<div class="import-conferencia-alert">⚠ '+vencidas+' conta(s) vencida(s) sem pagamento.</div>' : '')+
     '<form id="form-conta-pagar" data-editid="'+(editando?editando.id:'')+'">'+
@@ -5142,7 +5163,7 @@ function viewDetalheVeiculo(v){
       '<td>'+(d.observacaoFutura?escapeHtmlCampanha(d.observacaoFutura):'—')+'</td><td>'+comp+'</td>'+
       '<td class="cel-acoes"><button class="act-link" data-edit-manutencao="'+d.id+'">✎</button><button class="del-link" data-del-manutencao="'+d.id+'">🗑</button></td></tr>';
   }).join('');
-  const optsCategoria = categoriasVeiculoDisponiveis().map(cat=>'<option'+(editando&&editando.categoria===cat?' selected':'')+'>'+cat+'</option>').join('');
+  const optsCategoria = optsCategoriaDespesaComIcone(categoriasVeiculoDisponiveis(), editando?editando.categoria:null);
   return '<div class="card"><h2 style="display:flex;align-items:center;gap:8px;">'+iconeVeiculoHtml(v,18)+' '+escapeHtmlCampanha(v.nome)+' — histórico</h2>'+
     (historico.length===0 ? '<div class="empty">Nenhum gasto lançado ainda pra esse veículo.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Categoria</th><th>Oficina/Local</th><th>O que foi feito</th><th>Valor</th><th>Pagamento</th><th>Garantia até</th><th>Próxima troca</th><th>Observação futura</th><th>Comprovante</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
@@ -7771,7 +7792,7 @@ function renderRelatorioDespesasResultado(){
     '<div class="metric neg" style="max-width:260px;margin-bottom:12px;"><div class="label">Total no período</div><div class="value">'+fmtMoney(total)+'</div></div>'+
     (filtradas.length===0?'<div class="empty">Nenhuma despesa encontrada.</div>':
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody>'+
-    filtradas.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>'<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+d.categoria+'</td><td>'+fmtMoney(d.valor)+'</td></tr>').join('')+
+    filtradas.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>'<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+iconeCategoriaDespesaHtml(d.categoria)+d.categoria+'</td><td>'+fmtMoney(d.valor)+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function corNota(tipo){
@@ -13167,7 +13188,7 @@ function renderCsvDespesasMapping(){
     '<div class="mapping-row"><span>Empresa/Oficina (opcional)</span><select id="map-d-oficina">'+optsVazio+'</select></div>'+
     '<div class="form-row" style="max-width:420px;margin-top:10px;">'+
     '<div><label>Data padrão (linhas sem data)</label><input type="date" id="input-d-data-base" value="'+todayStr()+'"></div>'+
-    '<div><label>Categoria padrão (linhas sem categoria)</label><select id="input-d-categoria-base">'+opcoesComPlaceholder(state.categoriasDespesas,'Selecione')+'</select></div>'+
+    '<div><label>Categoria padrão (linhas sem categoria)</label><select id="input-d-categoria-base"><option value="" selected disabled>Selecione</option>'+optsCategoriaDespesaComIcone(state.categoriasDespesas)+'</select></div>'+
     '</div>'+
     '<div class="csv-preview"><table><thead><tr>'+csvDespesasHeaders.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead>'+
     '<tbody>'+csvDespesasRows.slice(0,3).map(r=>'<tr>'+csvDespesasHeaders.map(h=>'<td>'+r[h]+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'+
