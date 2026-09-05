@@ -10385,9 +10385,8 @@ function attachHandlers(){
     document.querySelectorAll('[data-del-comodato]').forEach(btn=>btn.onclick=async()=>{
       const c = state.comodatos.find(x=>x.id===btn.dataset.delComodato);
       if(!c) return;
-      if(confirm('Excluir esse lançamento de '+c.nome+' ('+fmtDate(c.data)+')?\n\nEssa ação não pode ser desfeita.')){
-        const reverterEstoque = c.baixaEstoque ? confirm('Esse comodato tinha dado baixa/ajuste no estoque.\n\nDeseja reverter esse ajuste no estoque também?') : false;
-        if(reverterEstoque && c.estoqueLancId){
+      if(confirm('Excluir esse lançamento de '+c.nome+' ('+fmtDate(c.data)+')?\n\nEssa ação não pode ser desfeita.'+(c.baixaEstoque?'\n\nO ajuste que esse comodato tinha feito no estoque será revertido automaticamente.':''))){
+        if(c.baixaEstoque && c.estoqueLancId){
           const lancAntigo = state.estoqueLancamentos.find(l=>l.id===c.estoqueLancId);
           if(lancAntigo){
             aplicarEfeitoEstoqueLanc(lancAntigo, true);
