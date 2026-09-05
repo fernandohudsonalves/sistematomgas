@@ -1305,7 +1305,17 @@ const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Comb
 const ICONES_CATEGORIA_DESPESA = {
   'Fornecedor / Reposição':'📦','Transporte / Combustível':'⛽','Salário':'💵','Aluguel':'🏠',
   'Manutenção':'🔧','IPVA':'📋','Seguro do veículo':'🛡️','Peças / Pneus / Óleo':'🛠️',
-  'Energia Elétrica':'💡','Água / Saneamento':'🚿','Desperdício / Descarte':'🗑️','Outros':'📁'
+  'Energia Elétrica':'💡','Água / Saneamento':'🚿','Desperdício / Descarte':'🗑️','Outros':'📁',
+  // Ícones das categorias próprias já cadastradas pelo usuário (nomes exatos como estão salvos hoje)
+  'Boletos de Cargas de Gás':'🔥','Mercado':'🛒','Ração Meninos e Vilão':'🐶','Farmácia':'💊',
+  'Carvão':'🪵','Terra dos Ventos':'🍦','Produtos de Limpeza Leve Limp':'🧴','Combustível':'⛽',
+  'Arilu Rap 10':'📦','Ambev':'🍺','Coca Cola':'🥤','Suplementos Expresso dos Suplementos André':'💪',
+  'Aluguel do Barracão + Casa':'🏠','Luz do Barracão':'💡','Luz Casa':'💡','Água Casa + Barracão':'🚿',
+  'Internet':'🌐','Consórcios':'💰','IPTUS':'🏛️','Impostos Dars':'🧾','Vivo Empresarial':'📱',
+  'Plano celular Wellington':'📱','Fatura Cartões':'💳','Builderall':'💻','Boletos Natura':'💄',
+  'Médico Fer':'🏥','IPVAS E Impostos Veículos':'🚗','Boletos Natura e Avon':'💄',
+  'Manutenção Veículos':'🔧','Tratamento Vera':'🧘','Fretes Toninho':'🚚','teste':'🧪',
+  'Ovos funcionário araovos':'🥚','Produtos Naturais Fer':'🌿','Encargos':'💰'
 };
 function iconeCategoriaDespesaHtml(cat){
   const ic = ICONES_CATEGORIA_DESPESA[cat];
@@ -1416,6 +1426,7 @@ let state = {
   categoriasProdutos: CATEGORIAS_PRODUTO_PADRAO.slice(),
   categoriasProdutosGrupo: Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO),
   categoriasDespesas: CATEGORIAS_DESPESA_PADRAO.slice(),
+  gruposCruzamento: [],
   categoriasVeiculoExtra: [],
   logAtividades: [],
   fechamentosCaixa: [],
@@ -1492,6 +1503,7 @@ let editDespesaId = null, editClienteId = null, editVendaId = null, editFiadoId 
 let editEmpresaId = null, editAgendamentoId = null, pendingEditVendaId = null;
 let editPesquisaManualId = null;
 let clienteExtrato = null, clienteRegistrandoPagamento = null, editFiadoPagamentoId = null;
+let czEditandoId = null, czDeVal = null, czAteVal = null;
 let agendamentoParaConcluir = null, prefillVenda = null;
 let editProdutoId = null, clienteCredito = null, editCreditoId = null, editEstoqueMovId = null, editComodatoId = null;
 let editComunicadoId = null, telaAnteriorComunicados = 'config';
@@ -3172,7 +3184,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -3976,6 +3988,36 @@ function saldoDoCliente(cliente){
   const debitos = debitosDoCliente(cliente).reduce((s,d)=>s+d.valor,0);
   const pagos = pagamentosDoCliente(cliente).reduce((s,p)=>s+p.valor,0);
   return Math.max(0, debitos - pagos);
+}
+// Verifica em quais áreas do sistema o cliente aparece vinculado (por vendas, fiado, agendamentos,
+// créditos, comodatos, CRM etc.), pra avisar antes de excluir se ele pode ser apagado com segurança
+// ou se vai deixar histórico "órfão" (registros antigos que continuam existindo, só sem o cadastro).
+function vinculosDoCliente(cliente){
+  const chave = chaveNormalizada(cliente);
+  if(!chave) return [];
+  const bate = nome => chaveNormalizada(nome)===chave;
+  const itens = [
+    {label:'Venda(s)', qtd: state.vendas.filter(v=>bate(v.cliente)).length},
+    {label:'Fiado(s) lançado(s)', qtd: state.fiados.filter(f=>bate(f.cliente)).length},
+    {label:'Pagamento(s) de fiado', qtd: state.fiadoPagamentos.filter(p=>bate(p.cliente)).length},
+    {label:'Crédito(s) em haver', qtd: (state.creditos||[]).filter(c=>bate(c.cliente)).length},
+    {label:'Comodato(s)', qtd: (state.comodatos||[]).filter(c=>c.direcao==='cliente' && bate(c.nome)).length},
+    {label:'Agendamento(s)/entrega(s)', qtd: (state.agendamentos||[]).filter(a=>bate(a.cliente)).length},
+    {label:'Interação(ões) de CRM', qtd: (state.interacoesCliente||[]).filter(i=>bate(i.cliente)).length},
+    {label:'Follow-up(s) de CRM', qtd: (state.tarefasCliente||[]).filter(t=>bate(t.cliente)).length},
+    {label:'Anexo(s) de entrega', qtd: (state.anexosEntrega||[]).filter(a=>bate(a.cliente)).length},
+    {label:'Resposta(s) de pesquisa', qtd: (state.pesquisaClientes||[]).filter(p=>bate(p.cliente)).concat((state.respostasPesquisaManual||[]).filter(r=>bate(r.cliente))).length},
+    {label:'Parada(s) de rota', qtd: (state.paradasRota||[]).filter(p=>bate(p.cliente)).length}
+  ];
+  return itens.filter(i=>i.qtd>0);
+}
+// Frase curta pra mostrar na listagem de clientes, resumindo se ele tem ou não vínculo no sistema.
+function resumoVinculosClienteHtml(cliente){
+  const vinculos = vinculosDoCliente(cliente);
+  if(vinculos.length===0) return '<span class="hint" style="color:var(--green);">Sem vínculos — pode excluir</span>';
+  const total = vinculos.reduce((s,v)=>s+v.qtd,0);
+  const titulo = vinculos.map(v=>v.qtd+' '+v.label).join(' · ');
+  return '<span class="hint" title="'+escapeHtmlCampanha(titulo)+'" style="color:var(--amber);cursor:help;">🔗 '+total+' vínculo(s)</span>';
 }
 function verificarLimiteCreditoCliente(nomeCliente){
   if(!nomeCliente) return;
@@ -5317,12 +5359,13 @@ function viewClientes(){
 
 function clientesTable(list){
   if(list.length===0) return '<div class="empty">Nenhum cliente cadastrado ainda.</div>';
-  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:13%;"><col style="width:9%;"><col style="width:9%;"><col style="width:9%;"><col style="width:7%;"><col style="width:12%;"><col style="width:9%;"><col style="width:7%;"><col style="width:7%;"><col style="width:18%;"></colgroup><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Apelidos</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Indicado por</th><th>Anexos</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:12%;"><col style="width:8%;"><col style="width:8%;"><col style="width:8%;"><col style="width:6%;"><col style="width:11%;"><col style="width:8%;"><col style="width:7%;"><col style="width:6%;"><col style="width:10%;"><col style="width:16%;"></colgroup><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Apelidos</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Indicado por</th><th>Anexos</th><th>Vínculos no sistema</th><th></th></tr></thead><tbody>'+
   list.map(c=>{
     const anexosCli = anexosDoContexto({cliente:c.nome});
-    const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="10" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
+    const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="11" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
     return '<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+etiquetaFrequenciaClienteHtml(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+(((c.apelidos||[]).map(a=>'<span class="pill">'+escapeHtmlCampanha(a)+'</span>').join(' '))||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td><td>'+(c.indicadoPor?escapeHtmlCampanha(c.indicadoPor):'—')+'</td>'+
     '<td><button type="button" class="act-link" data-ver-anexos-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Ver anexos">📎'+anexosCli.length+'</button></td>'+
+    '<td>'+resumoVinculosClienteHtml(c.nome)+'</td>'+
     '<td class="cel-acoes">'+botaoWhatsApp(c.telefone, true)+'<button type="button" class="act-link" data-ir-crm-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Abrir ficha no CRM">🤝</button><button class="act-link" data-edit-cliente="'+c.id+'" title="editar">✎</button><button class="del-link" data-del-cliente="'+c.id+'" title="excluir">🗑</button></td></tr>'+linhaAnexos;
   }).join('')+'</tbody></table></div>';
 }
@@ -6087,6 +6130,7 @@ function viewRelatorios(){
     {id:'esg', label:'Controle ESG'},
     {id:'compararcampanhas', label:'Comparar Campanhas'},
     {id:'itens', label:'Itens por categoria'},
+    {id:'cruzamento', label:'Gasto x Venda (Cruzamento)'},
     {id:'entregas', label:'Entregas por período'},
     {id:'fretes', label:'Fretes por período'},
     {id:'combustivelfrete', label:'Combustível x Frete'},
@@ -6120,6 +6164,7 @@ function viewRelatorios(){
   else if(relatorioSub==='compararcampanhas') content = relatorioCompararCampanhas();
   else if(relatorioSub==='ranking') content = relatorioRanking();
   else if(relatorioSub==='itens') content = relatorioItens();
+  else if(relatorioSub==='cruzamento') content = relatorioCruzamento();
   else if(relatorioSub==='entregas') content = relatorioEntregas();
   else if(relatorioSub==='fretes') content = relatorioFretes();
   else if(relatorioSub==='combustivelfrete') content = relatorioCombustivelFrete();
@@ -6377,6 +6422,77 @@ function relatorioItens(){
     '<button type="button" class="btn small" id="ri-filtrar">Contar</button>'+
     '</div>'+
     '<div id="ri-resultado" style="margin-top:16px;"></div>';
+}
+// ---------- CRUZAMENTO GASTO x VENDA ----------
+// Deixa o usuário montar "grupos" ligando categorias de DESPESA (o que ele compra, ex: cargas de
+// gás, ovos, Ambev/Coca-Cola) com categorias de VENDA (o que ele vende daquele item, podendo pegar
+// um grupo inteiro como "Gás" — que já inclui Gás do Povo — ou tipos avulsos como "Ovos"/"Bebidas").
+// Com isso dá pra ver, por período, quanto entrou de venda daquele item vs quanto saiu de despesa
+// pra comprá-lo, e a margem entre os dois.
+function cruzamentoGruposListaHtml(){
+  const grupos = state.gruposCruzamento||[];
+  if(grupos.length===0) return '<div class="empty">Nenhum grupo de cruzamento criado ainda.</div>';
+  const grupoLabel = {gas:'Gás (todas as categorias + Gás do Povo)', agua:'Água (todas as categorias)'};
+  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Despesas incluídas</th><th>Vendas incluídas</th><th></th></tr></thead><tbody>'+
+    grupos.map(g=>{
+      const despesasTxt = (g.despesaCategorias||[]).join(', ')||'—';
+      const vendasTxt = ((g.vendaGrupos||[]).map(v=>grupoLabel[v]||v).concat(g.vendaTipos||[])).join(', ')||'—';
+      return '<tr><td>'+escapeHtmlCampanha(g.nome)+'</td><td>'+escapeHtmlCampanha(despesasTxt)+'</td><td>'+escapeHtmlCampanha(vendasTxt)+'</td>'+
+        '<td class="cel-acoes"><button type="button" class="act-link" data-edit-cruzamento="'+g.id+'">✎ editar</button><button type="button" class="del-link" data-del-cruzamento="'+g.id+'">🗑 excluir</button></td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+function relatorioCruzamento(){
+  const editando = czEditandoId ? (state.gruposCruzamento||[]).find(g=>g.id===czEditandoId) : null;
+  const tipos = categoriasNaoControladas();
+  const gruposHtml = ['gas','agua'].map(g=>'<label class="checkbox-item"><input type="checkbox" class="cz-form-grupo" value="'+g+'" '+(editando&&(editando.vendaGrupos||[]).includes(g)?'checked':'')+'> '+(g==='gas'?'Gás (inclui Gás do Povo)':'Água')+'</label>').join('');
+  const tiposHtml = tipos.map(t=>'<label class="checkbox-item cz-form-tipo-item"><input type="checkbox" class="cz-form-tipo" value="'+escapeHtmlCampanha(t)+'" '+(editando&&(editando.vendaTipos||[]).includes(t)?'checked':'')+'> '+escapeHtmlCampanha(t)+'</label>').join('');
+  const despesasHtml = (state.categoriasDespesas||[]).map(c=>'<label class="checkbox-item cz-form-despesa-item"><input type="checkbox" class="cz-form-despesa" value="'+escapeHtmlCampanha(c)+'" '+(editando&&(editando.despesaCategorias||[]).includes(c)?'checked':'')+'> '+iconeCategoriaDespesaHtml(c)+escapeHtmlCampanha(c)+'</label>').join('');
+  return '<div class="hint" style="margin-bottom:10px;">Monte aqui grupos ligando o que você COMPRA (despesa) com o que você VENDE daquele mesmo item, pra ver a margem entre os dois. Ex: "Cargas de Gás" (despesa) + grupo "Gás" inteiro (venda); "Ambev + Coca Cola" (despesas) + tipo "Bebidas" (venda).</div>'+
+    '<h3>'+(editando?'Editar grupo':'Novo grupo de cruzamento')+'</h3>'+
+    '<label>Nome do grupo <span class="req">*</span></label><input type="text" id="cz-nome" placeholder="Ex: Gás, Ovos, Bebidas..." value="'+(editando?escapeHtmlCampanha(editando.nome):'')+'">'+
+    '<h4 style="margin:14px 0 6px;">Despesas que entram nesse grupo</h4>'+
+    '<div class="cat-checklist" id="cz-lista-despesas" style="max-height:180px;overflow:auto;">'+(despesasHtml||'<div class="hint">Nenhuma categoria de despesa cadastrada.</div>')+'</div>'+
+    '<h4 style="margin:14px 0 6px;">Vendas que entram nesse grupo</h4>'+
+    '<div class="cat-checklist">'+gruposHtml+'</div>'+
+    '<div class="hint" style="margin-top:6px;">Ou tipos específicos (categorias avulsas, tipo "Ovos", "Bebidas" etc.):</div>'+
+    '<input type="text" id="cz-busca-tipo" class="searchbar" placeholder="Buscar tipo de venda..." style="margin-top:6px;">'+
+    '<div class="cat-checklist" id="cz-lista-tipos" style="margin-top:8px;max-height:180px;overflow:auto;">'+(tiposHtml||'<div class="hint">Nenhum tipo cadastrado.</div>')+'</div>'+
+    '<div style="margin-top:12px;"><button type="button" class="btn small" id="cz-salvar-grupo">'+(editando?'Salvar alterações':'Criar grupo')+'</button> '+(editando?'<button type="button" class="link-btn" id="cz-cancelar-edicao">cancelar</button>':'')+'</div>'+
+    '<h3 style="margin-top:20px;">Grupos cadastrados</h3>'+
+    '<div id="cz-lista-grupos">'+cruzamentoGruposListaHtml()+'</div>'+
+    '<h3 style="margin-top:20px;">Calcular por período</h3><div class="form-row">'+
+    '<div><label>De</label><input type="date" id="cz-de" value="'+(czDeVal||firstOfMonth())+'"></div>'+
+    '<div><label>Até</label><input type="date" id="cz-ate" value="'+(czAteVal||todayStr())+'"></div></div>'+
+    '<button type="button" class="btn small ghost" id="cz-calcular">Calcular</button>'+
+    '<div id="cz-resultado" style="margin-top:16px;"></div>';
+}
+function calcularCruzamento(grupo, de, ate){
+  const despCats = grupo.despesaCategorias||[];
+  const gasto = state.despesas.filter(d=>d.data>=de && d.data<=ate && despCats.includes(d.categoria)).reduce((s,d)=>s+d.valor,0);
+  const vendaGrupos = grupo.vendaGrupos||[], vendaTipos = grupo.vendaTipos||[];
+  const vendido = state.vendas.filter(v=>{
+    if(v.data<de || v.data>ate) return false;
+    return vendaGrupos.includes(grupoDaCategoria(v.categoria)) || vendaTipos.includes(v.categoria);
+  }).reduce((s,v)=>s+(v.valor_total||0),0);
+  return {gasto, vendido, lucro: vendido-gasto, margem: vendido>0 ? ((vendido-gasto)/vendido*100) : null};
+}
+function renderRelatorioCruzamentoResultado(){
+  const de = document.getElementById('cz-de').value, ate = document.getElementById('cz-ate').value;
+  czDeVal = de; czAteVal = ate;
+  const wrap = document.getElementById('cz-resultado');
+  const grupos = state.gruposCruzamento||[];
+  if(grupos.length===0){ wrap.innerHTML = '<div class="empty">Crie ao menos um grupo de cruzamento acima primeiro.</div>'; return; }
+  const linhas = grupos.map(g=>Object.assign({nome:g.nome}, calcularCruzamento(g, de, ate)));
+  const totalGasto = linhas.reduce((s,l)=>s+l.gasto,0), totalVendido = linhas.reduce((s,l)=>s+l.vendido,0);
+  wrap.innerHTML = '<div class="grid cols2" style="margin-bottom:12px;">'+
+    '<div class="metric"><div class="label">Total gasto (todos os grupos)</div><div class="value">'+fmtMoney(totalGasto)+'</div></div>'+
+    '<div class="metric"><div class="label">Total vendido (todos os grupos)</div><div class="value">'+fmtMoney(totalVendido)+'</div></div>'+
+    '</div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Grupo</th><th>Gasto (compra)</th><th>Vendido</th><th>Lucro</th><th>Margem</th></tr></thead><tbody>'+
+    linhas.map(l=>'<tr><td>'+escapeHtmlCampanha(l.nome)+'</td><td>'+fmtMoney(l.gasto)+'</td><td>'+fmtMoney(l.vendido)+'</td>'+
+      '<td style="color:'+(l.lucro<0?'var(--danger)':'var(--green)')+';font-weight:700;">'+fmtMoney(l.lucro)+'</td>'+
+      '<td>'+(l.margem===null?'—':l.margem.toFixed(1)+'%')+'</td></tr>').join('')+
+    '</tbody></table></div>';
 }
 function relatorioResumoDia(){
   const data = resumoDiaData || todayStr();
@@ -9493,7 +9609,13 @@ function attachHandlers(){
     });
     document.querySelectorAll('[data-del-cliente]').forEach(btn=>btn.onclick=async()=>{
       const id = btn.dataset.delCliente;
-      if(confirm('Excluir este cliente?')){ state.clientes = state.clientes.filter(x=>x.id!==id); await save('clientes'); renderAll(); }
+      const cli = state.clientes.find(x=>x.id===id);
+      if(!cli) return;
+      const vinculos = vinculosDoCliente(cli.nome);
+      const aviso = vinculos.length===0
+        ? 'Excluir o cliente "'+cli.nome+'"?\n\nEle não tem nenhuma venda, fiado, agendamento ou outro registro vinculado — pode excluir sem afetar histórico nenhum.'
+        : 'Atenção: "'+cli.nome+'" está vinculado a:\n\n'+vinculos.map(v=>'• '+v.qtd+' '+v.label).join('\n')+'\n\nEsses registros NÃO são apagados junto — eles continuam existindo no histórico, só que sem o cadastro do cliente vinculado (o nome digitado neles continua igual, mas ele some da lista de Clientes e de buscas por telefone/endereço).\n\nDeseja excluir mesmo assim?';
+      if(confirm(aviso)){ state.clientes = state.clientes.filter(x=>x.id!==id); await save('clientes'); renderAll(); }
     });
     document.querySelectorAll('[data-ver-anexos-cliente]').forEach(btn=>btn.onclick=()=>{
       const nomeCli = btn.dataset.verAnexosCliente;
@@ -10677,6 +10799,47 @@ function attachHandlers(){
     const q = riBuscaProduto.value.trim().toLowerCase();
     document.querySelectorAll('.ri-produto-item').forEach(l=>{ l.style.display = l.textContent.toLowerCase().includes(q)?'flex':'none'; });
   };
+  const czBuscaTipo = document.getElementById('cz-busca-tipo');
+  if(czBuscaTipo) czBuscaTipo.oninput = ()=>{
+    const q = czBuscaTipo.value.trim().toLowerCase();
+    document.querySelectorAll('.cz-form-tipo-item').forEach(l=>{ l.style.display = l.textContent.toLowerCase().includes(q)?'flex':'none'; });
+  };
+  const czSalvarGrupo = document.getElementById('cz-salvar-grupo');
+  if(czSalvarGrupo) czSalvarGrupo.onclick = async ()=>{
+    const nome = (document.getElementById('cz-nome').value||'').trim();
+    if(!nome){ alert('Dê um nome pro grupo (ex: Gás, Ovos, Bebidas...).'); return; }
+    const despesaCategorias = Array.from(document.querySelectorAll('.cz-form-despesa:checked')).map(c=>c.value);
+    const vendaGrupos = Array.from(document.querySelectorAll('.cz-form-grupo:checked')).map(c=>c.value);
+    const vendaTipos = Array.from(document.querySelectorAll('.cz-form-tipo:checked')).map(c=>c.value);
+    if(despesaCategorias.length===0){ alert('Marque ao menos uma categoria de despesa.'); return; }
+    if(vendaGrupos.length===0 && vendaTipos.length===0){ alert('Marque ao menos uma venda (grupo Gás/Água ou um tipo específico).'); return; }
+    if(czEditandoId){
+      const g = state.gruposCruzamento.find(x=>x.id===czEditandoId);
+      if(g){ g.nome=nome; g.despesaCategorias=despesaCategorias; g.vendaGrupos=vendaGrupos; g.vendaTipos=vendaTipos; }
+      czEditandoId = null;
+    } else {
+      state.gruposCruzamento.push({id:uid(), nome, despesaCategorias, vendaGrupos, vendaTipos});
+    }
+    await save('gruposCruzamento');
+    renderAll();
+  };
+  const czCancelarEdicao = document.getElementById('cz-cancelar-edicao');
+  if(czCancelarEdicao) czCancelarEdicao.onclick = ()=>{ czEditandoId=null; renderAll(); };
+  document.querySelectorAll('[data-edit-cruzamento]').forEach(btn=>btn.onclick=()=>{
+    czEditandoId = btn.dataset.editCruzamento;
+    renderAll();
+    setTimeout(()=>{ const el=document.getElementById('cz-nome'); if(el) el.scrollIntoView({behavior:'smooth'}); }, 50);
+  });
+  document.querySelectorAll('[data-del-cruzamento]').forEach(btn=>btn.onclick=async()=>{
+    const g = state.gruposCruzamento.find(x=>x.id===btn.dataset.delCruzamento);
+    if(!g) return;
+    if(!confirm('Excluir o grupo de cruzamento "'+g.nome+'"? Isso não apaga nenhuma venda ou despesa, só o agrupamento do relatório.')) return;
+    state.gruposCruzamento = state.gruposCruzamento.filter(x=>x.id!==g.id);
+    await save('gruposCruzamento');
+    renderAll();
+  });
+  const czCalcular = document.getElementById('cz-calcular'); if(czCalcular) czCalcular.onclick = renderRelatorioCruzamentoResultado;
+  
   const rdFiltrar = document.getElementById('rd-filtrar'); if(rdFiltrar) rdFiltrar.onclick = renderRelatorioDespesasResultado;
   const resgFiltrar = document.getElementById('resg-filtrar'); if(resgFiltrar) resgFiltrar.onclick = renderRelatorioESGResultado;
   const rentFiltrar = document.getElementById('rent-filtrar'); if(rentFiltrar) rentFiltrar.onclick = renderRelatorioEntregasResultado;
@@ -10743,6 +10906,7 @@ function attachHandlers(){
   if(relatorioSub==='notas' && document.getElementById('rn-resultado')) renderRelatorioNotasResultado();
   if(relatorioSub==='empresas' && document.getElementById('re-resultado')) renderRelatorioEmpresasResultado();
   if(relatorioSub==='itens' && document.getElementById('ri-resultado')) renderRelatorioItensResultado();
+  if(relatorioSub==='cruzamento' && document.getElementById('cz-resultado')) renderRelatorioCruzamentoResultado();
 
   const dbFiltrar = document.getElementById('db-filtrar'); if(dbFiltrar) dbFiltrar.onclick = renderDashboardRelatorios;
   if(currentTab==='dashboard' && document.getElementById('db-de')) renderDashboardRelatorios();
