@@ -4683,7 +4683,9 @@ function viewVendas(){
       '<td><button type="button" class="btn small ghost" data-juntar-vendas-cliente="'+i+'">🔗 Juntar em 1 venda</button></td></tr>').join('')+
     '</tbody></table></div></div>';
 
-  return cardVendasDuplicadasTopo+cardVendasSeparadas+'<div class="card"><details id="details-venda-manual"'+(vendaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2><form id="form-venda">'+
+  return cardVendasDuplicadasTopo+cardVendasSeparadas+'<div class="card"><details id="details-venda-manual"'+(vendaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
+    '<div class="hint">Editando uma venda daqui (✎ no Histórico): se você corrigir o produto ou a quantidade de uma venda que já tinha descontado o estoque, o sistema já corrige sozinho — devolve o que foi descontado errado e desconta o certo. Não precisa mexer no Estoque manualmente. Exceção: vendas bem antigas, de antes desse controle existir no sistema, podem não reverter sozinhas — depois de salvar, confira o Estoque pra garantir.</div>'+
+    '<form id="form-venda">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
@@ -5482,6 +5484,7 @@ function viewEstoque(){
     '</div><button type="submit" class="btn small">Salvar mínimos</button></form></div>'+
     '<div class="card"><h2>Lançar movimentação de estoque</h2>'+
     '<div class="hint">Use isto quando o fornecedor trouxer carga nova, ou pra registrar qualquer entrada/saída — fica no histórico com data, quantidade e quem lançou.</div>'+
+    '<div class="import-conferencia-alert">⚠ Esse lançamento aqui é sempre manual e direto — não tem ligação com nenhuma venda. Se o estoque errado veio de uma venda lançada no produto errado, primeiro edite a venda em Vendas (ela já corrige o estoque sozinho, devolvendo o errado e descontando o certo). Só lance aqui pra fechar uma diferença que sobrou depois disso, ou pra ajustes que não vêm de venda nenhuma (perda, quebra, contagem física).</div>'+
     '<form id="form-estoque-mov"><div class="form-row">'+
     '<div><label>Tipo <span class="req">*</span></label><select id="mov-tipo" name="tipo" required>'+opcoesComPlaceholder(['Gás','Água'],'Selecione')+'</select></div>'+
     '<div><label>Item <span class="req">*</span></label><select id="mov-item" name="item" required><option value="" selected disabled>Selecione o tipo primeiro</option></select></div>'+
