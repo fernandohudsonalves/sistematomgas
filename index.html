@@ -4573,19 +4573,33 @@ function parseLinhaBlocoNotasVenda(linhaOriginal){
     quantidade, categoriaSugerida, obsExtra
   };
 }
-// Agrupa linhas em blocos: linhas SEGUIDAS do mesmo cliente (nome idêntico depois de
-// normalizado) viram um só bloco/venda com vários itens — exatamente como pedido ("nomes
-// repetidos seguidos são a mesma venda"). Linha em branco é ignorada.
+// Agrupa linhas em blocos: linhas SEGUIDAS do mesmo cliente viram um só bloco/venda com vários
+// itens — exatamente como pedido ("nomes repetidos seguidos são a mesma venda"). Não exige o nome
+// idêntico: quando a pessoa é apresentada com mais detalhes na 1ª linha (ex.: "santos do celta
+// prata marido sandra") e citada só pelo primeiro nome na linha seguinte (ex.: "santos"), ainda
+// conta como o mesmo cliente, desde que a 1ª palavra do nome bata nas duas linhas. Linha em
+// branco é ignorada.
+function primeiraPalavraChave(chave){
+  return (chave||'').split(' ')[0] || '';
+}
 function agruparBlocosImportacaoTexto(texto){
   const linhas = (texto||'').split('\n').map(l=>l.trim()).filter(l=>l.length>0);
   const blocos = [];
   linhas.forEach(l=>{
     const p = parseLinhaBlocoNotasVenda(l);
     const ultimo = blocos[blocos.length-1];
-    if(ultimo && ultimo.chaveCliente && p.chaveCliente && ultimo.chaveCliente===p.chaveCliente){
+    const primeiraPalavraP = primeiraPalavraChave(p.chaveCliente);
+    const mesmoCliente = ultimo && ultimo.chaveCliente && p.chaveCliente && (
+      ultimo.chaveCliente===p.chaveCliente || primeiraPalavraChave(ultimo.chaveCliente)===primeiraPalavraP
+    ) && primeiraPalavraP.length>=3; // evita juntar por causa de uma 1ª palavra curta demais (ex.: "dona", "sr")
+    if(mesmoCliente){
       ultimo.itens.push(p);
       if(p.endereco && !ultimo.endereco) ultimo.endereco = p.endereco;
       if(p.novoCliente) ultimo.novoCliente = true;
+      // fica com o nome mais completo dos dois (o que tiver mais palavras) pra identificar o cliente
+      if(p.clienteTexto.split(' ').length > ultimo.clienteTexto.split(' ').length){
+        ultimo.clienteTexto = p.clienteTexto; ultimo.chaveCliente = p.chaveCliente;
+      }
     } else {
       blocos.push({ chaveCliente:p.chaveCliente, clienteTexto:p.clienteTexto, novoCliente:p.novoCliente, endereco:p.endereco, itens:[p] });
     }
