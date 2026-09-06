@@ -1508,6 +1508,12 @@ let editPesquisaManualId = null;
 let clienteExtrato = null, clienteRegistrandoPagamento = null, editFiadoPagamentoId = null;
 let czEditandoId = null, czDeVal = null, czAteVal = null;
 let agendamentoParaConcluir = null, prefillVenda = null;
+// Importação de vendas colando texto solto (bloco de notas/WhatsApp): o texto colado vira uma
+// lista de "blocos" (cada bloco = 1 venda, podendo ter mais de um item quando o mesmo cliente
+// aparece em linhas seguidas). O usuário confere/corrige e confirma bloco por bloco pelo
+// formulário normal de venda — nada é lançado sozinho sem passar pela tela.
+let importTextoWizard = null; // {blocos, indice, dataPadrao, grupoIdsCriados}
+let prefillItensExtrasVenda = null; // itens extras (2º produto em diante) sugeridos pelo bloco atual
 let editProdutoId = null, clienteCredito = null, editCreditoId = null, editEstoqueMovId = null, editComodatoId = null;
 let editComunicadoId = null, telaAnteriorComunicados = 'config';
 let editCategoriaProdutoNome = null, editCategoriaDespesaNome = null;
@@ -4419,6 +4425,224 @@ function encontrarGruposVendasDuplicadas(){
   });
   return Array.from(grupos.values()).filter(g=>g.length>1).sort((a,b)=> (b[0].data||'').localeCompare(a[0].data||''));
 }
+// ===================== IMPORTAÇÃO DE VENDAS COLANDO TEXTO (BLOCO DE NOTAS) =====================
+const PALAVRAS_PAGAMENTO_TEXTO_LIVRE = [
+  [/g[aá]s\s*do\s*povo/i, 'Gás do povo'],
+  [/vale\s*g[aá]s/i, 'Vale gás'],
+  [/conv[eê]nio/i, 'Convênio'],
+  [/d[eé]bito/i, 'Débito'],
+  [/cr[eé]dito/i, 'Crédito'],
+  [/abateu/i, 'Abateu'],
+  [/pix/i, 'Pix'],
+  [/dinheiro/i, 'Dinheiro'],
+  [/marcou|fiado/i, 'Marcou/Fiado']
+];
+function detectarPagamentoTextoLivre(txt){
+  for(let i=0;i<PALAVRAS_PAGAMENTO_TEXTO_LIVRE.length;i++){ if(PALAVRAS_PAGAMENTO_TEXTO_LIVRE[i][0].test(txt||'')) return PALAVRAS_PAGAMENTO_TEXTO_LIVRE[i][1]; }
+  return null;
+}
+const PALAVRAS_CANAL_TEXTO_LIVRE = [
+  [/portaria/i,'Portaria'], [/whats\s*app|whatsapp/i,'WhatsApp'], [/venda\s*ativa/i,'Venda Ativa'],
+  [/liga[cç][aã]o/i,'Ligação'], [/\bhub\b/i,'Hub'], [/google/i,'Google']
+];
+function detectarCanalTextoLivre(txt){
+  for(let i=0;i<PALAVRAS_CANAL_TEXTO_LIVRE.length;i++){ if(PALAVRAS_CANAL_TEXTO_LIVRE[i][0].test(txt||'')) return PALAVRAS_CANAL_TEXTO_LIVRE[i][1]; }
+  return '';
+}
+function numeroTextoLivre(s){
+  if(s==null) return null;
+  const limpo = String(s).trim();
+  if(!limpo) return null;
+  const n = parseFloat(limpo.replace(/\./g,'').replace(',','.'));
+  return isNaN(n) ? null : n;
+}
+function extrairValoresTextoLivre(txt){
+  const m = (txt||'').match(/\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}|\d+\.\d{2}|\b\d+\b/g);
+  return (m||[]).map(numeroTextoLivre).filter(n=>n!=null);
+}
+// Marca onde termina o "nome do cliente" e começa a descrição do item: um número seguido de uma
+// palavra comum de produto/unidade. Não depende de hífen, porque nas anotações o hífen às vezes
+// separa cliente do item e às vezes separa o item da forma de pagamento.
+const GATILHO_ITEM_TEXTO_LIVRE = /(\d+)\s*[-–]?\s*(bdj|bandeja|carga|garrafa|unid|und|cx|pct|kg|litro|coca|h2o|amaciante|detergente|cloro|escalda|creme|cheirinho|lava\s*roupa|pururuca|cesta|vasilhame|botij[aã]o)/i;
+// Tenta achar, entre as categorias JÁ CADASTRADAS, uma que combine com o texto do item (ex.: item
+// "1 bdj de ovos jumbo" bater com a categoria "Ovos" já cadastrada). Só sugere quando acha
+// exatamente 1 categoria compatível e não é gás/água controlado por tamanho (esses ficam sempre
+// em branco pra você escolher o tamanho certo, exceto "Gás do povo" que não tem variação de tamanho).
+function sugerirCategoriaTextoLivre(itemTexto){
+  const chaveItem = chaveNormalizada(itemTexto);
+  if(/g[aá]s do povo/.test(chaveItem) && state.categoriasProdutos.includes('Gás do povo')) return 'Gás do povo';
+  const candidatas = (state.categoriasProdutos||[]).filter(c=>!CATEGORIAS_CONTROLADAS.includes(c) && c!=='Gás do povo');
+  const achadas = candidatas.filter(c=>{
+    const chaveCat = chaveNormalizada(c);
+    if(chaveCat.length<3) return false;
+    if(chaveItem.indexOf(chaveCat)>=0) return true;
+    return chaveCat.split(' ').some(p=>p.length>3 && chaveItem.indexOf(p)>=0);
+  });
+  return achadas.length===1 ? achadas[0] : null;
+}
+// Faz o melhor palpite possível a partir de UMA linha do texto colado. Nada aqui é definitivo —
+// tudo é conferido e pode ser corrigido no formulário antes de salvar.
+function parseLinhaBlocoNotasVenda(linhaOriginal){
+  let linha = (linhaOriginal||'').trim();
+  const obsExtra = [];
+  let novoCliente = false, pixPendente = false;
+
+  if(/^novo\b/i.test(linha)){
+    novoCliente = true;
+    linha = linha.replace(/^novo\b\s*[-–]?\s*/i,'').trim();
+  }
+  if(/falta\s+fazer\s+o\s+pix/i.test(linha)){
+    pixPendente = true;
+    obsExtra.push('Pix a fazer — lançado como fiado (a receber) até o cliente pagar');
+    linha = linha.replace(/falta\s+fazer\s+o\s+pix/i,'').trim();
+  }
+
+  // pagamento parcial ("deu 21,00 em dinheiro ficou devendo 4,00")
+  let fiadoParcial = null;
+  const mParcial = linha.match(/deu\s+([\d.,]+)\s*(?:em\s+)?(dinheiro|d[eé]bito|cr[eé]dito|pix)?.*?(?:ficou\s+devendo|deve)\s+([\d.,]+)/i);
+  if(mParcial){
+    fiadoParcial = {
+      valorPago: numeroTextoLivre(mParcial[1]),
+      formaPago: mParcial[2] ? detectarPagamentoTextoLivre(mParcial[2]) : null,
+      valorFiado: numeroTextoLivre(mParcial[3])
+    };
+  }
+
+  let clienteTexto, itemTexto;
+  const mGatilho = linha.match(GATILHO_ITEM_TEXTO_LIVRE);
+  if(mGatilho){
+    const idx = linha.indexOf(mGatilho[0]);
+    clienteTexto = linha.slice(0, idx);
+    itemTexto = linha.slice(idx);
+  } else {
+    const partes = linha.split(/\s+-\s+/);
+    clienteTexto = partes[0];
+    itemTexto = partes.slice(1).join(' - ');
+  }
+  clienteTexto = clienteTexto.replace(/[-–]\s*$/,'').trim();
+
+  // Às vezes a palavra do canal (portaria, whatsapp...) fica grudada no meio do nome do cliente
+  // (ex.: "Tânia Moretti - portaria 1 coca cola..."), porque o gatilho do item só é achado depois
+  // dela. Tira essa palavra do nome do cliente antes de mais nada, senão o mesmo cliente em duas
+  // linhas seguidas deixa de bater (uma vez com "- portaria" grudado, outra vez sem).
+  let canalNoNome = '';
+  for(let i=0;i<PALAVRAS_CANAL_TEXTO_LIVRE.length;i++){
+    const re = PALAVRAS_CANAL_TEXTO_LIVRE[i][0];
+    if(re.test(clienteTexto)){
+      canalNoNome = PALAVRAS_CANAL_TEXTO_LIVRE[i][1];
+      clienteTexto = clienteTexto.replace(re,'').replace(/[-–]\s*$/,'').replace(/^[-–]\s*/,'').trim();
+      break;
+    }
+  }
+
+  let endereco = '';
+  if(clienteTexto.indexOf('=')>=0){
+    const partesEnd = clienteTexto.split('=');
+    clienteTexto = partesEnd[0].trim();
+    endereco = partesEnd.slice(1).join('=').trim();
+  }
+
+  const canal = canalNoNome || detectarCanalTextoLivre(itemTexto);
+  const pagamento = pixPendente ? 'Marcou/Fiado' : detectarPagamentoTextoLivre(itemTexto);
+  const mFrete = itemTexto.match(/\+\s*([\d.,]+)\s*(?:de\s*)?(?:taxa de entrega|frete)/i);
+  const frete = mFrete ? (numeroTextoLivre(mFrete[1])||0) : 0;
+  const itemSemFrete = itemTexto.replace(/\+\s*[\d.,]+\s*(?:de\s*)?(?:taxa de entrega|frete)/i,'');
+  const mIgual = itemSemFrete.match(/=\s*([\d.,]+)/);
+  const valores = extrairValoresTextoLivre(itemSemFrete);
+  let valorTotal = mIgual ? numeroTextoLivre(mIgual[1]) : (valores.length ? valores[valores.length-1] : null);
+  if(fiadoParcial && fiadoParcial.valorPago!=null && fiadoParcial.valorFiado!=null){
+    valorTotal = Math.round((fiadoParcial.valorPago+fiadoParcial.valorFiado)*100)/100;
+  }
+  // Só confia no número extraído como "quantidade" quando o gatilho de item foi mesmo achado
+  // (ex.: "1 carga", "2 bdj") — sem isso, o primeiro número da linha pode ser o próprio valor
+  // (ex.: "110,00 dinheiro"), e usar ele como quantidade dava conta errada (110 unidades de R$1).
+  const mQtd = mGatilho ? itemTexto.match(/^\D*(\d+)/) : null;
+  const quantidade = mQtd ? (parseInt(mQtd[1],10)||1) : 1;
+  const categoriaSugerida = sugerirCategoriaTextoLivre(itemTexto);
+
+  return {
+    linhaOriginal, novoCliente, pixPendente, fiadoParcial, endereco,
+    clienteTexto: clienteTexto.trim(), chaveCliente: chaveNormalizada(clienteTexto),
+    itemTexto: itemTexto.trim(), canal, pagamento, frete, valorTotal,
+    quantidade, categoriaSugerida, obsExtra
+  };
+}
+// Agrupa linhas em blocos: linhas SEGUIDAS do mesmo cliente (nome idêntico depois de
+// normalizado) viram um só bloco/venda com vários itens — exatamente como pedido ("nomes
+// repetidos seguidos são a mesma venda"). Linha em branco é ignorada.
+function agruparBlocosImportacaoTexto(texto){
+  const linhas = (texto||'').split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+  const blocos = [];
+  linhas.forEach(l=>{
+    const p = parseLinhaBlocoNotasVenda(l);
+    const ultimo = blocos[blocos.length-1];
+    if(ultimo && ultimo.chaveCliente && p.chaveCliente && ultimo.chaveCliente===p.chaveCliente){
+      ultimo.itens.push(p);
+      if(p.endereco && !ultimo.endereco) ultimo.endereco = p.endereco;
+      if(p.novoCliente) ultimo.novoCliente = true;
+    } else {
+      blocos.push({ chaveCliente:p.chaveCliente, clienteTexto:p.clienteTexto, novoCliente:p.novoCliente, endereco:p.endereco, itens:[p] });
+    }
+  });
+  return blocos;
+}
+// Monta o objeto usado pelo mecanismo já existente de pré-preenchimento do formulário de venda
+// (prefillVenda), a partir do bloco atual do assistente de importação por texto.
+function montarPrefillDoBlocoImportacaoTexto(bloco, dataPadrao){
+  const principal = bloco.itens[0];
+  const temFrete = bloco.itens.some(it=>it.frete>0);
+  const pre = {
+    data: dataPadrao, cliente: bloco.clienteTexto, canal: principal.canal || '',
+    quantidade: principal.quantidade || 1,
+    categoria: principal.categoriaSugerida || '',
+    nota: 'Não lança', tipo_entrega: temFrete ? '' : 'Retirada', frete: principal.frete || 0,
+    pagamento: principal.pagamento || ''
+  };
+  if(principal.valorTotal!=null && principal.quantidade){
+    pre.valor_unit = (Math.round((principal.valorTotal/principal.quantidade)*100)/100).toFixed(2);
+  }
+  const obsPartes = [];
+  bloco.itens.forEach(it=>{ if(it.obsExtra && it.obsExtra.length) obsPartes.push(it.obsExtra.join('; ')); });
+  if(temFrete) obsPartes.push('Frete detectado: '+fmtMoney(bloco.itens.find(it=>it.frete>0).frete)+' — selecione o tipo de entrega certo (moto/carro/Strada) pra poder informar o frete');
+  obsPartes.push('Importado do bloco de notas: "'+bloco.itens.map(it=>it.linhaOriginal).join(' | ')+'"');
+  pre.obs = obsPartes.join(' — ');
+  if(bloco.novoCliente || bloco.endereco){
+    pre.novoClienteSugestao = { nome: bloco.clienteTexto, endereco: bloco.endereco||'' };
+  }
+  // Pagamento parcial pode ter sido detectado em qualquer linha do bloco (não só na 1ª) — ex.:
+  // 1ª linha é um item pago inteiro e a 2ª linha do mesmo cliente é a que ficou faltando pagar.
+  const itemComFiadoParcial = bloco.itens.find(it=>it.fiadoParcial && it.fiadoParcial.valorPago!=null && it.fiadoParcial.valorFiado!=null);
+  if(itemComFiadoParcial){
+    pre.dividirPagamento = {
+      forma1: itemComFiadoParcial.fiadoParcial.formaPago || itemComFiadoParcial.pagamento || principal.pagamento || 'Dinheiro',
+      valor1: itemComFiadoParcial.fiadoParcial.valorPago,
+      forma2: 'Marcou/Fiado'
+    };
+    pre.pagamento = pre.dividirPagamento.forma1;
+  }
+  // itens extras: quando o mesmo cliente apareceu em mais de uma linha seguida (2º produto em diante)
+  if(bloco.itens.length>1){
+    pre.itensExtras = bloco.itens.slice(1).map(it=>({
+      categoriaSugerida: it.categoriaSugerida||'', quantidade: it.quantidade||1,
+      valorUnit: (it.valorTotal!=null && it.quantidade) ? Math.round((it.valorTotal/it.quantidade)*100)/100 : ''
+    }));
+  }
+  return pre;
+}
+// Resumo do que essa importação mexeu no estoque de gás/água (categorias controladas), pra
+// avisar no final e o usuário dar o "OK" — as vendas em si já foram lançadas uma a uma durante
+// a conferência de cada bloco; isso aqui é só o balanço final pra conferência.
+function resumoEstoqueImportacaoTexto(){
+  if(!importTextoWizard) return [];
+  const grupos = new Set(importTextoWizard.grupoIdsCriados||[]);
+  const porCategoria = {};
+  state.vendas.forEach(v=>{
+    if(!grupos.has(v.grupoId)) return;
+    if(!v.estoqueBaixado || !isControlada(v.categoria)) return;
+    porCategoria[v.categoria] = (porCategoria[v.categoria]||0) + Number(v.quantidade||0);
+  });
+  return Object.keys(porCategoria).map(cat=>({categoria:cat, quantidade:porCategoria[cat]}));
+}
 // Ação compartilhada: usada tanto pelo botão de atalho na aba Vendas quanto pela ferramenta
 // avançada em Config > Categorias. Mantém sempre a venda mais antiga de cada grupo duplicado
 // e reverte automaticamente o estoque das vendas removidas que já tinham dado baixa.
@@ -4779,6 +5003,46 @@ function catalogoProdutosFiltradoHtml(q){
   }).join('');
 }
 
+// Card da aba Vendas do assistente de "colar do bloco de notas". Tem 3 estados: colar texto,
+// revisão bloco por bloco (usando o próprio formulário de Lançamento manual logo abaixo) e
+// resumo final do que mexeu no estoque.
+function htmlAssistenteImportacaoTexto(hoje){
+  if(!importTextoWizard){
+    return '<div class="card" id="import-texto-wizard-card">'+
+      '<h2>📋 Importar colando texto (bloco de notas)</h2>'+
+      '<div class="hint">Cole aqui as vendas do dia, uma por linha (por exemplo, copiado direto do WhatsApp ou de um bloco de notas). O sistema tenta identificar cliente, produto, valor e forma de pagamento sozinho, mas <strong>sempre mostra bloco por bloco pra você conferir e corrigir</strong> antes de salvar de verdade — nada é lançado no sistema sem você confirmar. Clientes repetidos em linhas seguidas viram uma única venda com vários itens. Linhas com "falta fazer o pix" já entram como fiado; pagamentos parciais ("deu X, ficou devendo Y") já vêm com o pagamento dividido.</div>'+
+      '<div class="form-row" style="margin-top:10px;"><div><label>Data dessas vendas</label><input type="date" id="import-texto-data" value="'+hoje+'"></div></div>'+
+      '<label>Cole o texto aqui</label>'+
+      '<textarea id="import-texto-textarea" rows="10" placeholder="Cole aqui as linhas das vendas, uma por linha..."></textarea>'+
+      '<button type="button" class="btn" id="btn-import-texto-analisar" style="margin-top:10px;">Analisar texto</button>'+
+      '</div>';
+  }
+  if(importTextoWizard.indice < importTextoWizard.blocos.length){
+    const bloco = importTextoWizard.blocos[importTextoWizard.indice];
+    const linhasTexto = bloco.itens.map(it=>it.linhaOriginal).join('\n');
+    return '<div class="card" id="import-texto-wizard-card" style="border:2px solid var(--royal);">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'+
+      '<strong>📋 Importando do bloco de notas — bloco '+(importTextoWizard.indice+1)+' de '+importTextoWizard.blocos.length+'</strong>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+      '<button type="button" class="btn small ghost" id="btn-import-texto-pular">Pular este bloco ▶</button>'+
+      '<button type="button" class="del-link" id="btn-import-texto-cancelar">✕ Cancelar importação</button>'+
+      '</div></div>'+
+      '<div class="hint" style="margin-top:8px;">Texto original desta venda (confira se o cliente é mesmo esse):</div>'+
+      '<div style="background:var(--bg);border:1px dashed var(--border);border-radius:8px;padding:10px;margin-top:4px;font-family:monospace;font-size:13px;white-space:pre-wrap;">'+escapeHtmlCampanha(linhasTexto)+'</div>'+
+      '<div class="hint" style="margin-top:10px;">👇 Confira/corrija os campos no <strong>Lançamento manual</strong> logo abaixo (já preenchidos com o palpite do sistema — principalmente confira Categoria/Produto, que o sistema não arrisca sozinho) e clique em <strong>"Confirmar venda e ir pro próximo bloco"</strong> pra salvar e seguir. Se errar depois de confirmar, dá pra corrigir normalmente pelo Histórico de vendas.</div>'+
+      '</div>';
+  }
+  const resumoEstoque = resumoEstoqueImportacaoTexto();
+  return '<div class="card" id="import-texto-wizard-card" style="border:2px solid var(--green,#2e7d32);">'+
+    '<strong>✅ Importação concluída — '+importTextoWizard.grupoIdsCriados.length+' venda(s) registrada(s)</strong>'+
+    '<div class="hint" style="margin-top:6px;">Isso foi mexido no estoque de gás/água nessa importação — confira e dê o OK:</div>'+
+    (resumoEstoque.length===0 ? '<div class="hint" style="margin-top:6px;">Nenhum item de estoque controlado (gás/água) foi baixado nessa importação.</div>' :
+      '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Categoria</th><th>Quantidade baixada</th></tr></thead><tbody>'+
+      resumoEstoque.map(r=>'<tr><td>'+r.categoria+'</td><td>-'+r.quantidade+'</td></tr>').join('')+
+      '</tbody></table></div>')+
+    '<button type="button" class="btn" id="btn-import-texto-concluir" style="margin-top:10px;">OK, conferido</button>'+
+    '</div>';
+}
 function viewVendas(){
   const hoje = todayStr();
   // Ordem crescente (mais antiga primeiro) pra bater com a numeração "Venda do dia" —
@@ -4806,7 +5070,7 @@ function viewVendas(){
       '<td><button type="button" class="btn small ghost" data-juntar-vendas-cliente="'+i+'">🔗 Juntar em 1 venda</button></td></tr>').join('')+
     '</tbody></table></div></div>';
 
-  return cardVendasDuplicadasTopo+cardVendasSeparadas+'<div class="card"><details id="details-venda-manual"'+(vendaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
+  return cardVendasDuplicadasTopo+cardVendasSeparadas+htmlAssistenteImportacaoTexto(hoje)+'<div class="card"><details id="details-venda-manual"'+((vendaManualAberta||importTextoWizard)?' open':'')+'><summary><strong>'+(importTextoWizard?'Lançamento manual (usado pelo assistente de importação acima)':'Lançamento manual (clique para abrir)')+'</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
     '<div class="hint">Editando uma venda daqui (✎ no Histórico): se você corrigir o produto ou a quantidade de uma venda que já tinha descontado o estoque, o sistema já corrige sozinho — devolve o que foi descontado errado e desconta o certo. Não precisa mexer no Estoque manualmente. Exceção: vendas bem antigas, de antes desse controle existir no sistema, podem não reverter sozinhas — depois de salvar, confira o Estoque pra garantir.</div>'+
     '<form id="form-venda">'+
     '<div class="form-row">'+
@@ -4886,7 +5150,7 @@ function viewVendas(){
     '</div>'+
     '<div><label>Observação (opcional)</label><input type="text" name="obs"></div>'+
     '<div class="hint" style="margin-top:6px;">Se um horário de entrega for definido, os dados do pedido são enviados por WhatsApp para o entregador automaticamente.</div>'+
-    '<button type="submit" class="btn">Registrar venda</button></form></details></div>'+
+    '<button type="submit" class="btn">'+(importTextoWizard && importTextoWizard.indice<importTextoWizard.blocos.length ? 'Confirmar venda e ir pro próximo bloco ('+(importTextoWizard.indice+1)+'/'+importTextoWizard.blocos.length+')' : 'Registrar venda')+'</button></form></details></div>'+
     formLancamentoVendaAnteriorHtml(clienteOpts)+
     '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje, {compacta:true})+'</div></div>'+
@@ -8449,6 +8713,49 @@ async function enviarExtratoWhatsApp(cliente){
 
 /* ---------- HANDLERS ---------- */
 function attachHandlers(){
+  // Assistente de importação por texto (bloco de notas) — botões dos 3 estados do card em Vendas.
+  const btnImportTextoAnalisar = document.getElementById('btn-import-texto-analisar');
+  if(btnImportTextoAnalisar) btnImportTextoAnalisar.onclick = ()=>{
+    const ta = document.getElementById('import-texto-textarea');
+    const dataEl = document.getElementById('import-texto-data');
+    const texto = ta ? ta.value : '';
+    if(!texto.trim()){ alert('Cole o texto das vendas primeiro.'); return; }
+    const blocos = agruparBlocosImportacaoTexto(texto);
+    if(blocos.length===0){ alert('Não encontrei nenhuma linha com conteúdo pra importar.'); return; }
+    const dataPadrao = (dataEl && dataEl.value) ? dataEl.value : todayStr();
+    importTextoWizard = { blocos, indice:0, dataPadrao, grupoIdsCriados:[] };
+    vendaManualAberta = true;
+    prefillVenda = montarPrefillDoBlocoImportacaoTexto(blocos[0], dataPadrao);
+    prefillItensExtrasVenda = prefillVenda.itensExtras || null;
+    renderAll();
+    const alvo = document.getElementById('import-texto-wizard-card');
+    if(alvo) alvo.scrollIntoView({behavior:'smooth', block:'start'});
+  };
+  const btnImportTextoPular = document.getElementById('btn-import-texto-pular');
+  if(btnImportTextoPular) btnImportTextoPular.onclick = ()=>{
+    if(!importTextoWizard) return;
+    importTextoWizard.indice++;
+    if(importTextoWizard.indice < importTextoWizard.blocos.length){
+      const proximo = importTextoWizard.blocos[importTextoWizard.indice];
+      prefillVenda = montarPrefillDoBlocoImportacaoTexto(proximo, importTextoWizard.dataPadrao);
+      prefillItensExtrasVenda = prefillVenda.itensExtras || null;
+    }
+    renderAll();
+    const alvo = document.getElementById('import-texto-wizard-card');
+    if(alvo) alvo.scrollIntoView({behavior:'smooth', block:'start'});
+  };
+  const btnImportTextoCancelar = document.getElementById('btn-import-texto-cancelar');
+  if(btnImportTextoCancelar) btnImportTextoCancelar.onclick = ()=>{
+    if(!confirm('Cancelar a importação? As vendas já confirmadas até agora continuam salvas — só os blocos que ainda faltavam serão descartados.')) return;
+    importTextoWizard = null;
+    prefillVenda = null; prefillItensExtrasVenda = null;
+    renderAll();
+  };
+  const btnImportTextoConcluir = document.getElementById('btn-import-texto-concluir');
+  if(btnImportTextoConcluir) btnImportTextoConcluir.onclick = ()=>{
+    importTextoWizard = null;
+    renderAll();
+  };
   const btnEditarFotoPerfil = document.getElementById('btn-editar-foto-perfil');
   const inputFotoPerfil = document.getElementById('input-foto-perfil');
   if(btnEditarFotoPerfil && inputFotoPerfil){
@@ -8546,8 +8853,12 @@ function attachHandlers(){
   });
   const fvPre = document.getElementById('form-venda');
   if(fvPre && prefillVenda){
+    if(prefillVenda.data) fvPre.data.value = prefillVenda.data;
     if(prefillVenda.cliente) fvPre.cliente.value = prefillVenda.cliente;
+    if(prefillVenda.canal) fvPre.canal.value = prefillVenda.canal;
     if(prefillVenda.quantidade) fvPre.quantidade.value = prefillVenda.quantidade;
+    if(prefillVenda.valor_unit) fvPre.valor_unit.value = prefillVenda.valor_unit;
+    if(prefillVenda.nota) fvPre.nota.value = prefillVenda.nota;
     if(prefillVenda.tipo_entrega) fvPre.tipo_entrega.value = prefillVenda.tipo_entrega;
     if(prefillVenda.empresa) fvPre.empresa.value = prefillVenda.empresa;
     if(prefillVenda.entrega_data) fvPre.entrega_data.value = prefillVenda.entrega_data;
@@ -8556,7 +8867,57 @@ function attachHandlers(){
     if(prefillVenda.pagamento) fvPre.pagamento.value = prefillVenda.pagamento;
     if(prefillVenda.frete) fvPre.frete.value = prefillVenda.frete;
     if(prefillVenda.categoria && seletorVendaMain) seletorVendaMain.setValor(prefillVenda.categoria, prefillVenda.produto_livre);
+    // Sugestão de cliente novo (nome + endereço) vinda da importação por texto — já deixa a
+    // mini-ficha de "novo cliente" aberta e preenchida, só falta clicar em "Salvar cliente".
+    if(prefillVenda.novoClienteSugestao){
+      const wrapNovoCli = document.getElementById('novo-cliente-venda-wrap');
+      const inpNome = document.getElementById('ncv-nome'), inpEnd = document.getElementById('ncv-endereco');
+      if(wrapNovoCli) wrapNovoCli.style.display = 'block';
+      if(inpNome) inpNome.value = prefillVenda.novoClienteSugestao.nome||'';
+      if(inpEnd) inpEnd.value = prefillVenda.novoClienteSugestao.endereco||'';
+    }
+    // Pagamento parcial (ex.: pagou parte em dinheiro, resto ficou de fiado) — já marca a
+    // divisão de pagamento e preenche os valores, do mesmo jeito que preencheria na mão.
+    if(prefillVenda.dividirPagamento && typeof toggleDivisaoPagamentoVenda==='function'){
+      const chkDiv = document.getElementById('chk-dividir-pagamento');
+      if(chkDiv){
+        chkDiv.checked = true;
+        toggleDivisaoPagamentoVenda();
+        const inpV1 = document.getElementById('input-valor-forma1');
+        const selF2 = document.getElementById('sel-forma2-pagamento');
+        if(inpV1) inpV1.value = prefillVenda.dividirPagamento.valor1;
+        if(selF2) selF2.value = prefillVenda.dividirPagamento.forma2 || 'Marcou/Fiado';
+        if(typeof atualizarHintDivisaoPagamento==='function') atualizarHintDivisaoPagamento();
+      }
+    }
     prefillVenda = null;
+  }
+  // Itens extras sugeridos pela importação por texto (quando o mesmo cliente tinha mais de uma
+  // linha seguida = mais de um produto na mesma venda). Cria as linhas extras já com quantidade e
+  // valor preenchidos; a categoria/produto de cada uma continua sendo escolhida por você.
+  if(fvPre && prefillItensExtrasVenda && prefillItensExtrasVenda.length){
+    const listaExtras = document.getElementById('itens-extra-lista');
+    if(listaExtras){
+      prefillItensExtrasVenda.forEach(item=>{
+        const row = novoItemVendaRow({compact:false});
+        listaExtras.appendChild(row);
+        const qtdEl = row.querySelector('.iv-quantidade');
+        const valEl = row.querySelector('.iv-valor-unit');
+        if(qtdEl) qtdEl.value = item.quantidade||1;
+        if(valEl && item.valorUnit!=='') valEl.value = item.valorUnit;
+        if(item.categoriaSugerida){
+          const grupoSel = row.querySelector('.iv-grupo-select');
+          const etiquetaSel = row.querySelector('.iv-etiqueta-select');
+          if(grupoSel){
+            grupoSel.value = 'outros';
+            if(grupoSel.onchange) grupoSel.onchange();
+            if(etiquetaSel){ etiquetaSel.value = item.categoriaSugerida; if(etiquetaSel.onchange) etiquetaSel.onchange(); }
+          }
+        }
+      });
+      if(typeof atualizarTotalCarrinho==='function') atualizarTotalCarrinho();
+    }
+    prefillItensExtrasVenda = null;
   }
   const btnNovaCatProduto = document.getElementById('btn-nova-cat-produto');
   if(btnNovaCatProduto) btnNovaCatProduto.onclick = ()=>{ document.getElementById('nova-cat-produto-wrap').style.display='block'; };
@@ -8743,6 +9104,7 @@ function attachHandlers(){
     // de JavaScript bem antes de chegar no save('vendas'). Isso travava o salvamento da edição
     // inteira (os dados até chegavam a mudar na tela, mas nunca eram gravados).
     const empresaFormVenda = (f.get('empresa')||'').trim();
+    let grupoIdVendaSubmetidaWizard = null; // usado só pelo assistente de importação por texto, pra saber o que essa venda mexeu no estoque
     if(editVendaId){
       const v = state.vendas.find(x=>x.id===editVendaId);
       if(v){
@@ -8840,6 +9202,7 @@ function attachHandlers(){
       editVendaId = null;
     } else {
       const grupoId = uid();
+      grupoIdVendaSubmetidaWizard = grupoId;
       const itens = [{categoria, produto, quantidade, valor_unit, valor_total, nota: f.get('nota')}];
       document.querySelectorAll('.iv-extra-row').forEach(row=>{
         const cat = row.querySelector('.iv-categoria').value;
@@ -8975,6 +9338,22 @@ function attachHandlers(){
     }
     if(empresaFormVenda) await garantirEmpresaCadastrada(empresaFormVenda);
     await save('vendas'); await save('estoque');
+    // Se essa venda veio da conferência de um bloco do assistente de importação por texto,
+    // avança pro próximo bloco em vez do fluxo normal do lançamento manual.
+    if(importTextoWizard && grupoIdVendaSubmetidaWizard){
+      importTextoWizard.grupoIdsCriados.push(grupoIdVendaSubmetidaWizard);
+      importTextoWizard.indice++;
+      vendaManualAberta = true;
+      if(importTextoWizard.indice < importTextoWizard.blocos.length){
+        const proximoBloco = importTextoWizard.blocos[importTextoWizard.indice];
+        prefillVenda = montarPrefillDoBlocoImportacaoTexto(proximoBloco, importTextoWizard.dataPadrao);
+        prefillItensExtrasVenda = prefillVenda.itensExtras || null;
+      }
+      renderAll();
+      const alvoWizard = document.getElementById('import-texto-wizard-card');
+      if(alvoWizard) alvoWizard.scrollIntoView({behavior:'smooth', block:'start'});
+      return;
+    }
     // Mantém o painel de lançamento manual aberto e volta a tela pra ele — sem isso, depois de
     // registrar a venda o formulário fechava e a página voltava pro topo, dando a impressão de
     // que tinha "sumido" a tela, quando na verdade dava pra continuar lançando a próxima venda.
