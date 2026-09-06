@@ -4510,8 +4510,14 @@ function parseLinhaBlocoNotasVenda(linhaOriginal){
 
   let clienteTexto, itemTexto;
   const mGatilho = linha.match(GATILHO_ITEM_TEXTO_LIVRE);
-  if(mGatilho){
-    const idx = linha.indexOf(mGatilho[0]);
+  // A lista de palavras-gatilho (bdj, carga, garrafa...) não cobre todo produto possível — se o
+  // cliente comprou algo fora dessa lista (ex.: "1 saco de carvão"), cai aqui: qualquer número de
+  // 1 a 9 sozinho (não colado a outros dígitos) quase sempre é a quantidade do item, já que preço
+  // e número de casa/rua costumam ter 2+ dígitos ou vírgula decimal (110, 420, 15,99...).
+  const mGatilhoGenerico = mGatilho ? null : linha.match(/\b[1-9]\b/);
+  const gatilhoUsado = mGatilho ? mGatilho[0] : (mGatilhoGenerico ? mGatilhoGenerico[0] : null);
+  if(gatilhoUsado){
+    const idx = linha.indexOf(gatilhoUsado);
     clienteTexto = linha.slice(0, idx);
     itemTexto = linha.slice(idx);
   } else {
@@ -4556,7 +4562,7 @@ function parseLinhaBlocoNotasVenda(linhaOriginal){
   // Só confia no número extraído como "quantidade" quando o gatilho de item foi mesmo achado
   // (ex.: "1 carga", "2 bdj") — sem isso, o primeiro número da linha pode ser o próprio valor
   // (ex.: "110,00 dinheiro"), e usar ele como quantidade dava conta errada (110 unidades de R$1).
-  const mQtd = mGatilho ? itemTexto.match(/^\D*(\d+)/) : null;
+  const mQtd = gatilhoUsado ? itemTexto.match(/^\D*(\d+)/) : null;
   const quantidade = mQtd ? (parseInt(mQtd[1],10)||1) : 1;
   const categoriaSugerida = sugerirCategoriaTextoLivre(itemTexto);
 
