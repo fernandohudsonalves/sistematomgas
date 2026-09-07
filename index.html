@@ -206,10 +206,13 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .filtro-coluna-lista label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:normal;padding:3px 0;white-space:nowrap;color:var(--text,#222);}
 .filtro-coluna-lista .filtro-coluna-acoes{display:flex;gap:8px;margin-bottom:6px;border-bottom:1px solid var(--border,#eee);padding-bottom:6px;}
 .table-wrap{overflow-x:auto;}
-/* Histórico de vendas: mantém a rolagem horizontal funcionando (dá pra arrastar pra ver as
-   colunas que não cabem), só esconde a barrinha visual pra ficar mais limpo. */
-#lista-vendas-wrap .table-wrap{scrollbar-width:none;-ms-overflow-style:none;}
-#lista-vendas-wrap .table-wrap::-webkit-scrollbar{display:none;}
+/* Histórico de vendas: rolagem horizontal com barra visível (mais fácil de ver que dá pra
+   arrastar pros lados pra ver as colunas que não cabem), com um visual discreto que combina
+   com o resto do sistema. */
+#lista-vendas-wrap .table-wrap{scrollbar-width:thin;scrollbar-color:var(--royal) var(--border);}
+#lista-vendas-wrap .table-wrap::-webkit-scrollbar{height:11px;}
+#lista-vendas-wrap .table-wrap::-webkit-scrollbar-track{background:var(--border);border-radius:6px;}
+#lista-vendas-wrap .table-wrap::-webkit-scrollbar-thumb{background:var(--royal);border-radius:6px;}
 .table-wrap table{width:100%;table-layout:fixed;border-collapse:collapse;}
 .table-wrap th,.table-wrap td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;padding:6px 8px;font-size:12.5px;}
 .table-wrap td.cel-acoes{overflow:visible;max-width:none;white-space:nowrap;}
@@ -5385,17 +5388,18 @@ function vendasTable(list, opts){
   if(list.length===0) return '<div class="empty">Nenhuma venda encontrada.</div>';
   const classeWrap = 'table-wrap tabela-vendas'+(opts.compacta?' tabela-vendas-compacta':'');
   return legendaBolinhasPagamentoHtml()+
-    '<div class="'+classeWrap+'"><table style="min-width:1600px;"><colgroup><col style="width:30px;"><col style="width:55px;"><col style="width:75px;"><col style="width:170px;"><col style="width:75px;"><col style="width:110px;"><col style="width:150px;"><col style="width:70px;"><col style="width:45px;"><col style="width:75px;"><col style="width:80px;"><col style="width:130px;"><col style="width:70px;"><col style="width:110px;"><col style="width:80px;"><col style="width:150px;"><col style="width:110px;"><col style="width:90px;"></colgroup><thead><tr><th title="Legenda da forma de pagamento">●</th><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Frete</th><th>Qtd</th><th>Valor unit.</th><th>Valor</th><th>Pagto</th><th>Nota</th><th>Empresa conv.</th><th>Cupom</th><th>Observação</th><th>Lançado em</th><th></th></tr></thead><tbody>'+
+    '<div class="'+classeWrap+'"><table style="min-width:1720px;"><colgroup><col style="width:30px;"><col style="width:55px;"><col style="width:75px;"><col style="width:170px;"><col style="width:75px;"><col style="width:110px;"><col style="width:150px;"><col style="width:70px;"><col style="width:90px;"><col style="width:45px;"><col style="width:75px;"><col style="width:80px;"><col style="width:130px;"><col style="width:70px;"><col style="width:110px;"><col style="width:80px;"><col style="width:150px;"><col style="width:110px;"><col style="width:90px;"></colgroup><thead><tr><th title="Legenda da forma de pagamento">●</th><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Canal</th><th>Cliente</th><th>Entrega</th><th>Frete</th><th>Status entrega</th><th>Qtd</th><th>Valor unit.</th><th>Valor</th><th>Pagto</th><th>Nota</th><th>Empresa conv.</th><th>Cupom</th><th>Observação</th><th>Lançado em</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
       const tipoEfetivo = tipoEntregaEfetivo(v);
       const foiResolvidaDeFaltaRetirar = v.tipo_entrega==='Falta retirar' && v.retirado && v.retiradoForma;
       const entrega = entregaLabel(tipoEfetivo, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (foiResolvidaDeFaltaRetirar ? ' <span class="hint" style="font-size:10.5px;">(era Falta retirar)</span>' : '');
+      const statusEntregaTxt = v.tipo_entrega==='Falta retirar' ? (v.retirado?'✔ Retirado':'Pendente') : (v.entrega_hora ? (v.entrega_status==='entregue'?'✔ Entregue':'Pendente') : '—');
       const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>');
       const lancadoEmTxt = v.criadoEm ? fmtDate(v.data)+' '+new Date(v.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
       return '<tr><td style="text-align:center;">'+bolinhaPagamentoHtml(v.pagamento, v.pagamentoSplit)+'</td><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
-        '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td style="text-align:right;">'+(v.frete?fmtMoney(v.frete):'—')+'</td><td style="text-align:center;">'+v.quantidade+'</td>'+
+        '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td style="text-align:right;">'+(v.frete?fmtMoney(v.frete):'—')+'</td><td>'+statusEntregaTxt+'</td><td style="text-align:center;">'+v.quantidade+'</td>'+
         '<td style="text-align:right;">'+fmtMoney(v.valor_unit)+'</td><td style="text-align:right;">'+fmtMoney(v.valor_total)+'</td><td>'+pagtoTxt+'</td><td><span class="badge nota">'+v.nota+'</span></td>'+
         '<td>'+(v.empresa||'—')+'</td><td>'+(v.cupom||'—')+'</td><td title="'+escapeHtmlCampanha(v.obs||'')+'">'+(v.obs||'—')+'</td><td>'+lancadoEmTxt+'</td>'+
         '<td class="cel-acoes"><button class="act-link" title="Editar" data-edit-venda="'+v.id+'">✎</button>'+
