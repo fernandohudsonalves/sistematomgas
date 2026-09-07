@@ -5742,17 +5742,37 @@ function clientesNaoCadastrados(){
   (state.fiados||[]).forEach(f=>registrar(f.cliente, f.data, 'fiado'));
   return Array.from(vistos.values()).sort((a,b)=>(b.ultimaData||'').localeCompare(a.ultimaData||''));
 }
+// Troca o nome "nomeOriginal" por "nomeFinal" em toda tabela que guarda o cliente como texto —
+// usado tanto quando corrige um nome digitado errado quanto quando vincula um nome pendente a um
+// cliente que já existe (pra não cadastrar a mesma pessoa duas vezes). Devolve as chaves do state
+// que mudaram, pra saber quais precisam ser salvas no Supabase.
+function renomearClienteEmTudo(nomeOriginal, nomeFinal){
+  const chave = chaveNormalizada(nomeOriginal);
+  const chavesParaSalvar = [];
+  if(!chave || chave===chaveNormalizada(nomeFinal)) return chavesParaSalvar;
+  const tabelasComCampoCliente = ['vendas','fiados','fiadoPagamentos','creditos','agendamentos','interacoesCliente','tarefasCliente','anexosEntrega','pesquisaClientes','respostasPesquisaManual','paradasRota'];
+  tabelasComCampoCliente.forEach(key=>{
+    let mudou = false;
+    (state[key]||[]).forEach(item=>{ if(chaveNormalizada(item.cliente)===chave){ item.cliente = nomeFinal; mudou = true; } });
+    if(mudou) chavesParaSalvar.push(key);
+  });
+  let mudouComodato = false;
+  (state.comodatos||[]).forEach(c=>{ if(c.direcao==='cliente' && chaveNormalizada(c.nome)===chave){ c.nome = nomeFinal; mudouComodato = true; } });
+  if(mudouComodato) chavesParaSalvar.push('comodatos');
+  return chavesParaSalvar;
+}
 function alertaClientesNaoCadastradosHtml(){
   const pendentes = clientesNaoCadastrados();
   if(pendentes.length===0) return '';
+  const datalistClientesPendentes = '<datalist id="dl-clientes-pendentes">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>';
   return '<div class="card" style="border-left:4px solid var(--danger,#DC2626);">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'+
     '<h2 style="margin:0;">⚠ Nomes em vendas/fiado sem cadastro completo ('+pendentes.length+')</h2>'+
-    '<button type="button" class="btn small" id="btn-cadastrar-todos-pendentes">Cadastrar todos de uma vez</button></div>'+
-    '<div class="hint">Esses nomes foram digitados numa venda ou num lançamento de fiado antes da correção, mas não têm cadastro em Clientes — foi o que aconteceu com a Orli. "Cadastrar todos de uma vez" cria o cadastro de cada um (só com o nome, telefone/endereço em branco pra completar depois); ou clique em "cadastrar" pra fazer um de cada vez.</div>'+
-    '<div class="table-wrap"><table><thead><tr><th>Nome digitado</th><th>Aparece em</th><th>Última vez</th><th></th></tr></thead><tbody>'+
-    pendentes.map(p=>'<tr><td>'+escapeHtmlCampanha(p.nome)+'</td><td>'+Array.from(p.origens).join(' + ')+' ('+p.qtd+'x)</td><td>'+(p.ultimaData?fmtDate(p.ultimaData):'—')+'</td>'+
-    '<td><button type="button" class="act-link" data-cadastrar-pendente="'+encodeURIComponent(p.nome)+'">+ cadastrar</button></td></tr>').join('')+
+    '<div class="hint">Esses nomes foram digitados numa venda ou num lançamento de fiado antes da correção, mas não têm cadastro em Clientes — foi o que aconteceu com a Orli. <strong>Corrija o nome no campo</strong> se tiver erro de digitação, ou comece a digitar pra ver se essa pessoa já está cadastrada com outro nome. Ao clicar em "confirmar": se o nome bater com um cliente que já existe, a venda/fiado é vinculada a esse cadastro (não cria duplicado); se for realmente um nome novo, cria o cadastro.</div>'+
+    datalistClientesPendentes+
+    '<div class="table-wrap"><table><thead><tr><th>Nome (corrija ou busque se já existe)</th><th>Aparece em</th><th>Última vez</th><th></th></tr></thead><tbody>'+
+    pendentes.map(p=>'<tr><td><input type="text" class="input-pendente-cliente" list="dl-clientes-pendentes" value="'+escapeHtmlCampanha(p.nome)+'" style="min-width:180px;"></td>'+
+    '<td>'+Array.from(p.origens).join(' + ')+' ('+p.qtd+'x)</td><td>'+(p.ultimaData?fmtDate(p.ultimaData):'—')+'</td>'+
+    '<td><button type="button" class="act-link" data-confirmar-pendente="'+encodeURIComponent(p.nome)+'">✓ confirmar</button></td></tr>').join('')+
     '</tbody></table></div></div>';
 }
 function viewClientes(){
@@ -10597,25 +10617,23 @@ function attachHandlers(){
 
   const btnIrNovoCliente = document.getElementById('btn-ir-novo-cliente');
   if(btnIrNovoCliente)btnIrNovoCliente.onclick=()=>{const f=document.getElementById('form-cliente');if(f)f.scrollIntoView({behavior:'smooth',block:'start'});};
-  document.querySelectorAll('[data-cadastrar-pendente]').forEach(b=>b.onclick=()=>{
-    const nome = decodeURIComponent(b.dataset.cadastrarPendente);
-    const f = document.getElementById('form-cliente');
-    if(!f) return;
-    f.nome.value = nome;
-    f.scrollIntoView({behavior:'smooth',block:'start'});
-    f.telefone.focus();
-  });
-  const btnCadastrarTodosPendentes = document.getElementById('btn-cadastrar-todos-pendentes');
-  if(btnCadastrarTodosPendentes) btnCadastrarTodosPendentes.onclick = async ()=>{
-    const pendentes = clientesNaoCadastrados();
-    if(pendentes.length===0) return;
-    if(!confirm('Cadastrar '+pendentes.length+' cliente(s) de uma vez, só com o nome (telefone e endereço ficam em branco pra completar depois)?')) return;
-    pendentes.forEach(p=>{
-      state.clientes.push({id:uid(), nome:p.nome, telefone:'', endereco:'', complemento:'', obs:'', criadoEm:Date.now(), autoCadastrado:true});
-    });
-    await save('clientes');
+  document.querySelectorAll('[data-confirmar-pendente]').forEach(btn=>btn.onclick=async()=>{
+    const nomeOriginal = decodeURIComponent(btn.dataset.confirmarPendente);
+    const tr = btn.closest('tr');
+    const input = tr ? tr.querySelector('.input-pendente-cliente') : null;
+    const nomeEscolhido = (input ? input.value : nomeOriginal).trim();
+    if(!nomeEscolhido){ alert('Digite um nome.'); return; }
+    const existente = encontrarClientePorNomeOuApelido(nomeEscolhido);
+    const nomeFinal = existente ? existente.nome : nomeEscolhido;
+    const chavesParaSalvar = new Set(renomearClienteEmTudo(nomeOriginal, nomeFinal));
+    if(!existente){
+      state.clientes.push({id:uid(), nome:nomeFinal, telefone:'', endereco:'', complemento:'', obs:'', criadoEm:Date.now(), autoCadastrado:true});
+      chavesParaSalvar.add('clientes');
+    }
+    for(const k of chavesParaSalvar) await save(k);
+    if(existente) alert('Vinculado ao cliente já cadastrado: '+nomeFinal+'. As vendas/fiados que estavam com o nome "'+nomeOriginal+'" agora apontam pra esse cadastro.');
     renderAll();
-  };
+  });
   const btnAddGrupoCliente=document.getElementById('btn-add-grupo-cliente');
   if(btnAddGrupoCliente)btnAddGrupoCliente.onclick=async()=>{const i=document.getElementById('novo-grupo-cliente'),g=(i?.value||'').trim();if(!g)return;if((state.categoriasClientes||[]).some(x=>chaveNormalizada(x)===chaveNormalizada(g))){alert('Esse grupo já existe.');return;}state.categoriasClientes.push(g);await save('categoriasClientes');renderAll();};
   document.querySelectorAll('[data-del-grupo-cliente]').forEach(b=>b.onclick=async()=>{const g=b.dataset.delGrupoCliente;if(!confirm('Excluir o grupo "'+g+'"?'))return;state.categoriasClientes=(state.categoriasClientes||[]).filter(x=>x!==g);state.clientes.forEach(c=>c.grupos=gruposClienteDoCliente(c).filter(x=>x!==g));await save('categoriasClientes');await save('clientes');renderAll();});
