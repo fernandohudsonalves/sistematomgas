@@ -1608,7 +1608,12 @@ function localizarItemChecklist(id){
 function fmtMoney(v){ return (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function fmtNumBR(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtDate(d){ const p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
-function todayStr(){ return new Date().toISOString().slice(0,10); }
+// IMPORTANTE: usa a data LOCAL do aparelho (ano/mês/dia), nunca toISOString() puro — toISOString()
+// converte pra UTC, e no horário de Brasília (UTC-3) isso faz o sistema achar que já é "outro dia"
+// a partir de ~21h. Antes essa função tinha esse bug e causava venda lançada à noite ficar com a
+// data errada (um dia à frente), o que gerava diferença entre "Vendas do dia" e os relatórios por
+// período quando alguém filtrava pelo dia certo depois.
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function diasEntre(dataA, dataB){
   const a = new Date(dataA+'T00:00:00'), b = new Date(dataB+'T00:00:00');
   return Math.round((b-a)/86400000);
@@ -3297,6 +3302,31 @@ async function loadAll(){
     if(!state.fornecedoresGas.some(x=>x.whatsapp===f.whatsapp)) state.fornecedoresGas.push(Object.assign({id:uid()},f));
   });
   await save('fornecedoresGas');
+  // Corrige retroativamente vendas/despesas/fiados/créditos com a data gravada errada por causa do
+  // bug do fuso horário em todayStr() (calculava em UTC — perto das 21h-23h59 no horário de
+  // Brasília o sistema já achava que era "o dia seguinte" e carimbava o lançamento com essa data
+  // errada). Só corrige quando a data gravada bate exatamente com o "UTC do momento em que foi
+  // criado" e diverge da data local verdadeira daquele instante — assim não mexe em nada lançado
+  // de propósito com data diferente (venda de dia anterior, importação de planilha etc.), só no que
+  // realmente foi vítima do bug.
+  function corrigirDataPorFusoHorario(lista){
+    let mudou = false;
+    (lista||[]).forEach(item=>{
+      if(!item.criadoEm || !item.data) return;
+      const dCriado = new Date(item.criadoEm);
+      const dataUtcNoMomento = dCriado.toISOString().slice(0,10);
+      const dataLocalNoMomento = dCriado.getFullYear()+'-'+String(dCriado.getMonth()+1).padStart(2,'0')+'-'+String(dCriado.getDate()).padStart(2,'0');
+      if(item.data===dataUtcNoMomento && dataUtcNoMomento!==dataLocalNoMomento){
+        item.data = dataLocalNoMomento;
+        mudou = true;
+      }
+    });
+    return mudou;
+  }
+  if(corrigirDataPorFusoHorario(state.vendas)) await save('vendas');
+  if(corrigirDataPorFusoHorario(state.despesas)) await save('despesas');
+  if(corrigirDataPorFusoHorario(state.fiados)) await save('fiados');
+  if(corrigirDataPorFusoHorario(state.creditos)) await save('creditos');
   if(Array.isArray(state.categoriasDespesas)){
     let mudouCatsESG=false;
     ['Energia Elétrica','Água / Saneamento','Desperdício / Descarte'].forEach(c=>{ if(!state.categoriasDespesas.includes(c)){ state.categoriasDespesas.push(c); mudouCatsESG=true; } });
@@ -4350,6 +4380,19 @@ async function garantirEmpresaCadastrada(nome){
   state.empresas.push({id:uid(), nome:n, telefone:'', endereco:'', responsavel:'', obs:''});
   await save('empresas');
 }
+// Mesma ideia da empresa/cliente: quando a venda (ou agendamento) usa um produto "livre" (nome
+// digitado, categoria Outros/não controlada) que ainda não está no catálogo de Produtos, cadastra
+// ele sozinho — antes só ficava salvo como texto solto na venda e nunca aparecia em Cadastros >
+// Produtos, mesmo depois de vender várias vezes a mesma coisa.
+async function garantirProdutoCadastrado(nome, categoria, preco){
+  const n = String(nome||'').trim();
+  if(!n || n==='(sem nome)') return;
+  const norm = chaveNormalizada(n);
+  const existe = (state.produtos||[]).some(p=>chaveNormalizada(p.nome||'')===norm);
+  if(existe) return;
+  state.produtos.push({id:uid(), nome:n, categoria:categoria||'outros', preco:Number(preco)||0, ativo:true});
+  await save('produtos');
+}
 /* Varre vendas e agendamentos em busca de nomes de empresa ainda não cadastrados e cria todos de uma vez.
    Passe silencioso=true pra rodar sem alert() nem renderAll() (usado dentro da importação diária). */
 async function importarEmpresasAutomaticamente(silencioso){
@@ -5194,7 +5237,7 @@ function viewVendas(){
     '</div>'+
     '<div id="wrap-divisao-pagamento" class="item-venda-row" style="margin-top:10px;">'+
     '<label class="checkbox-item"><input type="checkbox" id="chk-dividir-pagamento"> Dividir esta venda em duas formas de pagamento</label>'+
-    '<div class="hint">Use quando o cliente pagou parte com uma forma e o restante com outra (ex: parte no crédito, parte em dinheiro), ou quando só pagou uma parte agora — nesse caso, escolha "Fica de fiado (a receber)" na forma do restante e o sistema lança sozinho a diferença no fiado. Não use junto com "Abateu": pra usar o crédito em haver do cliente, essa opção já aparece automaticamente aqui embaixo quando ele tiver saldo.</div>'+
+    '<div class="hint">Serve tanto pra dois pagamentos reais na mesma venda (ex: Vale Gás/Gás do Povo pagou a carga e o cliente pagou o frete da entrega em Pix, Dinheiro ou Cartão) quanto pra quando só pagou uma parte agora — nesse caso, escolha "Fica de fiado (a receber)" na forma do restante e o sistema lança sozinho a diferença no fiado. Não use junto com "Abateu": pra usar o crédito em haver do cliente, essa opção já aparece automaticamente aqui embaixo quando ele tiver saldo.</div>'+
     '<div id="detalhes-divisao-pagamento" style="display:none;margin-top:8px;">'+
     '<div class="form-row">'+
     '<div><label>Valor pago com a forma acima (R$)</label><input type="number" id="input-valor-forma1" min="0" step="0.01" placeholder="0,00"></div>'+
@@ -5364,15 +5407,19 @@ function corBolinhaPagamento(pagamento){
 function bolinhaPagamentoHtml(pagamento, pagamentoSplit){
   const cor = corBolinhaPagamento(pagamento);
   if(cor) return '<span title="'+escapeHtmlCampanha(pagamento)+'" style="display:inline-block;width:13px;height:13px;border-radius:50%;background:'+cor+';border:1px solid rgba(0,0,0,0.35);vertical-align:middle;"></span>';
-  // Venda "combo": parte paga numa forma normal e o restante foi pro fiado (ex: "Abateu + Fiado",
-  // "Dinheiro + Fiado", "Crédito + Fiado"). Antes não mostrava bolinha nenhuma, o que confundia
-  // na hora de bater o olho em quem ainda tem parte a receber. Agora mostra uma bolinha "pela
-  // metade": metade na cor da forma paga (ou cinza se não tiver cor própria), metade roxa (fiado).
+  // Venda "combo": duas formas de pagamento na mesma venda — pode ser parte paga numa forma normal
+  // e o restante pro fiado (ex: "Dinheiro + Fiado"), ou duas formas realmente pagas (ex: "Gás do
+  // povo + Pix", quando o vale paga a carga e o cliente paga o frete da entrega em outra forma).
+  // Mostra uma bolinha "pela metade": metade na cor de cada forma (cinza se a forma não tiver cor
+  // própria, como Dinheiro/Pix/Débito/Crédito).
   const pagStr = pagamento||'';
-  if(/fiado/i.test(pagStr) && pagStr!=='Marcou/Fiado'){
-    const forma1 = pagamentoSplit&&pagamentoSplit.forma1 ? pagamentoSplit.forma1 : pagStr.split('+')[0].trim();
+  if(pagStr.includes('+')){
+    const partes = pagStr.split('+').map(p=>p.trim());
+    const forma1 = (pagamentoSplit&&pagamentoSplit.forma1) ? pagamentoSplit.forma1 : partes[0];
+    const forma2 = (pagamentoSplit&&pagamentoSplit.forma2) ? pagamentoSplit.forma2 : ((/^fiado$/i.test(partes[1]||'')) ? 'Marcou/Fiado' : partes[1]);
     const corForma1 = corBolinhaPagamento(forma1) || '#B0B0B0';
-    return '<span title="'+escapeHtmlCampanha(pagStr)+' — parte pago, parte foi pro fiado" style="display:inline-block;width:13px;height:13px;border-radius:50%;background:linear-gradient(90deg, '+corForma1+' 50%, #B266FF 50%);border:1px solid rgba(0,0,0,0.35);vertical-align:middle;"></span>';
+    const corForma2 = corBolinhaPagamento(forma2) || '#B0B0B0';
+    return '<span title="'+escapeHtmlCampanha(pagStr)+'" style="display:inline-block;width:13px;height:13px;border-radius:50%;background:linear-gradient(90deg, '+corForma1+' 50%, '+corForma2+' 50%);border:1px solid rgba(0,0,0,0.35);vertical-align:middle;"></span>';
   }
   return '';
 }
@@ -9259,6 +9306,7 @@ function attachHandlers(){
     const categoria = f.get('categoria');
     const controlada = isControlada(categoria);
     const produto = controlada ? categoria : (f.get('produto_livre')||'(sem nome)');
+    if(!controlada) await garantirProdutoCadastrado(produto, categoria, f.get('valor_unit'));
     const quantidade = Number(f.get('quantidade'));
     const valor_unit = Number(f.get('valor_unit'));
     const valor_total = Math.round(quantidade*valor_unit*100)/100;
@@ -9342,6 +9390,7 @@ function attachHandlers(){
           if(!catExtra) return;
           const contExtra = isControlada(catExtra);
           const prodExtra = contExtra ? catExtra : (row.querySelector('.iv-produto-livre').value || '(sem nome)');
+          if(!contExtra) garantirProdutoCadastrado(prodExtra, catExtra, row.querySelector('.iv-valor-unit').value);
           const qtdExtra = Number(row.querySelector('.iv-quantidade').value)||0;
           const vUnitExtra = Number(row.querySelector('.iv-valor-unit').value)||0;
           const notaExtra = (row.querySelector('.iv-nota')||{}).value || v.nota;
@@ -9372,6 +9421,7 @@ function attachHandlers(){
         const cat = row.querySelector('.iv-categoria').value;
         const cont = isControlada(cat);
         const prod = cont ? cat : (row.querySelector('.iv-produto-livre').value || '(sem nome)');
+        if(!cont) garantirProdutoCadastrado(prod, cat, row.querySelector('.iv-valor-unit').value);
         const qtd = Number(row.querySelector('.iv-quantidade').value)||0;
         const vUnit = Number(row.querySelector('.iv-valor-unit').value)||0;
         const notaItem = (row.querySelector('.iv-nota')||{}).value || f.get('nota');
@@ -11988,6 +12038,7 @@ function attachHandlers(){
     const categoriaAg = f.get('categoria');
     const controladaAg = isControlada(categoriaAg);
     const produtoAg = controladaAg ? categoriaAg : (f.get('produto_livre')||'(sem nome)');
+    if(!controladaAg) garantirProdutoCadastrado(produtoAg, categoriaAg, f.get('valor_unit'));
     const quantidadeAg = Number(f.get('quantidade'))||1;
     const produtoNotaAg = produtoAg + (quantidadeAg>1 ? ' x'+quantidadeAg : '');
     if(editAgendamentoId){
