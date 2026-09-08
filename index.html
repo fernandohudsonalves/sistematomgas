@@ -4407,6 +4407,30 @@ async function importarEmpresasAutomaticamente(silencioso){
   if(!silencioso){ alert(novas.length+' empresa(s) importada(s) automaticamente: '+novas.join(', ')); renderAll(); }
   return novas;
 }
+/* Mesma ideia de importarEmpresasAutomaticamente, mas pra produtos "livres" (categoria não
+   controlada, tipo Outros) que ficaram só como texto solto em vendas/agendamentos antigos, de
+   antes do cadastro automático existir. Usa o valor unitário mais recente daquele nome como preço
+   inicial (dá pra ajustar depois no catálogo). */
+async function importarProdutosAutomaticamente(silencioso){
+  const encontrados = {}; // chaveNormalizada -> {nome, categoria, preco, data}
+  function registrar(nome, categoria, preco, data){
+    const n = String(nome||'').trim();
+    if(!n || n==='(sem nome)' || isControlada(categoria)) return;
+    const chave = chaveNormalizada(n);
+    if(!chave) return;
+    const atual = encontrados[chave];
+    if(!atual || (data||'')>(atual.data||'')) encontrados[chave] = {nome:n, categoria:categoria||'outros', preco:Number(preco)||0, data:data||''};
+  }
+  state.vendas.forEach(v=>registrar(v.produto, v.categoria, v.valor_unit, v.data));
+  (state.agendamentos||[]).forEach(a=>registrar(a.produto, a.categoria, a.valor_unit, a.data));
+  const existentes = new Set((state.produtos||[]).map(p=>chaveNormalizada(p.nome||'')));
+  const novos = Object.values(encontrados).filter(p=>!existentes.has(chaveNormalizada(p.nome)));
+  if(novos.length===0){ if(!silencioso) alert('Nenhum produto novo encontrado em vendas ou agendamentos.'); return novos; }
+  novos.forEach(p=> state.produtos.push({id:uid(), nome:p.nome, categoria:p.categoria, preco:p.preco, ativo:true}));
+  await save('produtos');
+  if(!silencioso){ alert(novos.length+' produto(s) importado(s) automaticamente: '+novos.map(p=>p.nome).join(', ')); renderAll(); }
+  return novos;
+}
 
 /* ---------- EMPRESAS CONVENIADAS ---------- */
 function viewEmpresas(){
@@ -5047,6 +5071,8 @@ function viewProdutos(){
   const catalogoHtml = '<div id="catalogo-produtos-wrap">'+catalogoProdutosHtml(cats)+'</div>';
   return '<div class="card"><h2>Catálogo de produtos <span class="pill">'+state.produtos.filter(p=>!p.fixo).length+'</span></h2>'+
     '<div class="hint">Produtos organizados por categoria, com preço padrão. Na hora da venda, o preço já vem preenchido, mas você pode mudar se quiser.</div>'+
+    '<button type="button" class="btn small ghost" id="btn-importar-produtos" style="margin-top:10px;margin-bottom:6px;">⬇️ Importar produtos automaticamente</button>'+
+    '<div class="hint" style="margin-bottom:10px;">Varre vendas e agendamentos antigos em busca de produtos "Outros" que foram digitados na hora mas nunca entraram nesse catálogo, e cadastra todos de uma vez (preço inicial = último valor unitário usado; dá pra ajustar depois na lista abaixo).</div>'+
     busca + catalogoHtml + '</div>'+
     '<div class="card"><h2>Novo produto</h2><form id="form-produto">'+
     '<div class="form-row">'+
@@ -10464,6 +10490,8 @@ function attachHandlers(){
     const btnImportarEmpresas = document.getElementById('btn-importar-empresas');
     if(btnImportarEmpresas) btnImportarEmpresas.onclick = importarEmpresasAutomaticamente;
   };
+  const btnImportarProdutos = document.getElementById('btn-importar-produtos');
+  if(btnImportarProdutos) btnImportarProdutos.onclick = importarProdutosAutomaticamente;
   attachVendaRowHandlers();
   attachDespesaRowHandlers();
   attachClienteRowHandlers();
