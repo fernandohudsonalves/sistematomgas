@@ -195,9 +195,14 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 #logo-box img{cursor:pointer;transition:opacity .15s;}
 #logo-box img:hover{opacity:.8;}
 
-.filtro-vendas-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;}
+/* Grid em vez de flex: cada linha da busca fecha em colunas do mesmo tamanho, então quando
+   quebra em telas estreitas os campos continuam alinhados certinho (com flex ficava torto,
+   porque as larguras eram todas diferentes e não fechavam a linha de forma pareada). */
+.filtro-vendas-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px 12px;align-items:end;}
 .filtro-vendas-row>div{min-width:0;}
 .filtro-vendas-row input,.filtro-vendas-row select,.filtro-vendas-row summary{box-sizing:border-box;width:100%;height:34px;}
+.filtro-vendas-row .filtro-vendas-busca{grid-column:span 2;}
+.filtro-vendas-row .filtro-vendas-limpar{display:flex;align-items:flex-end;justify-content:flex-start;}
 .filtro-coluna{position:relative;}
 .filtro-coluna summary{list-style:none;cursor:pointer;border:1px solid var(--border,#ccc);border-radius:6px;padding:6px 10px;font-size:12.5px;display:flex;align-items:center;background:var(--card,#fff);color:var(--text,#222);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .filtro-coluna summary::-webkit-details-marker{display:none;}
@@ -1614,6 +1619,30 @@ function fmtDate(d){ const p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 // data errada (um dia à frente), o que gerava diferença entre "Vendas do dia" e os relatórios por
 // período quando alguém filtrava pelo dia certo depois.
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// Corrige a data gravada errada por causa do bug (já corrigido) do fuso horário em todayStr() —
+// calculava em UTC, então perto das 21h-23h59 no horário de Brasília o sistema achava que já era
+// "o dia seguinte" e carimbava vendas/despesas/fiados/créditos lançados nesse horário com a data
+// errada (um dia à frente). Só corrige quando a data gravada bate exatamente com o "UTC do momento
+// em que foi criado" e diverge da data local verdadeira daquele instante — assim não mexe em nada
+// lançado de propósito com data diferente (venda de dia anterior, importação de planilha etc.), só
+// no que realmente foi vítima do bug. Passe detalhes=true pra receber a lista do que mudou (usado
+// pelo botão manual "Corrigir fuso horário agora").
+function corrigirDataPorFusoHorario(lista, detalhes){
+  let mudou = false;
+  const alteracoes = [];
+  (lista||[]).forEach(item=>{
+    if(!item.criadoEm || !item.data) return;
+    const dCriado = new Date(item.criadoEm);
+    const dataUtcNoMomento = dCriado.toISOString().slice(0,10);
+    const dataLocalNoMomento = dCriado.getFullYear()+'-'+String(dCriado.getMonth()+1).padStart(2,'0')+'-'+String(dCriado.getDate()).padStart(2,'0');
+    if(item.data===dataUtcNoMomento && dataUtcNoMomento!==dataLocalNoMomento){
+      if(detalhes) alteracoes.push({item, de:item.data, para:dataLocalNoMomento});
+      item.data = dataLocalNoMomento;
+      mudou = true;
+    }
+  });
+  return detalhes ? alteracoes : mudou;
+}
 function diasEntre(dataA, dataB){
   const a = new Date(dataA+'T00:00:00'), b = new Date(dataB+'T00:00:00');
   return Math.round((b-a)/86400000);
@@ -3303,26 +3332,8 @@ async function loadAll(){
   });
   await save('fornecedoresGas');
   // Corrige retroativamente vendas/despesas/fiados/créditos com a data gravada errada por causa do
-  // bug do fuso horário em todayStr() (calculava em UTC — perto das 21h-23h59 no horário de
-  // Brasília o sistema já achava que era "o dia seguinte" e carimbava o lançamento com essa data
-  // errada). Só corrige quando a data gravada bate exatamente com o "UTC do momento em que foi
-  // criado" e diverge da data local verdadeira daquele instante — assim não mexe em nada lançado
-  // de propósito com data diferente (venda de dia anterior, importação de planilha etc.), só no que
-  // realmente foi vítima do bug.
-  function corrigirDataPorFusoHorario(lista){
-    let mudou = false;
-    (lista||[]).forEach(item=>{
-      if(!item.criadoEm || !item.data) return;
-      const dCriado = new Date(item.criadoEm);
-      const dataUtcNoMomento = dCriado.toISOString().slice(0,10);
-      const dataLocalNoMomento = dCriado.getFullYear()+'-'+String(dCriado.getMonth()+1).padStart(2,'0')+'-'+String(dCriado.getDate()).padStart(2,'0');
-      if(item.data===dataUtcNoMomento && dataUtcNoMomento!==dataLocalNoMomento){
-        item.data = dataLocalNoMomento;
-        mudou = true;
-      }
-    });
-    return mudou;
-  }
+  // bug do fuso horário em todayStr() (função global, também usada pelo botão manual "Corrigir
+  // fuso horário agora" no Histórico de Vendas).
   if(corrigirDataPorFusoHorario(state.vendas)) await save('vendas');
   if(corrigirDataPorFusoHorario(state.despesas)) await save('despesas');
   if(corrigirDataPorFusoHorario(state.fiados)) await save('fiados');
@@ -5303,20 +5314,24 @@ function viewVendas(){
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje, {compacta:true})+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
     '<div class="filtro-vendas-row">'+
-    '<div style="flex:2 1 220px;"><label style="font-size:11px;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por produto, categoria, cliente, empresa, canal, pagamento, entrega, nota, cupom, data, valor..."></div>'+
-    '<div style="flex:1 1 130px;"><label style="font-size:11px;">De</label><input type="date" id="busca-venda-data-de" title="Filtrar a partir desta data"></div>'+
-    '<div style="flex:1 1 130px;"><label style="font-size:11px;">Até</label><input type="date" id="busca-venda-data-ate" title="Filtrar até esta data"></div>'+
-    '<div style="flex:1 1 130px;"><label style="font-size:11px;">Categoria</label><select id="sel-filtro-categoria-venda"><option value="">Todas</option><option value="gas">Gás</option><option value="agua">Água</option><option value="outros">Outros</option></select></div>'+
-    '<div style="flex:1 1 170px;"><label style="font-size:11px;">Tipo da categoria</label><select id="sel-filtro-tipo-venda"><option value="">Todos</option></select></div>'+
-    '<div style="flex:1 1 170px;position:relative;"><label style="font-size:11px;">Produto</label>'+
+    '<div class="filtro-vendas-busca"><label style="font-size:11px;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por produto, categoria, cliente, empresa, canal, pagamento, entrega, nota, cupom, data, valor..."></div>'+
+    '<div><label style="font-size:11px;">De</label><input type="date" id="busca-venda-data-de" title="Filtrar a partir desta data"></div>'+
+    '<div><label style="font-size:11px;">Até</label><input type="date" id="busca-venda-data-ate" title="Filtrar até esta data"></div>'+
+    '<div><label style="font-size:11px;">Categoria</label><select id="sel-filtro-categoria-venda"><option value="">Todas</option><option value="gas">Gás</option><option value="agua">Água</option><option value="outros">Outros</option></select></div>'+
+    '<div><label style="font-size:11px;">Tipo da categoria</label><select id="sel-filtro-tipo-venda"><option value="">Todos</option></select></div>'+
+    '<div style="position:relative;"><label style="font-size:11px;">Produto</label>'+
     '<details id="filtro-produto-venda-details" class="filtro-coluna"><summary id="filtro-produto-venda-resumo">Todos os produtos</summary>'+
     '<div id="filtro-produto-venda-lista" class="filtro-coluna-lista"></div></details></div>'+
-    '<div style="flex:0 1 110px;"><label style="font-size:11px;">Por página</label><select id="sel-vendas-por-pagina"><option value="30">30</option><option value="50">50</option><option value="100">100</option></select></div>'+
-    '<div style="flex:0 0 auto;display:flex;align-items:flex-end;"><button type="button" class="btn small ghost" id="btn-vendas-filtro-limpar">Limpar filtros</button></div>'+
+    '<div><label style="font-size:11px;">Por página</label><select id="sel-vendas-por-pagina"><option value="30">30</option><option value="50">50</option><option value="100">100</option></select></div>'+
+    '<div class="filtro-vendas-limpar"><button type="button" class="btn small ghost" id="btn-vendas-filtro-limpar">Limpar filtros</button></div>'+
     '</div>'+
     '<div id="lista-vendas-wrap">'+vendasTable(state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).slice(0,30))+'</div>'+
     '<div id="paginacao-vendas-wrap" style="display:flex;align-items:center;gap:10px;justify-content:center;margin-top:10px;"></div>'+
     '<div class="hint" style="margin-top:8px;">Use a busca ou o período (De/Até) para filtrar; navegue pelas páginas para ver vendas mais antigas.</div>'+
+    '<details style="margin-top:10px;"><summary style="cursor:pointer;color:var(--royal);font-weight:600;font-size:13px;">🔧 Corrigir fuso horário agora (vendas lançadas à noite com data errada)</summary>'+
+    '<div class="hint" style="margin-top:8px;">Roda a correção do bug de fuso horário direto: vasculha vendas, despesas, fiados e créditos em busca de lançamentos feitos perto da virada do dia (21h-23h59) que ficaram gravados com a data seguinte por engano, e devolve pra data certa. Mostra exatamente o que mudou (ou avisa se não achar nada).</div>'+
+    '<button type="button" class="btn small" id="btn-forcar-correcao-fuso" style="margin-top:8px;">Rodar correção agora</button>'+
+    '</details>'+
     '<details style="margin-top:10px;"><summary style="cursor:pointer;color:var(--royal);font-weight:600;font-size:13px;">Corrigir data errada em várias vendas de uma vez</summary>'+
     '<div class="form-row" style="margin-top:8px;">'+
     '<div><label>Data errada (atual)</label><input type="date" id="corrigir-data-de"></div>'+
@@ -6558,6 +6573,10 @@ function viewConfig(){
     (permissao==='granted' ? '<button type="button" class="btn small ghost" id="btn-testar-notificacao">Testar agora</button>' : '<button type="button" class="btn small" id="btn-ativar-notificacao">Ativar neste aparelho</button>')+
     '</div>'+
     (permissao==='granted' ? '<details style="margin-top:8px;"><summary>Não chegou nenhuma notificação?</summary><div class="hint" style="margin-top:6px;">Confira em <strong>Configurações do celular → Apps → Tom Gás (ou Chrome) → Notificações</strong> — é uma permissão separada da do navegador.</div></details>' : '')+
+    '</div>'+
+    '<div class="card"><h2>🧹 Limpar cache do site</h2>'+
+    '<div class="hint">Se depois de uma atualização o sistema continuar mostrando algo antigo mesmo dando F5, use este botão em vez de ir nas configurações do navegador — ele limpa só os dados guardados deste site (nada de outros sites é afetado): dados salvos localmente, o "service worker" que guarda o app pra funcionar offline, e os cookies deste domínio. Como isso inclui a sessão de login, você provavelmente vai precisar entrar de novo depois. A página recarrega sozinha, do zero.</div>'+
+    '<button type="button" class="btn small ghost" id="btn-limpar-cache-site" style="margin-top:10px;">Limpar cache deste site e recarregar</button>'+
     '</div>'+
     '<div class="card"><h2>⏰ Avisos programados (alarmes)</h2>'+
     '<div class="hint">Alarmes que tocam num horário fixo do dia (som + mensagem na tela), pra quem estiver com o sistema aberto no aparelho.</div>'+
@@ -10700,6 +10719,27 @@ function attachHandlers(){
     filtrarListaVendas();
   };
   if(document.getElementById('lista-vendas-wrap')) filtrarListaVendas();
+  const btnForcarCorrecaoFuso = document.getElementById('btn-forcar-correcao-fuso');
+  if(btnForcarCorrecaoFuso) btnForcarCorrecaoFuso.onclick = async ()=>{
+    const nomesColecao = {vendas:'venda(s)', despesas:'despesa(s)', fiados:'fiado(s)', creditos:'crédito(s)'};
+    let totalMudancas = 0;
+    const linhasRelatorio = [];
+    for(const chave of Object.keys(nomesColecao)){
+      const alteracoes = corrigirDataPorFusoHorario(state[chave], true);
+      if(alteracoes.length>0){
+        totalMudancas += alteracoes.length;
+        await save(chave);
+        alteracoes.forEach(a=>{
+          const rotulo = a.item.cliente || a.item.categoria || a.item.descricao || '';
+          const valor = a.item.valor_total!=null ? fmtMoney(a.item.valor_total) : (a.item.valor!=null ? fmtMoney(a.item.valor) : '');
+          linhasRelatorio.push(nomesColecao[chave]+' '+(rotulo?('— '+rotulo+' '):'')+valor+': '+fmtDate(a.de)+' → '+fmtDate(a.para));
+        });
+      }
+    }
+    if(totalMudancas===0){ alert('Nenhum lançamento encontrado com data errada por fuso horário. Se um valor específico ainda parecer errado, me avisa qual venda/dia que eu confiro na mão.'); return; }
+    alert('Corrigido(s) '+totalMudancas+' lançamento(s):\n\n'+linhasRelatorio.join('\n'));
+    renderAll();
+  };
   const btnCorrigirDataLote = document.getElementById('btn-corrigir-data-lote');
   if(btnCorrigirDataLote) btnCorrigirDataLote.onclick = async ()=>{
     const de = document.getElementById('corrigir-data-de').value;
@@ -12382,6 +12422,29 @@ function attachHandlers(){
   const btnTestarNotificacao = document.getElementById('btn-testar-notificacao');
   if(btnTestarNotificacao) btnTestarNotificacao.onclick = ()=>{
     notificarLocal('Teste de notificação', 'Se você está vendo isso, as notificações estão funcionando! 🔔');
+  };
+  const btnLimparCacheSite = document.getElementById('btn-limpar-cache-site');
+  if(btnLimparCacheSite) btnLimparCacheSite.onclick = async ()=>{
+    if(!confirm('Isso vai limpar os dados guardados deste site neste aparelho (não mexe em outros sites) e recarregar a página. Você provavelmente vai precisar fazer login de novo depois. Continuar?')) return;
+    try{
+      // Cookies deste domínio (não afeta outros sites, cada cookie só pode ser apagado daqui mesmo).
+      document.cookie.split(';').forEach(c=>{
+        const nome = c.split('=')[0].trim();
+        if(nome) document.cookie = nome+'=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;';
+      });
+      try{ localStorage.clear(); }catch(e){}
+      try{ sessionStorage.clear(); }catch(e){}
+      if('caches' in window){
+        const nomes = await caches.keys();
+        await Promise.all(nomes.map(n=>caches.delete(n)));
+      }
+      if('serviceWorker' in navigator){
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r=>r.unregister()));
+      }
+    }catch(e){ console.error('Erro ao limpar cache do site', e); }
+    alert('Cache limpo! A página vai recarregar agora.');
+    window.location.reload(true);
   };
 
   const btnBackupManual = document.getElementById('btn-backup-manual');
