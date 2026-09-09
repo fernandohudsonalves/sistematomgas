@@ -3282,7 +3282,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -3408,6 +3408,16 @@ async function loadAll(){
   if(!Array.isArray(state.respostasPesquisaManual)) state.respostasPesquisaManual = [];
   if(!Array.isArray(state.calendarioEditorial)) state.calendarioEditorial = [];
   if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema = [];
+  if(!Array.isArray(state.setores)) state.setores = [];
+  if(state.setores.length===0){
+    state.setores = [
+      {id:uid(), nome:'Administração geral', descricao:'Direção geral da empresa.', atividades:'Marketing, sistema (o app que você está usando) e logística.', responsaveis:['Fernando'], setorSuperior:'', comentarios:[]},
+      {id:uid(), nome:'Financeiro', descricao:'Cuida do dinheiro da empresa.', atividades:'Compras, contas a pagar e a receber. Provisoriamente também ajuda em entregas.', responsaveis:['Suh'], setorSuperior:'Administração geral', comentarios:[]},
+      {id:uid(), nome:'Entregas', descricao:'Leva o gás e a água até o cliente.', atividades:'Entregas de gás e água.', responsaveis:['Wellington'], setorSuperior:'Administração geral', comentarios:[]},
+      {id:uid(), nome:'Manutenção', descricao:'Cuida da manutenção da frota e também ajuda nas entregas.', atividades:'Manutenção e entregas.', responsaveis:['Paulo'], setorSuperior:'Administração geral', comentarios:[]}
+    ];
+    save('setores');
+  }
   if(!Array.isArray(state.categoriasVeiculoExtra)) state.categoriasVeiculoExtra = [];
   if(!Array.isArray(state.oficinasManutencao)) state.oficinasManutencao = [];
   if(!Array.isArray(state.veiculoKm)) state.veiculoKm = [];
@@ -5076,6 +5086,91 @@ function viewCadastroDespesas(){
     '<button type="button" class="btn small ghost" id="btn-add-cat-despesa-config">Adicionar</button></div>'+
     '</div>';
 }
+function attachOrganogramaHandlers(){
+  const fSetor = document.getElementById('form-setor');
+  if(fSetor) fSetor.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(fSetor);
+    const editId = fSetor.dataset.editId;
+    const responsaveis = (f.get('responsaveis')||'').split(',').map(s=>s.trim()).filter(Boolean);
+    if(editId){
+      const s = state.setores.find(x=>x.id===editId);
+      if(s){ s.nome=f.get('nome'); s.setorSuperior=f.get('setorSuperior')||''; s.responsaveis=responsaveis; s.descricao=f.get('descricao')||''; s.atividades=f.get('atividades')||''; }
+    } else {
+      state.setores.push({id:uid(), nome:f.get('nome'), setorSuperior:f.get('setorSuperior')||'', responsaveis, descricao:f.get('descricao')||'', atividades:f.get('atividades')||'', comentarios:[]});
+    }
+    await save('setores');
+    renderAll();
+  };
+  document.querySelectorAll('[data-editar-setor]').forEach(btn=>btn.onclick=()=>{
+    const s = state.setores.find(x=>x.id===btn.dataset.editarSetor);
+    if(!s || !fSetor) return;
+    fSetor.nome.value = s.nome; fSetor.setorSuperior.value = s.setorSuperior||''; fSetor.responsaveis.value = (s.responsaveis||[]).join(', ');
+    fSetor.descricao.value = s.descricao||''; fSetor.atividades.value = s.atividades||'';
+    fSetor.dataset.editId = s.id;
+    fSetor.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  document.querySelectorAll('[data-excluir-setor]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir este setor?')) return;
+    state.setores = state.setores.filter(x=>x.id!==btn.dataset.excluirSetor);
+    await save('setores');
+    renderAll();
+  });
+  document.querySelectorAll('[data-add-comentario-setor]').forEach(btn=>btn.onclick=async()=>{
+    const id = btn.dataset.addComentarioSetor;
+    const input = document.querySelector('.input-novo-comentario-setor[data-setor-id="'+id+'"]');
+    const texto = input ? input.value.trim() : '';
+    if(!texto) return;
+    const s = state.setores.find(x=>x.id===id);
+    if(!s) return;
+    if(!Array.isArray(s.comentarios)) s.comentarios = [];
+    s.comentarios.push({id:uid(), texto, autor:usuarioAtualNome, data:new Date().toISOString()});
+    await save('setores');
+    renderAll();
+  });
+}
+function viewOrganograma(){
+  const setores = state.setores||[];
+  const nomesSetores = setores.map(s=>s.nome);
+  // Hierarquia simples: setores sem "setorSuperior" ficam em cima; os demais aparecem recuados
+  // embaixo do setor que apontaram como superior.
+  const topo = setores.filter(s=>!s.setorSuperior || !nomesSetores.includes(s.setorSuperior));
+  function cartaoSetor(s, recuado){
+    const filhos = setores.filter(f=>f.setorSuperior===s.nome);
+    return '<div class="card" style="margin-left:'+(recuado?'28px':'0')+';border-left:4px solid var(--royal);">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">'+
+      '<div><h2 style="margin:0;">'+escapeHtmlCampanha(s.nome)+'</h2>'+
+      (s.responsaveis&&s.responsaveis.length ? '<div style="margin-top:4px;">'+s.responsaveis.map(r=>'<span class="pill">'+escapeHtmlCampanha(r)+'</span>').join(' ')+'</div>' : '<div class="hint">Sem responsável definido ainda.</div>')+
+      '</div>'+
+      '<div><button type="button" class="act-link" data-editar-setor="'+s.id+'">✎ editar</button> <button type="button" class="del-link" data-excluir-setor="'+s.id+'">🗑 excluir</button></div>'+
+      '</div>'+
+      (s.descricao ? '<p style="margin:10px 0 4px;">'+escapeHtmlCampanha(s.descricao)+'</p>' : '')+
+      (s.atividades ? '<div class="hint"><strong>Atividades:</strong> '+escapeHtmlCampanha(s.atividades)+'</div>' : '')+
+      '<details style="margin-top:10px;"><summary style="cursor:pointer;color:var(--royal);font-weight:600;font-size:13px;">💬 Comentários e observações ('+(s.comentarios||[]).length+')</summary>'+
+      '<div style="margin-top:8px;">'+
+      (s.comentarios||[]).slice().sort((a,b)=>b.data.localeCompare(a.data)).map(c=>'<div style="padding:6px 0;border-bottom:1px solid var(--border);"><div>'+escapeHtmlCampanha(c.texto)+'</div><div class="hint" style="font-size:10.5px;">'+escapeHtmlCampanha(c.autor||'')+' — '+fmtDate(c.data.slice(0,10))+'</div></div>').join('')+
+      '<div class="inline-add" style="margin-top:8px;"><input type="text" class="input-novo-comentario-setor" data-setor-id="'+s.id+'" placeholder="Escrever um comentário..."></div>'+
+      '<button type="button" class="btn small ghost" data-add-comentario-setor="'+s.id+'" style="margin-top:6px;">Adicionar comentário</button>'+
+      '</div></details></div>'+
+      filhos.map(f=>cartaoSetor(f, true)).join('');
+  }
+  return '<div class="card"><h2>🗂 Organograma da empresa</h2>'+
+    '<div class="hint">Cadastre os setores da empresa, quem responde por cada um, o que ele faz e deixe observações/comentários. Setores marcados com "Responde a" aparecem recuados embaixo do setor superior.</div></div>'+
+    topo.map(s=>cartaoSetor(s, false)).join('')+
+    '<div class="card"><h2>+ Novo setor</h2>'+
+    '<form id="form-setor">'+
+    '<div class="form-row">'+
+    '<div><label>Nome do setor <span class="req">*</span></label><input type="text" name="nome" placeholder="Ex: Financeiro" required></div>'+
+    '<div><label>Responde a (setor superior, opcional)</label><select name="setorSuperior"><option value="">Nenhum (fica no topo)</option>'+nomesSetores.map(n=>'<option value="'+escapeHtmlCampanha(n)+'">'+escapeHtmlCampanha(n)+'</option>').join('')+'</select></div>'+
+    '<div><label>Responsável(is) <span class="hint" style="font-weight:400;">(separe por vírgula)</span></label><input type="text" name="responsaveis" placeholder="Ex: Wellington, Paulo" list="dl-funcionarios-setor"><datalist id="dl-funcionarios-setor">'+(state.funcionarios||[]).map(f=>'<option value="'+escapeHtmlCampanha(f)+'">').join('')+'</datalist></div>'+
+    '</div>'+
+    '<div class="form-row" style="margin-top:8px;">'+
+    '<div><label>O que esse setor faz (descrição)</label><input type="text" name="descricao" placeholder="Uma frase resumindo"></div>'+
+    '<div><label>Atividades</label><input type="text" name="atividades" placeholder="Ex: compras, contas a pagar..."></div>'+
+    '</div>'+
+    '<button type="submit" class="btn" style="margin-top:10px;">Cadastrar setor</button>'+
+    '</form></div>';
+}
 function viewProdutos(){
   const cats = categoriasNaoControladas();
   const busca = '<input type="text" id="busca-produto" class="searchbar" placeholder="Buscar produto por nome...">';
@@ -5268,7 +5363,8 @@ function viewVendas(){
     '</div>'+
     '<h3 style="margin-top:20px;padding-top:14px;border-top:2px dashed var(--border);">💳 Pagamento e entrega <span class="hint" style="font-weight:400;text-transform:none;">(vale para a venda toda, com todos os itens acima)</span></h3>'+
     '<div class="form-row" style="margin-top:14px;">'+
-    '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select><div class="hint" id="hint-forma-pagamento">"Abateu" desconta automaticamente do crédito em haver do cliente selecionado, limitado ao saldo disponível — se o crédito não cobrir tudo, a diferença já entra como fiado (a receber) sozinha.</div></div>'+
+    '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select><div class="hint" id="hint-forma-pagamento">"Abateu" desconta automaticamente do crédito em haver do cliente selecionado, limitado ao saldo disponível — se o crédito não cobrir tudo, a diferença já entra como fiado (a receber) sozinha.</div>'+
+    '<div id="wrap-vale-pendente" style="display:none;margin-top:6px;"><label style="display:flex;align-items:center;gap:6px;font-weight:400;"><input type="checkbox" id="chk-vale-pendente" name="vale_pendente"> Vale ainda não foi validado/recebido (fica marcado como pendente até você confirmar)</label></div></div>'+
     '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
     '<div><label>Cupom usado (opcional)</label><input type="text" name="cupom" placeholder="Ex: TOMGAS10" style="text-transform:uppercase;"></div>'+
     '</div>'+
@@ -5287,6 +5383,7 @@ function viewVendas(){
     '<div class="hint" style="margin-bottom:6px;">Detalhes da entrega</div>'+
     '<div class="form-row">'+
     '<div><label>Valor do frete (R$)</label><input type="number" id="input-frete" name="frete" min="0" step="0.01" placeholder="0,00"></div>'+
+    '<div style="grid-column:1/-1;"><label style="display:flex;align-items:center;gap:6px;font-weight:400;"><input type="checkbox" id="chk-somente-frete"> Só entrega, sem produto nesta venda (ex: gás já foi pago em outro mês, agora só entregou/retirou)</label></div>'+
     '</div>'+
     '<div class="form-row">'+
     '<div><label>Agendar entrega — data (opcional)</label><input type="date" name="entrega_data"></div>'+
@@ -5484,7 +5581,8 @@ function vendasTable(list, opts){
       const foiResolvidaDeFaltaRetirar = v.tipo_entrega==='Falta retirar' && v.retirado && v.retiradoForma;
       const entrega = entregaLabel(tipoEfetivo, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (foiResolvidaDeFaltaRetirar ? ' <span class="hint" style="font-size:10.5px;">(era Falta retirar)</span>' : '');
       const statusEntregaTxt = v.tipo_entrega==='Falta retirar' ? (v.retirado?'✔ Retirado':'Pendente') : (v.entrega_hora ? (v.entrega_status==='entregue'?'✔ Entregue':'Pendente') : '—');
-      const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>');
+      const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>')+
+        (v.vale_pendente ? ' <span class="badge status-receber" title="Clique pra marcar como validado" data-marcar-vale-validado="'+v.id+'" style="cursor:pointer;">🎫 vale pendente</span>' : '');
       const lancadoEmTxt = v.criadoEm ? fmtDate(v.data)+' '+new Date(v.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
       return '<tr><td style="text-align:center;">'+bolinhaPagamentoHtml(v.pagamento, v.pagamentoSplit)+'</td><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
         '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td style="text-align:right;">'+(v.frete?fmtMoney(v.frete):'—')+'</td><td>'+statusEntregaTxt+'</td><td style="text-align:center;">'+v.quantidade+'</td>'+
@@ -5828,12 +5926,14 @@ function viewCadastros(){
     {id:'produtos', label:'Produtos'},
     {id:'categorias', label:'Categoria / Tipo da Categoria / Produto'},
     {id:'cadastrodespesas', label:'Cadastro de Despesas'},
+    {id:'organograma', label:'Organograma'},
   ];
   let content = '';
   if(cadastroSub==='clientes') content = viewClientes();
   else if(cadastroSub==='empresas') content = viewEmpresas();
   else if(cadastroSub==='produtos') content = viewProdutos();
   else if(cadastroSub==='categorias') content = viewGerenciarCategorias();
+  else if(cadastroSub==='organograma') content = viewOrganograma();
   else content = viewCadastroDespesas();
   return '<div class="subtabs">'+subtabs.map(s=>'<button data-cadastro-sub="'+s.id+'" class="'+(cadastroSub===s.id?'active':'')+'">'+s.label+'</button>').join('')+'</div>'+content;
 }
@@ -9369,6 +9469,7 @@ function attachHandlers(){
         v.data=f.get('data'); v.cliente=resolverNomeCliente(f.get('cliente')||''); v.canal=f.get('canal');
         v.categoria=categoria; v.produto=produto; v.quantidade=quantidade; v.valor_unit=valor_unit; v.valor_total=valor_total;
         v.pagamento=f.get('pagamento'); v.nota=f.get('nota'); v.tipo_entrega=f.get('tipo_entrega'); v.cupom=(f.get('cupom')||'').trim().toUpperCase();
+        v.vale_pendente = (f.get('pagamento')==='Gás do povo' && !!f.get('vale_pendente'));
         v.empresa=f.get('empresa')||''; v.entrega_data=f.get('entrega_data')||(f.get('entrega_hora')?f.get('data'):''); v.entrega_hora=f.get('entrega_hora')||''; v.obs=f.get('obs')||'';
         v.frete = TIPOS_ENTREGA_COM_FRETE.includes(v.tipo_entrega) ? (Number(f.get('frete'))||0) : 0;
         const chkDividirPagamentoEdit = document.getElementById('chk-dividir-pagamento');
@@ -9486,6 +9587,7 @@ function attachHandlers(){
       const camposComuns = {
         data: f.get('data'), cliente: resolverNomeCliente(f.get('cliente')||''), canal: f.get('canal'),
         pagamento: f.get('pagamento'), tipo_entrega: f.get('tipo_entrega'), cupom:(f.get('cupom')||'').trim().toUpperCase(),
+        vale_pendente: (f.get('pagamento')==='Gás do povo' && !!f.get('vale_pendente')),
         empresa: f.get('empresa')||'', entrega_data: f.get('entrega_data')||(f.get('entrega_hora')?f.get('data'):''), entrega_hora: f.get('entrega_hora')||'',
         obs: f.get('obs')||''
       };
@@ -9678,6 +9780,24 @@ function attachHandlers(){
     alert('Falta retirar registrado. Ele aparece na lista de pendentes até você dar baixa (o estoque não foi mexido).');
     renderAll();
   };
+  const chkSomenteFrete = document.getElementById('chk-somente-frete');
+  if(chkSomenteFrete) chkSomenteFrete.onchange = ()=>{
+    const bloco = document.getElementById('bloco-itens-venda');
+    const marcado = chkSomenteFrete.checked;
+    if(bloco) bloco.style.display = marcado ? 'none' : '';
+    if(marcado){
+      const catEl = document.getElementById('sel-categoria');
+      const produtoLivreEl = document.querySelector('input[name="produto_livre"]');
+      const qtdEl = document.querySelector('.iv-item-principal input[name="quantidade"]');
+      const valorEl = document.querySelector('.iv-item-principal input[name="valor_unit"]');
+      if(catEl) catEl.value = 'outros';
+      if(produtoLivreEl) produtoLivreEl.value = 'Entrega (produto já pago em outro mês)';
+      if(qtdEl) qtdEl.value = '1';
+      if(valorEl) valorEl.value = '0';
+      const notaEl = document.querySelector('.iv-item-principal select[name="nota"]');
+      if(notaEl && !notaEl.value) notaEl.value = 'Não lança';
+    }
+  };
   const btnAddItemVenda = document.getElementById('btn-add-item-venda');
   if(btnAddItemVenda) btnAddItemVenda.onclick = ()=>{
     document.getElementById('itens-extra-lista').appendChild(novoItemVendaRow({compact:false}));
@@ -9698,7 +9818,11 @@ function attachHandlers(){
   const selTipoEntrega = document.getElementById('sel-tipo-entrega');
   if(selTipoEntrega) selTipoEntrega.onchange = toggleDetalhesEntregaVenda;
   const selFormaPagamentoVenda = document.getElementById('sel-forma-pagamento');
-  if(selFormaPagamentoVenda) selFormaPagamentoVenda.onchange = toggleEmpresaConvenioVenda;
+  if(selFormaPagamentoVenda) selFormaPagamentoVenda.onchange = ()=>{
+    toggleEmpresaConvenioVenda();
+    const wrapVale = document.getElementById('wrap-vale-pendente');
+    if(wrapVale) wrapVale.style.display = (selFormaPagamentoVenda.value==='Gás do povo') ? 'block' : 'none';
+  };
   const chkDividirPagamentoVenda = document.getElementById('chk-dividir-pagamento');
   if(chkDividirPagamentoVenda) chkDividirPagamentoVenda.onchange = toggleDivisaoPagamentoVenda;
   const inputValorForma1Venda = document.getElementById('input-valor-forma1');
@@ -10208,6 +10332,14 @@ function attachHandlers(){
   };
 
   const attachVendaRowHandlers = ()=>{
+    document.querySelectorAll('[data-marcar-vale-validado]').forEach(el=>el.onclick=async()=>{
+      const v = state.vendas.find(x=>x.id===el.dataset.marcarValeValidado);
+      if(!v) return;
+      if(!confirm('Marcar o vale do Gás do povo desta venda como validado/recebido?')) return;
+      v.vale_pendente = false;
+      await save('vendas');
+      renderAll();
+    });
     const btnRemoverVendasDuplicadasTopo = document.getElementById('btn-remover-vendas-duplicadas-topo');
     if(btnRemoverVendasDuplicadasTopo) btnRemoverVendasDuplicadasTopo.onclick = removerVendasDuplicadas;
     document.querySelectorAll('[data-juntar-vendas-cliente]').forEach(btn=>btn.onclick=async()=>{
@@ -10515,6 +10647,7 @@ function attachHandlers(){
   attachDespesaRowHandlers();
   attachClienteRowHandlers();
   attachEmpresaRowHandlers();
+  attachOrganogramaHandlers();
 
   const fPesquisaManual = document.getElementById('form-pesquisa-manual');
   if(fPesquisaManual) fPesquisaManual.onsubmit = async(e)=>{
