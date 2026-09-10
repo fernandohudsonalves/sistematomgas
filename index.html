@@ -1244,7 +1244,7 @@ const VAPID_PUBLIC_KEY = "BJhtEhjv3z9JMW44Yg3JsfoGYR4lNcINkr1fRzNLxvx-jzxtErj7Ew
 const CANAIS = ['Portaria','WhatsApp','Venda Ativa','Ligação','Hub','Google'];
 const PAGAMENTOS = ['Dinheiro','Débito','Crédito','Convênio','Vale gás','Gás do povo','Pix','Abateu','Marcou/Fiado','Outros'];
 const NOTAS = ['Nota fiscal','Cupom não fiscal','Já lançado','Não lança'];
-const TIPOS_ENTREGA = ['Retirada','Falta retirar','Entrega a pé','Entrega de Celta','Entrega de moto','Entrega de Strada'];
+const TIPOS_ENTREGA = ['Retirada','Falta retirar','Já retirou','Entrega a pé','Entrega de Celta','Entrega de moto','Entrega de Strada'];
 const DIAS_SEMANA_LABEL = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const TIPOS_ENTREGA_COM_FRETE = ['Entrega de Celta','Entrega de moto','Entrega de Strada'];
 
@@ -2676,13 +2676,15 @@ const imgs = {
   };
   const b64 = imgs[tipo];
   if(tipo==='Falta retirar') return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><line x1="12" y1="7" x2="12" y2="13"/><circle cx="12" cy="16.5" r="0.9" fill="'+c+'"/></svg>';
+  if(tipo==='Já retirou') return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>';
   if(!b64) return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+(cor||'#1E3A8A')+'" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/></svg>';
   return '<img src="data:image/png;base64,'+b64+'" width="'+s+'" style="vertical-align:middle;image-rendering:-webkit-optimize-contrast;" alt="'+tipo+'">';
 }
 function entregaLabel(tipo, hora, pendente){
   if(!tipo) return '—';
   const destaque = pendente ? 'font-weight:700;' : '';
-  return '<span style="display:inline-flex;align-items:center;gap:5px;'+destaque+'">'+iconEntrega(tipo,'#1E3A8A')+'<span>'+tipo+(hora?' às '+hora:'')+'</span>'+(pendente?' <span class="badge" style="background:var(--border);color:var(--text2);">pendente</span>':'')+'</span>';
+  const cor = tipo==='Falta retirar' ? '#f59e0b' : (tipo==='Já retirou' ? '#DC2626' : '#1E3A8A');
+  return '<span style="display:inline-flex;align-items:center;gap:5px;'+destaque+'color:'+((tipo==='Falta retirar'||tipo==='Já retirou')?cor:'inherit')+';">'+iconEntrega(tipo,cor)+'<span>'+tipo+(hora?' às '+hora:'')+'</span>'+(pendente?' <span class="badge" style="background:'+cor+';color:#fff;">pendente</span>':'')+'</span>';
 }
 // Uma venda lançada como "Falta retirar" guarda o meio de entrega REAL (Cliente retirou / Entrega
 // a pé / Entrega de <veículo>) só no campo retiradoForma, quando é resolvida em "✔ Confirmar
@@ -4037,12 +4039,15 @@ function viewDashboard(){
   const alertasEstoque = itensAbaixoDoMinimo();
 
   const pendenciasRetiradaDash = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado);
+  const pendenciasJaRetirouDash = state.vendas.filter(v=>v.tipo_entrega==='Já retirou' && v.pagamento==='Marcou/Fiado');
 
   return comunicadosBannerHtml()+
     (alertasEstoque.length>0 ? '<div class="card" style="border-left:4px solid var(--danger);cursor:pointer;" data-ir-relatorio-estoque="1"><h2 style="color:var(--danger);">⚠️ Estoque baixo — '+alertasEstoque.length+' item(ns)</h2>'+
       '<div class="hint">'+alertasEstoque.map(al=>al.label+' ('+al.atual+'/'+al.min+')').join(' · ')+' — toque para ver na aba Estoque.</div></div>' : '')+
     '<div class="card" style="border-left:4px solid '+(pendenciasRetiradaDash.length>0?'var(--warning,#f59e0b)':'var(--border)')+';cursor:pointer;" data-ir-falta-retirar="1"><h2 style="color:#fff;">Falta retirar'+(pendenciasRetiradaDash.length>0?' — '+pendenciasRetiradaDash.length+' pendência(s)':'')+'</h2>'+
       '<div class="hint">'+(pendenciasRetiradaDash.length>0?'Gás já vendido/recebido que ainda falta o cliente retirar ou vocês entregarem.':'Nenhuma pendência agora.')+' Toque para abrir.</div></div>'+
+    (pendenciasJaRetirouDash.length>0 ? '<div class="card" style="border-left:4px solid var(--danger,#DC2626);cursor:pointer;" data-ir-vendas="1"><h2 style="color:#fff;">🔴 Já retirou — '+pendenciasJaRetirouDash.length+' pendência(s)</h2>'+
+      '<div class="hint">Cliente já levou o item, ainda falta pagar. Toque para ver no Histórico de Vendas.</div></div>' : '')+
     metaCardDashboardHtml()+googleCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div></div>'+
     '<div class="metric neg"><div class="label">Despesas do dia</div><div class="value">'+fmtMoney(totalDespesasHoje)+'</div></div>'+
@@ -5515,6 +5520,7 @@ function viewFaltaRetirar(){
     '<div><label>Quantidade <span class="req">*</span></label><div class="qty-stepper"><button type="button" class="qty-btn qty-minus">−</button><input type="number" name="quantidade" min="1" value="1" step="1" required><button type="button" class="qty-btn qty-plus">+</button></div></div>'+
     '</div>'+
     '<div><label>Observação (opcional)</label><input type="text" name="obs" placeholder="Ex: aproveitou o preço, vai retirar quando acabar o de casa"></div>'+
+    '<div><label>Como já foi pago (opcional)</label><select name="pagamento_ja_recebido"><option value="">Não informar agora</option>'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(p=>'<option>'+p+'</option>').join('')+'</select></div>'+
     '<button type="submit" class="btn" style="margin-top:10px;">Registrar falta retirar</button>'+
     '</form></details></div>'+
     '<div class="card"><h2>Pendentes ('+pendenciasRetirada.length+')</h2>'+
@@ -5592,8 +5598,9 @@ function vendasTable(list, opts){
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
       const tipoEfetivo = tipoEntregaEfetivo(v);
       const foiResolvidaDeFaltaRetirar = v.tipo_entrega==='Falta retirar' && v.retirado && v.retiradoForma;
-      const entrega = entregaLabel(tipoEfetivo, v.entrega_hora, v.tipo_entrega==='Falta retirar' && !v.retirado) + (foiResolvidaDeFaltaRetirar ? ' <span class="hint" style="font-size:10.5px;">(era Falta retirar)</span>' : '');
-      const statusEntregaTxt = v.tipo_entrega==='Falta retirar' ? (v.retirado?'✔ Retirado':'Pendente') : (v.entrega_hora ? (v.entrega_status==='entregue'?'✔ Entregue':'Pendente') : '—');
+      const pendenteEntrega = (v.tipo_entrega==='Falta retirar' && !v.retirado) || (v.tipo_entrega==='Já retirou' && v.pagamento==='Marcou/Fiado');
+      const entrega = entregaLabel(tipoEfetivo, v.entrega_hora, pendenteEntrega) + (foiResolvidaDeFaltaRetirar ? ' <span class="hint" style="font-size:10.5px;">(era Falta retirar)</span>' : '');
+      const statusEntregaTxt = v.tipo_entrega==='Falta retirar' ? (v.retirado?'✔ Retirado':'Pendente') : (v.tipo_entrega==='Já retirou' ? (v.pagamento==='Marcou/Fiado'?'Pendente':'✔ Pago') : (v.entrega_hora ? (v.entrega_status==='entregue'?'✔ Entregue':'Pendente') : '—'));
       const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>')+
         (v.vale_pendente ? ' <span class="badge status-receber" title="Clique pra marcar como validado" data-marcar-vale-validado="'+v.id+'" style="cursor:pointer;">🎫 vale pendente</span>' : '');
       const lancadoEmTxt = v.criadoEm ? fmtDate(v.data)+' '+new Date(v.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
@@ -6256,8 +6263,9 @@ function viewEstoque(){
     '<div><label>Motivo (opcional)</label><input type="text" name="motivo" placeholder="Ex: chegada do fornecedor"></div>'+
     '</div>'+
     '<div id="mov-troca-vazios-wrap" style="display:none;margin-top:8px;padding:10px 12px;background:var(--blue-tint);border-radius:8px;">'+
-    '<label>Vasilhames vazios devolvidos ao fornecedor agora</label>'+
-    '<input type="number" id="mov-vazios-devolvidos" name="vazios_devolvidos" min="0" step="1" placeholder="Ex: 15">'+
+    '<div id="mov-vazios-devolvidos-campo"><label>Vasilhames vazios devolvidos ao fornecedor agora</label>'+
+    '<input type="number" id="mov-vazios-devolvidos" name="vazios_devolvidos" min="0" step="1" placeholder="Ex: 15"></div>'+
+    '<div style="margin-top:8px;"><label>Fornecedor (pra saber de quem é a dívida abatida)</label><select id="mov-fornecedor" name="fornecedor">'+(state.fornecedoresGas||[]).map(function(fo){return '<option>'+fo.nome+'</option>';}).join('')+'</select></div>'+
     '<div class="hint" id="mov-devendo-preview" style="margin-top:4px;">Toda entrada de carga cheia costuma exigir devolver a mesma quantidade de vazio pro fornecedor. Preencha aqui só o que você realmente devolveu agora — a diferença fica registrada como dívida de vazio com o fornecedor.</div>'+
     '</div>'+
     '<button type="submit" class="btn">Lançar movimentação</button></form></div>'+
@@ -6945,7 +6953,7 @@ function itemComodatoLabel(categoria, item){
   const par = ITENS_AGUA_COMODATO.find(p=>p[1]===item);
   return par ? par[0] : item;
 }
-function chaveComodato(c){ return [c.direcao, c.nome, c.categoria, c.item, c.produto].join('|'); }
+function chaveComodato(c){ return [c.direcao, chaveNormalizada(c.nome), c.categoria, c.item, c.produto].join('|'); }
 /* Monta um objeto no mesmo formato usado pelos lançamentos de "Ajustar estoque manualmente"
    (tipo/item/itemChave/estado/direcao/quantidade), a partir de um lançamento de comodato,
    pra poder reaproveitar aplicarEfeitoEstoqueLanc() e refletir o comodato no estoque real.
@@ -7039,7 +7047,7 @@ function relatorioComodatos(){
     '<option value="atacadista">Eu devo ao atacadista (peguei carga a mais dele)</option>'+
     '</select></div>'+
     '<div><label>Nome <span class="req">*</span></label><input list="lista-nomes-comodato" name="nome" required placeholder="Cliente ou nome do atacadista">'+
-    '<datalist id="lista-nomes-comodato">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+(state.entregadores||[]).map(en=>'<option value="'+en.nome+'">').join('')+'</datalist></div></div>'+
+    '<datalist id="lista-nomes-comodato">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+(state.entregadores||[]).map(en=>'<option value="'+en.nome+'">').join('')+(state.fornecedoresGas||[]).map(fo=>'<option value="'+fo.nome+'">').join('')+'</datalist></div></div>'+
     '<div class="form-row">'+
     '<div><label>Categoria <span class="req">*</span></label><select id="cmd-categoria" name="categoria" required>'+opcoesComPlaceholder(['Gás','Água'],'Selecione')+'</select></div>'+
     '<div><label>Item da categoria <span class="req">*</span></label><select id="cmd-item" name="item" required><option value="" selected disabled>Selecione a categoria primeiro</option></select></div>'+
@@ -9826,7 +9834,7 @@ function attachHandlers(){
       data: f.get('data'), cliente: resolverNomeCliente(f.get('cliente')||''), canal: 'Venda Ativa', categoria, produto: categoria,
       quantidade: Number(f.get('quantidade'))||1,
       valor_unit: 0, valor_total: 0,
-      pagamento: 'Já lançado', nota: 'Já lançado', tipo_entrega: 'Falta retirar', empresa:'',
+      pagamento: f.get('pagamento_ja_recebido') || 'Outros', nota: 'Já lançado', tipo_entrega: 'Falta retirar', empresa:'',
       frete: 0, entrega_data:'', entrega_hora:'', entrega_status:'',
       obs: (f.get('obs')||'').trim() || 'Falta retirar — gás já vendido/recebido, ainda não retirado/entregue',
       estoqueBaixado: false, retirado:false, retiradoForma:'', retiradoEm:null,
@@ -10067,12 +10075,25 @@ function attachHandlers(){
   const movDevendoPreview = document.getElementById('mov-devendo-preview');
   function atualizarTrocaVazios(){
     if(!movTrocaWrap) return;
-    const ehEntradaCheio = feMov.estado && feMov.estado.value==='Cheio' && feMov.direcao && feMov.direcao.value.startsWith('Entrada');
-    movTrocaWrap.style.display = ehEntradaCheio ? 'block' : 'none';
-    if(ehEntradaCheio) atualizarPreviewDevendo();
+    const estadoVal = feMov.estado && feMov.estado.value;
+    const direcaoVal = feMov.direcao && feMov.direcao.value;
+    const ehEntradaCheio = estadoVal==='Cheio' && direcaoVal && direcaoVal.startsWith('Entrada');
+    const ehSaidaVazio = estadoVal==='Vazio' && direcaoVal && direcaoVal.startsWith('Saída');
+    movTrocaWrap.style.display = (ehEntradaCheio || ehSaidaVazio) ? 'block' : 'none';
+    const campoVazios = document.getElementById('mov-vazios-devolvidos-campo');
+    if(campoVazios) campoVazios.style.display = ehEntradaCheio ? 'block' : 'none';
+    if(ehEntradaCheio || ehSaidaVazio) atualizarPreviewDevendo();
   }
   function atualizarPreviewDevendo(){
     if(!movDevendoPreview) return;
+    const estadoVal = feMov.estado && feMov.estado.value;
+    const direcaoVal = feMov.direcao && feMov.direcao.value;
+    const ehSaidaVazio = estadoVal==='Vazio' && direcaoVal && direcaoVal.startsWith('Saída');
+    if(ehSaidaVazio){
+      const qtd = Number(feMov.quantidade.value)||0;
+      movDevendoPreview.innerHTML = qtd>0 ? ('✓ Isso vai abater <strong>'+qtd+' vasilhame(s)</strong> da dívida com o fornecedor selecionado (devolução avulsa, sem carga nova junto).') : 'Informe a quantidade e o fornecedor pra abater a dívida.';
+      return;
+    }
     const qtd = Number(feMov.quantidade.value)||0;
     const devolvidos = Number(movVaziosInput.value)||0;
     const devendo = qtd - devolvidos;
@@ -10142,19 +10163,27 @@ function attachHandlers(){
         }
         // "devendo" pode ficar negativo quando devolve mais vazios do que recebeu agora — nesse
         // caso é um abatimento da dívida antiga com o fornecedor, não uma dívida nova.
-        // Usa sempre o nome do fornecedor padrão de gás (Toninho), o mesmo usado nos lançamentos
-        // manuais de comodato, pra não duplicar o saldo em dois nomes diferentes ("Fornecedor" x "Toninho").
         const devendo = quantidade - vaziosDevolvidos;
         if(devendo!==0){
-          const nomeFornecedorPadrao = (state.fornecedoresGas && state.fornecedoresGas[0] && state.fornecedoresGas[0].nome) || 'Toninho';
+          const nomeFornecedorMov = f.get('fornecedor') || (state.fornecedoresGas && state.fornecedoresGas[0] && state.fornecedoresGas[0].nome) || 'Toninho';
           state.comodatos.push({
-            id: uid(), direcao:'atacadista', nome: nomeFornecedorPadrao, categoria: tipo, item: itemChave, produto:'Vasilhame vazio',
+            id: uid(), direcao:'atacadista', nome: nomeFornecedorMov, categoria: tipo, item: itemChave, produto:'Vasilhame vazio',
             quantidade: devendo, data: todayStr(),
             obs: devendo>0
               ? 'Gerado automaticamente na entrada de '+quantidade+' '+itemLabel+' cheio(s)'
               : 'Abatimento automático: devolveu '+vaziosDevolvidos+' vazios na entrada de '+quantidade+' '+itemLabel+' cheio(s) (quitando '+Math.abs(devendo)+' de dívida antiga)'
           });
         }
+      }
+      // Devolução avulsa de vazio ao fornecedor, sem carga cheia nova junto (ex: só foi lá deixar
+      // vasilhame vazio que devia de antes). Abate a dívida na hora, mesmo sem uma entrada nova.
+      if(estado==='Vazio' && direcao==='saida'){
+        const nomeFornecedorMov = f.get('fornecedor') || (state.fornecedoresGas && state.fornecedoresGas[0] && state.fornecedoresGas[0].nome) || 'Toninho';
+        state.comodatos.push({
+          id: uid(), direcao:'atacadista', nome: nomeFornecedorMov, categoria: tipo, item: itemChave, produto:'Vasilhame vazio',
+          quantidade: -quantidade, data: todayStr(),
+          obs: 'Abatimento automático: devolução avulsa de '+quantidade+' '+itemLabel+' vazio(s), sem carga nova junto'
+        });
       }
     }
     await save('estoque');
@@ -12042,6 +12071,7 @@ function attachHandlers(){
   if(cfvDe) cfvDe.onchange = atualizarCfv;
   if(cfvAte) cfvAte.onchange = atualizarCfv;
   document.querySelectorAll('[data-ir-falta-retirar]').forEach(btn=>btn.onclick=()=>{ currentTab='faltaretirar'; renderAll(); });
+  document.querySelectorAll('[data-ir-vendas]').forEach(btn=>btn.onclick=()=>{ currentTab='vendas'; renderAll(); });
   document.querySelectorAll('[data-ir-relatorio]').forEach(btn=>btn.onclick=()=>{
     currentTab = 'relatorios';
     relatorioSub = btn.dataset.irRelatorio;
