@@ -896,6 +896,7 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Relatórios: Comodatos / Empréstimos', kw:'comodatos emprestimos relatorio', tab:'relatorios', sub:'comodatos'},
   {label:'Relatórios: Patrimônio real', kw:'patrimonio real relatorio', tab:'relatorios', sub:'patrimonio'},
   {label:'Relatórios: Notas para o Bling', kw:'notas bling relatorio', tab:'relatorios', sub:'notas'},
+  {label:'Relatórios: Custos Fixos x Variáveis', kw:'custo fixo variavel faturamento bruto relatorio', tab:'relatorios', sub:'custosfixosvar'},
   {label:'Relatórios: Empresas conveniadas', kw:'empresas conveniadas relatorio editar valor convenio', tab:'relatorios', sub:'empresas'},
   {label:'Relatórios: Simulador de Reajuste', kw:'simulador de reajuste preco', tab:'relatorios', sub:'reajuste'},
   {label:'Relatórios: Análises e Gráficos', kw:'analises graficos relatorio', tab:'relatorios', sub:'analises'},
@@ -1595,6 +1596,7 @@ const TABS = [
   {id:'campanhas', label:'Marketing'},
   {id:'checklist', label:'Checklist'},
   {id:'agenda', label:'Agenda'},
+  {id:'pessoasocupadas', label:'Pessoas Ocupadas'},
   {id:'relatorios', label:'Relatórios'},
   {id:'config', label:'Config'},
 ];
@@ -3895,6 +3897,7 @@ function renderAll(){
   if(currentTab==='caixa') main.innerHTML = viewFechamentoCaixa();
   if(currentTab==='contaspagar') main.innerHTML = viewContasPagar();
   if(currentTab==='cadastros') main.innerHTML = viewCadastros();
+  if(currentTab==='pessoasocupadas') main.innerHTML = viewOrganograma();
   if(currentTab==='estoque') main.innerHTML = viewEstoque();
   if(currentTab==='agendamentos') main.innerHTML = viewAgendamentos();
   if(currentTab==='rota') main.innerHTML = viewRotaDoDia();
@@ -4472,9 +4475,19 @@ function viewEmpresas(){
 }
 function empresasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma empresa conveniada cadastrada ainda.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Responsável</th><th></th></tr></thead><tbody>'+
-  list.map(e=>'<tr><td>'+e.nome+'</td><td style="max-width:90px;">'+(e.telefone||'—')+'</td><td style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(e.endereco||'—')+'</td><td style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(e.responsavel||'—')+'</td>'+
-  '<td class="cel-acoes">'+botaoWhatsApp(e.telefone)+'<button class="act-link" data-edit-empresa="'+e.id+'">✎ editar</button><button class="del-link" data-del-empresa="'+e.id+'">🗑 excluir</button></td></tr>').join('')+'</tbody></table></div>';
+  return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Responsável</th><th>Vínculos</th><th></th></tr></thead><tbody>'+
+  list.map(e=>{
+    const qtdVendas = state.vendas.filter(v=>v.empresa===e.nome && v.pagamento==='Convênio').length;
+    const qtdConvenio = (state.convenioLancamentos||[]).filter(c=>c.empresa===e.nome).length;
+    const qtdAgendamentos = (state.agendamentos||[]).filter(a=>a.empresa===e.nome).length;
+    const partes = [];
+    if(qtdVendas) partes.push(qtdVendas+' venda(s)');
+    if(qtdConvenio) partes.push(qtdConvenio+' lançamento(s) de convênio');
+    if(qtdAgendamentos) partes.push(qtdAgendamentos+' entrega(s) agendada(s)');
+    const vinculoTxt = partes.length ? '<span class="badge status-receber" title="'+partes.join(', ')+'">'+partes.join(' · ')+'</span>' : '<span class="hint">Sem vínculo</span>';
+    return '<tr><td>'+e.nome+'</td><td style="max-width:90px;">'+(e.telefone||'—')+'</td><td style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(e.endereco||'—')+'</td><td style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(e.responsavel||'—')+'</td><td>'+vinculoTxt+'</td>'+
+    '<td class="cel-acoes">'+botaoWhatsApp(e.telefone)+'<button class="act-link" data-edit-empresa="'+e.id+'">✎ editar</button><button class="del-link" data-del-empresa="'+e.id+'" data-vinculos="'+partes.length+'">🗑 excluir</button></td></tr>';
+  }).join('')+'</tbody></table></div>';
 }
 
 /* ---------- PRODUTOS ---------- */
@@ -5072,11 +5085,11 @@ function viewCadastroDespesas(){
         '<td><button class="act-link" data-save-cat-despesa="'+cat+'">✓ salvar</button><button class="del-link" data-cancel-cat-despesa="'+cat+'">cancelar</button></td></tr>';
     }
     return '<tr><td>'+iconeCategoriaDespesaHtml(cat)+cat+'</td><td>'+qtd+' despesa(s)</td>'+
-      '<td><label class="checkbox-item" style="font-weight:normal;"><input type="checkbox" class="chk-cat-despesa-fixa" data-cat-despesa-fixa="'+escapeHtmlCampanha(cat)+'" '+(ehFixa?'checked':'')+'> Conta fixa</label></td>'+
+      '<td><select class="sel-cat-despesa-fixa" data-cat-despesa-fixa="'+escapeHtmlCampanha(cat)+'"><option value="fixo" '+(ehFixa?'selected':'')+'>Custo Fixo</option><option value="variavel" '+(!ehFixa?'selected':'')+'>Custo Variável</option></select></td>'+
       '<td><button class="act-link" data-edit-cat-despesa="'+cat+'">✎ editar</button><button class="del-link" data-del-cat-despesa="'+cat+'">🗑 excluir</button></td></tr>';
   }).join('');
   const tabelaDesp = catsDesp.length===0 ? '<div class="empty">Nenhuma categoria de despesa cadastrada ainda.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Despesas</th><th>Custo fixo?</th><th></th></tr></thead><tbody>'+linhasDesp+'</tbody></table></div>';
+    '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Despesas</th><th>Tipo de custo</th><th></th></tr></thead><tbody>'+linhasDesp+'</tbody></table></div>';
   return '<div class="card"><h2>Categorias de despesas</h2>'+
     '<div class="hint">Editar o nome atualiza automaticamente as despesas que já usam essa categoria.</div>'+
     '<div class="hint" style="margin-top:6px;">Marque "Conta fixa" nas categorias com valor mais ou menos previsível todo mês (ex: Aluguel, Salário) — são essas que entram no relatório "Dias de trabalho pra pagar as contas". Deixe desmarcado categorias com valor e frequência variáveis, tipo Fornecedor/Reposição (compra de gás), já que ali nunca dá pra saber quanto nem quantas vezes vai comprar no mês.</div>'+
@@ -5926,14 +5939,12 @@ function viewCadastros(){
     {id:'produtos', label:'Produtos'},
     {id:'categorias', label:'Categoria / Tipo da Categoria / Produto'},
     {id:'cadastrodespesas', label:'Cadastro de Despesas'},
-    {id:'organograma', label:'Organograma'},
   ];
   let content = '';
   if(cadastroSub==='clientes') content = viewClientes();
   else if(cadastroSub==='empresas') content = viewEmpresas();
   else if(cadastroSub==='produtos') content = viewProdutos();
   else if(cadastroSub==='categorias') content = viewGerenciarCategorias();
-  else if(cadastroSub==='organograma') content = viewOrganograma();
   else content = viewCadastroDespesas();
   return '<div class="subtabs">'+subtabs.map(s=>'<button data-cadastro-sub="'+s.id+'" class="'+(cadastroSub===s.id?'active':'')+'">'+s.label+'</button>').join('')+'</div>'+content;
 }
@@ -6825,6 +6836,7 @@ function viewRelatorios(){
     {id:'combustivelfrete', label:'Combustível x Frete'},
     {id:'despesas', label:'Despesas por período'},
     {id:'diastrabalho', label:'Dias de trabalho p/ pagar contas'},
+    {id:'custosfixosvar', label:'Custos Fixos x Variáveis'},
     {id:'veiculos', label:'Veículos'},
     {id:'fiado', label:'Fiado / A receber'},
     {id:'creditos', label:'Créditos em haver'},
@@ -6860,6 +6872,7 @@ function viewRelatorios(){
   else if(relatorioSub==='combustivelfrete') content = relatorioCombustivelFrete();
   else if(relatorioSub==='despesas') content = relatorioDespesas();
   else if(relatorioSub==='diastrabalho') content = relatorioDiasTrabalho();
+  else if(relatorioSub==='custosfixosvar') content = relatorioCustosFixosVariaveis();
   else if(relatorioSub==='veiculos') content = relatorioVeiculos();
   else if(relatorioSub==='fiado') content = relatorioFiado();
   else if(relatorioSub==='creditos') content = relatorioCreditos();
@@ -7799,6 +7812,48 @@ function relatorioDespesas(){
     '<div><label>Até</label><input type="date" id="rd-ate" value="'+todayStr()+'"></div></div>'+
     '<button class="btn small ghost" id="rd-filtrar">Filtrar</button><div id="rd-resultado" style="margin-top:16px;"></div>';
 }
+function relatorioCustosFixosVariaveis(){
+  return '<h3>💰 Custos Fixos x Variáveis</h3>'+
+    '<div class="hint">Compara quanto foi gasto em Custo Fixo e Custo Variável (defina isso em Cadastros & Marketing > Cadastro de Despesas) contra o faturamento bruto do período, pra ver que fatia do que entrou já está comprometida.</div>'+
+    '<div class="form-row" style="max-width:420px;margin-top:10px;">'+
+    '<div><label>De</label><input type="date" id="cfv-de" value="'+firstOfMonth()+'"></div>'+
+    '<div><label>Até</label><input type="date" id="cfv-ate" value="'+todayStr()+'"></div>'+
+    '</div>'+
+    '<div id="cfv-resultado" style="margin-top:14px;">'+renderCustosFixosVariaveisResultado(firstOfMonth(), todayStr())+'</div>';
+}
+function renderCustosFixosVariaveisResultado(de, ate){
+  const catsFixas = state.categoriasDespesasFixas||[];
+  const despesasPeriodo = (state.despesas||[]).filter(d=>d.data>=de && d.data<=ate);
+  const fixasPeriodo = despesasPeriodo.filter(d=>catsFixas.includes(d.categoria));
+  const variaveisPeriodo = despesasPeriodo.filter(d=>!catsFixas.includes(d.categoria));
+  const totalFixo = Math.round(fixasPeriodo.reduce((s,d)=>s+d.valor,0)*100)/100;
+  const totalVariavel = Math.round(variaveisPeriodo.reduce((s,d)=>s+d.valor,0)*100)/100;
+  const totalDespesas = Math.round((totalFixo+totalVariavel)*100)/100;
+  const faturamentoBruto = Math.round((state.vendas||[]).filter(v=>v.data>=de && v.data<=ate).reduce((s,v)=>s+v.valor_total,0)*100)/100;
+  const pct = (v)=> faturamentoBruto>0 ? ((v/faturamentoBruto)*100).toFixed(1)+'% do faturamento' : '—';
+  const lucro = Math.round((faturamentoBruto-totalDespesas)*100)/100;
+  const porCategoriaFixa = {}; fixasPeriodo.forEach(d=>{ porCategoriaFixa[d.categoria]=(porCategoriaFixa[d.categoria]||0)+d.valor; });
+  const porCategoriaVar = {}; variaveisPeriodo.forEach(d=>{ porCategoriaVar[d.categoria]=(porCategoriaVar[d.categoria]||0)+d.valor; });
+  function tabelaPor(obj){
+    const entradas = Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+    if(entradas.length===0) return '<div class="empty">Nenhuma despesa nesse período.</div>';
+    return '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Valor</th></tr></thead><tbody>'+
+      entradas.map(function(e){ return '<tr><td>'+iconeCategoriaDespesaHtml(e[0])+e[0]+'</td><td>'+fmtMoney(e[1])+'</td></tr>'; }).join('')+
+      '</tbody></table></div>';
+  }
+  return '<div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));">'+
+    '<div class="metric"><div class="label">Faturamento bruto</div><div class="value">'+fmtMoney(faturamentoBruto)+'</div></div>'+
+    '<div class="metric"><div class="label">Custo Fixo</div><div class="value">'+fmtMoney(totalFixo)+'</div><div class="hint">'+pct(totalFixo)+'</div></div>'+
+    '<div class="metric"><div class="label">Custo Variável</div><div class="value">'+fmtMoney(totalVariavel)+'</div><div class="hint">'+pct(totalVariavel)+'</div></div>'+
+    '<div class="metric"><div class="label">Total de despesas</div><div class="value">'+fmtMoney(totalDespesas)+'</div><div class="hint">'+pct(totalDespesas)+'</div></div>'+
+    '<div class="metric"><div class="label">Sobra (faturamento − despesas)</div><div class="value" style="color:'+(lucro>=0?'var(--green)':'var(--danger)')+';">'+fmtMoney(lucro)+'</div></div>'+
+    '</div>'+
+    '<div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-top:14px;">'+
+    '<div class="card" style="margin:0;"><h3>📌 Custo Fixo por categoria</h3>'+tabelaPor(porCategoriaFixa)+'</div>'+
+    '<div class="card" style="margin:0;"><h3>📉 Custo Variável por categoria</h3>'+tabelaPor(porCategoriaVar)+'</div>'+
+    '</div>'+
+    (catsFixas.length===0 ? '<div class="hint" style="margin-top:10px;">Nenhuma categoria está marcada como "Custo Fixo" ainda — marque em Cadastros & Marketing > Cadastro de Despesas.</div>' : '');
+}
 function relatorioDiasTrabalho(){
   const mk = diasTrabalhoMesSelecionado || monthKey(todayStr());
   const catsFixas = state.categoriasDespesasFixas||[];
@@ -8003,7 +8058,8 @@ function relatorioFiado(){
     '<div><label>Valor (R$) <span class="req">*</span></label><input type="number" step="0.01" min="0" name="valor" required></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+todayStr()+'" required></div></div>'+
     '<label>Descrição</label><input type="text" name="descricao" placeholder="Ex: saldo de fiado anterior ao sistema">'+
-    '<button type="submit" class="btn small">Lançar fiado</button></form>'+
+    '<label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-top:6px;"><input type="checkbox" name="vale_pendente" id="chk-fiado-vale-pendente"> 🎫 Falta validar o vale do Gás do povo (fica marcado até você confirmar que o voucher foi liberado/passado)</label>'+
+    '<button type="submit" class="btn small" style="margin-top:8px;">Lançar fiado</button></form>'+
     '<details style="margin-top:16px;"><summary>Importar fiados/créditos retroativos em lote</summary>'+
     '<div class="hint" style="margin-top:8px;">Pra começar o controle já com a base que vocês têm hoje (antes de lançar vendas pelo sistema), suba um arquivo CSV com os clientes e valores. Isso só registra o valor pra controle — <strong>não cria nenhuma venda</strong>. Depois de importado, cada lançamento aparece nas listas abaixo e pode ser editado ou excluído normalmente (nome, valor, data, tudo). Quando você começar a lançar vendas fiado pra esses mesmos clientes, o saldo soma automaticamente com o que foi importado.</div>'+
     '<div class="form-row" style="max-width:420px;margin-top:8px;">'+
@@ -8042,7 +8098,9 @@ function fiadoPorClienteHtml(filtro){
       const cCli = state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(l.nome));
       const acimaLimite = cCli && cCli.limiteCredito>0 && l.saldo>=cCli.limiteCredito;
       const etiquetaLimite = acimaLimite ? ' <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:var(--danger-tint);color:var(--danger);">🚫 acima do limite ('+fmtMoney(cCli.limiteCredito)+')</span>' : '';
-      return '<tr><td>'+l.nome+(telefoneDoCliente(l.nome)?' <a href="'+linkWhatsApp(telefoneDoCliente(l.nome))+'" target="_blank" title="Chamar '+l.nome+' no WhatsApp" style="vertical-align:middle;">'+iconWhatsApp('#25D366',15)+'</a>':'')+'</td><td>'+fmtMoney(l.saldo)+'</td><td>'+etiquetaAtrasoFiadoHtml(l.nome)+etiquetaLimite+'</td>'+
+      const temValePendente = state.fiados.some(f=>chaveNormalizada(f.cliente)===chaveNormalizada(l.nome) && f.vale_pendente);
+      const etiquetaVale = temValePendente ? ' <span class="badge status-receber" title="Tem fiado aguardando validar o vale do Gás do povo">🎫 vale pendente</span>' : '';
+      return '<tr><td>'+l.nome+(telefoneDoCliente(l.nome)?' <a href="'+linkWhatsApp(telefoneDoCliente(l.nome))+'" target="_blank" title="Chamar '+l.nome+' no WhatsApp" style="vertical-align:middle;">'+iconWhatsApp('#25D366',15)+'</a>':'')+'</td><td>'+fmtMoney(l.saldo)+'</td><td>'+etiquetaAtrasoFiadoHtml(l.nome)+etiquetaLimite+etiquetaVale+'</td>'+
     '<td class="cel-acoes">'+
     '<button class="act-link" title="Ver extrato / gerar PDF" data-ver-extrato="'+encodeURIComponent(l.nome)+'">📄</button>'+
     '<button class="act-link" title="'+(telefoneDoCliente(l.nome)?'Enviar o PDF do extrato pelo WhatsApp':'Cadastre o telefone do cliente para habilitar')+'" style="background:var(--green-tint);color:var(--green);" data-enviar-extrato-whats="'+encodeURIComponent(l.nome)+'">'+iconWhatsApp('#25D366',13)+'</button>'+
@@ -8117,7 +8175,7 @@ function fiadoListaHtml(filtro){
       const acoes = f.origem==='manual' ?
         '<button class="act-link" data-edit-fiado="'+f.id+'">✎ editar</button><button class="del-link" data-del-fiado="'+f.id+'">🗑 excluir</button>' :
         '<button class="act-link" data-editar-venda-fiado="'+f.id+'">✎ editar venda</button> <span class="hint">lançado por venda</span>';
-      return '<tr><td>'+f.cliente+'</td><td>'+(f.descricao||'—')+(f.origem==='venda'?' <span class="pill">venda</span>':'')+'</td>'+
+      return '<tr><td>'+f.cliente+'</td><td>'+(f.descricao||'—')+(f.origem==='venda'?' <span class="pill">venda</span>':'')+(f.vale_pendente?' <span class="badge status-receber" style="cursor:pointer;" title="Clique pra marcar como validado" data-marcar-vale-fiado="'+f.id+'">🎫 vale pendente</span>':'')+'</td>'+
         '<td>'+fmtDate(f.data)+'</td><td>'+fmtMoney(f.valor)+'</td>'+
         '<td class="cel-acoes">'+acoes+'</td></tr>';
     }).join('')+'</tbody></table></div>';
@@ -9396,10 +9454,10 @@ function attachHandlers(){
     }
     renderAll();
   });
-  document.querySelectorAll('[data-cat-despesa-fixa]').forEach(chk=>chk.onchange=async()=>{
-    const cat = chk.dataset.catDespesaFixa;
+  document.querySelectorAll('[data-cat-despesa-fixa]').forEach(sel=>sel.onchange=async()=>{
+    const cat = sel.dataset.catDespesaFixa;
     if(!Array.isArray(state.categoriasDespesasFixas)) state.categoriasDespesasFixas = [];
-    if(chk.checked){ if(!state.categoriasDespesasFixas.includes(cat)) state.categoriasDespesasFixas.push(cat); }
+    if(sel.value==='fixo'){ if(!state.categoriasDespesasFixas.includes(cat)) state.categoriasDespesasFixas.push(cat); }
     else { state.categoriasDespesasFixas = state.categoriasDespesasFixas.filter(c=>c!==cat); }
     await save('categoriasDespesasFixas');
   });
@@ -10176,11 +10234,11 @@ function attachHandlers(){
     const f = new FormData(ff);
     if(editFiadoId){
       const fi = state.fiados.find(x=>x.id===editFiadoId);
-      if(fi){ fi.cliente=resolverNomeCliente(f.get('cliente')); fi.valor=Number(f.get('valor')); fi.data=f.get('data'); fi.descricao=f.get('descricao')||''; }
+      if(fi){ fi.cliente=resolverNomeCliente(f.get('cliente')); fi.valor=Number(f.get('valor')); fi.data=f.get('data'); fi.descricao=f.get('descricao')||''; fi.vale_pendente=!!f.get('vale_pendente'); }
       editFiadoId = null;
     } else {
       const clienteFiado = resolverNomeCliente(f.get('cliente'));
-      state.fiados.push({id:uid(), cliente:clienteFiado, valor:Number(f.get('valor')), data:f.get('data'), descricao:f.get('descricao')||'', status:'aberto'});
+      state.fiados.push({id:uid(), cliente:clienteFiado, valor:Number(f.get('valor')), data:f.get('data'), descricao:f.get('descricao')||'', status:'aberto', vale_pendente:!!f.get('vale_pendente')});
       verificarLimiteCreditoCliente(clienteFiado);
     }
     await save('fiados');
@@ -10232,11 +10290,20 @@ function attachHandlers(){
   };
   attachFiadoPorClienteHandlers();
   const attachFiadoListaHandlers = ()=>{
+    document.querySelectorAll('[data-marcar-vale-fiado]').forEach(el=>el.onclick=async()=>{
+      const fi = state.fiados.find(x=>x.id===el.dataset.marcarValeFiado);
+      if(!fi) return;
+      if(!confirm('Marcar o vale do Gás do povo deste fiado como validado/recebido?')) return;
+      fi.vale_pendente = false;
+      await save('fiados');
+      renderAll();
+    });
     document.querySelectorAll('[data-edit-fiado]').forEach(btn=>btn.onclick=()=>{
       const fi = state.fiados.find(x=>x.id===btn.dataset.editFiado);
       if(!fi || !ff) return;
       editFiadoId = fi.id;
       ff.cliente.value=fi.cliente; ff.valor.value=Number(fi.valor).toFixed(2); ff.data.value=fi.data; ff.descricao.value=fi.descricao||'';
+      if(ff.querySelector('[name="vale_pendente"]')) ff.querySelector('[name="vale_pendente"]').checked = !!fi.vale_pendente;
       ff.querySelector('button[type=submit]').textContent='Salvar alterações';
       ff.scrollIntoView({behavior:'smooth'});
     });
@@ -10636,7 +10703,11 @@ function attachHandlers(){
     });
     document.querySelectorAll('[data-del-empresa]').forEach(btn=>btn.onclick=async()=>{
       const id = btn.dataset.delEmpresa;
-      if(confirm('Excluir esta empresa conveniada?')){ state.empresas = state.empresas.filter(x=>x.id!==id); await save('empresas'); renderAll(); }
+      const temVinculos = btn.dataset.vinculos!=='0';
+      const msg = temVinculos
+        ? 'Essa empresa está vinculada a vendas, lançamentos de convênio ou entregas agendadas — excluir o cadastro NÃO apaga esses lançamentos, só o cadastro da empresa (o nome continua nos registros antigos). Excluir mesmo assim?'
+        : 'Excluir esta empresa conveniada?';
+      if(confirm(msg)){ state.empresas = state.empresas.filter(x=>x.id!==id); await save('empresas'); renderAll(); }
     });
     const btnImportarEmpresas = document.getElementById('btn-importar-empresas');
     if(btnImportarEmpresas) btnImportarEmpresas.onclick = importarEmpresasAutomaticamente;
@@ -10721,6 +10792,7 @@ function attachHandlers(){
     if(!fi || !ff) return;
     editFiadoId = fi.id;
     ff.cliente.value=fi.cliente; ff.valor.value=Number(fi.valor).toFixed(2); ff.data.value=fi.data; ff.descricao.value=fi.descricao||'';
+      if(ff.querySelector('[name="vale_pendente"]')) ff.querySelector('[name="vale_pendente"]').checked = !!fi.vale_pendente;
     ff.querySelector('button[type=submit]').textContent='Salvar alterações';
     ff.scrollIntoView({behavior:'smooth'});
   });
@@ -11965,6 +12037,10 @@ function attachHandlers(){
     renderAll();
   };
   document.querySelectorAll('[data-ir-relatorio-estoque]').forEach(btn=>btn.onclick=()=>{ currentTab='estoque'; renderAll(); });
+  const cfvDe = document.getElementById('cfv-de'), cfvAte = document.getElementById('cfv-ate');
+  const atualizarCfv = ()=>{ const wrap=document.getElementById('cfv-resultado'); if(wrap) wrap.innerHTML = renderCustosFixosVariaveisResultado(cfvDe.value, cfvAte.value); };
+  if(cfvDe) cfvDe.onchange = atualizarCfv;
+  if(cfvAte) cfvAte.onchange = atualizarCfv;
   document.querySelectorAll('[data-ir-falta-retirar]').forEach(btn=>btn.onclick=()=>{ currentTab='faltaretirar'; renderAll(); });
   document.querySelectorAll('[data-ir-relatorio]').forEach(btn=>btn.onclick=()=>{
     currentTab = 'relatorios';
