@@ -621,7 +621,7 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_07_09_2026";
+const APP_BUILD_HORARIO = "1.0_10_09_2026";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -1534,6 +1534,8 @@ let agendamentoParaConcluir = null, prefillVenda = null;
 // aparece em linhas seguidas). O usuário confere/corrige e confirma bloco por bloco pelo
 // formulário normal de venda — nada é lançado sozinho sem passar pela tela.
 let importTextoWizard = null; // {blocos, indice, dataPadrao, grupoIdsCriados}
+let importTextoDespesasWizard = null; // {blocos, indice, dataPadrao, total}
+let prefillDespesaPendente = null;
 let prefillItensExtrasVenda = null; // itens extras (2º produto em diante) sugeridos pelo bloco atual
 let editProdutoId = null, clienteCredito = null, editCreditoId = null, editEstoqueMovId = null, editComodatoId = null;
 let editComunicadoId = null, telaAnteriorComunicados = 'config';
@@ -1580,7 +1582,7 @@ const TABS = [
   {id:'financeiro', label:'Financeiro', filhos:['caixa','vendas','faltaretirar']},
   {id:'caixa', label:'Caixa'},
   {id:'vendas', label:'Vendas'},
-  {id:'faltaretirar', label:'Falta retirar'},
+  {id:'faltaretirar', label:'Falta retirar / Já retirou'},
   {id:'gastos', label:'Despesas & Contas', filhos:['despesas','contaspagar','veiculos']},
   {id:'despesas', label:'Despesas'},
   {id:'contaspagar', label:'Contas a Pagar'},
@@ -4027,6 +4029,7 @@ function viewDashboard(){
   const vendasHoje = state.vendas.filter(v=>v.data===hoje);
   const despesasHoje = state.despesas.filter(d=>d.data===hoje);
   const totalVendasHoje = vendasHoje.reduce((s,v)=>s+v.valor_total,0);
+  const freteVendasHoje = vendasHoje.reduce((s,v)=>s+(v.frete||0),0);
   const totalDespesasHoje = despesasHoje.reduce((s,d)=>s+d.valor,0);
 
   const gasMes = vendasMes.filter(v=>{ const i=CATEGORIAS_ESTOQUE[v.categoria]; return i&&i.grupo==='gas'; }).reduce((s,v)=>s+v.valor_total,0);
@@ -4049,7 +4052,7 @@ function viewDashboard(){
     (pendenciasJaRetirouDash.length>0 ? '<div class="card" style="border-left:4px solid var(--danger,#DC2626);cursor:pointer;" data-ir-vendas="1"><h2 style="color:#fff;">🔴 Já retirou — '+pendenciasJaRetirouDash.length+' pendência(s)</h2>'+
       '<div class="hint">Cliente já levou o item, ainda falta pagar. Toque para ver no Histórico de Vendas.</div></div>' : '')+
     metaCardDashboardHtml()+googleCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
-    '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div></div>'+
+    '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div>'+(freteVendasHoje>0?'<div class="hint" style="font-size:10px;">sem contar frete ('+fmtMoney(freteVendasHoje)+')</div>':'')+'</div>'+
     '<div class="metric neg"><div class="label">Despesas do dia</div><div class="value">'+fmtMoney(totalDespesasHoje)+'</div></div>'+
     '</div></div>'+
     '<div class="card"><h2>Resumo do mês</h2><div class="grid cols4">'+
@@ -4308,8 +4311,17 @@ function renderDashboardRelatorios(){
   const porTipo = {};
   TIPOS_ENTREGA.forEach(t=>porTipo[t]={vistos:new Set()});
   vendas.forEach(v=>{ if(v.tipo_entrega) porTipo[v.tipo_entrega].vistos.add(v.grupoId||v.id); });
-  document.getElementById('db-entregas-contador').innerHTML = TIPOS_ENTREGA.map(t=>
-    '<div class="metric"><div class="label" style="display:flex;align-items:center;gap:6px;">'+iconEntrega(t,'#1E3A8A')+'<span>'+t+'</span></div><div class="value">'+porTipo[t].vistos.size+'</div></div>').join('');
+  document.getElementById('db-entregas-contador').innerHTML = TIPOS_ENTREGA.map(t=>{
+    // "Falta retirar" e "Já retirou" são pendências em aberto, não "aconteceu nesse período" —
+    // por isso mostram o total pendente agora (igual aos cards do Painel), sem filtrar pela data
+    // do gráfico. Do contrário ficavam sempre zerados quando a pendência é antiga (ex: lançamento
+    // retroativo de antes do sistema) e cai fora da janela de dias que o gráfico está mostrando.
+    let valor, sufixo = '';
+    if(t==='Falta retirar'){ valor = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).length; sufixo=' (pendentes)'; }
+    else if(t==='Já retirou'){ valor = state.vendas.filter(v=>v.tipo_entrega==='Já retirou' && v.pagamento==='Marcou/Fiado').length; sufixo=' (pendentes)'; }
+    else valor = porTipo[t].vistos.size;
+    return '<div class="metric"><div class="label" style="display:flex;align-items:center;gap:6px;">'+iconEntrega(t,'#1E3A8A')+'<span>'+t+sufixo+'</span></div><div class="value">'+valor+'</div></div>';
+  }).join('');
 }
 
 /* ---------- VENDAS ---------- */
@@ -4386,6 +4398,13 @@ async function resolverFaltaRetirar(id, forma, freteValor, freteForma, darBaixa)
     v.obs = (v.obs?v.obs+' — ':'') + 'Frete cobrado na entrega: '+fmtMoney(freteValor)+(freteForma?' ('+freteForma+')':'');
   }
   await save('vendas'); await save('estoque');
+  renderAll();
+}
+async function resolverJaRetirou(id, formaPagamento){
+  const v = (state.vendas||[]).find(x=>x.id===id);
+  if(!v) return;
+  v.pagamento = formaPagamento;
+  await save('vendas');
   renderAll();
 }
 
@@ -5311,6 +5330,7 @@ function viewVendas(){
   // a 1ª venda lançada no dia aparece no topo com o número 1, crescendo pra baixo.
   const vendasHoje = state.vendas.filter(v=>v.data===hoje).sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
   const totalHoje = vendasHoje.reduce((s,v)=>s+v.valor_total,0);
+  const freteHoje = vendasHoje.reduce((s,v)=>s+(v.frete||0),0);
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
   const gruposVendasDupTopo = encontrarGruposVendasDuplicadas();
@@ -5425,7 +5445,9 @@ function viewVendas(){
     '<div class="hint" style="margin-top:6px;">Se um horário de entrega for definido, os dados do pedido são enviados por WhatsApp para o entregador automaticamente.</div>'+
     '<button type="submit" class="btn">'+(importTextoWizard && importTextoWizard.indice<importTextoWizard.blocos.length ? 'Confirmar venda e ir pro próximo bloco ('+(importTextoWizard.indice+1)+'/'+importTextoWizard.blocos.length+')' : 'Registrar venda')+'</button></form></details></div>'+
     formLancamentoVendaAnteriorHtml(clienteOpts)+
-    '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
+    '<div class="card"><h2>Vendas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+
+    (freteHoje>0 ? '<div class="hint">Esse total já é só o produto — o valor dos fretes (<strong>'+fmtMoney(freteHoje)+'</strong>) não entra aqui, fica separado.</div>' : '')+
+    ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje, {compacta:true})+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
     '<div class="filtro-vendas-row">'+
@@ -5503,10 +5525,30 @@ function formLancamentoVendaAnteriorHtml(clienteOpts){
     '<button type="submit" class="btn" style="margin-top:10px;">Registrar lançamento anterior</button>'+
     '</form></details></div>';
 }
+function pendenciasJaRetirouTable(list){
+  if(list.length===0) return '<div class="empty">Nenhuma pendência de pagamento.</div>';
+  return '<div class="table-wrap"><table><colgroup><col style="width:72px;"><col style="width:130px;"><col style="width:110px;"><col style="width:90px;"><col></colgroup><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd / Valor</th><th></th></tr></thead><tbody>'+
+    list.map(v=>{
+      const info = CATEGORIAS_ESTOQUE[v.categoria];
+      const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
+      return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
+        '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+' · '+fmtMoney(v.valor_total)+'</td>'+
+        '<td class="cel-acoes"><button type="button" class="btn small" style="background:#DC2626;color:#fff;" data-jaretirou-toggle="'+v.id+'">💰 Confirmar pagamento</button> '+
+        '<button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
+        '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>'+
+        '<tr id="linha-jaretirou-'+v.id+'" style="display:none;"><td colspan="5" style="background:var(--card);color:var(--text);">'+
+        '<div class="form-row">'+
+        '<div><label>Forma de pagamento recebida <span class="req">*</span></label><select id="sel-jaretirou-forma-'+v.id+'">'+opcoesComPlaceholder(PAGAMENTOS.filter(p=>p!=='Marcou/Fiado'),'Selecione')+'</select></div>'+
+        '</div>'+
+        '<button type="button" class="btn small" style="margin-top:8px;" data-jaretirou-confirmar="'+v.id+'">✔ Confirmar recebimento</button>'+
+        '</td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
 function viewFaltaRetirar(){
   const hoje = todayStr();
   const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
+  const pendenciasJaRetirou = state.vendas.filter(v=>v.tipo_entrega==='Já retirou' && v.pagamento==='Marcou/Fiado').sort((a,b)=>b.criadoEm-a.criadoEm);
   return '<div class="card"><h2>Falta retirar</h2>'+ajudaHtml('falta-retirar','Use esta tela pra gás que já foi vendido/recebido (às vezes de antes do sistema novo, às vezes é só alguém que aproveitou o preço e vai retirar quando o gás dela acabar) mas que ainda falta o cliente retirar ou vocês entregarem. Clique em "✎ editar" em cada pendência pra informar a forma de retirada/entrega, se teve frete e se deve dar baixa no estoque agora — até resolver, o produto continua reservado, sem descontar do estoque disponível, e sem contar como uma venda nova nas métricas. Também dá pra editar os dados do lançamento em si (cliente, quantidade, etc.) ou excluir, se precisar.')+'</div>'+
     '<div class="card"><details><summary><strong>Registrar novo "falta retirar" (clique para abrir)</strong></summary>'+
     '<div class="hint" style="margin-top:8px;">Cliente novo ou já cadastrado, tanto faz. Não lança valor do gás aqui (já foi recebido) — só o valor do frete, se houver, é perguntado depois, na hora de dar baixa.</div>'+
@@ -5524,7 +5566,10 @@ function viewFaltaRetirar(){
     '<button type="submit" class="btn" style="margin-top:10px;">Registrar falta retirar</button>'+
     '</form></details></div>'+
     '<div class="card"><h2>Pendentes ('+pendenciasRetirada.length+')</h2>'+
-    '<div id="lista-pendencias-retirada-wrap">'+pendenciasRetiradaTable(pendenciasRetirada)+'</div></div>';
+    '<div id="lista-pendencias-retirada-wrap">'+pendenciasRetiradaTable(pendenciasRetirada)+'</div></div>'+
+    '<div class="card"><h2 style="color:#DC2626;">🔴 Já retirou — falta pagar ('+pendenciasJaRetirou.length+')</h2>'+
+    '<div class="hint">Cliente já levou o item; falta confirmar como e quando ele pagou.</div>'+
+    '<div id="lista-pendencias-jaretirou-wrap">'+pendenciasJaRetirouTable(pendenciasJaRetirou)+'</div></div>';
 }
 // Calcula o número sequencial da venda dentro do próprio dia (1ª venda do dia, 2ª, etc.),
 // contando só as vendas que realmente existem em state.vendas nesse momento (ou seja,
@@ -5614,13 +5659,57 @@ function vendasTable(list, opts){
     }).join('')+'</tbody></table></div>';
 }
 
+/* Cada linha colada vira uma despesa: acha o valor (número no fim da linha), o resto é a
+   descrição, e tenta adivinhar a categoria procurando o nome dela dentro da descrição — se não
+   achar, o usuário escolhe na hora de confirmar no formulário. */
+function parseLinhasDespesasTexto(texto){
+  const linhas = (texto||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  return linhas.map(linha=>{
+    const m = linha.match(/(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:,\d{1,2})?)\s*$/);
+    const valorTxt = m ? m[1] : '';
+    const valor = valorTxt ? parseValorBR(valorTxt) : 0;
+    let descricao = valorTxt ? linha.slice(0, linha.lastIndexOf(valorTxt)).trim() : linha;
+    descricao = descricao.replace(/^r\$\s*/i,'').replace(/[-–—:]\s*$/,'').trim();
+    const descNorm = chaveNormalizada(descricao);
+    const categoria = (state.categoriasDespesas||[]).find(c=>descNorm.includes(chaveNormalizada(c))) || '';
+    return {descricao, valor, categoria, linhaOriginal:linha};
+  });
+}
+function htmlAssistenteImportacaoTextoDespesas(hoje){
+  if(!importTextoDespesasWizard){
+    return '<div class="card"><details id="details-import-texto-despesas"><summary><strong>📋 Importar despesas colando texto (bloco de notas)</strong></summary>'+
+      '<div class="hint" style="margin-top:8px;">Cole uma despesa por linha, com o valor no final (ex: "mercado de domingo 65,00"). O sistema tenta adivinhar a categoria pelo texto da linha; se não achar, você escolhe na hora de confirmar. Mostra <strong>uma por uma pra você conferir</strong> antes de salvar — nada é lançado sem confirmar.</div>'+
+      '<div class="form-row" style="margin-top:8px;"><div><label>Data (vale pra todas as linhas)</label><input type="date" id="import-desp-data" value="'+hoje+'"></div></div>'+
+      '<label>Cole o texto aqui</label>'+
+      '<textarea id="import-desp-textarea" rows="6" placeholder="mercado de domingo 65,00\ncombustível carro 80\nconta de luz 320,50"></textarea>'+
+      '<button type="button" class="btn small" id="btn-import-desp-analisar" style="margin-top:8px;">Analisar texto</button>'+
+      '</details></div>';
+  }
+  if(importTextoDespesasWizard.indice < importTextoDespesasWizard.blocos.length){
+    const bloco = importTextoDespesasWizard.blocos[importTextoDespesasWizard.indice];
+    return '<div class="card" style="border:2px solid var(--royal);">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'+
+      '<strong>📋 Importando do bloco de notas — despesa '+(importTextoDespesasWizard.indice+1)+' de '+importTextoDespesasWizard.blocos.length+'</strong>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+      '<button type="button" class="btn small ghost" id="btn-import-desp-pular">Pular esta ▶</button>'+
+      '<button type="button" class="del-link" id="btn-import-desp-cancelar">✕ Cancelar importação</button>'+
+      '</div></div>'+
+      '<div class="hint" style="margin-top:8px;">Linha original: <em>'+escapeHtmlCampanha(bloco.linhaOriginal)+'</em></div>'+
+      '<div class="hint" style="margin-top:6px;">👇 Confira/corrija no <strong>Lançamento manual</strong> logo abaixo (já preenchido com o palpite do sistema — confira a categoria, ela nem sempre acerta sozinha) e clique em <strong>"Confirmar despesa e ir pra próxima"</strong>.</div>'+
+      '</div>';
+  }
+  const total = importTextoDespesasWizard.total;
+  importTextoDespesasWizard = null;
+  return '<div class="card" style="border:2px solid var(--green,#2e7d32);"><strong>✅ Importação concluída — '+total+' despesa(s) registrada(s)</strong></div>';
+}
 /* ---------- DESPESAS ---------- */
 function viewDespesas(){
   const hoje = todayStr();
   const despesasHoje = state.despesas.filter(d=>d.data===hoje).sort((a,b)=>b.criadoEm-a.criadoEm);
   const totalHoje = despesasHoje.reduce((s,d)=>s+d.valor,0);
 
-  return '<div class="card"><details id="details-despesa-manual"'+(despesaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar despesa</h2>'+
+  return htmlAssistenteImportacaoTextoDespesas(hoje)+
+    '<div class="card"><details id="details-despesa-manual"'+(despesaManualAberta||importTextoDespesasWizard?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar despesa</h2>'+
     '<div class="hint">Use este lançamento manual só pra gastos avulsos do dia a dia. Se a conta já está agendada em <strong>Contas a Pagar</strong>, não lance aqui — vá lá e clique em "Marcar paga" que a despesa é criada sozinha, sem duplicar. Se for gasto de um veículo (peça, combustível, manutenção), prefira lançar pela aba <strong>Veículos</strong>, que já entra aqui automaticamente com todos os detalhes.</div>'+
     '<form id="form-despesa">'+
     '<div class="form-row">'+
@@ -5634,7 +5723,7 @@ function viewDespesas(){
     '<button type="button" class="btn small ghost" id="btn-add-cat-despesa">Adicionar</button></div></div>'+
     '<label>Descrição (opcional)</label><input type="text" name="descricao" placeholder="Ex: compra de vasilhames novos">'+
     '<div id="wrap-veiculo-despesa" style="display:none;"><label>Qual veículo é essa despesa?</label><select name="veiculoId"><option value="">Não é de veículo</option>'+state.veiculos.map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></div>'+
-    '<button type="submit" class="btn">Registrar despesa</button></form></details></div>'+
+    '<button type="submit" class="btn">'+(importTextoDespesasWizard && importTextoDespesasWizard.indice<importTextoDespesasWizard.blocos.length ? 'Confirmar despesa e ir pra próxima ('+(importTextoDespesasWizard.indice+1)+'/'+importTextoDespesasWizard.blocos.length+')' : 'Registrar despesa')+'</button></form></details></div>'+
     '<div class="card"><h2>Despesas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('despesas','Registre aqui os gastos do dia (compras, contas, manutenção). Assim como as vendas, a maior parte pode vir automaticamente pela importação da planilha Excel.')+
     '<div id="lista-despesas-hoje-wrap">'+despesasTable(despesasHoje)+'</div></div>'+
     '<div class="card"><h2>Histórico de despesas</h2>'+
@@ -8677,6 +8766,7 @@ function renderRelatorioVendasResultado(){
   const nome = document.getElementById('rv-nome').value.toLowerCase();
   const filtradas = state.vendas.filter(v=> v.data>=de && v.data<=ate && (!nome || (v.cliente||'').toLowerCase().includes(nome)));
   const total = filtradas.reduce((s,v)=>s+v.valor_total,0);
+  const freteTotal = filtradas.reduce((s,v)=>s+(v.frete||0),0);
   const porCategoria = {};
   filtradas.forEach(v=>{
     if(!porCategoria[v.categoria]) porCategoria[v.categoria] = {qtd:0, valor:0};
@@ -8685,7 +8775,7 @@ function renderRelatorioVendasResultado(){
   });
   const linhasCategoria = Object.entries(porCategoria).sort((a,b)=>a[0].localeCompare(b[0]));
   document.getElementById('rv-resultado').innerHTML =
-    '<div class="metric" style="max-width:260px;margin-bottom:12px;"><div class="label">Total no período</div><div class="value">'+fmtMoney(total)+'</div></div>'+
+    '<div class="metric" style="max-width:260px;margin-bottom:12px;"><div class="label">Total no período</div><div class="value">'+fmtMoney(total)+'</div>'+(freteTotal>0?'<div class="hint">Já é só o produto — o valor dos fretes ('+fmtMoney(freteTotal)+') não entra aqui, fica separado.</div>':'')+'</div>'+
     (linhasCategoria.length===0?'':
     '<h4 style="margin-bottom:6px;">Resumo por categoria (itens iguais já somados)</h4>'+
     '<div class="table-wrap" style="margin-bottom:20px;"><table><thead><tr><th>Categoria</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody>'+
@@ -9945,6 +10035,30 @@ function attachHandlers(){
 
   const detalhesDespesaManual = document.getElementById('details-despesa-manual');
   if(detalhesDespesaManual) detalhesDespesaManual.ontoggle = ()=>{ despesaManualAberta = detalhesDespesaManual.open; };
+  const btnImportDespAnalisar = document.getElementById('btn-import-desp-analisar');
+  if(btnImportDespAnalisar) btnImportDespAnalisar.onclick = ()=>{
+    const textoEl = document.getElementById('import-desp-textarea');
+    const dataEl = document.getElementById('import-desp-data');
+    const blocos = parseLinhasDespesasTexto(textoEl ? textoEl.value : '');
+    if(blocos.length===0){ alert('Cole pelo menos uma linha de despesa antes de analisar.'); return; }
+    importTextoDespesasWizard = { blocos, indice:0, dataPadrao: dataEl?dataEl.value:todayStr(), total:0 };
+    despesaManualAberta = true;
+    prefillDespesaPendente = Object.assign({data:importTextoDespesasWizard.dataPadrao}, blocos[0]);
+    renderAll();
+  };
+  document.querySelectorAll('#btn-import-desp-pular').forEach(btn=>btn.onclick=()=>{
+    if(!importTextoDespesasWizard) return;
+    importTextoDespesasWizard.indice++;
+    if(importTextoDespesasWizard.indice < importTextoDespesasWizard.blocos.length){
+      prefillDespesaPendente = Object.assign({data:importTextoDespesasWizard.dataPadrao}, importTextoDespesasWizard.blocos[importTextoDespesasWizard.indice]);
+    }
+    renderAll();
+  });
+  document.querySelectorAll('#btn-import-desp-cancelar').forEach(btn=>btn.onclick=()=>{
+    if(!confirm('Cancelar a importação? As despesas já confirmadas continuam salvas; só as que faltavam não vão ser lançadas.')) return;
+    importTextoDespesasWizard = null;
+    renderAll();
+  });
   const fd = document.getElementById('form-despesa');
   if(fd){
     const selCatDesp = fd.querySelector('select[name=categoria]');
@@ -9985,6 +10099,13 @@ function attachHandlers(){
     }
     const salvouOk = await save('despesas');
     despesaManualAberta = true; // mantém o painel aberto pra não parecer que "sumiu" a tela
+    if(importTextoDespesasWizard && salvouOk){
+      importTextoDespesasWizard.total++;
+      importTextoDespesasWizard.indice++;
+      if(importTextoDespesasWizard.indice < importTextoDespesasWizard.blocos.length){
+        prefillDespesaPendente = Object.assign({data:importTextoDespesasWizard.dataPadrao}, importTextoDespesasWizard.blocos[importTextoDespesasWizard.indice]);
+      }
+    }
     renderAll();
     if(salvouOk){
       const wrapHoje = document.getElementById('lista-despesas-hoje-wrap');
@@ -10482,6 +10603,16 @@ function attachHandlers(){
       if(!selForma || !selForma.value){ alert('Selecione quem está retirando.'); return; }
       const freteValor = Number(inputFrete && inputFrete.value)||0;
       await resolverFaltaRetirar(rid, selForma.value, freteValor, (selFreteForma?selFreteForma.value:''), chkBaixa?chkBaixa.checked:true);
+    });
+    document.querySelectorAll('[data-jaretirou-toggle]').forEach(btn=>btn.onclick=()=>{
+      const linha = document.getElementById('linha-jaretirou-'+btn.dataset.jaretirouToggle);
+      if(linha) linha.style.display = linha.style.display==='none' ? 'table-row' : 'none';
+    });
+    document.querySelectorAll('[data-jaretirou-confirmar]').forEach(btn=>btn.onclick=async()=>{
+      const rid = btn.dataset.jaretirouConfirmar;
+      const selForma = document.getElementById('sel-jaretirou-forma-'+rid);
+      if(!selForma || !selForma.value){ alert('Selecione a forma de pagamento recebida.'); return; }
+      await resolverJaRetirou(rid, selForma.value);
     });
     document.querySelectorAll('[data-edit-venda-ag]').forEach(btn=>btn.onclick=()=>{
       pendingEditVendaId = btn.dataset.editVendaAg;
@@ -11061,6 +11192,20 @@ function attachHandlers(){
     const vPend = state.vendas.find(x=>x.id===pendingEditVendaId);
     pendingEditVendaId = null;
     if(vPend) preencherFormEdicaoVenda(vPend);
+  }
+  if(prefillDespesaPendente){
+    const fdPend = document.getElementById('form-despesa');
+    if(fdPend){
+      fdPend.data.value = prefillDespesaPendente.data || todayStr();
+      fdPend.categoria.value = prefillDespesaPendente.categoria || '';
+      fdPend.valor.value = prefillDespesaPendente.valor ? String(prefillDespesaPendente.valor).replace('.',',') : '';
+      fdPend.descricao.value = prefillDespesaPendente.descricao || '';
+      const catEl = fdPend.querySelector('select[name=categoria]');
+      const wrapVeic = document.getElementById('wrap-veiculo-despesa');
+      if(wrapVeic) wrapVeic.style.display = catEl && categoriaParaceVeiculo(catEl.value) ? 'block' : 'none';
+      fdPend.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+    prefillDespesaPendente = null;
   }
 
   const csvInput = document.getElementById('csv-input');
