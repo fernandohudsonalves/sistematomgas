@@ -621,7 +621,7 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_10_09_2026";
+const APP_BUILD_HORARIO = "1.0_11_09_2026";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -1309,7 +1309,7 @@ ICONES_CATEGORIA['Gás do Povo'] = '🔥';
 Object.assign(ICONES_CATEGORIA, {
   'Acessórios para Gás':'🔧','Acessórios para Água':'🚰',
   'Bandeja de Ovos':'🥚','Dúzia de Ovos':'🥚','Ovos Soltos':'🥚',
-  'Bebidas':'🥤','Caldos':'🍲','Camisetas':'👕','Carvão':'🪨','Cosméticos':'💄',
+  'Bebidas':'🥤','Caldos':'🍲','Camisetas':'👕','Carvão':'⚫','Cosméticos':'💄',
   'Farofas':'🌾','Impressões e Xérox':'🖨️','Nhoque':'🍝','Produtos de Limpeza':'🧼',
   'Produtos de Mercearia':'🛒','Serviços Fernando':'🛠️','Suplementos':'💊','Terra dos Ventos':'📦','Toalhas':'🧻'
 });
@@ -1329,7 +1329,7 @@ const ICONES_CATEGORIA_DESPESA = {
   'Energia Elétrica':'💡','Água / Saneamento':'🚿','Desperdício / Descarte':'🗑️','Outros':'📁',
   // Ícones das categorias próprias já cadastradas pelo usuário (nomes exatos como estão salvos hoje)
   'Boletos de Cargas de Gás':'🔥','Mercado':'🛒','Ração Meninos e Vilão':'🐶','Farmácia':'💊',
-  'Carvão':'🪵','Terra dos Ventos':'🍦','Produtos de Limpeza Leve Limp':'🧴','Combustível':'⛽',
+  'Carvão':'⚫','Terra dos Ventos':'🍦','Produtos de Limpeza Leve Limp':'🧴','Combustível':'⛽',
   'Arilu Rap 10':'📦','Ambev':'🍺','Coca Cola':'🥤','Suplementos Expresso dos Suplementos André':'💪',
   'Aluguel do Barracão + Casa':'🏠','Luz do Barracão':'💡','Luz Casa':'💡','Água Casa + Barracão':'🚿',
   'Internet':'🌐','Consórcios':'💰','IPTUS':'🏛️','Impostos Dars':'🧾','Vivo Empresarial':'📱',
@@ -4346,6 +4346,25 @@ function preencherFormEdicaoVenda(v, fvEl){
   const detalhesVendaManual = fvEl.closest('details');
   if(detalhesVendaManual) detalhesVendaManual.open = true;
   editVendaId = v.id;
+  // Se essa venda tem outros itens (mesma compra, mesmo grupoId), mostra um aviso com link direto
+  // pra editar cada um — cada item continua sendo salvo separado (a área de "itens extras" do
+  // formulário serve só pra ADICIONAR item novo, não pra editar os que já existem, então não dá
+  // pra colocar os irmãos ali sem arriscar duplicar).
+  const grupoIdEdicao = v.grupoId || v.id;
+  const itensIrmaos = state.vendas.filter(x=>x.id!==v.id && (x.grupoId||x.id)===grupoIdEdicao);
+  let avisoIrmaos = document.getElementById('aviso-itens-mesma-venda');
+  if(!avisoIrmaos){
+    avisoIrmaos = document.createElement('div');
+    avisoIrmaos.id = 'aviso-itens-mesma-venda';
+    fvEl.parentNode.insertBefore(avisoIrmaos, fvEl);
+  }
+  avisoIrmaos.innerHTML = itensIrmaos.length===0 ? '' :
+    '<div class="hint" style="background:var(--blue-tint);padding:8px 10px;border-radius:8px;margin-bottom:10px;">🛒 Essa venda tem mais '+itensIrmaos.length+' item(ns) na mesma compra — edite um de cada vez: '+
+    itensIrmaos.map(ir=>'<button type="button" class="act-link" data-editar-item-irmao="'+ir.id+'">✎ '+escapeHtmlCampanha(ir.produto)+'</button>').join(' · ')+'</div>';
+  avisoIrmaos.querySelectorAll('[data-editar-item-irmao]').forEach(btn=>btn.onclick=()=>{
+    const vv = state.vendas.find(x=>x.id===btn.dataset.editarItemIrmao);
+    if(vv) preencherFormEdicaoVenda(vv, fvEl);
+  });
   fvEl.data.value=v.data; fvEl.cliente.value=v.cliente||''; fvEl.canal.value=v.canal;
   if(seletorVendaMain) seletorVendaMain.setValor(v.categoria, v.produto);
   fvEl.quantidade.value=v.quantidade; fvEl.valor_unit.value=v.valor_unit; fvEl.pagamento.value=v.pagamento; fvEl.nota.value=v.nota;
@@ -5480,12 +5499,12 @@ function viewVendas(){
 function pendenciasRetiradaTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma pendência de retirada.</div>';
   const opcoesForma = ['Cliente retirou','Entrega a pé'].concat((state.veiculos||[]).map(vc=>'Entrega de '+vc.nome));
-  return '<div class="table-wrap"><table><colgroup><col style="width:72px;"><col style="width:130px;"><col style="width:110px;"><col style="width:90px;"><col></colgroup><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd / Valor</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><colgroup><col style="width:72px;"><col style="width:130px;"><col style="width:110px;"><col style="width:90px;"><col></colgroup><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd / Situação</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
       return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
-        '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+' · '+fmtMoney(v.valor_total)+'</td>'+
+        '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+'x — <span style="color:var(--green);font-weight:600;">✓ já pago ('+fmtMoney(v.valor_total)+')</span></td>'+
         '<td class="cel-acoes"><button type="button" class="btn small green" data-retirar-toggle="'+v.id+'">🚚 Retirar</button> '+
         '<button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
         '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>'+
@@ -8260,20 +8279,28 @@ function fiadoListaHtml(filtro){
     id:v.id, cliente:v.cliente||'(sem nome)', valor:v.valor_total, data:v.data,
     descricao:v.produto, origem:'venda'
   }));
-  let todos = manuais.concat(vendasFiado).sort((a,b)=>b.data.localeCompare(a.data));
+  const pagamentos = (state.fiadoPagamentos||[]).map(p=>({
+    id:p.id, cliente:p.cliente||'(sem nome)', valor:p.valor, data:p.data,
+    descricao:'💰 Pagou '+fmtMoney(p.valor)+' via '+(p.forma_pagamento||'não informado'), origem:'pagamento'
+  }));
+  let todos = manuais.concat(vendasFiado).concat(pagamentos).sort((a,b)=>b.data.localeCompare(a.data));
   const q = (filtro.q||'').toLowerCase().trim();
   if(q) todos = todos.filter(f=>(f.cliente||'').toLowerCase().includes(q) || (f.descricao||'').toLowerCase().includes(q));
   if(filtro.de) todos = todos.filter(f=>f.data>=filtro.de);
   if(filtro.ate) todos = todos.filter(f=>f.data<=filtro.ate);
   if(todos.length===0) return '<div class="empty">'+((q||filtro.de||filtro.ate)?'Nenhum lançamento encontrado para esse filtro.':'Nenhum fiado lançado ainda.')+'</div>';
-  return '<div class="hint" style="margin-bottom:8px;">Esta lista é só o histórico de débitos lançados. Para dar baixa em um pagamento, use "registrar pagamento" na seção "Fiado por cliente" acima.</div>'+
+  return '<div class="hint" style="margin-bottom:8px;">Débitos (o que ficou devendo) e pagamentos (em <span style="color:var(--green);font-weight:700;">verde</span>, o que já foi pago/abatido) aparecem juntos aqui, do mais recente pro mais antigo — os dois podem ser editados ou excluídos.</div>'+
     '<div class="table-wrap tabela-vendas tabela-fiado-lista"><table><colgroup><col style="width:20%;"><col style="width:28%;"><col style="width:12%;"><col style="width:13%;"><col style="width:27%;"></colgroup><thead><tr><th>Cliente</th><th>Descrição</th><th>Data</th><th>Valor</th><th></th></tr></thead><tbody>'+
     todos.map(f=>{
       const acoes = f.origem==='manual' ?
         '<button class="act-link" data-edit-fiado="'+f.id+'">✎ editar</button><button class="del-link" data-del-fiado="'+f.id+'">🗑 excluir</button>' :
+        f.origem==='pagamento' ?
+        '<button class="act-link" data-edit-pagamento-fiado="'+f.id+'">✎ editar</button><button class="del-link" data-del-pagamento-fiado="'+f.id+'">🗑 excluir</button>' :
         '<button class="act-link" data-editar-venda-fiado="'+f.id+'">✎ editar venda</button> <span class="hint">lançado por venda</span>';
-      return '<tr><td>'+f.cliente+'</td><td>'+(f.descricao||'—')+(f.origem==='venda'?' <span class="pill">venda</span>':'')+(f.vale_pendente?' <span class="badge status-receber" style="cursor:pointer;" title="Clique pra marcar como validado" data-marcar-vale-fiado="'+f.id+'">🎫 vale pendente</span>':'')+'</td>'+
-        '<td>'+fmtDate(f.data)+'</td><td>'+fmtMoney(f.valor)+'</td>'+
+      const trStyle = f.origem==='pagamento' ? ' style="background:var(--green-tint);"' : '';
+      const valorTxt = f.origem==='pagamento' ? '<strong style="color:var(--green);">− '+fmtMoney(f.valor)+'</strong>' : fmtMoney(f.valor);
+      return '<tr'+trStyle+'><td>'+f.cliente+'</td><td>'+(f.descricao||'—')+(f.origem==='venda'?' <span class="pill">venda</span>':'')+(f.vale_pendente?' <span class="badge status-receber" style="cursor:pointer;" title="Clique pra marcar como validado" data-marcar-vale-fiado="'+f.id+'">🎫 vale pendente</span>':'')+'</td>'+
+        '<td>'+fmtDate(f.data)+'</td><td>'+valorTxt+'</td>'+
         '<td class="cel-acoes">'+acoes+'</td></tr>';
     }).join('')+'</tbody></table></div>';
 }
