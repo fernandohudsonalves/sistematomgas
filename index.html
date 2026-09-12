@@ -238,6 +238,8 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .tabela-vendas-compacta td button{font-size:10.5px;padding:1px 3px;min-width:18px;}
 .tabela-vendas-compacta .hint{font-size:9px;}
 .tabela-vendas td.cel-acoes{display:flex;gap:2px;flex-wrap:nowrap;}
+.tabela-planilha-vendas th,.tabela-planilha-vendas td{padding:10px 16px;}
+.tabela-planilha-vendas input,.tabela-planilha-vendas select{padding:6px 8px;box-sizing:border-box;}
 .tabela-fiado-lista td.cel-acoes{flex-wrap:wrap;align-items:center;}
 @media (max-width:640px){
   .tabela-vendas th,.tabela-vendas td{font-size:9.5px;padding:3px 4px;max-width:none;}
@@ -5310,20 +5312,23 @@ function opcoesCategoriaFlatVenda(){
   return Object.keys(CATEGORIAS_ESTOQUE).concat(categoriasNaoControladas());
 }
 function linhaPlanilhaVendaHtml(dataPadrao){
-  const opts = opcoesCategoriaFlatVenda();
   return '<tr>'+
     '<td><input type="date" class="pv-data" value="'+dataPadrao+'" style="min-width:130px;"></td>'+
-    '<td><select class="pv-categoria" style="min-width:190px;"><option value="">Selecione</option>'+opts.map(c=>'<option>'+escapeHtmlCampanha(c)+'</option>').join('')+'</select></td>'+
-    '<td><input type="text" class="pv-produto" placeholder="nome (só p/ Outros)" style="min-width:150px;"></td>'+
+    '<td><input type="text" class="pv-categoria" list="dl-planilha-categorias" placeholder="Digite pra buscar..." style="min-width:210px;"></td>'+
+    '<td><input type="text" class="pv-produto" list="dl-planilha-produtos" placeholder="nome (só p/ Outros)" style="min-width:170px;"></td>'+
     '<td><input type="text" class="pv-cliente" list="dl-planilha-clientes" placeholder="Nome" style="min-width:140px;"></td>'+
     '<td><select class="pv-canal" style="min-width:110px;"><option value="">-</option>'+CANAIS.map(c=>'<option>'+c+'</option>').join('')+'</select></td>'+
     '<td><input type="number" class="pv-qtd" min="1" value="1" style="width:55px;"></td>'+
     '<td><input type="number" class="pv-valor" min="0" step="0.01" placeholder="0,00" style="width:90px;"></td>'+
     '<td><select class="pv-pagamento" style="min-width:130px;"><option value="">Selecione</option>'+PAGAMENTOS.map(p=>'<option>'+p+'</option>').join('')+'</select></td>'+
+    '<td><select class="pv-pagamento2" style="min-width:130px;" title="Só preencha na 1ª linha do cliente, se a compra toda tiver 2 formas de pagamento"><option value="">(sem dividir)</option>'+PAGAMENTOS.filter(p=>p!=='Abateu').map(p=>'<option>'+p+'</option>').join('')+'</select></td>'+
+    '<td><input type="number" class="pv-valorforma1" min="0" step="0.01" placeholder="R$ na 1ª forma" style="width:100px;" title="Quanto foi pago na 1ª forma — o resto vai pra 2ª forma. Só na 1ª linha do cliente."></td>'+
     '<td><select class="pv-entrega" style="min-width:130px;">'+TIPOS_ENTREGA.map(t=>'<option'+(t==='Retirada'?' selected':'')+'>'+t+'</option>').join('')+'</select></td>'+
     '<td><select class="pv-nota" style="min-width:130px;"><option value="">Selecione</option>'+NOTAS.map(n=>'<option>'+n+'</option>').join('')+'</select></td>'+
+    '<td><input type="text" class="pv-cupom" style="min-width:90px;"></td>'+
     '<td><input type="number" class="pv-frete" min="0" step="0.01" placeholder="0,00" style="width:80px;"></td>'+
     '<td><input type="text" class="pv-empresa" list="dl-planilha-empresas" style="min-width:130px;"></td>'+
+    '<td style="text-align:center;"><input type="checkbox" class="pv-vale-pendente" title="Vale do Gás do povo ainda não validado"></td>'+
     '<td><input type="text" class="pv-obs" style="min-width:130px;"></td>'+
     '<td><button type="button" class="del-link pv-remover-linha" title="Remover linha">🗑</button></td>'+
     '</tr>';
@@ -5331,20 +5336,22 @@ function linhaPlanilhaVendaHtml(dataPadrao){
 function htmlPlanilhaVendas(hoje){
   return '<div class="card"><details id="details-planilha-vendas">'+
     '<summary><strong>🧮 Lançar vendas em planilha (estilo Excel)</strong></summary>'+
-    '<div class="hint" style="margin-top:8px;">Preencha uma linha por venda, célula por célula, igual uma planilha. Nome novo de cliente/empresa/produto já cadastra sozinho ao salvar (não precisa cadastrar antes). Em categorias de gás/água controladas, o campo Produto fica sem uso (o nome vem da própria categoria) — só preencha Produto quando a categoria for "Outros". Nada é lançado até você clicar em "Salvar todas as linhas".</div>'+
-    '<div class="table-wrap" style="margin-top:10px;"><table style="min-width:1550px;"><thead><tr>'+
-    '<th>Data</th><th>Categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Entrega</th><th>Nota</th><th>Frete</th><th>Empresa conv.</th><th>Obs</th><th></th>'+
+    '<div class="hint" style="margin-top:8px;">Preencha uma linha por item, célula por célula, igual uma planilha. <strong>Cliente repetido em linhas seguidas vira uma única venda com vários itens</strong> (igual no "colar texto"). Comece a digitar em Categoria ou Produto que aparecem sugestões pra buscar — se não achar, pode digitar um nome novo mesmo, que ele cadastra sozinho ao salvar. Em categorias de gás/água controladas, o campo Produto fica sem uso. Pra dividir o pagamento em duas formas (ex: parte crédito + parte dinheiro, ou parte fiado), preencha "Pagamento 2" e "R$ na 1ª forma" <strong>só na primeira linha do cliente</strong> — vale pra venda toda. Nada é lançado até clicar em "Salvar todas as linhas".</div>'+
+    '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:2200px;"><thead><tr>'+
+    '<th>Data</th><th>Categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Pagamento 2</th><th>R$ na 1ª forma</th><th>Entrega</th><th>Nota</th><th>Cupom</th><th>Frete</th><th>Empresa conv.</th><th>Vale pendente</th><th>Obs</th><th></th>'+
     '</tr></thead><tbody id="tbody-planilha-vendas">'+linhaPlanilhaVendaHtml(hoje)+'</tbody></table></div>'+
+    '<datalist id="dl-planilha-categorias">'+opcoesCategoriaFlatVenda().map(c=>'<option value="'+escapeHtmlCampanha(c)+'">').join('')+'</datalist>'+
+    '<datalist id="dl-planilha-produtos">'+state.produtos.map(p=>'<option value="'+escapeHtmlCampanha(p.nome)+'">').join('')+'</datalist>'+
     '<datalist id="dl-planilha-clientes">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>'+
     '<datalist id="dl-planilha-empresas">'+state.empresas.map(e=>'<option value="'+escapeHtmlCampanha(e.nome)+'">').join('')+'</datalist>'+
-    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">'+
     '<button type="button" class="btn small ghost" id="btn-planilha-add-linha">+ Nova linha</button>'+
     '<button type="button" class="btn" id="btn-planilha-salvar-tudo">💾 Salvar todas as linhas</button>'+
     '</div></details></div>';
 }
 async function salvarPlanilhaVendas(){
   const linhas = Array.from(document.querySelectorAll('#tbody-planilha-vendas tr'));
-  const validas = [];
+  const brutas = [];
   const erros = [];
   for(const tr of linhas){
     const g = (sel)=> tr.querySelector(sel);
@@ -5356,10 +5363,14 @@ async function salvarPlanilhaVendas(){
     const qtd = Number(g('.pv-qtd').value)||0;
     const valorUnit = Number(g('.pv-valor').value)||0;
     const pagamento = g('.pv-pagamento').value;
+    const pagamento2 = g('.pv-pagamento2').value;
+    const valorForma1 = Number(g('.pv-valorforma1').value)||0;
     const entrega = g('.pv-entrega').value;
     const nota = g('.pv-nota').value;
+    const cupom = g('.pv-cupom').value.trim().toUpperCase();
     const frete = Number(g('.pv-frete').value)||0;
     const empresa = g('.pv-empresa').value.trim();
+    const valePendente = g('.pv-vale-pendente').checked;
     const obs = g('.pv-obs').value.trim();
     const vazia = !categoria && !cliente && !qtd && !valorUnit && !pagamento && !nota && !produtoLivre;
     if(vazia) continue;
@@ -5371,27 +5382,74 @@ async function salvarPlanilhaVendas(){
       erros.push('Linha da categoria "'+categoria+'": categoria "Outros" precisa do nome do produto.');
       continue;
     }
-    validas.push({categoria, produtoLivre, cliente, data, canal, qtd, valorUnit, pagamento, entrega, nota, frete, empresa, obs});
+    brutas.push({categoria, produtoLivre, cliente, data, canal, qtd, valorUnit, pagamento, pagamento2, valorForma1, entrega, nota, cupom, frete, empresa, valePendente, obs});
   }
   if(erros.length){ alert('Corrija antes de salvar:\n\n'+erros.join('\n')); return; }
-  if(validas.length===0){ alert('Nenhuma linha preenchida pra salvar.'); return; }
-  for(const l of validas){
-    const controlada = isControlada(l.categoria);
-    const produto = controlada ? l.categoria : l.produtoLivre;
-    if(!controlada) await garantirProdutoCadastrado(produto, l.categoria, l.valorUnit);
-    if(l.empresa) await garantirEmpresaCadastrada(l.empresa);
-    const id = uid();
-    const pendenteRetirada = l.entrega === 'Falta retirar';
-    const venda = {
-      id, criadoEm: Date.now(), grupoId: id, fiado_pago:false, frete: l.frete, entrega_status:'', estoqueBaixado:false, retirado:false, retiradoForma:'', retiradoEm:null,
-      data: l.data, cliente: resolverNomeCliente(l.cliente), canal: l.canal, pagamento: l.pagamento, tipo_entrega: l.entrega||'Retirada', cupom:'', empresa: l.empresa, entrega_data:'', entrega_hora:'', obs: l.obs,
-      categoria: l.categoria, produto, quantidade: l.qtd, valor_unit: l.valorUnit, valor_total: Math.round(l.qtd*l.valorUnit*100)/100, nota: l.nota
-    };
-    if(!pendenteRetirada){ ajustaEstoquePorVenda(l.categoria, l.qtd, false); venda.estoqueBaixado = true; }
-    state.vendas.push(venda);
+  if(brutas.length===0){ alert('Nenhuma linha preenchida pra salvar.'); return; }
+  // Categoria digitada que não bate com nenhuma controlada nem já cadastrada vira uma categoria
+  // nova (tipo "Outros"), automaticamente, igual já acontece com cliente/empresa/produto.
+  let categoriaNova = false;
+  brutas.forEach(l=>{
+    if(!isControlada(l.categoria) && !state.categoriasProdutos.includes(l.categoria)){
+      state.categoriasProdutos.push(l.categoria);
+      categoriaNova = true;
+    }
+  });
+  if(categoriaNova) await save('categoriasProdutos');
+  // Agrupa linhas seguidas do mesmo cliente numa única venda (vários itens, mesmo grupoId) — igual
+  // já acontece no "colar texto". Cliente em branco nunca agrupa (cada linha vira uma venda solo).
+  const grupos = [];
+  brutas.forEach(l=>{
+    const ultimo = grupos[grupos.length-1];
+    const mesmoCliente = l.cliente && ultimo && chaveNormalizada(ultimo.itens[0].cliente)===chaveNormalizada(l.cliente);
+    if(mesmoCliente) ultimo.itens.push(l); else grupos.push({itens:[l]});
+  });
+  let totalVendasCriadas = 0;
+  for(const grupo of grupos){
+    const grupoId = uid();
+    const primeiro = grupo.itens[0];
+    const clienteResolvido = resolverNomeCliente(primeiro.cliente);
+    const idsCriados = [];
+    for(const l of grupo.itens){
+      const controlada = isControlada(l.categoria);
+      const produto = controlada ? l.categoria : l.produtoLivre;
+      if(!controlada) await garantirProdutoCadastrado(produto, l.categoria, l.valorUnit);
+      if(l.empresa) await garantirEmpresaCadastrada(l.empresa);
+      const id = uid();
+      const pendenteRetirada = l.entrega === 'Falta retirar';
+      const venda = {
+        id, criadoEm: Date.now(), grupoId, fiado_pago:false, frete: l.frete, entrega_status:'', estoqueBaixado:false, retirado:false, retiradoForma:'', retiradoEm:null,
+        data: l.data, cliente: clienteResolvido, canal: l.canal, pagamento: l.pagamento, tipo_entrega: l.entrega||'Retirada', cupom: l.cupom, empresa: l.empresa, entrega_data:'', entrega_hora:'', obs: l.obs,
+        categoria: l.categoria, produto, quantidade: l.qtd, valor_unit: l.valorUnit, valor_total: Math.round(l.qtd*l.valorUnit*100)/100, nota: l.nota,
+        vale_pendente: (l.pagamento==='Gás do povo' && l.valePendente)
+      };
+      if(!pendenteRetirada){ ajustaEstoquePorVenda(l.categoria, l.qtd, false); venda.estoqueBaixado = true; }
+      state.vendas.push(venda);
+      idsCriados.push(id);
+      totalVendasCriadas++;
+    }
+    // Dividir pagamento — só considera o que foi preenchido na 1ª linha do grupo, vale pra venda toda.
+    if(primeiro.pagamento2){
+      const totalGrupo = Math.round(grupo.itens.reduce((s,l)=>s+l.qtd*l.valorUnit,0)*100)/100;
+      const restante = Math.max(0, Math.round((totalGrupo-primeiro.valorForma1)*100)/100);
+      const labelCombinado = restante>0.004 ? primeiro.pagamento+' + '+(primeiro.pagamento2==='Marcou/Fiado'?'Fiado':primeiro.pagamento2) : primeiro.pagamento;
+      const vendasDoGrupo = state.vendas.filter(v=>v.grupoId===grupoId);
+      vendasDoGrupo.forEach((v,idx)=>{
+        v.pagamento = labelCombinado;
+        if(idx===0) v.pagamentoSplit = {forma1:primeiro.pagamento, valor1:primeiro.valorForma1, forma2:primeiro.pagamento2, valor2:restante};
+      });
+      if(restante>0.004 && primeiro.pagamento2==='Marcou/Fiado'){
+        const novoFiado = {id:uid(), cliente:clienteResolvido, valor:restante, data:primeiro.data,
+          descricao:'Restante da venda de '+fmtMoney(totalGrupo)+' (parte paga com '+primeiro.pagamento+')', status:'aberto'};
+        state.fiados.push(novoFiado);
+        if(vendasDoGrupo[0]) vendasDoGrupo[0].pagamentoSplit.fiadoId = novoFiado.id;
+        await save('fiados');
+        verificarLimiteCreditoCliente(clienteResolvido);
+      }
+    }
   }
   await save('vendas'); await save('estoque');
-  alert(validas.length+' venda(s) lançada(s) com sucesso!');
+  alert(totalVendasCriadas+' item(ns) lançado(s) em '+grupos.length+' venda(s)!');
   renderAll();
 }
 function htmlAssistenteImportacaoTexto(hoje){
@@ -5782,6 +5840,62 @@ function parseLinhasDespesasTexto(texto){
     return {descricao, valor, categoria, linhaOriginal:linha};
   });
 }
+function linhaPlanilhaDespesaHtml(dataPadrao){
+  return '<tr>'+
+    '<td><input type="date" class="pd-data" value="'+dataPadrao+'" style="min-width:130px;"></td>'+
+    '<td><input type="text" class="pd-categoria" list="dl-planilha-cat-despesa" placeholder="Digite pra buscar..." style="min-width:210px;"></td>'+
+    '<td><input type="number" class="pd-valor" min="0" step="0.01" placeholder="0,00" style="width:100px;"></td>'+
+    '<td><input type="text" class="pd-descricao" placeholder="Descrição" style="min-width:220px;"></td>'+
+    '<td><select class="pd-veiculo" style="min-width:150px;"><option value="">Não é de veículo</option>'+(state.veiculos||[]).map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></td>'+
+    '<td><button type="button" class="del-link pd-remover-linha" title="Remover linha">🗑</button></td>'+
+    '</tr>';
+}
+function htmlPlanilhaDespesas(hoje){
+  return '<div class="card"><details id="details-planilha-despesas">'+
+    '<summary><strong>🧮 Lançar despesas em planilha (estilo Excel)</strong></summary>'+
+    '<div class="hint" style="margin-top:8px;">Preencha uma linha por despesa, célula por célula, igual uma planilha. Comece a digitar em Categoria que aparecem sugestões pra buscar — se não achar, pode digitar um nome novo mesmo, que ele cadastra sozinho ao salvar. Só preencha Veículo se a despesa for de manutenção/combustível de um veículo específico. Nada é lançado até clicar em "Salvar todas as linhas".</div>'+
+    '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:900px;"><thead><tr>'+
+    '<th>Data</th><th>Categoria</th><th>Valor</th><th>Descrição</th><th>Veículo</th><th></th>'+
+    '</tr></thead><tbody id="tbody-planilha-despesas">'+linhaPlanilhaDespesaHtml(hoje)+'</tbody></table></div>'+
+    '<datalist id="dl-planilha-cat-despesa">'+(state.categoriasDespesas||[]).map(c=>'<option value="'+escapeHtmlCampanha(c)+'">').join('')+'</datalist>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">'+
+    '<button type="button" class="btn small ghost" id="btn-planilha-desp-add-linha">+ Nova linha</button>'+
+    '<button type="button" class="btn" id="btn-planilha-desp-salvar-tudo">💾 Salvar todas as linhas</button>'+
+    '</div></details></div>';
+}
+async function salvarPlanilhaDespesas(){
+  const linhas = Array.from(document.querySelectorAll('#tbody-planilha-despesas tr'));
+  const brutas = [];
+  const erros = [];
+  for(const tr of linhas){
+    const g = (sel)=> tr.querySelector(sel);
+    const data = g('.pd-data').value;
+    const categoria = g('.pd-categoria').value.trim();
+    const valor = Number(g('.pd-valor').value)||0;
+    const descricao = g('.pd-descricao').value.trim();
+    const veiculoId = g('.pd-veiculo').value || undefined;
+    const vazia = !categoria && !valor && !descricao;
+    if(vazia) continue;
+    if(!categoria || !data || !valor){
+      erros.push('Linha "'+(descricao||categoria||'(em branco)')+'": preencha categoria, data e valor antes de salvar.');
+      continue;
+    }
+    brutas.push({data, categoria, valor, descricao, veiculoId});
+  }
+  if(erros.length){ alert('Corrija antes de salvar:\n\n'+erros.join('\n')); return; }
+  if(brutas.length===0){ alert('Nenhuma linha preenchida pra salvar.'); return; }
+  let categoriaNova = false;
+  brutas.forEach(l=>{
+    if(!state.categoriasDespesas.includes(l.categoria)){ state.categoriasDespesas.push(l.categoria); categoriaNova = true; }
+  });
+  if(categoriaNova) await save('categoriasDespesas');
+  brutas.forEach(l=>{
+    state.despesas.push({id:uid(), criadoEm:Date.now(), data:l.data, categoria:l.categoria, valor:l.valor, descricao:l.descricao, veiculoId:l.veiculoId});
+  });
+  await save('despesas');
+  alert(brutas.length+' despesa(s) lançada(s) com sucesso!');
+  renderAll();
+}
 function htmlAssistenteImportacaoTextoDespesas(hoje){
   if(!importTextoDespesasWizard){
     return '<div class="card"><details id="details-import-texto-despesas"><summary><strong>📋 Importar despesas colando texto (bloco de notas)</strong></summary>'+
@@ -5815,7 +5929,7 @@ function viewDespesas(){
   const despesasHoje = state.despesas.filter(d=>d.data===hoje).sort((a,b)=>b.criadoEm-a.criadoEm);
   const totalHoje = despesasHoje.reduce((s,d)=>s+d.valor,0);
 
-  return htmlAssistenteImportacaoTextoDespesas(hoje)+
+  return htmlPlanilhaDespesas(hoje)+htmlAssistenteImportacaoTextoDespesas(hoje)+
     '<div class="card"><details id="details-despesa-manual"'+(despesaManualAberta||importTextoDespesasWizard?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar despesa</h2>'+
     '<div class="hint">Use este lançamento manual só pra gastos avulsos do dia a dia. Se a conta já está agendada em <strong>Contas a Pagar</strong>, não lance aqui — vá lá e clique em "Marcar paga" que a despesa é criada sozinha, sem duplicar. Se for gasto de um veículo (peça, combustível, manutenção), prefira lançar pela aba <strong>Veículos</strong>, que já entra aqui automaticamente com todos os detalhes.</div>'+
     '<form id="form-despesa">'+
@@ -10185,6 +10299,24 @@ function attachHandlers(){
 
   const detalhesDespesaManual = document.getElementById('details-despesa-manual');
   if(detalhesDespesaManual) detalhesDespesaManual.ontoggle = ()=>{ despesaManualAberta = detalhesDespesaManual.open; };
+  const tbodyPlanilhaDesp = document.getElementById('tbody-planilha-despesas');
+  const btnPlanilhaDespAddLinha = document.getElementById('btn-planilha-desp-add-linha');
+  if(btnPlanilhaDespAddLinha) btnPlanilhaDespAddLinha.onclick = ()=>{
+    const dataUltima = tbodyPlanilhaDesp.querySelector('tr:last-child .pd-data');
+    tbodyPlanilhaDesp.insertAdjacentHTML('beforeend', linhaPlanilhaDespesaHtml(dataUltima ? dataUltima.value : todayStr()));
+  };
+  if(tbodyPlanilhaDesp) tbodyPlanilhaDesp.addEventListener('click', (e)=>{
+    if(!e.target.classList.contains('pd-remover-linha')) return;
+    if(tbodyPlanilhaDesp.querySelectorAll('tr').length<=1){
+      const tr = e.target.closest('tr');
+      tr.querySelectorAll('input').forEach(i=>{ if(i.type!=='date') i.value=''; });
+      tr.querySelectorAll('select').forEach(s=>s.selectedIndex=0);
+      return;
+    }
+    e.target.closest('tr').remove();
+  });
+  const btnPlanilhaDespSalvarTudo = document.getElementById('btn-planilha-desp-salvar-tudo');
+  if(btnPlanilhaDespSalvarTudo) btnPlanilhaDespSalvarTudo.onclick = salvarPlanilhaDespesas;
   const btnImportDespAnalisar = document.getElementById('btn-import-desp-analisar');
   if(btnImportDespAnalisar) btnImportDespAnalisar.onclick = ()=>{
     const textoEl = document.getElementById('import-desp-textarea');
