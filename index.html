@@ -896,7 +896,7 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Relatórios: Comodatos / Empréstimos', kw:'comodatos emprestimos relatorio', tab:'relatorios', sub:'comodatos'},
   {label:'Relatórios: Patrimônio real', kw:'patrimonio real relatorio', tab:'relatorios', sub:'patrimonio'},
   {label:'Relatórios: Notas para o Bling', kw:'notas bling relatorio', tab:'relatorios', sub:'notas'},
-  {label:'Relatórios: Custos Fixos x Variáveis', kw:'custo fixo variavel faturamento bruto relatorio', tab:'relatorios', sub:'custosfixosvar'},
+  {label:'Relatórios: Custos Fixos x Variáveis / Saúde da empresa', kw:'custo fixo variavel faturamento bruto relatorio saude empresa ponto de equilibrio', tab:'relatorios', sub:'custosfixosvar'},
   {label:'Relatórios: Empresas conveniadas', kw:'empresas conveniadas relatorio editar valor convenio', tab:'relatorios', sub:'empresas'},
   {label:'Relatórios: Simulador de Reajuste', kw:'simulador de reajuste preco', tab:'relatorios', sub:'reajuste'},
   {label:'Relatórios: Análises e Gráficos', kw:'analises graficos relatorio', tab:'relatorios', sub:'analises'},
@@ -4049,8 +4049,8 @@ function viewDashboard(){
       '<div class="hint">'+alertasEstoque.map(al=>al.label+' ('+al.atual+'/'+al.min+')').join(' · ')+' — toque para ver na aba Estoque.</div></div>' : '')+
     '<div class="card" style="border-left:4px solid '+(pendenciasRetiradaDash.length>0?'var(--warning,#f59e0b)':'var(--border)')+';cursor:pointer;" data-ir-falta-retirar="1"><h2 style="color:#fff;">Falta retirar'+(pendenciasRetiradaDash.length>0?' — '+pendenciasRetiradaDash.length+' pendência(s)':'')+'</h2>'+
       '<div class="hint">'+(pendenciasRetiradaDash.length>0?'Gás já vendido/recebido que ainda falta o cliente retirar ou vocês entregarem.':'Nenhuma pendência agora.')+' Toque para abrir.</div></div>'+
-    (pendenciasJaRetirouDash.length>0 ? '<div class="card" style="border-left:4px solid var(--danger,#DC2626);cursor:pointer;" data-ir-vendas="1"><h2 style="color:#fff;">🔴 Já retirou — '+pendenciasJaRetirouDash.length+' pendência(s)</h2>'+
-      '<div class="hint">Cliente já levou o item, ainda falta pagar. Toque para ver no Histórico de Vendas.</div></div>' : '')+
+    (pendenciasJaRetirouDash.length>0 ? '<div class="card" style="border-left:4px solid var(--danger,#DC2626);cursor:pointer;" data-ir-falta-retirar="1"><h2 style="color:#fff;">🔴 Já retirou — '+pendenciasJaRetirouDash.length+' pendência(s)</h2>'+
+      '<div class="hint">Cliente já levou o item, ainda falta pagar. Toque para ver na tela de Falta retirar / Já retirou.</div></div>' : '')+
     metaCardDashboardHtml()+googleCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div>'+(freteVendasHoje>0?'<div class="hint" style="font-size:10px;">sem contar frete ('+fmtMoney(freteVendasHoje)+')</div>':'')+'</div>'+
     '<div class="metric neg"><div class="label">Despesas do dia</div><div class="value">'+fmtMoney(totalDespesasHoje)+'</div></div>'+
@@ -5306,16 +5306,104 @@ function catalogoProdutosFiltradoHtml(q){
 // Card da aba Vendas do assistente de "colar do bloco de notas". Tem 3 estados: colar texto,
 // revisão bloco por bloco (usando o próprio formulário de Lançamento manual logo abaixo) e
 // resumo final do que mexeu no estoque.
+function opcoesCategoriaFlatVenda(){
+  return Object.keys(CATEGORIAS_ESTOQUE).concat(categoriasNaoControladas());
+}
+function linhaPlanilhaVendaHtml(dataPadrao){
+  const opts = opcoesCategoriaFlatVenda();
+  return '<tr>'+
+    '<td><input type="date" class="pv-data" value="'+dataPadrao+'" style="min-width:130px;"></td>'+
+    '<td><select class="pv-categoria" style="min-width:190px;"><option value="">Selecione</option>'+opts.map(c=>'<option>'+escapeHtmlCampanha(c)+'</option>').join('')+'</select></td>'+
+    '<td><input type="text" class="pv-produto" placeholder="nome (só p/ Outros)" style="min-width:150px;"></td>'+
+    '<td><input type="text" class="pv-cliente" list="dl-planilha-clientes" placeholder="Nome" style="min-width:140px;"></td>'+
+    '<td><select class="pv-canal" style="min-width:110px;"><option value="">-</option>'+CANAIS.map(c=>'<option>'+c+'</option>').join('')+'</select></td>'+
+    '<td><input type="number" class="pv-qtd" min="1" value="1" style="width:55px;"></td>'+
+    '<td><input type="number" class="pv-valor" min="0" step="0.01" placeholder="0,00" style="width:90px;"></td>'+
+    '<td><select class="pv-pagamento" style="min-width:130px;"><option value="">Selecione</option>'+PAGAMENTOS.map(p=>'<option>'+p+'</option>').join('')+'</select></td>'+
+    '<td><select class="pv-entrega" style="min-width:130px;">'+TIPOS_ENTREGA.map(t=>'<option'+(t==='Retirada'?' selected':'')+'>'+t+'</option>').join('')+'</select></td>'+
+    '<td><select class="pv-nota" style="min-width:130px;"><option value="">Selecione</option>'+NOTAS.map(n=>'<option>'+n+'</option>').join('')+'</select></td>'+
+    '<td><input type="number" class="pv-frete" min="0" step="0.01" placeholder="0,00" style="width:80px;"></td>'+
+    '<td><input type="text" class="pv-empresa" list="dl-planilha-empresas" style="min-width:130px;"></td>'+
+    '<td><input type="text" class="pv-obs" style="min-width:130px;"></td>'+
+    '<td><button type="button" class="del-link pv-remover-linha" title="Remover linha">🗑</button></td>'+
+    '</tr>';
+}
+function htmlPlanilhaVendas(hoje){
+  return '<div class="card"><details id="details-planilha-vendas">'+
+    '<summary><strong>🧮 Lançar vendas em planilha (estilo Excel)</strong></summary>'+
+    '<div class="hint" style="margin-top:8px;">Preencha uma linha por venda, célula por célula, igual uma planilha. Nome novo de cliente/empresa/produto já cadastra sozinho ao salvar (não precisa cadastrar antes). Em categorias de gás/água controladas, o campo Produto fica sem uso (o nome vem da própria categoria) — só preencha Produto quando a categoria for "Outros". Nada é lançado até você clicar em "Salvar todas as linhas".</div>'+
+    '<div class="table-wrap" style="margin-top:10px;"><table style="min-width:1550px;"><thead><tr>'+
+    '<th>Data</th><th>Categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Entrega</th><th>Nota</th><th>Frete</th><th>Empresa conv.</th><th>Obs</th><th></th>'+
+    '</tr></thead><tbody id="tbody-planilha-vendas">'+linhaPlanilhaVendaHtml(hoje)+'</tbody></table></div>'+
+    '<datalist id="dl-planilha-clientes">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>'+
+    '<datalist id="dl-planilha-empresas">'+state.empresas.map(e=>'<option value="'+escapeHtmlCampanha(e.nome)+'">').join('')+'</datalist>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">'+
+    '<button type="button" class="btn small ghost" id="btn-planilha-add-linha">+ Nova linha</button>'+
+    '<button type="button" class="btn" id="btn-planilha-salvar-tudo">💾 Salvar todas as linhas</button>'+
+    '</div></details></div>';
+}
+async function salvarPlanilhaVendas(){
+  const linhas = Array.from(document.querySelectorAll('#tbody-planilha-vendas tr'));
+  const validas = [];
+  const erros = [];
+  for(const tr of linhas){
+    const g = (sel)=> tr.querySelector(sel);
+    const categoria = g('.pv-categoria').value;
+    const produtoLivre = g('.pv-produto').value.trim();
+    const cliente = g('.pv-cliente').value.trim();
+    const data = g('.pv-data').value;
+    const canal = g('.pv-canal').value;
+    const qtd = Number(g('.pv-qtd').value)||0;
+    const valorUnit = Number(g('.pv-valor').value)||0;
+    const pagamento = g('.pv-pagamento').value;
+    const entrega = g('.pv-entrega').value;
+    const nota = g('.pv-nota').value;
+    const frete = Number(g('.pv-frete').value)||0;
+    const empresa = g('.pv-empresa').value.trim();
+    const obs = g('.pv-obs').value.trim();
+    const vazia = !categoria && !cliente && !qtd && !valorUnit && !pagamento && !nota && !produtoLivre;
+    if(vazia) continue;
+    if(!categoria || !data || !qtd || !valorUnit || !pagamento || !nota){
+      erros.push('Linha "'+(cliente||produtoLivre||categoria||'(em branco)')+'": preencha categoria, data, quantidade, valor, pagamento e nota antes de salvar.');
+      continue;
+    }
+    if(!isControlada(categoria) && !produtoLivre){
+      erros.push('Linha da categoria "'+categoria+'": categoria "Outros" precisa do nome do produto.');
+      continue;
+    }
+    validas.push({categoria, produtoLivre, cliente, data, canal, qtd, valorUnit, pagamento, entrega, nota, frete, empresa, obs});
+  }
+  if(erros.length){ alert('Corrija antes de salvar:\n\n'+erros.join('\n')); return; }
+  if(validas.length===0){ alert('Nenhuma linha preenchida pra salvar.'); return; }
+  for(const l of validas){
+    const controlada = isControlada(l.categoria);
+    const produto = controlada ? l.categoria : l.produtoLivre;
+    if(!controlada) await garantirProdutoCadastrado(produto, l.categoria, l.valorUnit);
+    if(l.empresa) await garantirEmpresaCadastrada(l.empresa);
+    const id = uid();
+    const pendenteRetirada = l.entrega === 'Falta retirar';
+    const venda = {
+      id, criadoEm: Date.now(), grupoId: id, fiado_pago:false, frete: l.frete, entrega_status:'', estoqueBaixado:false, retirado:false, retiradoForma:'', retiradoEm:null,
+      data: l.data, cliente: resolverNomeCliente(l.cliente), canal: l.canal, pagamento: l.pagamento, tipo_entrega: l.entrega||'Retirada', cupom:'', empresa: l.empresa, entrega_data:'', entrega_hora:'', obs: l.obs,
+      categoria: l.categoria, produto, quantidade: l.qtd, valor_unit: l.valorUnit, valor_total: Math.round(l.qtd*l.valorUnit*100)/100, nota: l.nota
+    };
+    if(!pendenteRetirada){ ajustaEstoquePorVenda(l.categoria, l.qtd, false); venda.estoqueBaixado = true; }
+    state.vendas.push(venda);
+  }
+  await save('vendas'); await save('estoque');
+  alert(validas.length+' venda(s) lançada(s) com sucesso!');
+  renderAll();
+}
 function htmlAssistenteImportacaoTexto(hoje){
   if(!importTextoWizard){
-    return '<div class="card" id="import-texto-wizard-card">'+
-      '<h2>📋 Importar colando texto (bloco de notas)</h2>'+
-      '<div class="hint">Cole aqui as vendas do dia, uma por linha (por exemplo, copiado direto do WhatsApp ou de um bloco de notas). O sistema tenta identificar cliente, produto, valor e forma de pagamento sozinho, mas <strong>sempre mostra bloco por bloco pra você conferir e corrigir</strong> antes de salvar de verdade — nada é lançado no sistema sem você confirmar. Clientes repetidos em linhas seguidas viram uma única venda com vários itens. Linhas com "falta fazer o pix" já entram como fiado; pagamentos parciais ("deu X, ficou devendo Y") já vêm com o pagamento dividido.</div>'+
+    return '<div class="card" id="import-texto-wizard-card"><details id="details-import-texto-vendas">'+
+      '<summary><strong>📋 Importar colando texto (bloco de notas)</strong></summary>'+
+      '<div class="hint" style="margin-top:8px;">Cole aqui as vendas do dia, uma por linha (por exemplo, copiado direto do WhatsApp ou de um bloco de notas). O sistema tenta identificar cliente, produto, valor e forma de pagamento sozinho, mas <strong>sempre mostra bloco por bloco pra você conferir e corrigir</strong> antes de salvar de verdade — nada é lançado no sistema sem você confirmar. Clientes repetidos em linhas seguidas viram uma única venda com vários itens. Linhas com "falta fazer o pix" já entram como fiado; pagamentos parciais ("deu X, ficou devendo Y") já vêm com o pagamento dividido.</div>'+
       '<div class="form-row" style="margin-top:10px;"><div><label>Data dessas vendas</label><input type="date" id="import-texto-data" value="'+hoje+'"></div></div>'+
       '<label>Cole o texto aqui</label>'+
       '<textarea id="import-texto-textarea" rows="10" placeholder="Cole aqui as linhas das vendas, uma por linha..."></textarea>'+
       '<button type="button" class="btn" id="btn-import-texto-analisar" style="margin-top:10px;">Analisar texto</button>'+
-      '</div>';
+      '</details></div>';
   }
   if(importTextoWizard.indice < importTextoWizard.blocos.length){
     const bloco = importTextoWizard.blocos[importTextoWizard.indice];
@@ -5376,7 +5464,7 @@ function viewVendas(){
     '<div class="card metric-link" data-ir-relatorio="notas" style="border-left:4px solid #8B5CF6;cursor:pointer;">'+
     '<strong style="color:#8B5CF6;">📋 '+pendentesBling.length+' venda(s) ainda não lançada(s) no Bling</strong>'+
     '<div class="hint" style="margin-top:4px;">Notas com status "Nota fiscal" ou "Cupom não fiscal" que ainda não foram marcadas como "Já lançado". Clique aqui para abrir o relatório de Notas para o Bling e conferir/filtrar por data.</div></div>';
-  return cardPendenciasBling+cardVendasDuplicadasTopo+cardVendasSeparadas+htmlAssistenteImportacaoTexto(hoje)+'<div class="card"><details id="details-venda-manual"'+((vendaManualAberta||importTextoWizard)?' open':'')+'><summary><strong>'+(importTextoWizard?'Lançamento manual (usado pelo assistente de importação acima)':'Lançamento manual (clique para abrir)')+'</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
+  return cardPendenciasBling+cardVendasDuplicadasTopo+cardVendasSeparadas+htmlPlanilhaVendas(hoje)+htmlAssistenteImportacaoTexto(hoje)+'<div class="card"><details id="details-venda-manual"'+((vendaManualAberta||importTextoWizard)?' open':'')+'><summary><strong>'+(importTextoWizard?'Lançamento manual (usado pelo assistente de importação acima)':'Lançamento manual (clique para abrir)')+'</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
     '<div class="hint">Editando uma venda daqui (✎ no Histórico): se você corrigir o produto ou a quantidade de uma venda que já tinha descontado o estoque, o sistema já corrige sozinho — devolve o que foi descontado errado e desconta o certo. Não precisa mexer no Estoque manualmente. Exceção: vendas bem antigas, de antes desse controle existir no sistema, podem não reverter sozinhas — depois de salvar, confira o Estoque pra garantir.</div>'+
     '<form id="form-venda">'+
     '<div class="form-row">'+
@@ -5499,7 +5587,7 @@ function viewVendas(){
 function pendenciasRetiradaTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma pendência de retirada.</div>';
   const opcoesForma = ['Cliente retirou','Entrega a pé'].concat((state.veiculos||[]).map(vc=>'Entrega de '+vc.nome));
-  return '<div class="table-wrap"><table><colgroup><col style="width:72px;"><col style="width:130px;"><col style="width:110px;"><col style="width:90px;"><col></colgroup><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd / Situação</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table style="min-width:800px;"><colgroup><col style="width:95px;"><col style="width:210px;"><col style="width:160px;"><col style="width:180px;"><col></colgroup><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd / Situação</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
@@ -5546,7 +5634,7 @@ function formLancamentoVendaAnteriorHtml(clienteOpts){
 }
 function pendenciasJaRetirouTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma pendência de pagamento.</div>';
-  return '<div class="table-wrap"><table><colgroup><col style="width:72px;"><col style="width:130px;"><col style="width:110px;"><col style="width:90px;"><col></colgroup><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd / Valor</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table style="min-width:800px;"><colgroup><col style="width:95px;"><col style="width:210px;"><col style="width:160px;"><col style="width:180px;"><col></colgroup><thead><tr><th>Data</th><th>Produto</th><th>Cliente</th><th>Qtd / Valor</th><th></th></tr></thead><tbody>'+
     list.map(v=>{
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
@@ -6952,7 +7040,7 @@ function viewRelatorios(){
     {id:'combustivelfrete', label:'Combustível x Frete'},
     {id:'despesas', label:'Despesas por período'},
     {id:'diastrabalho', label:'Dias de trabalho p/ pagar contas'},
-    {id:'custosfixosvar', label:'Custos Fixos x Variáveis'},
+    {id:'custosfixosvar', label:'Saúde da empresa / Ponto de equilíbrio'},
     {id:'veiculos', label:'Veículos'},
     {id:'fiado', label:'Fiado / A receber'},
     {id:'creditos', label:'Créditos em haver'},
@@ -7929,8 +8017,8 @@ function relatorioDespesas(){
     '<button class="btn small ghost" id="rd-filtrar">Filtrar</button><div id="rd-resultado" style="margin-top:16px;"></div>';
 }
 function relatorioCustosFixosVariaveis(){
-  return '<h3>💰 Custos Fixos x Variáveis</h3>'+
-    '<div class="hint">Compara quanto foi gasto em Custo Fixo e Custo Variável (defina isso em Cadastros & Marketing > Cadastro de Despesas) contra o faturamento bruto do período, pra ver que fatia do que entrou já está comprometida.</div>'+
+  return '<h3>💰 Custos Fixos x Variáveis — Saúde da empresa</h3>'+
+    '<div class="hint">Compara quanto foi gasto em Custo Fixo e Custo Variável (defina isso em Cadastros & Marketing > Cadastro de Despesas) contra o faturamento bruto do período, mostra o ponto de equilíbrio (quanto precisa vender pra cobrir tudo) e uma barra de saúde financeira.</div>'+
     '<div class="form-row" style="max-width:420px;margin-top:10px;">'+
     '<div><label>De</label><input type="date" id="cfv-de" value="'+firstOfMonth()+'"></div>'+
     '<div><label>Até</label><input type="date" id="cfv-ate" value="'+todayStr()+'"></div>'+
@@ -7948,6 +8036,21 @@ function renderCustosFixosVariaveisResultado(de, ate){
   const faturamentoBruto = Math.round((state.vendas||[]).filter(v=>v.data>=de && v.data<=ate).reduce((s,v)=>s+v.valor_total,0)*100)/100;
   const pct = (v)=> faturamentoBruto>0 ? ((v/faturamentoBruto)*100).toFixed(1)+'% do faturamento' : '—';
   const lucro = Math.round((faturamentoBruto-totalDespesas)*100)/100;
+  // Ponto de equilíbrio: quanto precisa faturar pra cobrir custo fixo + variável, assumindo que o
+  // variável continua crescendo na mesma proporção do faturamento. Margem de contribuição = fatia
+  // do faturamento que sobra depois de pagar o custo variável (é o que cobre o custo fixo).
+  const margemContribuicaoPct = faturamentoBruto>0 ? (faturamentoBruto-totalVariavel)/faturamentoBruto : 0;
+  const pontoEquilibrio = margemContribuicaoPct>0 ? totalFixo/margemContribuicaoPct : null;
+  const saudePct = (pontoEquilibrio && pontoEquilibrio>0) ? (faturamentoBruto/pontoEquilibrio)*100 : (faturamentoBruto>0 ? 100 : 0);
+  const corSaude = saudePct>=100 ? 'var(--green,#16A34A)' : (saudePct>=70 ? '#f59e0b' : 'var(--danger,#DC2626)');
+  const tituloSaude = saudePct>=100 ? '✅ Saudável — já cobre os custos' : (saudePct>=70 ? '⚠️ Atenção — perto de cobrir os custos' : '🚫 Abaixo do ponto de equilíbrio');
+  const barraSaude = '<div class="card" style="border-left:4px solid '+corSaude+';">'+
+    '<h3 style="margin-top:0;color:'+corSaude+';">'+tituloSaude+'</h3>'+
+    '<div style="background:var(--border);border-radius:999px;height:22px;overflow:hidden;margin:8px 0;">'+
+    '<div style="width:'+Math.min(100,Math.max(0,saudePct))+'%;background:'+corSaude+';height:100%;transition:width .3s;"></div></div>'+
+    '<div class="hint">Faturou '+fmtMoney(faturamentoBruto)+' de um ponto de equilíbrio estimado em <strong>'+(pontoEquilibrio!==null?fmtMoney(pontoEquilibrio):'—')+'</strong> ('+saudePct.toFixed(0)+'% do necessário pra cobrir custo fixo + variável desse período).'+
+    (margemContribuicaoPct<=0 ? ' O custo variável está consumindo tudo (ou mais) do faturamento — nesse ritmo não existe ponto de equilíbrio possível sem vender mais caro, gastar menos por venda, ou reduzir o custo fixo.' : '')+'</div>'+
+    '</div>';
   const porCategoriaFixa = {}; fixasPeriodo.forEach(d=>{ porCategoriaFixa[d.categoria]=(porCategoriaFixa[d.categoria]||0)+d.valor; });
   const porCategoriaVar = {}; variaveisPeriodo.forEach(d=>{ porCategoriaVar[d.categoria]=(porCategoriaVar[d.categoria]||0)+d.valor; });
   function tabelaPor(obj){
@@ -7957,7 +8060,8 @@ function renderCustosFixosVariaveisResultado(de, ate){
       entradas.map(function(e){ return '<tr><td>'+iconeCategoriaDespesaHtml(e[0])+e[0]+'</td><td>'+fmtMoney(e[1])+'</td></tr>'; }).join('')+
       '</tbody></table></div>';
   }
-  return '<div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));">'+
+  return barraSaude+
+    '<div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));">'+
     '<div class="metric"><div class="label">Faturamento bruto</div><div class="value">'+fmtMoney(faturamentoBruto)+'</div></div>'+
     '<div class="metric"><div class="label">Custo Fixo</div><div class="value">'+fmtMoney(totalFixo)+'</div><div class="hint">'+pct(totalFixo)+'</div></div>'+
     '<div class="metric"><div class="label">Custo Variável</div><div class="value">'+fmtMoney(totalVariavel)+'</div><div class="hint">'+pct(totalVariavel)+'</div></div>'+
@@ -8159,7 +8263,7 @@ function relatorioFiado(){
     painelPagamento = '<div class="item-venda-row" style="margin-top:10px;"><h4 style="margin-top:0;">'+(editando?'Editar pagamento':'Registrar pagamento')+' — '+clienteRegistrandoPagamento+'</h4>'+
       '<div class="hint">Saldo devedor atual: <strong>'+fmtMoney(saldoAtual)+'</strong>'+(editando?'':'. Se a pessoa pagou só uma parte, lance aqui só o valor que ela pagou — o restante continua em aberto. Se ela pagou tudo, o saldo zera e ela sai da lista de fiado sozinha.')+'</div>'+
       '<form id="form-pagamento-fiado" data-base-saldo="'+baseSaldoPagamento+'"><div class="form-row">'+
-      '<div><label>Valor pago (R$) <span class="req">*</span></label><input type="number" id="input-valor-pagamento-fiado" name="valor" min="0.01" step="0.01" value="'+(editando?editando.valor:'')+'" required></div>'+
+      '<div><label>Valor pago (R$) <span class="req">*</span></label><input type="number" id="input-valor-pagamento-fiado" name="valor" min="0.01" step="0.01" value="'+(editando?Number(editando.valor).toFixed(2):'')+'" required></div>'+
       '<div><label>Forma de pagamento</label><select name="forma_pagamento">'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(p=>'<option'+(editando&&editando.forma_pagamento===p?' selected':'')+'>'+p+'</option>').join('')+'</select></div>'+
       '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+(editando?editando.data:todayStr())+'" required></div></div>'+
       '<div style="margin:-6px 0 12px;"><button type="button" class="link-btn" id="btn-quitar-tudo-fiado">Preencher com o valor total (quitação total)</button></div>'+
@@ -9981,6 +10085,25 @@ function attachHandlers(){
       if(notaEl && !notaEl.value) notaEl.value = 'Não lança';
     }
   };
+  const tbodyPlanilha = document.getElementById('tbody-planilha-vendas');
+  const btnPlanilhaAddLinha = document.getElementById('btn-planilha-add-linha');
+  if(btnPlanilhaAddLinha) btnPlanilhaAddLinha.onclick = ()=>{
+    const dataUltima = tbodyPlanilha.querySelector('tr:last-child .pv-data');
+    tbodyPlanilha.insertAdjacentHTML('beforeend', linhaPlanilhaVendaHtml(dataUltima ? dataUltima.value : todayStr()));
+  };
+  if(tbodyPlanilha) tbodyPlanilha.addEventListener('click', (e)=>{
+    if(!e.target.classList.contains('pv-remover-linha')) return;
+    const linhasAtuais = tbodyPlanilha.querySelectorAll('tr');
+    if(linhasAtuais.length<=1){
+      const tr = e.target.closest('tr');
+      tr.querySelectorAll('input').forEach(i=>{ if(i.type==='number') i.value=(i.classList.contains('pv-qtd')?'1':''); else if(i.type!=='date') i.value=''; });
+      tr.querySelectorAll('select').forEach(s=>s.selectedIndex=0);
+      return;
+    }
+    e.target.closest('tr').remove();
+  });
+  const btnPlanilhaSalvarTudo = document.getElementById('btn-planilha-salvar-tudo');
+  if(btnPlanilhaSalvarTudo) btnPlanilhaSalvarTudo.onclick = salvarPlanilhaVendas;
   const btnAddItemVenda = document.getElementById('btn-add-item-venda');
   if(btnAddItemVenda) btnAddItemVenda.onclick = ()=>{
     document.getElementById('itens-extra-lista').appendChild(novoItemVendaRow({compact:false}));
