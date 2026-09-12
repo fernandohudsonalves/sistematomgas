@@ -6839,7 +6839,7 @@ acoes+
 }
 function viewAgendamentos(){
   const hoje = todayStr();
-  return '<div class="card"><h2>Nova entrega</h2>'+ajudaHtml('agendamentos','Registre aqui uma entrega pra um cliente já cadastrado, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante. Marque "Entrega agendada" só quando precisar reservar um horário certo (ex: agenda hoje pra entregar amanhã); do contrário ela entra como entrega normal, sem horário fixo. A venda em si (pro caixa) continua sendo lançada pela planilha do fim do dia.')+
+  return '<div class="card"><h2>Nova entrega</h2>'+ajudaHtml('agendamentos','Registre aqui uma entrega pra um cliente já cadastrado, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante. Marque "Entrega agendada" só quando precisar reservar um horário certo (ex: agenda hoje pra entregar amanhã); do contrário ela entra como entrega normal, sem horário fixo. Ao clicar em "✓ Concluir", o sistema já lança a venda de verdade sozinho (com baixa no estoque) — não precisa mais relançar essa entrega na planilha do fim do dia.')+
     '<form id="form-agendamento"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-ag" name="cliente" id="ag-cliente-input" required>'+
     '<datalist id="lista-clientes-ag">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist>'+
@@ -12895,15 +12895,56 @@ function attachHandlers(){
     });
     document.querySelectorAll('[data-concluir-ag]').forEach(btn=>btn.onclick=async()=>{
       const a = state.agendamentos.find(x=>x.id===btn.dataset.concluirAg);
-      if(a){ a.status='concluido'; await save('agendamentos'); atualizarBadgeApp(); renderAll(); }
+      if(!a) return;
+      a.status='concluido';
+      // Ao concluir, gera a venda de verdade (com baixa no estoque), igual uma venda lançada
+      // normal — assim não precisa mais relançar essa entrega na planilha do fim do dia. Só cria
+      // uma vez (guarda o id da venda no agendamento) mesmo se reabrir/concluir de novo depois.
+      if(!a.vendaId){
+        const controladaAg = isControlada(a.categoria);
+        const qtd = a.quantidade||1;
+        const valorUnit = qtd>0 ? Math.round(((a.valor||0)/qtd)*100)/100 : (a.valor||0);
+        const idVenda = uid();
+        const pendenteRetirada = a.tipo_entrega === 'Falta retirar';
+        const venda = {
+          id: idVenda, criadoEm: Date.now(), grupoId: idVenda, fiado_pago:false, frete: a.frete||0, entrega_status:'entregue', estoqueBaixado:false, retirado:false, retiradoForma:'', retiradoEm:null,
+          data: a.data, cliente: a.cliente, canal:'', pagamento: a.pagamento||'Dinheiro', tipo_entrega: a.tipo_entrega||'Entrega a pé', cupom:'', empresa: a.empresa||'', entrega_data: a.data, entrega_hora: a.hora||'',
+          obs: 'Gerada automaticamente ao concluir a entrega agendada.', categoria: a.categoria, produto: a.produto, quantidade: qtd, valor_unit: valorUnit, valor_total: a.valor||0, nota: 'Não lança'
+        };
+        if(!pendenteRetirada){ ajustaEstoquePorVenda(a.categoria, qtd, false); venda.estoqueBaixado = true; }
+        state.vendas.push(venda);
+        a.vendaId = idVenda;
+        await save('vendas'); await save('estoque');
+      }
+      await save('agendamentos'); atualizarBadgeApp(); renderAll();
     });
     document.querySelectorAll('[data-reabrir-ag]').forEach(btn=>btn.onclick=async()=>{
       const a = state.agendamentos.find(x=>x.id===btn.dataset.reabrirAg);
-      if(a){ a.status='pendente'; await save('agendamentos'); atualizarBadgeApp(); renderAll(); }
+      if(!a) return;
+      a.status='pendente';
+      if(a.vendaId){
+        const v = state.vendas.find(x=>x.id===a.vendaId);
+        if(v){
+          if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
+          state.vendas = state.vendas.filter(x=>x.id!==a.vendaId);
+          await save('vendas'); await save('estoque');
+        }
+        a.vendaId = null;
+      }
+      await save('agendamentos'); atualizarBadgeApp(); renderAll();
     });
     document.querySelectorAll('[data-del-ag]').forEach(btn=>btn.onclick=async()=>{
       if(confirm('Excluir este agendamento?')){
         const idAg = btn.dataset.delAg;
+        const agExcluir = state.agendamentos.find(x=>x.id===idAg);
+        if(agExcluir && agExcluir.vendaId){
+          const v = state.vendas.find(x=>x.id===agExcluir.vendaId);
+          if(v){
+            if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
+            state.vendas = state.vendas.filter(x=>x.id!==agExcluir.vendaId);
+            await save('vendas'); await save('estoque');
+          }
+        }
         state.agendamentos = state.agendamentos.filter(x=>x.id!==idAg);
         await save('agendamentos');
         // limpa qualquer pendência de conferência ou acerto com entregador que tenha ficado
