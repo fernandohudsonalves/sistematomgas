@@ -862,14 +862,22 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Painel', kw:'painel dashboard inicio', tab:'dashboard'},
   {label:'Metas', kw:'metas objetivo vendas mes', tab:'metas'},
   {label:'Comunicados / Avisos', kw:'comunicados avisos banner recado', tab:'comunicados'},
-  {label:'Vendas', kw:'vendas lancar venda', tab:'vendas'},
-  {label:'Despesas', kw:'despesas gastos categoria desperdicio esg energia agua', tab:'despesas'},
+  {label:'Vendas', kw:'vendas lancar venda planilha excel colar texto dividir pagamento ja retirou vale pendente cupom', tab:'vendas'},
+  {label:'Falta retirar / Já retirou', kw:'falta retirar ja retirou pendencia retirada pagamento concluir entrega', tab:'faltaretirar'},
+  {label:'CRM', kw:'crm relacionamento interacoes tarefas clientes', tab:'crm'},
+  {label:'Pessoas Ocupadas (Organograma)', kw:'organograma pessoas ocupadas setores funcionarios equipe hierarquia responsavel comentarios', tab:'pessoasocupadas'},
+  {label:'Despesas', kw:'despesas gastos categoria desperdicio esg energia agua planilha excel custo fixo variavel', tab:'despesas'},
   {label:'Veículos', kw:'veiculos moto carro manutencao', tab:'veiculos'},
   {label:'Fechamento de Caixa', kw:'caixa fechamento', tab:'caixa'},
   {label:'Contas a Pagar', kw:'contas a pagar boleto vencimento', tab:'contaspagar'},
   {label:'Cadastros (Clientes/Empresas/Produtos)', kw:'cadastros clientes empresas conveniadas produtos', tab:'cadastros'},
-  {label:'Estoque', kw:'estoque gas agua garrafa vasilhame', tab:'estoque'},
-  {label:'Nova entrega', kw:'agendamentos agenda entrega novo agendamento nova entrega', tab:'agendamentos'},
+  {label:'Cadastros: Clientes', kw:'cadastro de clientes lista editar excluir telefone endereco', tab:'cadastros', sub:'clientes'},
+  {label:'Cadastros: Empresas conveniadas', kw:'cadastro de empresas conveniadas vinculos convenio importar automaticamente', tab:'cadastros', sub:'empresas'},
+  {label:'Cadastros: Produtos', kw:'catalogo de produtos preco importar produtos automaticamente', tab:'cadastros', sub:'produtos'},
+  {label:'Cadastros: Categoria / Tipo de Categoria / Produto', kw:'categorias tipos de categoria produto icone carvao', tab:'cadastros', sub:'categorias'},
+  {label:'Cadastros: Cadastro de Despesas (Custo Fixo/Variável)', kw:'categorias de despesa custo fixo variavel conta fixa', tab:'cadastros', sub:'cadastrodespesas'},
+  {label:'Estoque', kw:'estoque gas agua garrafa vasilhame movimentacao vazio cheio', tab:'estoque'},
+  {label:'Nova entrega', kw:'agendamentos agenda entrega novo agendamento nova entrega concluir gera venda', tab:'agendamentos'},
   {label:'Rotas', kw:'rota do dia entregador rota rapida mapa', tab:'rota'},
   {label:'Localização dos Entregadores', kw:'localizacao entregador onde esta rastreio gps mapa ao vivo', tab:'rota'},
   {label:'Acertos de Entrega', kw:'acertos entrega dinheiro pendencia', tab:'acertos'},
@@ -902,7 +910,7 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Relatórios: Empresas conveniadas', kw:'empresas conveniadas relatorio editar valor convenio', tab:'relatorios', sub:'empresas'},
   {label:'Relatórios: Simulador de Reajuste', kw:'simulador de reajuste preco', tab:'relatorios', sub:'reajuste'},
   {label:'Relatórios: Análises e Gráficos', kw:'analises graficos relatorio', tab:'relatorios', sub:'analises'},
-  {label:'Configurações', kw:'config configuracoes categorias produtos backup usuarios permissoes google negocio', tab:'config'},
+  {label:'Configurações', kw:'config configuracoes categorias produtos backup motivo observacao usuarios permissoes google negocio limpar cache do site cookies', tab:'config'},
   {label:'💎 Lapidar (itens marcados do sistema)', kw:'lapidar diamante marcados apresentar sistema clientes', tab:'config'},
 ];
 function initBuscaSistema(){
@@ -955,7 +963,10 @@ function initBuscaSistema(){
       el.onclick=()=>{
         if(item.tab){
           currentTab = item.tab;
-          if(item.sub) relatorioSub = item.sub;
+          if(item.sub){
+            if(item.tab==='relatorios') relatorioSub = item.sub;
+            else if(item.tab==='cadastros') cadastroSub = item.sub;
+          }
           input.value=''; resDiv.style.display='none';
           renderAll();
         } else {
@@ -1245,7 +1256,7 @@ const VAPID_PUBLIC_KEY = "BJhtEhjv3z9JMW44Yg3JsfoGYR4lNcINkr1fRzNLxvx-jzxtErj7Ew
 
 const CANAIS = ['Portaria','WhatsApp','Venda Ativa','Ligação','Hub','Google'];
 const PAGAMENTOS = ['Dinheiro','Débito','Crédito','Convênio','Vale gás','Gás do povo','Pix','Abateu','Marcou/Fiado','Outros'];
-const NOTAS = ['Nota fiscal','Cupom não fiscal','Já lançado','Não lança'];
+const NOTAS = ['Nota fiscal','Cupom não fiscal','Não lança'];
 const TIPOS_ENTREGA = ['Retirada','Falta retirar','Já retirou','Entrega a pé','Entrega de Celta','Entrega de moto','Entrega de Strada'];
 const DIAS_SEMANA_LABEL = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const TIPOS_ENTREGA_COM_FRETE = ['Entrega de Celta','Entrega de moto','Entrega de Strada'];
@@ -5521,7 +5532,7 @@ function viewVendas(){
   const cardPendenciasBling = pendentesBling.length===0 ? '' :
     '<div class="card metric-link" data-ir-relatorio="notas" style="border-left:4px solid #8B5CF6;cursor:pointer;">'+
     '<strong style="color:#8B5CF6;">📋 '+pendentesBling.length+' venda(s) ainda não lançada(s) no Bling</strong>'+
-    '<div class="hint" style="margin-top:4px;">Notas com status "Nota fiscal" ou "Cupom não fiscal" que ainda não foram marcadas como "Já lançado". Clique aqui para abrir o relatório de Notas para o Bling e conferir/filtrar por data.</div></div>';
+    '<div class="hint" style="margin-top:4px;">Notas com status "Nota fiscal" ou "Cupom não fiscal" ainda pendentes de lançar no Bling. Clique aqui para abrir o relatório de Notas para o Bling e conferir/filtrar por data.</div></div>';
   return cardPendenciasBling+cardVendasDuplicadasTopo+cardVendasSeparadas+htmlPlanilhaVendas(hoje)+htmlAssistenteImportacaoTexto(hoje)+'<div class="card"><details id="details-venda-manual"'+((vendaManualAberta||importTextoWizard)?' open':'')+'><summary><strong>'+(importTextoWizard?'Lançamento manual (usado pelo assistente de importação acima)':'Lançamento manual (clique para abrir)')+'</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
     '<div class="hint">Editando uma venda daqui (✎ no Histórico): se você corrigir o produto ou a quantidade de uma venda que já tinha descontado o estoque, o sistema já corrige sozinho — devolve o que foi descontado errado e desconta o certo. Não precisa mexer no Estoque manualmente. Exceção: vendas bem antigas, de antes desse controle existir no sistema, podem não reverter sozinhas — depois de salvar, confira o Estoque pra garantir.</div>'+
     '<form id="form-venda">'+
@@ -9090,8 +9101,7 @@ function renderRelatorioNotasResultado(){
     const grupo = porNota[n];
     const itens = Object.entries(grupo.itens).sort((a,b)=>b[1]-a[1]);
     return '<div style="background:'+corNota(n)+';color:#10203E;border-radius:10px;padding:12px 16px;margin-bottom:10px;">'+
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;"><div style="font-weight:700;">'+n+'</div>'+
-      ((n!=='Já lançado' && n!=='Não lança')?'<button class="act-link" data-marcar-lancado-grupo="'+grupo.ids.join(',')+'" style="color:#10203E;background:rgba(16,32,62,.14);text-decoration:underline;">✓ marcar já lançado</button>':'')+'</div>'+
+      '<div style="font-weight:700;margin-bottom:6px;">'+n+'</div>'+
       itens.map(it=>'<div>'+it[1]+' '+it[0]+'</div>').join('')+
       '</div>';
   }).join('');
@@ -10145,7 +10155,7 @@ function attachHandlers(){
       id: uid(), criadoEm: Date.now(), grupoId: uid(), fiado_pago:false,
       data: f.get('data'), cliente, canal: 'Venda Ativa', categoria, produto, quantidade,
       valor_unit: 0, valor_total: 0,
-      pagamento: pagamentoExtra || 'Já lançado', nota: 'Já lançado', tipo_entrega: 'Retirada', empresa:'',
+      pagamento: pagamentoExtra || 'Outros', nota: 'Não lança', tipo_entrega: 'Retirada', empresa:'',
       frete: valorExtra, entrega_data:'', entrega_hora:'', entrega_status:'',
       obs: (f.get('obs')||'').trim() || 'Venda anterior ao sistema (lançamento manual, sem valor de produto)'+(valorExtra?' — valor extra: '+fmtMoney(valorExtra):''),
       estoqueBaixado: baixaEstoque, retirado:true, retiradoForma:'', retiradoEm:null,
@@ -10169,7 +10179,7 @@ function attachHandlers(){
       data: f.get('data'), cliente: resolverNomeCliente(f.get('cliente')||''), canal: 'Venda Ativa', categoria, produto: categoria,
       quantidade: Number(f.get('quantidade'))||1,
       valor_unit: 0, valor_total: 0,
-      pagamento: f.get('pagamento_ja_recebido') || 'Outros', nota: 'Já lançado', tipo_entrega: 'Falta retirar', empresa:'',
+      pagamento: f.get('pagamento_ja_recebido') || 'Outros', nota: 'Não lança', tipo_entrega: 'Falta retirar', empresa:'',
       frete: 0, entrega_data:'', entrega_hora:'', entrega_status:'',
       obs: (f.get('obs')||'').trim() || 'Falta retirar — gás já vendido/recebido, ainda não retirado/entregue',
       estoqueBaixado: false, retirado:false, retiradoForma:'', retiradoEm:null,
@@ -12712,17 +12722,6 @@ function attachHandlers(){
     const f = state.fiados.find(x=>x.id===id);
     const aviso = f ? 'Excluir o débito de '+fmtMoney(f.valor)+' de '+f.cliente+' lançado em '+fmtDate(f.data)+'?\n\nIsso reduz o saldo devedor dele imediatamente. Essa ação não pode ser desfeita.' : 'Excluir este lançamento de fiado? Essa ação não pode ser desfeita.';
     if(confirm(aviso)){ state.fiados = state.fiados.filter(x=>x.id!==id); await save('fiados'); renderAll(); }
-  });
-  document.querySelectorAll('[data-marcar-lancado]').forEach(btn=>btn.onclick=async()=>{
-    const id = btn.dataset.marcarLancado;
-    const v = state.vendas.find(x=>x.id===id);
-    if(v){ v.nota='Já lançado'; await save('vendas'); renderAll(); }
-  });
-  document.querySelectorAll('[data-marcar-lancado-grupo]').forEach(btn=>btn.onclick=async()=>{
-    const ids = btn.dataset.marcarLancadoGrupo.split(',');
-    ids.forEach(id=>{ const v = state.vendas.find(x=>x.id===id); if(v) v.nota='Já lançado'; });
-    await save('vendas');
-    renderAll();
   });
   document.querySelectorAll('[data-registrar-pagamento]').forEach(btn=>btn.onclick=()=>{
     clienteRegistrandoPagamento = decodeURIComponent(btn.dataset.registrarPagamento);
