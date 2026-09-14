@@ -4656,6 +4656,7 @@ function viewEmpresas(){
     '<button type="button" class="btn small ghost" id="btn-importar-empresas" style="margin-bottom:10px;">⬇️ Importar empresas automaticamente</button>'+
     '<input type="text" id="busca-empresa" class="searchbar" placeholder="Buscar por nome, telefone ou endereço...">'+
     '<div id="lista-empresas-wrap">'+empresasTable(state.empresas)+'</div></div>'+
+    htmlMesclarEmpresas()+
     '<div class="card"><h2>Nova empresa conveniada</h2><form id="form-empresa-cad">'+
     '<div class="form-row"><div><label>Nome da empresa <span class="req">*</span></label><input type="text" name="nome" required></div>'+
     '<div><label>Telefone / contato</label><input type="text" name="telefone" placeholder="(00) 00000-0000"></div></div>'+
@@ -4684,6 +4685,48 @@ function empresasTable(list){
   }).join('')+'</tbody></table></div>';
 }
 
+function htmlMesclarEmpresas(){
+  if(state.empresas.length<2) return '';
+  const opcoes = state.empresas.slice().sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(e=>'<option value="'+e.id+'">'+escapeHtmlCampanha(e.nome)+'</option>').join('');
+  return '<div class="card"><h2>🔗 Mesclar empresas / filiais em um único cadastro</h2>'+
+    '<div class="hint" style="margin-bottom:10px;">Use isso quando o mesmo cliente está espalhado em mais de um cadastro (ex.: "Superalvo Filial 1" e "Superalvo Filial 2" deveriam ser um só "Alvorada") ou quando um cadastro está errado e devia virar outro (ex.: "Casa do Octávio" → "Superalvo Alvorada"). Todas as vendas, lançamentos de convênio e entregas agendadas dos cadastros escolhidos passam a apontar pro nome final, e os cadastros extras somem da lista — nada de vendas ou valores é apagado, só o nome da empresa em cada um deles é trocado.</div>'+
+    '<label>Escolha os cadastros que devem virar um só (clique segurando Ctrl ou Cmd pra escolher mais de um)</label>'+
+    '<select id="sel-empresas-mesclar" multiple size="8" style="width:100%;">'+opcoes+'</select>'+
+    '<label style="margin-top:10px;">Nome final (pode ser um nome novo, tipo "Alvorada", ou digitar um dos já selecionados pra manter esse)</label>'+
+    '<input type="text" id="input-empresa-mesclar-nome" list="dl-empresas-mesclar-nome" placeholder="Ex.: Alvorada">'+
+    '<datalist id="dl-empresas-mesclar-nome">'+state.empresas.map(e=>'<option value="'+escapeHtmlCampanha(e.nome)+'">').join('')+'</datalist>'+
+    '<button type="button" class="btn" id="btn-empresas-mesclar" style="margin-top:10px;">Mesclar selecionadas</button>'+
+    '</div>';
+}
+// Junta 2+ cadastros de empresa num só: todas as vendas, lançamentos de convênio e entregas
+// agendadas que apontavam pro(s) nome(s) antigo(s) passam a apontar pro nome final; os cadastros
+// extras (que não sobraram como o final) são removidos da lista de Empresas. Se o nome final não
+// bater com nenhum dos cadastros selecionados, cria um cadastro novo com esse nome.
+async function mesclarEmpresas(idsSelecionados, nomeFinalTexto){
+  const nomeFinal = (nomeFinalTexto||'').trim();
+  if(!nomeFinal || idsSelecionados.length<2) return null;
+  const selecionadas = state.empresas.filter(e=>idsSelecionados.includes(e.id));
+  if(selecionadas.length<2) return null;
+  const chaveFinal = chaveNormalizada(nomeFinal);
+  let empresaAlvo = selecionadas.find(e=>chaveNormalizada(e.nome)===chaveFinal);
+  if(!empresaAlvo){
+    empresaAlvo = {id:uid(), nome:nomeFinal, telefone:'', endereco:'', responsavel:'', obs:''};
+    state.empresas.push(empresaAlvo);
+  } else if(empresaAlvo.nome!==nomeFinal){
+    empresaAlvo.nome = nomeFinal;
+  }
+  let vendasAlteradas=0, convenioAlterados=0, agendamentosAlterados=0;
+  const nomesAntigos = selecionadas.filter(e=>e.id!==empresaAlvo.id).map(e=>e.nome);
+  nomesAntigos.forEach(nomeAntigo=>{
+    state.vendas.forEach(v=>{ if(v.empresa===nomeAntigo){ v.empresa = nomeFinal; vendasAlteradas++; } });
+    (state.convenioLancamentos||[]).forEach(c=>{ if(c.empresa===nomeAntigo){ c.empresa = nomeFinal; convenioAlterados++; } });
+    (state.agendamentos||[]).forEach(a=>{ if(a.empresa===nomeAntigo){ a.empresa = nomeFinal; agendamentosAlterados++; } });
+  });
+  state.empresas = state.empresas.filter(e=>e.id===empresaAlvo.id || !idsSelecionados.includes(e.id));
+  await save('empresas'); await save('vendas'); await save('convenioLancamentos'); await save('agendamentos');
+  return {nomeFinal, removidas:nomesAntigos.length, vendasAlteradas, convenioAlterados, agendamentosAlterados};
+}
 /* ---------- PRODUTOS ---------- */
 function categoriasNaoControladas(){
   return state.categoriasProdutos.filter(c=>!isControlada(c));
@@ -5469,11 +5512,11 @@ function criarLinhaPlanilhaVenda(dataPadrao){
     '<td><input type="date" class="pv-data" value="'+dataPadrao+'" style="min-width:130px;"></td>'+
     '<td style="min-width:130px;"><input type="hidden" id="'+catHiddenId+'" class="pv-categoria">'+
       '<select id="'+grupoId+'" class="iv-grupo-select" style="width:100%;"><option value="" selected disabled>Selecione</option><option value="gas">Gás</option><option value="agua">Água</option><option value="outros">Outros</option></select></td>'+
-    '<td id="'+etiquetaWrapId+'" style="display:none;min-width:170px;">'+
+    '<td style="min-width:170px;"><div id="'+etiquetaWrapId+'" style="display:none;">'+
       '<div style="display:flex;gap:4px;align-items:center;"><select id="'+etiquetaId+'" class="iv-etiqueta-select" style="width:100%;">'+opcoesComPlaceholder(categoriasNaoControladas(),'Selecione o tipo')+'</select>'+
-      '<button type="button" class="btn small ghost pv-novo-tipo" title="Cadastrar um tipo de categoria novo" style="padding:4px 8px;">+</button></div></td>'+
-    '<td id="'+produtoWrapId+'" style="display:none;min-width:320px;"><select id="'+produtoSelId+'" class="iv-produto-select" style="width:100%;"></select>'+
-      '<div id="'+manualId+'" style="display:none;margin-top:6px;"><input type="text" class="iv-produto-livre" placeholder="Nome do produto (digite pra cadastrar novo)" style="width:100%;"></div></td>'+
+      '<button type="button" class="btn small ghost pv-novo-tipo" title="Cadastrar um tipo de categoria novo" style="padding:4px 8px;">+</button></div></div></td>'+
+    '<td style="min-width:320px;"><div id="'+produtoWrapId+'" style="display:none;"><select id="'+produtoSelId+'" class="iv-produto-select" style="width:100%;"></select>'+
+      '<div id="'+manualId+'" style="display:none;margin-top:6px;"><input type="text" class="iv-produto-livre" placeholder="Nome do produto (digite pra cadastrar novo)" style="width:100%;"></div></div></td>'+
     '<td><input type="text" class="pv-cliente" list="dl-planilha-clientes" placeholder="Nome" style="min-width:140px;"></td>'+
     '<td><select class="pv-canal" style="min-width:110px;"><option value="">-</option>'+CANAIS.map(c=>'<option>'+c+'</option>').join('')+'</select></td>'+
     '<td><input type="number" class="pv-qtd" min="1" value="1"></td>'+
@@ -11443,6 +11486,21 @@ function attachHandlers(){
     });
     const btnImportarEmpresas = document.getElementById('btn-importar-empresas');
     if(btnImportarEmpresas) btnImportarEmpresas.onclick = importarEmpresasAutomaticamente;
+    const btnMesclarEmpresas = document.getElementById('btn-empresas-mesclar');
+    if(btnMesclarEmpresas) btnMesclarEmpresas.onclick = async ()=>{
+      const sel = document.getElementById('sel-empresas-mesclar');
+      const nomeInput = document.getElementById('input-empresa-mesclar-nome');
+      const ids = sel ? Array.from(sel.selectedOptions).map(o=>o.value) : [];
+      const nomeFinal = nomeInput ? nomeInput.value.trim() : '';
+      if(ids.length<2){ alert('Escolha pelo menos 2 cadastros pra mesclar (clique segurando Ctrl/Cmd na lista).'); return; }
+      if(!nomeFinal){ alert('Digite o nome final da empresa mesclada.'); return; }
+      const nomesEscolhidos = state.empresas.filter(e=>ids.includes(e.id)).map(e=>e.nome).join(', ');
+      if(!confirm('Mesclar ['+nomesEscolhidos+'] em um único cadastro chamado "'+nomeFinal+'"?\n\nVendas, lançamentos de convênio e entregas agendadas desses cadastros vão passar a usar o nome final. Isso não pode ser desfeito automaticamente.')) return;
+      const r = await mesclarEmpresas(ids, nomeFinal);
+      if(!r){ alert('Não foi possível mesclar — confira a seleção e o nome final.'); return; }
+      alert('Pronto! '+r.removidas+' cadastro(s) extra(s) removido(s). Atualizado: '+r.vendasAlteradas+' venda(s), '+r.convenioAlterados+' lançamento(s) de convênio, '+r.agendamentosAlterados+' entrega(s) agendada(s) — todos agora com empresa "'+r.nomeFinal+'".');
+      renderAll();
+    };
   };
   const btnImportarProdutos = document.getElementById('btn-importar-produtos');
   if(btnImportarProdutos) btnImportarProdutos.onclick = importarProdutosAutomaticamente;
