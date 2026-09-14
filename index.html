@@ -3301,7 +3301,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -3428,6 +3428,7 @@ async function loadAll(){
   if(!Array.isArray(state.calendarioEditorial)) state.calendarioEditorial = [];
   if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema = [];
   if(!Array.isArray(state.setores)) state.setores = [];
+  if(!Array.isArray(state.blingBaixas)) state.blingBaixas = [];
   if(state.setores.length===0){
     state.setores = [
       {id:uid(), nome:'Administração geral', descricao:'Direção geral da empresa.', atividades:'Marketing, sistema (o app que você está usando) e logística.', responsaveis:['Fernando'], setorSuperior:'', comentarios:[]},
@@ -5322,11 +5323,20 @@ function catalogoProdutosFiltradoHtml(q){
 function opcoesCategoriaFlatVenda(){
   return Object.keys(CATEGORIAS_ESTOQUE).concat(categoriasNaoControladas());
 }
-function linhaPlanilhaVendaHtml(dataPadrao){
-  return '<tr>'+
+function criarLinhaPlanilhaVenda(dataPadrao){
+  const tr = document.createElement('tr');
+  const uidBase = uid();
+  const grupoId='pv-grupo-'+uidBase, etiquetaWrapId='pv-etiquetawrap-'+uidBase, etiquetaId='pv-etiqueta-'+uidBase,
+    catHiddenId='pv-categoria-'+uidBase, produtoWrapId='pv-produtowrap-'+uidBase, produtoSelId='pv-produtosel-'+uidBase, manualId='pv-manual-'+uidBase;
+  tr.innerHTML =
     '<td><input type="date" class="pv-data" value="'+dataPadrao+'" style="min-width:130px;"></td>'+
-    '<td><input type="text" class="pv-categoria" list="dl-planilha-categorias" placeholder="Digite pra buscar..." style="min-width:210px;"></td>'+
-    '<td><input type="text" class="pv-produto" list="dl-planilha-produtos" placeholder="nome (só p/ Outros)" style="min-width:170px;"></td>'+
+    '<td style="min-width:130px;"><input type="hidden" id="'+catHiddenId+'" class="pv-categoria">'+
+      '<select id="'+grupoId+'" class="iv-grupo-select" style="width:100%;"><option value="" selected disabled>Selecione</option><option value="gas">Gás</option><option value="agua">Água</option><option value="outros">Outros</option></select></td>'+
+    '<td id="'+etiquetaWrapId+'" style="display:none;min-width:170px;">'+
+      '<div style="display:flex;gap:4px;align-items:center;"><select id="'+etiquetaId+'" class="iv-etiqueta-select" style="width:100%;">'+opcoesComPlaceholder(categoriasNaoControladas(),'Selecione o tipo')+'</select>'+
+      '<button type="button" class="btn small ghost pv-novo-tipo" title="Cadastrar um tipo de categoria novo" style="padding:4px 8px;">+</button></div></td>'+
+    '<td id="'+produtoWrapId+'" style="display:none;min-width:320px;"><select id="'+produtoSelId+'" class="iv-produto-select" style="width:100%;"></select>'+
+      '<div id="'+manualId+'" style="display:none;margin-top:6px;"><input type="text" class="iv-produto-livre" placeholder="Nome do produto (digite pra cadastrar novo)" style="width:100%;"></div></td>'+
     '<td><input type="text" class="pv-cliente" list="dl-planilha-clientes" placeholder="Nome" style="min-width:140px;"></td>'+
     '<td><select class="pv-canal" style="min-width:110px;"><option value="">-</option>'+CANAIS.map(c=>'<option>'+c+'</option>').join('')+'</select></td>'+
     '<td><input type="number" class="pv-qtd" min="1" value="1" style="width:55px;"></td>'+
@@ -5341,18 +5351,33 @@ function linhaPlanilhaVendaHtml(dataPadrao){
     '<td><input type="text" class="pv-empresa" list="dl-planilha-empresas" style="min-width:130px;"></td>'+
     '<td style="text-align:center;"><input type="checkbox" class="pv-vale-pendente" title="Vale do Gás do povo ainda não validado"></td>'+
     '<td><input type="text" class="pv-obs" style="min-width:130px;"></td>'+
-    '<td><button type="button" class="del-link pv-remover-linha" title="Remover linha">🗑</button></td>'+
-    '</tr>';
+    '<td><button type="button" class="del-link pv-remover-linha" title="Remover linha">🗑</button></td>';
+  const produtoLivreInput = tr.querySelector('.iv-produto-livre');
+  const valorUnitInput = tr.querySelector('.pv-valor');
+  wireSeletorCategoria({
+    root:tr, grupoId, etiquetaWrapId, etiquetaId, produtoWrapId, produtoId:produtoSelId,
+    categoriaHiddenId:catHiddenId, manualWrapId:manualId, produtoLivreEl:produtoLivreInput, valorUnitEl:valorUnitInput
+  });
+  tr.querySelector('.pv-novo-tipo').onclick = async ()=>{
+    const nome = prompt('Nome do novo tipo de categoria (ex: Bebidas, Carvão...):');
+    if(!nome || !nome.trim()) return;
+    const nomeTipo = nome.trim();
+    if(!state.categoriasProdutos.includes(nomeTipo)) state.categoriasProdutos.push(nomeTipo);
+    await save('categoriasProdutos');
+    const etiquetaEl = tr.querySelector('#'+etiquetaId);
+    etiquetaEl.innerHTML = opcoesComPlaceholder(categoriasNaoControladas(),'Selecione o tipo');
+    etiquetaEl.value = nomeTipo;
+    if(etiquetaEl.onchange) etiquetaEl.onchange();
+  };
+  return tr;
 }
 function htmlPlanilhaVendas(hoje){
   return '<div class="card"><details id="details-planilha-vendas">'+
     '<summary><strong>🧮 Lançar vendas em planilha (estilo Excel)</strong></summary>'+
-    '<div class="hint" style="margin-top:8px;">Preencha uma linha por item, célula por célula, igual uma planilha. <strong>Cliente repetido em linhas seguidas vira uma única venda com vários itens</strong> (igual no "colar texto"). Comece a digitar em Categoria ou Produto que aparecem sugestões pra buscar — se não achar, pode digitar um nome novo mesmo, que ele cadastra sozinho ao salvar. Em categorias de gás/água controladas, o campo Produto fica sem uso. Pra dividir o pagamento em duas formas (ex: parte crédito + parte dinheiro, ou parte fiado), preencha "Pagamento 2" e "R$ na 1ª forma" <strong>só na primeira linha do cliente</strong> — vale pra venda toda. Nada é lançado até clicar em "Salvar todas as linhas".</div>'+
-    '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:2200px;"><thead><tr>'+
-    '<th>Data</th><th>Categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Pagamento 2</th><th>R$ na 1ª forma</th><th>Entrega</th><th>Nota</th><th>Cupom</th><th>Frete</th><th>Empresa conv.</th><th>Vale pendente</th><th>Obs</th><th></th>'+
-    '</tr></thead><tbody id="tbody-planilha-vendas">'+linhaPlanilhaVendaHtml(hoje)+'</tbody></table></div>'+
-    '<datalist id="dl-planilha-categorias">'+opcoesCategoriaFlatVenda().map(c=>'<option value="'+escapeHtmlCampanha(c)+'">').join('')+'</datalist>'+
-    '<datalist id="dl-planilha-produtos">'+state.produtos.map(p=>'<option value="'+escapeHtmlCampanha(p.nome)+'">').join('')+'</datalist>'+
+    '<div class="hint" style="margin-top:8px;">Preencha uma linha por item, célula por célula, igual uma planilha. <strong>Cliente repetido em linhas seguidas vira uma única venda com vários itens</strong> (igual no "colar texto"). Escolha a Categoria (Gás/Água/Outros) — em "Outros" aparece o Tipo da categoria (com um botão "+" pra cadastrar um tipo novo na hora) e depois o Produto, com "Outro (digitar manualmente)" no fim da lista pra quando não achar. Em Gás/Água o Produto já é a própria carga/vasilhame escolhido, sem precisar de Tipo. Pra dividir o pagamento em duas formas, preencha "Pagamento 2" e "R$ na 1ª forma" <strong>só na primeira linha do cliente</strong> — vale pra venda toda. Nada é lançado até clicar em "Salvar todas as linhas".</div>'+
+    '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:2450px;"><thead><tr>'+
+    '<th>Data</th><th>Categoria</th><th>Tipo da categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Pagamento 2</th><th>R$ na 1ª forma</th><th>Entrega</th><th>Nota</th><th>Cupom</th><th>Frete</th><th>Empresa conv.</th><th>Vale pendente</th><th>Obs</th><th></th>'+
+    '</tr></thead><tbody id="tbody-planilha-vendas"></tbody></table></div>'+
     '<datalist id="dl-planilha-clientes">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>'+
     '<datalist id="dl-planilha-empresas">'+state.empresas.map(e=>'<option value="'+escapeHtmlCampanha(e.nome)+'">').join('')+'</datalist>'+
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">'+
@@ -5367,7 +5392,7 @@ async function salvarPlanilhaVendas(){
   for(const tr of linhas){
     const g = (sel)=> tr.querySelector(sel);
     const categoria = g('.pv-categoria').value;
-    const produtoLivre = g('.pv-produto').value.trim();
+    const produtoLivre = g('.iv-produto-livre').value.trim();
     const cliente = g('.pv-cliente').value.trim();
     const data = g('.pv-data').value;
     const canal = g('.pv-canal').value;
@@ -5391,6 +5416,10 @@ async function salvarPlanilhaVendas(){
     }
     if(!isControlada(categoria) && !produtoLivre){
       erros.push('Linha da categoria "'+categoria+'": categoria "Outros" precisa do nome do produto.');
+      continue;
+    }
+    if(categoria==='Gás do povo' && pagamento!=='Gás do povo'){
+      erros.push('Linha "'+(cliente||'(sem cliente)')+'" — Gás do povo: a forma de pagamento desse item precisa ser "Gás do povo".');
       continue;
     }
     brutas.push({categoria, produtoLivre, cliente, data, canal, qtd, valorUnit, pagamento, pagamento2, valorForma1, entrega, nota, cupom, frete, empresa, valePendente, obs});
@@ -5528,11 +5557,13 @@ function viewVendas(){
       '<td><button type="button" class="btn small ghost" data-juntar-vendas-cliente="'+i+'">🔗 Juntar em 1 venda</button></td></tr>').join('')+
     '</tbody></table></div></div>';
 
-  const pendentesBling = state.vendas.filter(v=>v.nota==='Nota fiscal' || v.nota==='Cupom não fiscal');
-  const cardPendenciasBling = pendentesBling.length===0 ? '' :
+  const pendenciasNFDash = pendenciasNotaFiscalPorDia();
+  const totalPendenteNF = pendenciasNFDash.reduce((s,p)=>s+p.pendente,0);
+  const pendentesCupom = state.vendas.filter(v=>v.nota==='Cupom não fiscal').length;
+  const cardPendenciasBling = (totalPendenteNF<=0 && pendentesCupom===0) ? '' :
     '<div class="card metric-link" data-ir-relatorio="notas" style="border-left:4px solid #8B5CF6;cursor:pointer;">'+
-    '<strong style="color:#8B5CF6;">📋 '+pendentesBling.length+' venda(s) ainda não lançada(s) no Bling</strong>'+
-    '<div class="hint" style="margin-top:4px;">Notas com status "Nota fiscal" ou "Cupom não fiscal" ainda pendentes de lançar no Bling. Clique aqui para abrir o relatório de Notas para o Bling e conferir/filtrar por data.</div></div>';
+    '<strong style="color:#8B5CF6;">📋 Pendências no Bling'+(totalPendenteNF>0?' — '+fmtNumBR(totalPendenteNF)+' un. de Nota fiscal':'')+(pendentesCupom>0?' · '+pendentesCupom+' Cupom não fiscal':'')+'</strong>'+
+    '<div class="hint" style="margin-top:4px;">Vai acumulando dia após dia até você lançar no Bling e dar baixa. Clique aqui para abrir o relatório de Notas para o Bling.</div></div>';
   return cardPendenciasBling+cardVendasDuplicadasTopo+cardVendasSeparadas+htmlPlanilhaVendas(hoje)+htmlAssistenteImportacaoTexto(hoje)+'<div class="card"><details id="details-venda-manual"'+((vendaManualAberta||importTextoWizard)?' open':'')+'><summary><strong>'+(importTextoWizard?'Lançamento manual (usado pelo assistente de importação acima)':'Lançamento manual (clique para abrir)')+'</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
     '<div class="hint">Editando uma venda daqui (✎ no Histórico): se você corrigir o produto ou a quantidade de uma venda que já tinha descontado o estoque, o sistema já corrige sozinho — devolve o que foi descontado errado e desconta o certo. Não precisa mexer no Estoque manualmente. Exceção: vendas bem antigas, de antes desse controle existir no sistema, podem não reverter sozinhas — depois de salvar, confira o Estoque pra garantir.</div>'+
     '<form id="form-venda">'+
@@ -5854,7 +5885,8 @@ function parseLinhasDespesasTexto(texto){
 function linhaPlanilhaDespesaHtml(dataPadrao){
   return '<tr>'+
     '<td><input type="date" class="pd-data" value="'+dataPadrao+'" style="min-width:130px;"></td>'+
-    '<td><input type="text" class="pd-categoria" list="dl-planilha-cat-despesa" placeholder="Digite pra buscar..." style="min-width:210px;"></td>'+
+    '<td><div style="display:flex;gap:4px;align-items:center;"><input type="text" class="pd-categoria" list="dl-planilha-cat-despesa" placeholder="Digite pra buscar..." style="min-width:420px;">'+
+    '<button type="button" class="btn small ghost pd-novo-tipo" title="Cadastrar categoria nova" style="padding:4px 8px;">+</button></div></td>'+
     '<td><input type="number" class="pd-valor" min="0" step="0.01" placeholder="0,00" style="width:100px;"></td>'+
     '<td><input type="text" class="pd-descricao" placeholder="Descrição" style="min-width:220px;"></td>'+
     '<td><select class="pd-veiculo" style="min-width:150px;"><option value="">Não é de veículo</option>'+(state.veiculos||[]).map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></td>'+
@@ -8533,8 +8565,33 @@ function fiadoListaHtml(filtro){
         '<td class="cel-acoes">'+acoes+'</td></tr>';
     }).join('')+'</tbody></table></div>';
 }
+function pendenciasNotaFiscalPorDia(){
+  const porDia = {};
+  (state.vendas||[]).forEach(v=>{
+    if(v.nota==='Nota fiscal') porDia[v.data] = (porDia[v.data]||0) + (v.quantidade||0);
+  });
+  const baixasPorDia = {};
+  (state.blingBaixas||[]).forEach(b=>{ baixasPorDia[b.data] = (baixasPorDia[b.data]||0) + (b.quantidade||0); });
+  return Object.keys(porDia).map(data=>{
+    const total = porDia[data];
+    const baixado = baixasPorDia[data]||0;
+    return {data, total, baixado, pendente: Math.round((total-baixado)*100)/100};
+  }).filter(x=>x.pendente>0.004).sort((a,b)=>a.data.localeCompare(b.data));
+}
+function htmlPendenciasNotaFiscal(){
+  const pendencias = pendenciasNotaFiscalPorDia();
+  if(pendencias.length===0) return '<div class="card"><h2>📋 Pendências de Nota Fiscal por dia</h2><div class="empty">Nenhuma pendência — tudo lançado no Bling.</div></div>';
+  const totalGeral = pendencias.reduce((s,p)=>s+p.pendente,0);
+  return '<div class="card"><h2>📋 Pendências de Nota Fiscal por dia <span class="pill">'+fmtNumBR(totalGeral)+' un. no total</span></h2>'+
+    '<div class="hint">Só entra aqui o que foi vendido com nota "Nota fiscal" — vai acumulando dia após dia até você lançar no Bling e dar baixa aqui.</div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Dia</th><th>Vendido</th><th>Já baixado</th><th>Pendente</th><th></th></tr></thead><tbody>'+
+    pendencias.map(p=>'<tr><td>'+fmtDate(p.data)+'</td><td>'+fmtNumBR(p.total)+'</td><td>'+fmtNumBR(p.baixado)+'</td><td><strong>'+fmtNumBR(p.pendente)+'</strong></td>'+
+    '<td><input type="number" class="input-baixa-bling" data-data-baixa="'+p.data+'" min="0" step="0.01" value="'+p.pendente+'" style="width:80px;"> <button type="button" class="btn small" data-dar-baixa-bling="'+p.data+'">✔ Dar baixa</button></td></tr>').join('')+
+    '</tbody></table></div></div>';
+}
 function relatorioNotas(){
-  return '<h3>Filtrar</h3><div class="form-row">'+
+  return htmlPendenciasNotaFiscal()+
+    '<h3>Filtrar</h3><div class="form-row">'+
     '<div><label>De</label><input type="date" id="rn-de" value="'+todayStr()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rn-ate" value="'+todayStr()+'"></div>'+
     '<div><label>Tipo de nota</label><select id="rn-tipo"><option value="">Todas</option>'+NOTAS.map(n=>'<option>'+n+'</option>').join('')+'</select></div></div>'+
@@ -9860,6 +9917,19 @@ function attachHandlers(){
     e.preventDefault();
     const f = new FormData(fv);
     const categoria = f.get('categoria');
+    // Regra: quem leva Gás do povo tem que pagar com "Gás do povo" nesse item — frete e os outros
+    // itens da mesma compra podem ser de outra forma (cada item tem seu próprio pagamento efetivo:
+    // o "Forma de pagamento deste item" quando preenchido, senão a forma principal da venda).
+    const pagamentoPrincipalCheck = f.get('pagamento');
+    for(const linhaCheck of todasLinhasItemVenda()){
+      const catLinhaCheck = linhaCheck.classList.contains('iv-item-principal') ? categoria : (linhaCheck.querySelector('.iv-categoria')?linhaCheck.querySelector('.iv-categoria').value:'');
+      const pagEl = linhaCheck.querySelector('.iv-pagamento');
+      const pagLinhaCheck = (pagEl && pagEl.value) ? pagEl.value : pagamentoPrincipalCheck;
+      if(catLinhaCheck==='Gás do povo' && pagLinhaCheck!=='Gás do povo'){
+        alert('Tem um item de "Gás do povo" nessa venda — a forma de pagamento desse item precisa ser "Gás do povo" também. O frete e os outros itens da mesma compra podem continuar em outra forma.');
+        return;
+      }
+    }
     const controlada = isControlada(categoria);
     const produto = controlada ? categoria : (f.get('produto_livre')||'(sem nome)');
     if(!controlada) await garantirProdutoCadastrado(produto, categoria, f.get('valor_unit'));
@@ -10210,18 +10280,17 @@ function attachHandlers(){
     }
   };
   const tbodyPlanilha = document.getElementById('tbody-planilha-vendas');
+  if(tbodyPlanilha && tbodyPlanilha.children.length===0) tbodyPlanilha.appendChild(criarLinhaPlanilhaVenda(todayStr()));
   const btnPlanilhaAddLinha = document.getElementById('btn-planilha-add-linha');
   if(btnPlanilhaAddLinha) btnPlanilhaAddLinha.onclick = ()=>{
     const dataUltima = tbodyPlanilha.querySelector('tr:last-child .pv-data');
-    tbodyPlanilha.insertAdjacentHTML('beforeend', linhaPlanilhaVendaHtml(dataUltima ? dataUltima.value : todayStr()));
+    tbodyPlanilha.appendChild(criarLinhaPlanilhaVenda(dataUltima ? dataUltima.value : todayStr()));
   };
   if(tbodyPlanilha) tbodyPlanilha.addEventListener('click', (e)=>{
     if(!e.target.classList.contains('pv-remover-linha')) return;
     const linhasAtuais = tbodyPlanilha.querySelectorAll('tr');
     if(linhasAtuais.length<=1){
-      const tr = e.target.closest('tr');
-      tr.querySelectorAll('input').forEach(i=>{ if(i.type==='number') i.value=(i.classList.contains('pv-qtd')?'1':''); else if(i.type!=='date') i.value=''; });
-      tr.querySelectorAll('select').forEach(s=>s.selectedIndex=0);
+      e.target.closest('tr').replaceWith(criarLinhaPlanilhaVenda(todayStr()));
       return;
     }
     e.target.closest('tr').remove();
@@ -10315,7 +10384,19 @@ function attachHandlers(){
     const dataUltima = tbodyPlanilhaDesp.querySelector('tr:last-child .pd-data');
     tbodyPlanilhaDesp.insertAdjacentHTML('beforeend', linhaPlanilhaDespesaHtml(dataUltima ? dataUltima.value : todayStr()));
   };
-  if(tbodyPlanilhaDesp) tbodyPlanilhaDesp.addEventListener('click', (e)=>{
+  if(tbodyPlanilhaDesp) tbodyPlanilhaDesp.addEventListener('click', async (e)=>{
+    if(e.target.classList.contains('pd-novo-tipo')){
+      const nome = prompt('Nome da nova categoria de despesa:');
+      if(!nome || !nome.trim()) return;
+      const nomeCat = nome.trim();
+      if(!state.categoriasDespesas.includes(nomeCat)) state.categoriasDespesas.push(nomeCat);
+      await save('categoriasDespesas');
+      const input = e.target.closest('td').querySelector('.pd-categoria');
+      if(input) input.value = nomeCat;
+      const dl = document.getElementById('dl-planilha-cat-despesa');
+      if(dl) dl.innerHTML = state.categoriasDespesas.map(c=>'<option value="'+escapeHtmlCampanha(c)+'">').join('');
+      return;
+    }
     if(!e.target.classList.contains('pd-remover-linha')) return;
     if(tbodyPlanilhaDesp.querySelectorAll('tr').length<=1){
       const tr = e.target.closest('tr');
@@ -12419,6 +12500,15 @@ function attachHandlers(){
   const rfrFiltrar = document.getElementById('rfr-filtrar'); if(rfrFiltrar) rfrFiltrar.onclick = renderRelatorioFretesResultado;
   const rcfFiltrar = document.getElementById('rcf-filtrar'); if(rcfFiltrar) rcfFiltrar.onclick = renderRelatorioCombustivelFreteResultado;
   const rnFiltrar = document.getElementById('rn-filtrar'); if(rnFiltrar) rnFiltrar.onclick = renderRelatorioNotasResultado;
+  document.querySelectorAll('[data-dar-baixa-bling]').forEach(btn=>btn.onclick=async()=>{
+    const data = btn.dataset.darBaixaBling;
+    const input = document.querySelector('.input-baixa-bling[data-data-baixa="'+data+'"]');
+    const qtd = Number(input ? input.value : 0)||0;
+    if(qtd<=0){ alert('Informe uma quantidade maior que zero pra dar baixa.'); return; }
+    state.blingBaixas.push({id:uid(), data, quantidade:qtd, dataBaixa:todayStr()});
+    await save('blingBaixas');
+    renderAll();
+  });
   const reFiltrar = document.getElementById('re-filtrar'); if(reFiltrar) reFiltrar.onclick = ()=>{
     relEmpresaDe = document.getElementById('re-de').value;
     relEmpresaAte = document.getElementById('re-ate').value;
