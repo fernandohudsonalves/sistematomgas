@@ -5984,12 +5984,17 @@ function formLancamentoVendaAnteriorHtml(clienteOpts){
     '<div><label>Quantidade <span class="req">*</span></label><div class="qty-stepper"><button type="button" class="qty-btn qty-minus">−</button><input type="number" name="quantidade" min="1" value="1" step="1" required><button type="button" class="qty-btn qty-plus">+</button></div></div>'+
     '</div>'+
     '<div class="hint" style="margin-top:6px;">Sem valor do produto — já foi vendido/recebido antes desse sistema.</div>'+
-    '<div style="margin-top:10px;"><label><input type="checkbox" id="chk-venda-antiga-valor-extra"> Lançar um valor a mais (ex: frete)?</label></div>'+
+    '<div style="margin-top:10px;"><label><input type="checkbox" id="chk-venda-antiga-valor-extra"> Lançar um valor a mais?</label></div>'+
     '<div id="wrap-venda-antiga-valor-extra" class="item-venda-row" style="display:none;margin-top:6px;">'+
     '<div class="form-row">'+
     '<div><label>Valor extra (R$)</label><input type="number" name="valor_extra" min="0" step="0.01" placeholder="0,00"></div>'+
     '<div><label>Forma de pagamento desse valor extra</label><select name="pagamento_extra">'+opcoesComPlaceholder(PAGAMENTOS,'Selecione')+'</select></div>'+
-    '</div></div>'+
+    '</div>'+
+    '<div style="margin-top:6px;"><label>Esse valor é</label><select name="tipo_valor_extra">'+
+    '<option value="ajuste">Ajuste financeiro (entra na venda do dia, não conta como frete)</option>'+
+    '<option value="frete">Frete de verdade (entra no relatório de fretes)</option>'+
+    '</select></div>'+
+    '</div>'+
     '<div style="margin-top:10px;"><label><input type="checkbox" id="chk-venda-antiga-baixa-estoque"> Dar baixa no estoque agora?</label></div>'+
     '<div><label>Observação (opcional)</label><input type="text" name="obs" placeholder="Ex: venda de antes do sistema novo"></div>'+
     '<button type="submit" class="btn" style="margin-top:10px;">Registrar lançamento anterior</button>'+
@@ -10561,14 +10566,16 @@ function attachHandlers(){
     const temValorExtra = !!document.getElementById('chk-venda-antiga-valor-extra').checked;
     const valorExtra = temValorExtra ? (Number(f.get('valor_extra'))||0) : 0;
     const pagamentoExtra = temValorExtra ? (f.get('pagamento_extra')||'Outros') : '';
+    const tipoValorExtra = temValorExtra ? (f.get('tipo_valor_extra')||'ajuste') : 'ajuste';
+    const ehAjusteFinanceiro = tipoValorExtra === 'ajuste';
     const baixaEstoque = !!document.getElementById('chk-venda-antiga-baixa-estoque').checked;
     const venda = {
       id: uid(), criadoEm: Date.now(), grupoId: uid(), fiado_pago:false,
       data: f.get('data'), cliente, canal: 'Venda Ativa', categoria, produto, quantidade,
-      valor_unit: 0, valor_total: 0,
+      valor_unit: 0, valor_total: ehAjusteFinanceiro ? valorExtra : 0,
       pagamento: pagamentoExtra || 'Outros', nota: 'Não lança', tipo_entrega: 'Retirada', empresa:'',
-      frete: valorExtra, entrega_data:'', entrega_hora:'', entrega_status:'',
-      obs: (f.get('obs')||'').trim() || 'Venda anterior ao sistema (lançamento manual, sem valor de produto)'+(valorExtra?' — valor extra: '+fmtMoney(valorExtra):''),
+      frete: ehAjusteFinanceiro ? 0 : valorExtra, entrega_data:'', entrega_hora:'', entrega_status:'',
+      obs: (f.get('obs')||'').trim() || 'Venda anterior ao sistema (lançamento manual, sem valor de produto)'+(valorExtra?(ehAjusteFinanceiro?' — ajuste financeiro: '+fmtMoney(valorExtra):' — valor extra (frete): '+fmtMoney(valorExtra)):''),
       estoqueBaixado: baixaEstoque, retirado:true, retiradoForma:'', retiradoEm:null,
       vendaAnterior: true
     };
