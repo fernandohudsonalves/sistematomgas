@@ -1109,7 +1109,7 @@ function initCalculadora(){
   fab.onclick=()=>{ panel.classList.toggle('open'); };
   document.getElementById('calc-fechar').onclick=()=>panel.classList.remove('open');
   let expressao = '';
-  function atualizar(){ display.value = expressao || '0'; }
+  function atualizar(){ display.value = expressao || '0'; display.scrollLeft = display.scrollWidth; }
   function aplicarTecla(v){
     if(v==='C'){ expressao=''; }
     else if(v==='del'){ expressao = expressao.slice(0,-1); }
