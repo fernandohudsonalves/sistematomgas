@@ -873,7 +873,7 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Contas a Pagar', kw:'contas a pagar boleto vencimento', tab:'contaspagar'},
   {label:'Cadastros (Clientes/Empresas/Produtos)', kw:'cadastros clientes empresas conveniadas produtos', tab:'cadastros'},
   {label:'Cadastros: Clientes', kw:'cadastro de clientes lista editar excluir telefone endereco', tab:'cadastros', sub:'clientes'},
-  {label:'Cadastros: Empresas conveniadas', kw:'cadastro de empresas conveniadas vinculos convenio importar automaticamente', tab:'cadastros', sub:'empresas'},
+  {label:'Cadastros: Empresas', kw:'cadastro de empresas conveniadas vinculos convenio importar automaticamente', tab:'cadastros', sub:'empresas'},
   {label:'Cadastros: Produtos', kw:'catalogo de produtos preco importar produtos automaticamente', tab:'cadastros', sub:'produtos'},
   {label:'Cadastros: Categoria / Tipo de Categoria / Produto', kw:'categorias tipos de categoria produto icone carvao', tab:'cadastros', sub:'categorias'},
   {label:'Cadastros: Cadastro de Despesas (Custo Fixo/Variável)', kw:'categorias de despesa custo fixo variavel conta fixa', tab:'cadastros', sub:'cadastrodespesas'},
@@ -4373,7 +4373,7 @@ function convenioPorEmpresaHtml(filtro){
     linhas.map(l=>{
       const emp = state.empresas.find(e=>e.nome===l.nome);
       return '<tr><td>'+l.nome+(emp&&emp.telefone?' <a href="'+linkWhatsApp(emp.telefone)+'" target="_blank" title="Chamar '+l.nome+' no WhatsApp" style="vertical-align:middle;">'+iconWhatsApp('#25D366',15)+'</a>':'')+'</td><td>'+fmtMoney(l.saldo)+'</td>'+
-      '<td class="cel-acoes"><button class="act-link" data-ver-detalhes-empresa="'+encodeURIComponent(l.nome)+'">📄 ver detalhes</button></td></tr>';
+      '<td class="cel-acoes"><button class="act-link" data-ver-detalhes-empresa="'+encodeURIComponent(l.nome)+'">📄 ver detalhes</button><button class="act-link" data-registrar-pagamento-empresa="'+encodeURIComponent(l.nome)+'">💵 registrar pagamento</button></td></tr>';
     }).join('')+
     '</tbody></table></div>');
 }
@@ -4698,12 +4698,12 @@ async function importarProdutosAutomaticamente(silencioso){
 
 /* ---------- EMPRESAS CONVENIADAS ---------- */
 function viewEmpresas(){
-  return '<div class="card"><h2>Empresas conveniadas <span class="pill">'+state.empresas.length+'</span></h2>'+
+  return '<div class="card"><h2>Empresas <span class="pill">'+state.empresas.length+'</span></h2>'+
     '<button type="button" class="btn small ghost" id="btn-importar-empresas" style="margin-bottom:10px;">⬇️ Importar empresas automaticamente</button>'+
     '<input type="text" id="busca-empresa" class="searchbar" placeholder="Buscar por nome, telefone ou endereço...">'+
     '<div id="lista-empresas-wrap">'+empresasTable(state.empresas)+'</div></div>'+
     htmlMesclarEmpresas()+
-    '<div class="card"><h2>Nova empresa conveniada</h2><form id="form-empresa-cad">'+
+    '<div class="card"><h2>Nova empresa</h2><form id="form-empresa-cad">'+
     '<div class="form-row"><div><label>Nome da empresa <span class="req">*</span></label><input type="text" name="nome" required></div>'+
     '<div><label>Telefone / contato</label><input type="text" name="telefone" placeholder="(00) 00000-0000"></div></div>'+
     '<div class="form-row"><div><label>Endereço</label><input type="text" name="endereco"></div>'+
@@ -4715,7 +4715,7 @@ function viewEmpresas(){
     '<input type="file" id="csv-empresa-input" accept=".csv,.txt,.tsv,.xlsx,.xls" multiple style="margin-top:10px;"><div id="csv-empresa-mapping"></div></div>';
 }
 function empresasTable(list){
-  if(list.length===0) return '<div class="empty">Nenhuma empresa conveniada cadastrada ainda.</div>';
+  if(list.length===0) return '<div class="empty">Nenhuma empresa cadastrada ainda.</div>';
   return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Responsável</th><th>Vínculos</th><th></th></tr></thead><tbody>'+
   list.map(e=>{
     const qtdVendas = state.vendas.filter(v=>v.empresa===e.nome && v.pagamento==='Convênio').length;
@@ -9523,7 +9523,7 @@ function renderRelatorioEmpresasResultado(){
     '<div><label>Saldo devedor correto (R$)</label><input type="text" inputmode="decimal" name="saldoCorreto" placeholder="0,00" required></div>'+
     '</div><button type="submit" class="btn small">Corrigir saldo</button></form>'+
     '</div>'+
-    (empresaObj && empresaObj.telefone ? '<div style="margin-bottom:14px;">'+botaoWhatsApp(empresaObj.telefone)+'</div>' : '<div class="hint" style="margin-bottom:14px;">Esta empresa não tem WhatsApp cadastrado — edite a empresa em "Empresas conveniadas" para adicionar.</div>')+
+    (empresaObj && empresaObj.telefone ? '<div style="margin-bottom:14px;">'+botaoWhatsApp(empresaObj.telefone)+'</div>' : '<div class="hint" style="margin-bottom:14px;">Esta empresa não tem WhatsApp cadastrado — edite a empresa em "Cadastros → Empresas" para adicionar.</div>')+
     '<h3>Lançar valor manualmente (sem gerar venda)</h3>'+
     '<div class="hint">Use para lançar um valor retroativo do convênio, sem precisar registrar uma venda como é feito no fiado.</div>'+
     '<form id="form-convenio" style="margin-top:8px;"><div class="form-row">'+
@@ -9534,10 +9534,11 @@ function renderRelatorioEmpresasResultado(){
     tabelaVendas+
     '<h3 style="margin-top:18px;">Registrar pagamento recebido (baixa)</h3>'+
     '<div class="hint">Assim como no fiado, registre aqui quando a empresa pagar o convênio. O saldo acima é atualizado automaticamente.</div>'+
-    '<form id="form-convenio-pag" style="margin-top:8px;"><div class="form-row">'+
-    '<div><label>Data do pagamento</label><input type="date" name="data" value="'+ate+'" required></div>'+
-    '<div><label>Valor pago (R$)</label><input type="text" inputmode="decimal" name="valor" placeholder="0,00" required></div>'+
-    '<div><label>Forma de pagamento</label><select name="forma_pagamento"><option value="Pix">Pix</option><option value="Dinheiro">Dinheiro</option><option value="Transferência">Transferência</option><option value="Boleto">Boleto</option><option value="Outro">Outro</option></select></div></div>'+
+    '<form id="form-convenio-pag" data-base-saldo="'+saldo+'" style="margin-top:8px;"><div class="form-row">'+
+    '<div><label>Valor pago (R$)</label><input type="text" inputmode="decimal" id="input-valor-pagamento-convenio" name="valor" placeholder="0,00" required></div>'+
+    '<div><label>Forma de pagamento</label><select name="forma_pagamento">'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(p=>'<option>'+p+'</option>').join('')+'</select></div>'+
+    '<div><label>Data do pagamento</label><input type="date" name="data" value="'+ate+'" required></div></div>'+
+    '<div style="margin:-6px 0 12px;"><button type="button" class="link-btn" id="btn-quitar-tudo-convenio">Preencher com o valor total (quitação total)</button></div>'+
     '<button type="submit" class="btn small green">Registrar pagamento</button></form>'+
     tabelaPag+
     '<h3 style="margin-top:18px;">Anexos do convênio — '+nomeMes(mesRef)+'</h3>'+
@@ -9561,6 +9562,14 @@ function attachVerDetalhesEmpresaHandlers(){
     const sel = document.getElementById('re-empresa'); if(sel) sel.value = nome;
     renderRelatorioEmpresasResultado();
     const destino = document.getElementById('re-empresa');
+    if(destino) destino.scrollIntoView({behavior:'smooth', block:'center'});
+  });
+  document.querySelectorAll('[data-registrar-pagamento-empresa]').forEach(btn=>btn.onclick=()=>{
+    const nome = decodeURIComponent(btn.dataset.registrarPagamentoEmpresa);
+    relEmpresaSel = nome;
+    const sel = document.getElementById('re-empresa'); if(sel) sel.value = nome;
+    renderRelatorioEmpresasResultado();
+    const destino = document.getElementById('form-convenio-pag');
     if(destino) destino.scrollIntoView({behavior:'smooth', block:'center'});
   });
 }
@@ -9644,6 +9653,12 @@ function attachConvenioHandlers(){
     renderAll();
   });
   const fPag = document.getElementById('form-convenio-pag');
+  const btnQuitarTudoConvenio = document.getElementById('btn-quitar-tudo-convenio');
+  if(btnQuitarTudoConvenio) btnQuitarTudoConvenio.onclick = ()=>{
+    const inputValorConvenio = document.getElementById('input-valor-pagamento-convenio');
+    const baseSaldo = Number(fPag ? fPag.dataset.baseSaldo : 0)||0;
+    if(inputValorConvenio) inputValorConvenio.value = baseSaldo.toFixed(2);
+  };
   if(fPag) fPag.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(fPag);
@@ -11551,7 +11566,7 @@ function attachHandlers(){
       const temVinculos = btn.dataset.vinculos!=='0';
       const msg = temVinculos
         ? 'Essa empresa está vinculada a vendas, lançamentos de convênio ou entregas agendadas — excluir o cadastro NÃO apaga esses lançamentos, só o cadastro da empresa (o nome continua nos registros antigos). Excluir mesmo assim?'
-        : 'Excluir esta empresa conveniada?';
+        : 'Excluir esta empresa?';
       if(confirm(msg)){ state.empresas = state.empresas.filter(x=>x.id!==id); await save('empresas'); renderAll(); }
     });
     const btnImportarEmpresas = document.getElementById('btn-importar-empresas');
