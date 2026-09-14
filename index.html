@@ -238,8 +238,9 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .tabela-vendas-compacta td button{font-size:10.5px;padding:1px 3px;min-width:18px;}
 .tabela-vendas-compacta .hint{font-size:9px;}
 .tabela-vendas td.cel-acoes{display:flex;gap:2px;flex-wrap:nowrap;}
-.tabela-planilha-vendas th,.tabela-planilha-vendas td{padding:10px 16px;}
-.tabela-planilha-vendas input,.tabela-planilha-vendas select{padding:6px 8px;box-sizing:border-box;}
+.tabela-planilha-vendas th,.tabela-planilha-vendas td{padding:14px 18px;}
+.tabela-planilha-vendas input,.tabela-planilha-vendas select{padding:8px 10px;box-sizing:border-box;font-size:14px;min-height:38px;width:100%;}
+.tabela-planilha-vendas input[type="checkbox"]{width:20px;height:20px;min-height:auto;}
 .tabela-fiado-lista td.cel-acoes{flex-wrap:wrap;align-items:center;}
 @media (max-width:640px){
   .tabela-vendas th,.tabela-vendas td{font-size:9.5px;padding:3px 4px;max-width:none;}
@@ -5339,15 +5340,15 @@ function criarLinhaPlanilhaVenda(dataPadrao){
       '<div id="'+manualId+'" style="display:none;margin-top:6px;"><input type="text" class="iv-produto-livre" placeholder="Nome do produto (digite pra cadastrar novo)" style="width:100%;"></div></td>'+
     '<td><input type="text" class="pv-cliente" list="dl-planilha-clientes" placeholder="Nome" style="min-width:140px;"></td>'+
     '<td><select class="pv-canal" style="min-width:110px;"><option value="">-</option>'+CANAIS.map(c=>'<option>'+c+'</option>').join('')+'</select></td>'+
-    '<td><input type="number" class="pv-qtd" min="1" value="1" style="width:55px;"></td>'+
-    '<td><input type="number" class="pv-valor" min="0" step="0.01" placeholder="0,00" style="width:90px;"></td>'+
+    '<td><input type="number" class="pv-qtd" min="1" value="1"></td>'+
+    '<td><input type="number" class="pv-valor" min="0" step="0.01" placeholder="0,00"></td>'+
     '<td><select class="pv-pagamento" style="min-width:130px;"><option value="">Selecione</option>'+PAGAMENTOS.map(p=>'<option>'+p+'</option>').join('')+'</select></td>'+
     '<td><select class="pv-pagamento2" style="min-width:130px;" title="Só preencha na 1ª linha do cliente, se a compra toda tiver 2 formas de pagamento"><option value="">(sem dividir)</option>'+PAGAMENTOS.filter(p=>p!=='Abateu').map(p=>'<option>'+p+'</option>').join('')+'</select></td>'+
-    '<td><input type="number" class="pv-valorforma1" min="0" step="0.01" placeholder="R$ na 1ª forma" style="width:100px;" title="Quanto foi pago na 1ª forma — o resto vai pra 2ª forma. Só na 1ª linha do cliente."></td>'+
+    '<td><input type="number" class="pv-valorforma1" min="0" step="0.01" placeholder="R$ na 1ª forma" title="Quanto foi pago na 1ª forma — o resto vai pra 2ª forma. Só na 1ª linha do cliente."></td>'+
     '<td><select class="pv-entrega" style="min-width:130px;">'+TIPOS_ENTREGA.map(t=>'<option'+(t==='Retirada'?' selected':'')+'>'+t+'</option>').join('')+'</select></td>'+
     '<td><select class="pv-nota" style="min-width:130px;"><option value="">Selecione</option>'+NOTAS.map(n=>'<option>'+n+'</option>').join('')+'</select></td>'+
     '<td><input type="text" class="pv-cupom" style="min-width:90px;"></td>'+
-    '<td><input type="number" class="pv-frete" min="0" step="0.01" placeholder="0,00" style="width:80px;"></td>'+
+    '<td><input type="number" class="pv-frete" min="0" step="0.01" placeholder="0,00"></td>'+
     '<td><input type="text" class="pv-empresa" list="dl-planilha-empresas" style="min-width:130px;"></td>'+
     '<td style="text-align:center;"><input type="checkbox" class="pv-vale-pendente" title="Vale do Gás do povo ainda não validado"></td>'+
     '<td><input type="text" class="pv-obs" style="min-width:130px;"></td>'+
@@ -5375,7 +5376,12 @@ function htmlPlanilhaVendas(hoje){
   return '<div class="card"><details id="details-planilha-vendas">'+
     '<summary><strong>🧮 Lançar vendas em planilha (estilo Excel)</strong></summary>'+
     '<div class="hint" style="margin-top:8px;">Preencha uma linha por item, célula por célula, igual uma planilha. <strong>Cliente repetido em linhas seguidas vira uma única venda com vários itens</strong> (igual no "colar texto"). Escolha a Categoria (Gás/Água/Outros) — em "Outros" aparece o Tipo da categoria (com um botão "+" pra cadastrar um tipo novo na hora) e depois o Produto, com "Outro (digitar manualmente)" no fim da lista pra quando não achar. Em Gás/Água o Produto já é a própria carga/vasilhame escolhido, sem precisar de Tipo. Pra dividir o pagamento em duas formas, preencha "Pagamento 2" e "R$ na 1ª forma" <strong>só na primeira linha do cliente</strong> — vale pra venda toda. Nada é lançado até clicar em "Salvar todas as linhas".</div>'+
-    '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:2450px;"><thead><tr>'+
+    '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:2820px;"><colgroup>'+
+    '<col style="width:150px;"><col style="width:160px;"><col style="width:200px;"><col style="width:360px;"><col style="width:190px;">'+
+    '<col style="width:140px;"><col style="width:80px;"><col style="width:120px;"><col style="width:160px;"><col style="width:160px;">'+
+    '<col style="width:140px;"><col style="width:160px;"><col style="width:160px;"><col style="width:120px;"><col style="width:110px;">'+
+    '<col style="width:170px;"><col style="width:120px;"><col style="width:190px;"><col style="width:80px;">'+
+    '</colgroup><thead><tr>'+
     '<th>Data</th><th>Categoria</th><th>Tipo da categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Pagamento 2</th><th>R$ na 1ª forma</th><th>Entrega</th><th>Nota</th><th>Cupom</th><th>Frete</th><th>Empresa conv.</th><th>Vale pendente</th><th>Obs</th><th></th>'+
     '</tr></thead><tbody id="tbody-planilha-vendas"></tbody></table></div>'+
     '<datalist id="dl-planilha-clientes">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>'+
@@ -5887,7 +5893,7 @@ function linhaPlanilhaDespesaHtml(dataPadrao){
     '<td><input type="date" class="pd-data" value="'+dataPadrao+'" style="min-width:130px;"></td>'+
     '<td><div style="display:flex;gap:4px;align-items:center;"><input type="text" class="pd-categoria" list="dl-planilha-cat-despesa" placeholder="Digite pra buscar..." style="min-width:420px;">'+
     '<button type="button" class="btn small ghost pd-novo-tipo" title="Cadastrar categoria nova" style="padding:4px 8px;">+</button></div></td>'+
-    '<td><input type="number" class="pd-valor" min="0" step="0.01" placeholder="0,00" style="width:100px;"></td>'+
+    '<td><input type="number" class="pd-valor" min="0" step="0.01" placeholder="0,00"></td>'+
     '<td><input type="text" class="pd-descricao" placeholder="Descrição" style="min-width:220px;"></td>'+
     '<td><select class="pd-veiculo" style="min-width:150px;"><option value="">Não é de veículo</option>'+(state.veiculos||[]).map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></td>'+
     '<td><button type="button" class="del-link pd-remover-linha" title="Remover linha">🗑</button></td>'+
@@ -5897,7 +5903,9 @@ function htmlPlanilhaDespesas(hoje){
   return '<div class="card"><details id="details-planilha-despesas">'+
     '<summary><strong>🧮 Lançar despesas em planilha (estilo Excel)</strong></summary>'+
     '<div class="hint" style="margin-top:8px;">Preencha uma linha por despesa, célula por célula, igual uma planilha. Comece a digitar em Categoria que aparecem sugestões pra buscar — se não achar, pode digitar um nome novo mesmo, que ele cadastra sozinho ao salvar. Só preencha Veículo se a despesa for de manutenção/combustível de um veículo específico. Nada é lançado até clicar em "Salvar todas as linhas".</div>'+
-    '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:900px;"><thead><tr>'+
+    '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:1200px;"><colgroup>'+
+    '<col style="width:150px;"><col style="width:480px;"><col style="width:140px;"><col style="width:280px;"><col style="width:180px;"><col style="width:80px;">'+
+    '</colgroup><thead><tr>'+
     '<th>Data</th><th>Categoria</th><th>Valor</th><th>Descrição</th><th>Veículo</th><th></th>'+
     '</tr></thead><tbody id="tbody-planilha-despesas">'+linhaPlanilhaDespesaHtml(hoje)+'</tbody></table></div>'+
     '<datalist id="dl-planilha-cat-despesa">'+(state.categoriasDespesas||[]).map(c=>'<option value="'+escapeHtmlCampanha(c)+'">').join('')+'</datalist>'+
