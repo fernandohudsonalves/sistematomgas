@@ -624,7 +624,7 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_11_09_2026";
+const APP_BUILD_HORARIO = "1.0_14_09_2026";
 const AUTH_APP_HTML = `
   <header>
     <div class="brand">
@@ -3122,6 +3122,142 @@ function toggleHoraAgendamento(){
   wrap.style.display = chk.checked ? 'flex' : 'none';
   if(horaInput) horaInput.required = chk.checked;
   if(!chk.checked && horaInput) horaInput.value = '';
+}
+// ---- Carrinho de itens e divisão de pagamento do Agendamento (mesma ideia da Venda, ids próprios) ----
+function novoItemAgendamentoRow(opts){
+  opts = opts || {};
+  const compact = !!opts.compact;
+  const contexto = opts.contexto || null;
+  const div = document.createElement('div');
+  div.className = 'item-venda-row iv-extra-row-ag'+(compact?' iv-extra-compact':'');
+  const uidBase = uid();
+  const selId = 'sel-produto-extra-ag-'+uidBase;
+  const manualId = 'manual-extra-ag-'+uidBase;
+  const grupoId = 'sel-grupo-extra-ag-'+uidBase;
+  const etiquetaWrapId = 'wrap-etiqueta-extra-ag-'+uidBase;
+  const etiquetaId = 'sel-etiqueta-extra-ag-'+uidBase;
+  const catHiddenId = 'sel-categoria-extra-ag-'+uidBase;
+  const produtoWrapId = 'wrap-produto-extra-ag-'+uidBase;
+  const labelContexto = contexto ? (contexto.grupo==='gas' ? 'Gás' : contexto.grupo==='agua' ? 'Água' : contexto.etiqueta) : '';
+  div.innerHTML = '<div class="iv-numero-item" style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--muted,#666);margin-bottom:6px;"></div>'+
+    (compact ? '<div class="hint" style="margin-bottom:6px;">Categoria: <strong>'+labelContexto+'</strong> <button type="button" class="link-btn iv-trocar-categoria-ag" style="margin-left:6px;">trocar</button></div>' : '')+
+    '<div class="form-row">'+
+    htmlSeletorCategoria({categoriaHiddenId:catHiddenId, grupoId:grupoId, etiquetaWrapId:etiquetaWrapId, etiquetaId:etiquetaId, required:false})+
+    '<div class="iv-produto-livre-wrap" id="'+produtoWrapId+'" style="display:none;"><label>Produto</label><select class="iv-produto-select-ag" id="'+selId+'"></select>'+
+    '<div id="'+manualId+'" style="display:none;margin-top:8px;"><label>Nome do produto (digite)</label><input type="text" class="iv-produto-livre-ag" placeholder="Nome do item"></div></div>'+
+    '<div><label>Quantidade</label><div class="qty-stepper"><button type="button" class="qty-btn qty-minus">−</button><input type="number" class="iv-quantidade-ag" min="1" value="1" step="1"><button type="button" class="qty-btn qty-plus">+</button></div></div>'+
+    '<div><label>Valor unitário (R$)</label><input type="number" class="iv-valor-unit-ag" min="0" step="0.01" placeholder="0,00"></div>'+
+    '<div><label>Nota (para o Bling)</label><select class="iv-nota-ag">'+opcoesComPlaceholder(NOTAS,'Selecione o tipo de nota')+'</select></div>'+
+    '<div style="align-self:end;"><button type="button" class="del-link iv-remove-ag">remover item</button></div>'+
+    '</div>';
+  const catHiddenEl = div.querySelector('#'+catHiddenId);
+  if(catHiddenEl) catHiddenEl.classList.add('iv-categoria-ag');
+  const produtoLivreInput = div.querySelector('.iv-produto-livre-ag');
+  const valorUnitInput = div.querySelector('.iv-valor-unit-ag');
+  wireSeletorCategoria({
+    root:div, grupoId:grupoId, etiquetaWrapId:etiquetaWrapId, etiquetaId:etiquetaId,
+    produtoWrapId:produtoWrapId, produtoId:selId, categoriaHiddenId:catHiddenId, manualWrapId:manualId,
+    produtoLivreEl:produtoLivreInput, valorUnitEl:valorUnitInput
+  });
+  if(compact && contexto){
+    const grupoEl = div.querySelector('#'+grupoId);
+    const etiquetaEl = div.querySelector('#'+etiquetaId);
+    if(grupoEl){ grupoEl.value = contexto.grupo; if(grupoEl.onchange) grupoEl.onchange(); }
+    if(contexto.grupo==='outros' && etiquetaEl && contexto.etiqueta){ etiquetaEl.value = contexto.etiqueta; if(etiquetaEl.onchange) etiquetaEl.onchange(); }
+    div.querySelectorAll('.iv-grupo-field, .iv-etiqueta-field').forEach(function(e){ e.style.display='none'; });
+    const btnTrocar = div.querySelector('.iv-trocar-categoria-ag');
+    if(btnTrocar) btnTrocar.onclick = ()=>{
+      div.querySelectorAll('.iv-grupo-field').forEach(function(e){ e.style.display=''; });
+      const grupoElAtual = div.querySelector('.iv-grupo-select');
+      if(grupoElAtual && grupoElAtual.value==='outros'){ div.querySelectorAll('.iv-etiqueta-field').forEach(function(e){ e.style.display='block'; }); }
+      const hintEl = div.querySelector('.hint');
+      if(hintEl) hintEl.remove();
+    };
+    const selProdutoCompact = div.querySelector('.iv-produto-select-ag');
+    setTimeout(function(){ if(selProdutoCompact) selProdutoCompact.focus(); }, 0);
+  }
+  div.querySelector('.iv-remove-ag').onclick = ()=>{ div.remove(); atualizarTotalCarrinhoAgendamento(); renumerarItensAgendamento(); };
+  div.querySelectorAll('.iv-quantidade-ag,.iv-valor-unit-ag').forEach(inp=>inp.oninput = atualizarTotalCarrinhoAgendamento);
+  return div;
+}
+function renumerarItensAgendamento(){
+  todasLinhasItemAgendamento().forEach((linha,i)=>{
+    const rotulo = linha.querySelector('.iv-numero-item');
+    if(rotulo) rotulo.textContent = 'Item '+(i+1);
+  });
+}
+function todasLinhasItemAgendamento(){
+  const linhas = [];
+  const principal = document.querySelector('.iv-item-principal-ag');
+  if(principal) linhas.push(principal);
+  document.querySelectorAll('#itens-extra-lista-ag .iv-extra-row-ag').forEach(r=>linhas.push(r));
+  return linhas;
+}
+function obterContextoUltimoItemAgendamento(){
+  const linhas = todasLinhasItemAgendamento();
+  if(linhas.length===0) return null;
+  const ultima = linhas[linhas.length-1];
+  const grupoEl = ultima.querySelector('.iv-grupo-select');
+  const etiquetaEl = ultima.querySelector('.iv-etiqueta-select');
+  if(!grupoEl || !grupoEl.value) return null;
+  if(grupoEl.value==='outros' && (!etiquetaEl || !etiquetaEl.value)) return null;
+  return { grupo: grupoEl.value, etiqueta: grupoEl.value==='outros' ? etiquetaEl.value : null };
+}
+function calcularTotalCarrinhoAgendamento(){
+  const faEl = document.getElementById('form-agendamento');
+  let total = 0;
+  if(faEl && faEl.quantidade && faEl.valor_unit){
+    total += (Number(faEl.quantidade.value)||0) * (Number(faEl.valor_unit.value)||0);
+  }
+  document.querySelectorAll('.iv-extra-row-ag').forEach(row=>{
+    const q = Number(row.querySelector('.iv-quantidade-ag').value)||0;
+    const v = Number(row.querySelector('.iv-valor-unit-ag').value)||0;
+    total += q*v;
+  });
+  const freteEl = document.getElementById('input-frete-ag');
+  const frete = freteEl ? (Number(freteEl.value)||0) : 0;
+  return {total, frete};
+}
+function atualizarTotalCarrinhoAgendamento(){
+  const totalEl = document.getElementById('carrinho-total-ag');
+  if(!totalEl) return;
+  try{
+    const {total, frete} = calcularTotalCarrinhoAgendamento();
+    totalEl.textContent = frete>0 ?
+      'Produtos: '+fmtMoney(total)+'  +  Frete: '+fmtMoney(frete)+'  =  Total: '+fmtMoney(total+frete) :
+      'Total do pedido: '+fmtMoney(total);
+  }catch(e){ console.error('Erro ao calcular total do carrinho do agendamento', e); }
+  try{ atualizarHintDivisaoPagamentoAgendamento(); }catch(e){ console.error('Erro ao atualizar divisão de pagamento do agendamento', e); }
+}
+function toggleDivisaoPagamentoAgendamento(){
+  const chk = document.getElementById('chk-dividir-pagamento-ag');
+  const wrap = document.getElementById('detalhes-divisao-pagamento-ag');
+  if(!chk || !wrap) return;
+  wrap.style.display = chk.checked ? 'block' : 'none';
+  if(chk.checked){
+    const inputV1 = document.getElementById('input-valor-forma1-ag');
+    if(inputV1 && !inputV1.value){
+      const {total, frete} = calcularTotalCarrinhoAgendamento();
+      const totalVenda = Math.round((total+frete)*100)/100;
+      if(totalVenda>0) inputV1.value = totalVenda;
+    }
+  }
+  atualizarHintDivisaoPagamentoAgendamento();
+}
+function atualizarHintDivisaoPagamentoAgendamento(){
+  const chk = document.getElementById('chk-dividir-pagamento-ag');
+  const hint = document.getElementById('hint-divisao-pagamento-ag');
+  if(!chk || !hint) return;
+  if(!chk.checked){ hint.textContent = ''; return; }
+  const {total, frete} = calcularTotalCarrinhoAgendamento();
+  const totalVenda = Math.round((total+frete)*100)/100;
+  const inputV1 = document.getElementById('input-valor-forma1-ag');
+  const v1 = inputV1 ? (Number(inputV1.value)||0) : 0;
+  const restante = Math.max(0, Math.round((totalVenda - v1)*100)/100);
+  const selForma2 = document.getElementById('sel-forma2-pagamento-ag');
+  const forma2 = selForma2 ? selForma2.value : '';
+  if(restante<=0.004){ hint.textContent = 'Cobre o valor total ('+fmtMoney(totalVenda)+') — nada mais a pagar.'; return; }
+  hint.textContent = 'Restante de '+fmtMoney(restante)+(forma2 ? (' vai para "'+(forma2==='Marcou/Fiado'?'Fiado (a receber)':forma2)+'"') : ' — selecione a forma de pagamento do restante.');
 }
 function itensDoGrupo(grupoId, vendaId){
   if(grupoId) return state.vendas.filter(v=>v.grupoId===grupoId);
@@ -6785,6 +6921,7 @@ function iniciarEditarAgendamento(id){
   if(!a || !fa) return;
   editAgendamentoId = a.id;
   fa.cliente.value=a.cliente||''; fa.data.value=a.data; fa.hora.value=a.hora;
+  if(fa.canal && a.canal) fa.canal.value = a.canal;
   const chkAgendadoEdit = document.getElementById('chk-ag-agendado');
   if(chkAgendadoEdit) chkAgendadoEdit.checked = (a.agendado!==undefined) ? !!a.agendado : !!a.hora;
   toggleHoraAgendamento();
@@ -6798,7 +6935,7 @@ function iniciarEditarAgendamento(id){
   if(fa.pagamento) fa.pagamento.value=a.pagamento||PAGAMENTOS[0];
   if(fa.entregadorId) fa.entregadorId.value = a.entregadorId||'';
   if(fa.pago) fa.pago.checked = !!a.pago;
-  if(fa.valor) fa.valor.value = a.valor ? Number(a.valor).toFixed(2) : '';
+  if(fa.valor_unit) fa.valor_unit.value = (a.valor && a.quantidade) ? (Math.round((a.valor/a.quantidade)*100)/100).toFixed(2) : '';
   if(fa.frete) fa.frete.value=a.frete||'';
   toggleDetalhesEntregaAgendamento();
   if(categoriaParaPreencher && seletorAgendamento){
@@ -6806,11 +6943,32 @@ function iniciarEditarAgendamento(id){
     seletorAgendamento.setValor(categoriaParaPreencher, nomeProduto);
   }
   toggleAvisoRetroativoAgendamento();
+  // Editar aqui só corrige o item principal e os dados da entrega — se essa entrega já gerou uma
+  // venda com vários itens ou pagamento dividido, corrija os itens/valores direto em Vendas > Histórico.
+  const itensExtraListaAgEdit = document.getElementById('itens-extra-lista-ag');
+  if(itensExtraListaAgEdit) itensExtraListaAgEdit.innerHTML = '';
+  const wrapDivisaoAgEdit = document.getElementById('wrap-divisao-pagamento-ag');
+  if(wrapDivisaoAgEdit) wrapDivisaoAgEdit.style.display = a.vendaId ? 'none' : '';
+  const blocoItensAgEdit = document.querySelectorAll('#bloco-itens-ag [id^="btn-add-item"]');
+  if(a.vendaId){
+    document.querySelectorAll('#btn-add-item-ag, #btn-add-item-mesma-categoria-ag').forEach(b=>{ b.style.display='none'; });
+    const avisoEdicaoId = 'aviso-edicao-ag-venda-existente';
+    if(!document.getElementById(avisoEdicaoId)){
+      const avisoEl = document.createElement('div');
+      avisoEl.id = avisoEdicaoId;
+      avisoEl.className = 'hint';
+      avisoEl.style.cssText = 'margin-top:8px;color:var(--amber,#b45309);font-weight:600;';
+      avisoEl.textContent = 'Essa entrega já gerou uma venda. Editando aqui você só corrige o item principal e os dados da entrega — pra corrigir outros itens ou o pagamento dividido, edite a venda direto em Vendas > Histórico.';
+      const carrinhoTotalAgEl = document.getElementById('carrinho-total-ag');
+      if(carrinhoTotalAgEl) carrinhoTotalAgEl.insertAdjacentElement('afterend', avisoEl);
+    }
+  }
   const enderecoPreview = document.getElementById('ag-endereco-preview');
   if(enderecoPreview){
     const end = a.cliente ? getClienteEndereco(a.cliente) : '';
     enderecoPreview.innerHTML = end ? '📍 '+escapeHtmlCampanha(end) : '';
   }
+  atualizarTotalCarrinhoAgendamento();
   fa.querySelector('button[type=submit]').textContent='Salvar alterações';
   fa.scrollIntoView({behavior:'smooth'});
 }
@@ -6890,30 +7048,63 @@ acoes+
 }
 function viewAgendamentos(){
   const hoje = todayStr();
-  return '<div class="card"><h2>Nova entrega</h2>'+ajudaHtml('agendamentos','Registre aqui uma entrega pra um cliente já cadastrado, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante. Marque "Entrega agendada" só quando precisar reservar um horário certo (ex: agenda hoje pra entregar amanhã); do contrário ela entra como entrega normal, sem horário fixo. Ao clicar em "✓ Concluir", o sistema já lança a venda de verdade sozinho (com baixa no estoque) — não precisa mais relançar essa entrega na planilha do fim do dia.')+
+  return '<div class="card"><h2>Nova entrega</h2>'+ajudaHtml('agendamentos','Registre aqui uma entrega, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, o sistema já gera a venda completa sozinho (com baixa no estoque, igual ao lançamento manual em Vendas) e abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante — não precisa mais relançar essa entrega na planilha do fim do dia. Dá pra incluir mais de um item na mesma entrega (botão "+ Incluir item") e dividir o pagamento em duas formas, igual já funciona em Vendas. Marque "Entrega agendada" só quando precisar reservar um horário certo (ex: agenda hoje pra entregar amanhã); do contrário ela entra como entrega normal, sem horário fixo.')+
     '<form id="form-agendamento"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-ag" name="cliente" id="ag-cliente-input" required>'+
     '<datalist id="lista-clientes-ag">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist>'+
     '<div class="hint" id="ag-endereco-preview" style="margin-top:4px;"></div></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" id="ag-data-input" name="data" value="'+hoje+'" required></div>'+
-    '<div style="display:flex;align-items:center;gap:8px;align-self:end;"><input type="checkbox" name="agendado" id="chk-ag-agendado" style="width:auto;"><label for="chk-ag-agendado" style="margin:0;">Entrega agendada (definir horário certo)</label></div></div>'+
-    '<div id="wrap-hora-ag" class="form-row" style="display:none;margin-top:6px;"><div><label>Horário <span class="req">*</span></label><input type="time" name="hora" min="07:00" max="20:00"></div></div>'+
+    '<div><label>Canal <span class="req">*</span></label><select name="canal" required>'+opcoesComPlaceholder(CANAIS,'Selecione o canal')+'</select></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+    '<div style="display:flex;align-items:center;gap:8px;align-self:end;"><input type="checkbox" name="agendado" id="chk-ag-agendado" style="width:auto;"><label for="chk-ag-agendado" style="margin:0;">Entrega agendada (definir horário certo)</label></div>'+
+    '<div id="wrap-hora-ag" style="display:none;"><label>Horário <span class="req">*</span></label><input type="time" name="hora" min="07:00" max="20:00"></div>'+
+    '</div>'+
     '<div id="ag-aviso-retroativo" style="display:none;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px;margin-top:6px;">'+
     '<label style="display:flex;align-items:center;gap:8px;margin:0;font-size:13px;"><input type="checkbox" id="ag-confirma-retroativo" name="confirma_retroativo" style="width:auto;">Sei que essa data já passou, quero lançar mesmo assim</label>'+
     '</div>'+
+    '<h3 style="margin-top:16px;">Itens da entrega</h3>'+
+    '<div id="bloco-itens-ag" class="bloco-secao-venda">'+
+    '<div class="item-venda-row iv-item-principal-ag">'+
+    '<div class="iv-numero-item" style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--muted,#666);margin-bottom:6px;">Item 1</div>'+
     '<div class="form-row">'+
     htmlSeletorCategoria({categoriaHiddenId:'sel-categoria-ag', grupoId:'sel-grupo-ag', etiquetaWrapId:'wrap-etiqueta-ag', etiquetaId:'sel-etiqueta-ag', required:true})+
     '<div id="wrap-produto-ag" style="display:none;"><label>Produto <span class="req">*</span></label><select id="sel-produto-catalogo-ag"></select>'+
     '<div id="wrap-produto-manual-ag" style="display:none;margin-top:8px;"><label>Nome do produto (digite) <span class="req">*</span></label><input type="text" id="ag-produto-livre" name="produto_livre" placeholder="Nome do item"></div></div>'+
-    '<div><label>Quantidade</label><input type="number" name="quantidade" min="1" value="1" step="1"></div>'+
+    '<div><label>Quantidade <span class="req">*</span></label><div class="qty-stepper"><button type="button" class="qty-btn qty-minus">−</button><input type="number" name="quantidade" min="1" value="1" step="1" required><button type="button" class="qty-btn qty-plus">+</button></div></div>'+
+    '<div><label>Valor unitário (R$) <span class="req">*</span></label><input type="number" name="valor_unit" min="0" step="0.01" placeholder="0,00" required></div>'+
+    '<div><label>Nota (para o Bling) <span class="req">*</span></label><select name="nota" required>'+opcoesComPlaceholder(NOTAS,'Selecione o tipo de nota')+'</select></div>'+
     '</div>'+
-    '<div class="form-row">'+
-    '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega-ag" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
+    '</div>'+
+    '<div id="itens-extra-lista-ag"></div>'+
+    '<div class="hint" style="margin-top:8px;">Comprou mais de um item? Use "mesma categoria" pra continuar na categoria/tipo que você acabou de escolher — só troque pra "outra categoria" quando for um tipo diferente de produto.</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">'+
+    '<button type="button" class="btn small ghost" id="btn-add-item-mesma-categoria-ag">+ Incluir outro item desta categoria</button>'+
+    '<button type="button" class="btn small ghost" id="btn-add-item-ag">+ Incluir item de outra categoria</button>'+
+    '</div>'+
+    '<div id="carrinho-total-ag" class="carrinho-total-badge">Total do pedido: R$ 0,00</div>'+
+    '</div>'+
+    '<h3 style="margin-top:20px;padding-top:14px;border-top:2px dashed var(--border);">💳 Pagamento e entrega <span class="hint" style="font-weight:400;text-transform:none;">(vale para o pedido todo, com todos os itens acima)</span></h3>'+
+    '<div class="form-row" style="margin-top:14px;">'+
     '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento-ag" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select></div>'+
+    '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega-ag" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
+    '<div><label>Cupom usado (opcional)</label><input type="text" name="cupom" placeholder="Ex: TOMGAS10" style="text-transform:uppercase;"></div>'+
+    '</div>'+
+    '<div id="wrap-divisao-pagamento-ag" class="item-venda-row" style="margin-top:10px;">'+
+    '<label class="checkbox-item"><input type="checkbox" id="chk-dividir-pagamento-ag"> Dividir esta entrega em duas formas de pagamento</label>'+
+    '<div class="hint">Serve tanto pra dois pagamentos reais na mesma entrega (ex: Vale Gás pagou a carga e o cliente paga o frete em Pix/Dinheiro na entrega) quanto pra quando só uma parte já foi paga agora — nesse caso escolha "Fica de fiado (a receber)" na forma do restante e o sistema lança sozinho a diferença no fiado.</div>'+
+    '<div id="detalhes-divisao-pagamento-ag" style="display:none;margin-top:8px;">'+
+    '<div class="form-row">'+
+    '<div><label>Valor pago com a forma acima (R$)</label><input type="number" id="input-valor-forma1-ag" min="0" step="0.01" placeholder="0,00"></div>'+
+    '<div><label>Forma de pagamento do restante</label><select id="sel-forma2-pagamento-ag">'+opcoesComPlaceholder(['Marcou/Fiado'].concat(PAGAMENTOS.filter(p=>p!=='Abateu'&&p!=='Marcou/Fiado')),'Selecione')+'</select></div>'+
+    '</div>'+
+    '<div class="hint" id="hint-divisao-pagamento-ag" style="font-weight:700;"></div>'+
+    '</div>'+
+    '</div>'+
+    '<div class="form-row" style="margin-top:10px;">'+
+    '<div style="display:flex;align-items:center;gap:8px;"><input type="checkbox" name="pago" id="chk-ag-pago" style="width:auto;"><label for="chk-ag-pago" style="margin:0;">Cliente já pagou (entregador NÃO precisa cobrar)</label></div>'+
     '<div><label>Entregador</label><select name="entregadorId">'+entregadoresOptionsHtml(entregadorPrincipal()?entregadorPrincipal().id:'')+'</select></div>'+
     '</div>'+
-    '<div class="form-row"><div style="display:flex;align-items:center;gap:8px;"><input type="checkbox" name="pago" id="chk-ag-pago" style="width:auto;"><label for="chk-ag-pago" style="margin:0;">Cliente já pagou (entregador NÃO precisa cobrar)</label></div></div>'+
-    '<div><label>Valor combinado (R$)</label><input type="number" name="valor" min="0" step="0.01" placeholder="0,00" style="max-width:200px;"><div class="hint">Se o produto estiver no catálogo, o valor já vem calculado — mas pode digitar outro se quiser.</div></div>'+
     '<div id="detalhes-entrega-ag" class="item-venda-row" style="display:none;margin-top:10px;">'+
     '<div class="hint" style="margin-bottom:6px;">Detalhes da entrega</div>'+
     '<div class="form-row">'+
@@ -6923,7 +7114,7 @@ function viewAgendamentos(){
     '<div><label>Empresa conveniada</label><input list="lista-empresas-ag" name="empresa">'+
     '<datalist id="lista-empresas-ag">'+empresasOptions()+'</datalist></div>'+
     '</div>'+
-    '<button type="submit" class="btn small" style="margin-top:12px;">Registrar entrega</button></form></div>'+
+    '<button type="submit" class="btn small" style="margin-top:12px;">Registrar entrega e gerar venda</button></form></div>'+
     '<div class="card"><h2>Entregas</h2>'+
     '<input type="text" id="busca-agendamento" class="searchbar" placeholder="Buscar por cliente, produto ou empresa (em todas as datas)...">'+
     '<div class="form-row" style="max-width:520px;align-items:end;">'+
@@ -12869,40 +13060,126 @@ function attachHandlers(){
     const categoriaAg = f.get('categoria');
     const controladaAg = isControlada(categoriaAg);
     const produtoAg = controladaAg ? categoriaAg : (f.get('produto_livre')||'(sem nome)');
-    if(!controladaAg) garantirProdutoCadastrado(produtoAg, categoriaAg, f.get('valor_unit'));
     const quantidadeAg = Number(f.get('quantidade'))||1;
-    const produtoNotaAg = produtoAg + (quantidadeAg>1 ? ' x'+quantidadeAg : '');
+    const valorUnitAg = Number(f.get('valor_unit'))||0;
     if(editAgendamentoId){
+      if(!controladaAg) garantirProdutoCadastrado(produtoAg, categoriaAg, valorUnitAg);
+      const produtoNotaAg = produtoAg + (quantidadeAg>1 ? ' x'+quantidadeAg : '');
       const a = state.agendamentos.find(x=>x.id===editAgendamentoId);
       if(a){
         a.cliente=resolverNomeCliente(f.get('cliente')); a.data=dataForm; a.hora=horaForm; a.agendado=agendadoForm;
         a.categoria=categoriaAg; a.produto=produtoAg; a.quantidade=quantidadeAg; a.produto_nota=produtoNotaAg;
         a.tipo_entrega=f.get('tipo_entrega'); a.empresa=temFrete?(f.get('empresa')||''):'';
-        a.pagamento=f.get('pagamento')||''; a.valor=Number(f.get('valor'))||0; a.frete=temFrete?(Number(f.get('frete'))||0):0;
+        a.pagamento=f.get('pagamento')||''; a.valor=Math.round((quantidadeAg*valorUnitAg)*100)/100; a.frete=temFrete?(Number(f.get('frete'))||0):0;
         a.entregadorId=f.get('entregadorId')||''; a.pago=!!f.get('pago');
       }
       editAgendamentoId = null;
-      fa.querySelector('button[type=submit]').textContent='Registrar entrega';
-    } else {
-      const novoAg = {id:uid(), cliente:resolverNomeCliente(f.get('cliente')), data:dataForm, hora:horaForm, agendado:agendadoForm,
-        categoria:categoriaAg, produto:produtoAg, quantidade:quantidadeAg, produto_nota:produtoNotaAg,
-        tipo_entrega:f.get('tipo_entrega'), empresa:temFrete?(f.get('empresa')||''):'',
-        pagamento:f.get('pagamento')||'', valor:Number(f.get('valor'))||0, frete:temFrete?(Number(f.get('frete'))||0):0, status:'pendente',
-        entregadorId:f.get('entregadorId')||'', pago:!!f.get('pago'), criadoEm:new Date().toISOString()};
-      state.agendamentos.push(novoAg);
-      enviarWhatsAppEntregador({
-        cliente: novoAg.cliente, endereco: getClienteEndereco(novoAg.cliente),
-        itens: novoAg.produto_nota || '—', total: novoAg.valor, frete: novoAg.frete, pagamento: novoAg.pagamento,
-        tipo_entrega: novoAg.tipo_entrega, hora: novoAg.hora, data: novoAg.data, empresa: novoAg.empresa, obs: '',
-        entregadorId: novoAg.entregadorId, pago: novoAg.pago, agendamentoId: novoAg.id
-      });
-      const tituloNotifAg = agendadoForm ? 'Novo agendamento de entrega' : 'Nova entrega registrada';
-      notificarLocal(tituloNotifAg, (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
-      enviarPushServidor(tituloNotifAg, (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
+      fa.querySelector('button[type=submit]').textContent='Registrar entrega e gerar venda';
+      const empresaAg = temFrete ? (f.get('empresa')||'') : '';
+      if(empresaAg) await garantirEmpresaCadastrada(empresaAg);
+      await save('agendamentos');
+      atualizarBadgeApp();
+      renderAll();
+      return;
     }
+    // ---- Nova entrega: monta o carrinho (item principal + extras), igual ao lançamento de Vendas ----
+    const clienteAg = resolverNomeCliente(f.get('cliente')||'');
+    if(!controladaAg) await garantirProdutoCadastrado(produtoAg, categoriaAg, valorUnitAg);
+    const itensAg = [{categoria:categoriaAg, produto:produtoAg, quantidade:quantidadeAg, valor_unit:valorUnitAg,
+      valor_total: Math.round(quantidadeAg*valorUnitAg*100)/100, nota: f.get('nota')}];
+    document.querySelectorAll('.iv-extra-row-ag').forEach(row=>{
+      const cat = row.querySelector('.iv-categoria-ag').value;
+      const cont = isControlada(cat);
+      const prod = cont ? cat : (row.querySelector('.iv-produto-livre-ag').value || '(sem nome)');
+      if(!cont) garantirProdutoCadastrado(prod, cat, row.querySelector('.iv-valor-unit-ag').value);
+      const qtd = Number(row.querySelector('.iv-quantidade-ag').value)||0;
+      const vUnit = Number(row.querySelector('.iv-valor-unit-ag').value)||0;
+      const notaItem = (row.querySelector('.iv-nota-ag')||{}).value || f.get('nota');
+      if(qtd>0 && cat){
+        itensAg.push({categoria:cat, produto:prod, quantidade:qtd, valor_unit:vUnit, valor_total: Math.round(qtd*vUnit*100)/100, nota: notaItem});
+      }
+    });
     const empresaAg = temFrete ? (f.get('empresa')||'') : '';
+    const freteAg = temFrete ? (Number(f.get('frete'))||0) : 0;
+    const totalItensAg = itensAg.reduce((s,i)=>s+i.valor_total,0);
+    const totalGeralAg = Math.round((totalItensAg+freteAg)*100)/100;
+    let pagamentoFinalAg = f.get('pagamento')||'';
+    const grupoId = uid();
+    const entregadorIdAg = f.get('entregadorId')||'';
+    const pendenteRetiradaAg = f.get('tipo_entrega')==='Falta retirar';
+    itensAg.forEach((item,idx)=>{
+      const venda = {
+        id: idx===0?grupoId:uid(), criadoEm: Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteAg:0,
+        entrega_status:'', estoqueBaixado:false, retirado:false, retiradoForma:'', retiradoEm:null,
+        data: dataForm, cliente: clienteAg, canal: f.get('canal')||'', pagamento: pagamentoFinalAg,
+        tipo_entrega: f.get('tipo_entrega'), cupom:(f.get('cupom')||'').trim().toUpperCase(),
+        empresa: empresaAg, entrega_data:'', entrega_hora:'', obs: 'Gerada automaticamente ao registrar a entrega.',
+        categoria:item.categoria, produto:item.produto, quantidade:item.quantidade, valor_unit:item.valor_unit,
+        valor_total:item.valor_total, nota:item.nota, entregadorId: entregadorIdAg
+      };
+      state.vendas.push(venda);
+      if(!pendenteRetiradaAg){ ajustaEstoquePorVenda(item.categoria, item.quantidade, false); venda.estoqueBaixado = true; }
+    });
+    // Pagamento dividido em duas formas (mesma lógica da tela de Vendas)
+    if(document.getElementById('chk-dividir-pagamento-ag') && document.getElementById('chk-dividir-pagamento-ag').checked){
+      const valorForma1Ag = Number((document.getElementById('input-valor-forma1-ag')||{}).value)||0;
+      const selForma2AgEl = document.getElementById('sel-forma2-pagamento-ag');
+      const forma2Ag = selForma2AgEl ? selForma2AgEl.value : '';
+      const restanteAg = Math.max(0, Math.round((totalGeralAg - valorForma1Ag)*100)/100);
+      if(restanteAg>0.004 && !forma2Ag){
+        alert('Selecione a forma de pagamento do restante ('+fmtMoney(restanteAg)+').');
+      } else if(restanteAg>0.004 && forma2Ag==='Marcou/Fiado' && !clienteAg){
+        alert('Pra lançar o restante no fiado, informe o cliente da entrega.');
+      } else {
+        const forma1LabelAg = pagamentoFinalAg;
+        pagamentoFinalAg = restanteAg>0.004 ? forma1LabelAg+' + '+(forma2Ag==='Marcou/Fiado'?'Fiado':forma2Ag) : forma1LabelAg;
+        const vendasDoGrupoAg = state.vendas.filter(v=>v.grupoId===grupoId);
+        vendasDoGrupoAg.forEach((v,idx)=>{ v.pagamento = pagamentoFinalAg; if(idx===0) v.pagamentoSplit = {forma1:forma1LabelAg, valor1:valorForma1Ag, forma2:forma2Ag, valor2:restanteAg}; });
+        if(restanteAg>0.004 && forma2Ag==='Marcou/Fiado'){
+          const novoFiadoAg = {id:uid(), cliente:clienteAg, valor:restanteAg, data:dataForm,
+            descricao:'Restante da entrega de '+fmtMoney(totalGeralAg)+' (parte paga com '+forma1LabelAg+')', status:'aberto'};
+          state.fiados.push(novoFiadoAg);
+          if(vendasDoGrupoAg[0]) vendasDoGrupoAg[0].pagamentoSplit.fiadoId = novoFiadoAg.id;
+          await save('fiados');
+          if(clienteAg) verificarLimiteCreditoCliente(clienteAg);
+        }
+      }
+    } else if(pagamentoFinalAg==='Abateu' && clienteAg){
+      const saldoAntesAg = saldoCreditoCliente(clienteAg);
+      const abatidoAg = Math.round(Math.min(Math.max(saldoAntesAg,0), totalGeralAg)*100)/100;
+      const diferencaAg = Math.round((totalGeralAg - abatidoAg)*100)/100;
+      state.creditos.push({id:uid(), cliente:clienteAg, valor:-abatidoAg, data:dataForm,
+        obs:'Abatido na entrega de '+fmtMoney(totalGeralAg)+(diferencaAg>0.004?' (diferença de '+fmtMoney(diferencaAg)+' foi pro fiado)':'')});
+      await save('creditos');
+      if(diferencaAg>0.004){
+        state.fiados.push({id:uid(), cliente:clienteAg, valor:diferencaAg, data:dataForm,
+          descricao:'Diferença da entrega de '+fmtMoney(totalGeralAg)+' (parte paga com crédito em haver — "Abateu")', status:'aberto'});
+        await save('fiados');
+        pagamentoFinalAg = 'Abateu + Fiado';
+        state.vendas.filter(v=>v.grupoId===grupoId).forEach(v=>{ v.pagamento = pagamentoFinalAg; });
+        alert(clienteAg+' tinha '+fmtMoney(saldoAntesAg)+' de crédito em haver. Abatemos '+fmtMoney(abatidoAg)+' e os '+fmtMoney(diferencaAg)+' restantes foram lançados como fiado (a receber).');
+      }
+    }
+    if(clienteAg && state.vendas.filter(v=>v.grupoId===grupoId).some(v=>(v.pagamento||'').includes('Fiado'))) verificarLimiteCreditoCliente(clienteAg);
     if(empresaAg) await garantirEmpresaCadastrada(empresaAg);
+    await save('vendas'); await save('estoque');
+    const itensResumoAg = itensAg.map(i=>i.quantidade+'x '+i.produto).join(', ');
+    const novoAg = {id:uid(), cliente:clienteAg, data:dataForm, hora:horaForm, agendado:agendadoForm,
+      categoria:categoriaAg, produto:produtoAg, quantidade:itensAg.reduce((s,i)=>s+i.quantidade,0), produto_nota:itensResumoAg,
+      tipo_entrega:f.get('tipo_entrega'), empresa:empresaAg,
+      pagamento:pagamentoFinalAg, valor:totalGeralAg, frete:freteAg, status:'pendente',
+      entregadorId:f.get('entregadorId')||'', pago:!!f.get('pago'), vendaId:grupoId, criadoEm:new Date().toISOString()};
+    state.agendamentos.push(novoAg);
     await save('agendamentos');
+    enviarWhatsAppEntregador({
+      cliente: novoAg.cliente, endereco: getClienteEndereco(novoAg.cliente),
+      itens: itensResumoAg || '—', total: totalItensAg, frete: freteAg, pagamento: pagamentoFinalAg,
+      tipo_entrega: novoAg.tipo_entrega, hora: novoAg.hora, data: novoAg.data, empresa: novoAg.empresa, obs: '',
+      entregadorId: novoAg.entregadorId, pago: novoAg.pago, vendaGrupoId: grupoId
+    });
+    const tituloNotifAg = agendadoForm ? 'Novo agendamento de entrega' : 'Nova entrega registrada';
+    notificarLocal(tituloNotifAg, (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
+    enviarPushServidor(tituloNotifAg, (novoAg.cliente||'Cliente')+' — '+(novoAg.hora||'')+(novoAg.data?' ('+fmtDate(novoAg.data)+')':''));
     atualizarBadgeApp();
     renderAll();
   };
@@ -12914,22 +13191,37 @@ function attachHandlers(){
   const chkAgAgendado = document.getElementById('chk-ag-agendado');
   if(chkAgAgendado) chkAgAgendado.onchange = toggleHoraAgendamento;
   toggleHoraAgendamento();
-  const agValorInput = document.querySelector('#form-agendamento [name="valor"]');
   const agQuantidadeInput = document.querySelector('#form-agendamento [name="quantidade"]');
-  const tentarPreencherValorAg = (opt)=>{
-    if(!agValorInput) return;
-    const o = opt || (document.getElementById('sel-produto-catalogo-ag') || {}).selectedOptions?.[0];
-    if(!o || !o.dataset || !o.dataset.preco) return;
-    const qtd = Number(agQuantidadeInput ? agQuantidadeInput.value : 1) || 1;
-    agValorInput.value = (Math.round(Number(o.dataset.preco)*qtd*100)/100).toFixed(2);
-  };
+  if(agQuantidadeInput) agQuantidadeInput.oninput = atualizarTotalCarrinhoAgendamento;
+  const agValorUnitInput = document.querySelector('#form-agendamento [name="valor_unit"]');
+  if(agValorUnitInput) agValorUnitInput.oninput = atualizarTotalCarrinhoAgendamento;
   seletorAgendamento = wireSeletorCategoria({
     grupoId:'sel-grupo-ag', etiquetaWrapId:'wrap-etiqueta-ag', etiquetaId:'sel-etiqueta-ag',
     produtoWrapId:'wrap-produto-ag', produtoId:'sel-produto-catalogo-ag', categoriaHiddenId:'sel-categoria-ag',
     manualWrapId:'wrap-produto-manual-ag', produtoLivreEl: document.getElementById('ag-produto-livre'),
-    onProdutoChange: tentarPreencherValorAg
+    valorUnitEl: agValorUnitInput, onProdutoChange: atualizarTotalCarrinhoAgendamento
   });
-  if(agQuantidadeInput) agQuantidadeInput.oninput = ()=>tentarPreencherValorAg();
+  const btnAddItemAg = document.getElementById('btn-add-item-ag');
+  if(btnAddItemAg) btnAddItemAg.onclick = ()=>{
+    document.getElementById('itens-extra-lista-ag').appendChild(novoItemAgendamentoRow());
+    renumerarItensAgendamento(); atualizarTotalCarrinhoAgendamento();
+  };
+  const btnAddItemMesmaCatAg = document.getElementById('btn-add-item-mesma-categoria-ag');
+  if(btnAddItemMesmaCatAg) btnAddItemMesmaCatAg.onclick = ()=>{
+    const contexto = obterContextoUltimoItemAgendamento();
+    if(!contexto){ alert('Escolha a categoria do item anterior primeiro.'); return; }
+    document.getElementById('itens-extra-lista-ag').appendChild(novoItemAgendamentoRow({compact:true, contexto}));
+    renumerarItensAgendamento(); atualizarTotalCarrinhoAgendamento();
+  };
+  const chkDividirPagamentoAg = document.getElementById('chk-dividir-pagamento-ag');
+  if(chkDividirPagamentoAg) chkDividirPagamentoAg.onchange = toggleDivisaoPagamentoAgendamento;
+  const inputValorForma1Ag = document.getElementById('input-valor-forma1-ag');
+  if(inputValorForma1Ag) inputValorForma1Ag.oninput = atualizarHintDivisaoPagamentoAgendamento;
+  const selForma2PagamentoAg = document.getElementById('sel-forma2-pagamento-ag');
+  if(selForma2PagamentoAg) selForma2PagamentoAg.onchange = atualizarHintDivisaoPagamentoAgendamento;
+  const inputFreteAg = document.getElementById('input-frete-ag');
+  if(inputFreteAg) inputFreteAg.oninput = atualizarTotalCarrinhoAgendamento;
+  atualizarTotalCarrinhoAgendamento();
   const agDataInput = document.getElementById('ag-data-input');
   if(agDataInput) agDataInput.onchange = toggleAvisoRetroativoAgendamento;
   toggleAvisoRetroativoAgendamento();
@@ -12983,20 +13275,24 @@ function attachHandlers(){
     document.querySelectorAll('[data-wa-ag]').forEach(btn=>btn.onclick=()=>{
       const a = state.agendamentos.find(x=>x.id===btn.dataset.waAg);
       if(!a) return;
+      // Se essa entrega já gerou venda (grupoId em a.vendaId), o link do WhatsApp aponta pra tela
+      // pública de venda (que já sabe que a venda foi lançada) — não pro agendamento, senão o
+      // entregador cai numa tela que tenta lançar a venda de novo.
       enviarWhatsAppEntregador({
         cliente: a.cliente, endereco: getClienteEndereco(a.cliente),
         itens: a.produto_nota || '—', total: a.valor||0, frete: a.frete||0, pagamento: a.pagamento||'—',
         tipo_entrega: a.tipo_entrega, hora: a.hora, data: a.data, empresa: a.empresa, obs: '',
-        entregadorId: a.entregadorId||'', pago: !!a.pago, agendamentoId: a.id
+        entregadorId: a.entregadorId||'', pago: !!a.pago,
+        vendaGrupoId: a.vendaId||null, agendamentoId: a.vendaId?null:a.id
       });
     });
     document.querySelectorAll('[data-concluir-ag]').forEach(btn=>btn.onclick=async()=>{
       const a = state.agendamentos.find(x=>x.id===btn.dataset.concluirAg);
       if(!a) return;
       a.status='concluido';
-      // Ao concluir, gera a venda de verdade (com baixa no estoque), igual uma venda lançada
-      // normal — assim não precisa mais relançar essa entrega na planilha do fim do dia. Só cria
-      // uma vez (guarda o id da venda no agendamento) mesmo se reabrir/concluir de novo depois.
+      // A venda já foi gerada na hora que a entrega foi registrada (a.vendaId guarda o grupoId
+      // dela) — aqui só marca como entregue. Só cria a venda agora se for um agendamento antigo
+      // que ainda não tinha essa venda (criado antes dessa mudança).
       if(!a.vendaId){
         const controladaAg = isControlada(a.categoria);
         const qtd = a.quantidade||1;
@@ -13012,6 +13308,9 @@ function attachHandlers(){
         state.vendas.push(venda);
         a.vendaId = idVenda;
         await save('vendas'); await save('estoque');
+      } else {
+        state.vendas.filter(v=>v.grupoId===a.vendaId).forEach(v=>{ v.retirado=true; if(!v.retiradoEm) v.retiradoEm=Date.now(); });
+        await save('vendas');
       }
       await save('agendamentos'); atualizarBadgeApp(); renderAll();
     });
@@ -13020,10 +13319,10 @@ function attachHandlers(){
       if(!a) return;
       a.status='pendente';
       if(a.vendaId){
-        const v = state.vendas.find(x=>x.id===a.vendaId);
-        if(v){
-          if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
-          state.vendas = state.vendas.filter(x=>x.id!==a.vendaId);
+        const vendasDoGrupoReabrir = state.vendas.filter(x=>x.grupoId===a.vendaId);
+        if(vendasDoGrupoReabrir.length){
+          vendasDoGrupoReabrir.forEach(v=>{ if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true); });
+          state.vendas = state.vendas.filter(x=>x.grupoId!==a.vendaId);
           await save('vendas'); await save('estoque');
         }
         a.vendaId = null;
@@ -13031,14 +13330,14 @@ function attachHandlers(){
       await save('agendamentos'); atualizarBadgeApp(); renderAll();
     });
     document.querySelectorAll('[data-del-ag]').forEach(btn=>btn.onclick=async()=>{
-      if(confirm('Excluir este agendamento?')){
+      if(confirm('Excluir este agendamento? Isso também remove a venda gerada por ele (se houver) e devolve o estoque.')){
         const idAg = btn.dataset.delAg;
         const agExcluir = state.agendamentos.find(x=>x.id===idAg);
         if(agExcluir && agExcluir.vendaId){
-          const v = state.vendas.find(x=>x.id===agExcluir.vendaId);
-          if(v){
-            if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
-            state.vendas = state.vendas.filter(x=>x.id!==agExcluir.vendaId);
+          const vendasDoGrupoExcluir = state.vendas.filter(x=>x.grupoId===agExcluir.vendaId);
+          if(vendasDoGrupoExcluir.length){
+            vendasDoGrupoExcluir.forEach(v=>{ if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true); });
+            state.vendas = state.vendas.filter(x=>x.grupoId!==agExcluir.vendaId);
             await save('vendas'); await save('estoque');
           }
         }
