@@ -83,6 +83,26 @@ html[data-theme="dark"] .chk-drawer-item .chk-dot{border-color:var(--border);}
 html[data-theme="dark"] ::-webkit-scrollbar-track{background:var(--bg);}
 html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px;}
 html[data-theme="dark"] #checklist-hover-drawer{background:linear-gradient(180deg,var(--card) 0%,var(--bg) 100%);border-color:var(--border);box-shadow:0 16px 40px rgba(0,0,0,.55);}
+/* ---------- Tema de Natal: cabeçalho festivo + varal de luzes piscando de ponta a ponta ---------- */
+html[data-theme="natal"] header{background:linear-gradient(120deg,#8B1D2C 0%,#B91C1C 42%,#0F5132 100%);padding-top:26px;}
+html[data-theme="natal"] nav{background:#062B1A;top:67px;}
+html[data-theme="natal"] nav button.active{color:#FFD60A;border-bottom-color:#FFD60A;}
+html[data-theme="natal"] .brand .dot{background:#FFD60A;}
+html[data-theme="natal"] #theme-toggle,html[data-theme="natal"] #auth-theme-toggle{background:rgba(255,255,255,.2);}
+#natal-luzes{display:none;}
+html[data-theme="natal"] #natal-luzes{
+  display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:nowrap;
+  position:absolute;top:0;left:0;right:0;height:14px;overflow:hidden;z-index:5;padding:0 4px;
+  background:repeating-linear-gradient(90deg,#0B3D1E 0 8px,#072814 8px 16px);
+  box-shadow:0 1px 4px rgba(0,0,0,.35);pointer-events:none;
+}
+#natal-luzes .luz{width:8px;height:8px;margin-top:3px;border-radius:50%;box-shadow:0 0 7px 2px currentColor;animation:pisca-luz-natal 1.1s ease-in-out infinite;flex-shrink:0;}
+#natal-luzes .luz:nth-child(5n+1){color:#FF3B30;}
+#natal-luzes .luz:nth-child(5n+2){color:#34C759;}
+#natal-luzes .luz:nth-child(5n+3){color:#FFD60A;}
+#natal-luzes .luz:nth-child(5n+4){color:#0A84FF;}
+#natal-luzes .luz:nth-child(5n+5){color:#FF375F;}
+@keyframes pisca-luz-natal{0%,100%{opacity:1;filter:brightness(1.4);}50%{opacity:.3;filter:brightness(.55);}}
 #theme-toggle{background:rgba(255,255,255,.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
 #theme-toggle:hover{background:rgba(255,255,255,.28);}
 #auth-theme-toggle{position:fixed;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:17px;z-index:50;display:flex;align-items:center;justify-content:center;}
@@ -566,7 +586,7 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 (function(){
   try{
     var saved = localStorage.getItem('tema-app');
-    if(saved === 'dark'){ document.documentElement.setAttribute('data-theme','dark'); }
+    if(saved === 'dark' || saved === 'natal'){ document.documentElement.setAttribute('data-theme', saved); }
   }catch(e){}
 })();
 </script>
@@ -627,6 +647,7 @@ html[data-theme="dark"] .rt-btn-map.waze{color:#062633;}
 const APP_BUILD_HORARIO = "1.0_14_09_2026";
 const AUTH_APP_HTML = `
   <header>
+    <div id="natal-luzes" aria-hidden="true">${Array.from({length:40},(_,i)=>'<span class="luz" style="animation-delay:'+((i%10)*0.12).toFixed(2)+'s"></span>').join('')}</div>
     <div class="brand">
       <button id="menu-toggle" title="Abrir menu" aria-label="Abrir menu">☰</button>
       <div class="dot"></div>
@@ -704,18 +725,23 @@ const AUTH_APP_HTML = `
 document.getElementById('app').innerHTML = AUTH_APP_HTML;
 
 function aplicarTemaVisual(){
-  var ehEscuro = document.documentElement.getAttribute('data-theme') === 'dark';
-  var icone = ehEscuro ? '☀️' : '🌙';
+  var tema = document.documentElement.getAttribute('data-theme') || 'light';
+  var icones = {light:'🌙', dark:'🎄', natal:'☀️'};
+  var titulos = {light:'Mudar para modo escuro', dark:'Mudar para o tema de Natal 🎄', natal:'Voltar para o modo claro'};
+  var icone = icones[tema] || '🌙';
+  var titulo = titulos[tema] || 'Alternar tema';
   var btnApp = document.getElementById('theme-toggle');
   var btnAuth = document.getElementById('auth-theme-toggle');
-  if(btnApp) btnApp.textContent = icone;
-  if(btnAuth) btnAuth.textContent = icone;
+  if(btnApp){ btnApp.textContent = icone; btnApp.title = titulo; }
+  if(btnAuth){ btnAuth.textContent = icone; btnAuth.title = titulo; }
 }
+// Ciclo de temas: claro -> escuro -> Natal (varal de luzes piscando no topo do cabeçalho) -> claro de novo.
 function alternarTema(){
-  var atual = document.documentElement.getAttribute('data-theme');
-  var novo = atual === 'dark' ? 'light' : 'dark';
-  if(novo === 'dark'){ document.documentElement.setAttribute('data-theme','dark'); }
-  else{ document.documentElement.removeAttribute('data-theme'); }
+  var atual = document.documentElement.getAttribute('data-theme') || 'light';
+  var proximoTema = {light:'dark', dark:'natal', natal:'light'};
+  var novo = proximoTema[atual] || 'dark';
+  if(novo === 'light'){ document.documentElement.removeAttribute('data-theme'); }
+  else{ document.documentElement.setAttribute('data-theme', novo); }
   try{ localStorage.setItem('tema-app', novo); }catch(e){}
   aplicarTemaVisual();
 }
@@ -3456,7 +3482,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -3473,6 +3499,7 @@ async function loadAll(){
   if(!state.fiadoPagamentos) state.fiadoPagamentos = [];
   if(!state.convenioLancamentos) state.convenioLancamentos = [];
   if(!state.convenioPagamentos) state.convenioPagamentos = [];
+  if(!state.vendasSeparadasIgnoradas) state.vendasSeparadasIgnoradas = [];
   if(!state.produtos) state.produtos = [];
   if(!state.precosControlados) state.precosControlados = {};
   if(!state.categoriasProdutosGrupo) state.categoriasProdutosGrupo = Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO);
@@ -4848,6 +4875,20 @@ function resolverNomeCliente(texto){
   save('clientes');
   return t;
 }
+// Mesma ideia do resolverNomeCliente, mas pra empresa conveniada: o campo "Empresa conveniada"
+// da venda/agendamento é um texto livre (com sugestão de autocompletar), então digitar o nome com
+// acento/maiúscula/espaço diferente do cadastro (ex.: "fundifoz" em vez de "Fundifoz") salvava um
+// texto que não batia mais com o nome exato selecionado no relatório de Empresas conveniadas — a
+// venda ficava "perdida", sem aparecer nem somar no saldo daquela empresa. Agora, sempre que o nome
+// digitado bate com um cadastro já existente (ignorando acento/maiúscula/espaço), a venda salva o
+// nome exatamente como está cadastrado, garantindo que ela sempre entre na conta certa.
+function resolverNomeEmpresa(texto){
+  const t = (texto||'').trim();
+  if(!t) return t;
+  const norm = chaveNormalizada(t);
+  const existente = (state.empresas||[]).find(e=>chaveNormalizada(e.nome||'')===norm);
+  return existente ? existente.nome : t;
+}
 // Fingerprint único de uma venda, usado tanto na importação da planilha (pra nunca lançar a
 // mesma venda duas vezes se o arquivo for reimportado por engano) quanto na ferramenta de
 // limpeza "Vendas duplicadas" em Config. Normaliza texto (maiúscula/acento/espaço), pagamento
@@ -5136,19 +5177,26 @@ async function removerVendasDuplicadas(){
 // frete/entregas). É o mesmo critério que a importação diária já usa como fallback pra juntar
 // linhas (Nº da Venda > "Repete a venda de cima" > cliente+data) — só que aplicado aos
 // lançamentos que já estão salvos, pra corrigir depois de já terem entrado separados.
+// Casos já conferidos e deixados assim de propósito (ex.: o cliente comprou duas vezes de
+// verdade no mesmo dia) podem ser marcados como "já resolvido" e somem dessa lista de avisos —
+// sem juntar nem apagar nenhuma venda, só param de aparecer aqui (vendasSeparadasIgnoradas).
+function chaveClusterVendaSeparada(data, cliente){
+  return data+'|'+chaveNormalizada(cliente);
+}
 function encontrarClientesComVendasSeparadas(){
   const porClienteData = new Map();
   (state.vendas||[]).forEach(function(v){
     if(!v.cliente) return;
-    const chave = v.data+'|'+chaveNormalizada(v.cliente);
+    const chave = chaveClusterVendaSeparada(v.data, v.cliente);
     if(!porClienteData.has(chave)) porClienteData.set(chave, []);
     porClienteData.get(chave).push(v);
   });
+  const ignoradas = new Set(state.vendasSeparadasIgnoradas||[]);
   const resultado = [];
-  porClienteData.forEach(function(vendas){
+  porClienteData.forEach(function(vendas, chave){
     const gruposDistintos = new Set(vendas.map(v=>v.grupoId||v.id));
-    if(gruposDistintos.size>1){
-      resultado.push({data:vendas[0].data, cliente:vendas[0].cliente, vendas:vendas, qtdLinhas:vendas.length, qtdGrupos:gruposDistintos.size});
+    if(gruposDistintos.size>1 && !ignoradas.has(chave)){
+      resultado.push({chave:chave, data:vendas[0].data, cliente:vendas[0].cliente, vendas:vendas, qtdLinhas:vendas.length, qtdGrupos:gruposDistintos.size});
     }
   });
   return resultado.sort((a,b)=> b.data.localeCompare(a.data) || a.cliente.localeCompare(b.cliente,'pt-BR'));
@@ -5814,10 +5862,10 @@ function viewVendas(){
   const cardVendasSeparadas = clientesSeparados.length===0 ? '' :
     '<div class="card" style="border:1px solid var(--amber);">'+
     '<strong style="color:var(--amber);">⚠ '+clientesSeparados.length+' cliente(s) com venda separada em mais de uma "venda" no mesmo dia</strong>'+
-    '<div class="hint" style="margin-top:4px;">Mesmo cliente e mesma data, mas os produtos ficaram em carrinhos (vendas) diferentes — normalmente porque a planilha do dia não marcou "Repete a venda da linha de cima?" nem preencheu "Nº da Venda" pra essas linhas. Isso infla a contagem de "vendas do dia" (cada produto conta como uma venda em vez de todos juntos contarem como uma só). Reveja cada caso antes de juntar — só junte se for realmente a mesma visita/compra; se o cliente comprou duas vezes de verdade no mesmo dia, deixe separado.</div>'+
+    '<div class="hint" style="margin-top:4px;">Mesmo cliente e mesma data, mas os produtos ficaram em carrinhos (vendas) diferentes — normalmente porque a planilha do dia não marcou "Repete a venda da linha de cima?" nem preencheu "Nº da Venda" pra essas linhas. Isso infla a contagem de "vendas do dia" (cada produto conta como uma venda em vez de todos juntos contarem como uma só). Reveja cada caso antes de juntar — só junte se for realmente a mesma visita/compra; se o cliente comprou duas vezes de verdade no mesmo dia, deixe separado e clique em "Já resolvi" pra esse caso sumir da lista sem mexer nas vendas.</div>'+
     '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Data</th><th>Cliente</th><th>Linhas</th><th>Virou quantas vendas</th><th></th></tr></thead><tbody>'+
     clientesSeparados.map((c,i)=>'<tr><td>'+fmtDate(c.data)+'</td><td>'+c.cliente+'</td><td>'+c.qtdLinhas+'</td><td>'+c.qtdGrupos+'</td>'+
-      '<td><button type="button" class="btn small ghost" data-juntar-vendas-cliente="'+i+'">🔗 Juntar em 1 venda</button></td></tr>').join('')+
+      '<td><button type="button" class="btn small ghost" data-juntar-vendas-cliente="'+i+'">🔗 Juntar em 1 venda</button> <button type="button" class="btn small ghost" data-ignorar-vendas-cliente="'+i+'">✔ Já resolvi</button></td></tr>').join('')+
     '</tbody></table></div></div>';
 
   const pendenciasNFDash = pendenciasNotaFiscalPorDia();
@@ -5825,8 +5873,8 @@ function viewVendas(){
   const pendentesCupom = state.vendas.filter(v=>v.nota==='Cupom não fiscal').length;
   const cardPendenciasBling = (totalPendenteNF<=0 && pendentesCupom===0) ? '' :
     '<div class="card metric-link" data-ir-relatorio="notas" style="border-left:4px solid #8B5CF6;cursor:pointer;">'+
-    '<strong style="color:#8B5CF6;">📋 Pendências no Bling'+(totalPendenteNF>0?' — '+fmtNumBR(totalPendenteNF)+' un. de Nota fiscal':'')+(pendentesCupom>0?' · '+pendentesCupom+' Cupom não fiscal':'')+'</strong>'+
-    '<div class="hint" style="margin-top:4px;">Vai acumulando dia após dia até você lançar no Bling e dar baixa. Clique aqui para abrir o relatório de Notas para o Bling.</div></div>';
+    '<strong style="color:#8B5CF6;">📋 Pendências no Bling'+(totalPendenteNF>0?' — '+fmtNumBR(totalPendenteNF)+' un. de Nota fiscal (Carga de Gás P13)':'')+(pendentesCupom>0?' · '+pendentesCupom+' Cupom não fiscal':'')+'</strong>'+
+    '<div class="hint" style="margin-top:4px;">Por enquanto só a Carga de Gás P13 pode virar nota fiscal. Vai acumulando dia após dia até você lançar no Bling e dar baixa. Clique aqui para abrir o relatório de Notas para o Bling.</div></div>';
   return cardPendenciasBling+cardVendasDuplicadasTopo+cardVendasSeparadas+htmlPlanilhaVendas(hoje)+htmlAssistenteImportacaoTexto(hoje)+'<div class="card"><details id="details-venda-manual"'+((vendaManualAberta||importTextoWizard)?' open':'')+'><summary><strong>'+(importTextoWizard?'Lançamento manual (usado pelo assistente de importação acima)':'Lançamento manual (clique para abrir)')+'</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
     '<div class="hint">Editando uma venda daqui (✎ no Histórico): se você corrigir o produto ou a quantidade de uma venda que já tinha descontado o estoque, o sistema já corrige sozinho — devolve o que foi descontado errado e desconta o certo. Não precisa mexer no Estoque manualmente. Exceção: vendas bem antigas, de antes desse controle existir no sistema, podem não reverter sozinhas — depois de salvar, confira o Estoque pra garantir.</div>'+
     '<form id="form-venda">'+
@@ -8890,10 +8938,17 @@ function fiadoListaHtml(filtro){
         '<td class="cel-acoes">'+acoes+'</td></tr>';
     }).join('')+'</tbody></table></div>';
 }
+// Por enquanto, só a Carga de Gás P13 pode virar nota fiscal de verdade — outros itens que
+// tenham sido marcados como "Nota fiscal" por engano (P5, P20, P45, água, outros produtos)
+// não entram nem nas pendências nem no relatório de Notas para o Bling, até isso mudar.
+const CATEGORIA_ELEGIVEL_NOTA_FISCAL = 'Carga de Gás P13';
+function elegivelComoNotaFiscal(v){
+  return v.nota!=='Nota fiscal' || v.categoria===CATEGORIA_ELEGIVEL_NOTA_FISCAL;
+}
 function pendenciasNotaFiscalPorDia(){
   const porDia = {};
   (state.vendas||[]).forEach(v=>{
-    if(v.nota==='Nota fiscal') porDia[v.data] = (porDia[v.data]||0) + (v.quantidade||0);
+    if(v.nota==='Nota fiscal' && v.categoria===CATEGORIA_ELEGIVEL_NOTA_FISCAL) porDia[v.data] = (porDia[v.data]||0) + (v.quantidade||0);
   });
   const baixasPorDia = {};
   (state.blingBaixas||[]).forEach(b=>{ baixasPorDia[b.data] = (baixasPorDia[b.data]||0) + (b.quantidade||0); });
@@ -8905,10 +8960,10 @@ function pendenciasNotaFiscalPorDia(){
 }
 function htmlPendenciasNotaFiscal(){
   const pendencias = pendenciasNotaFiscalPorDia();
-  if(pendencias.length===0) return '<div class="card"><h2>📋 Pendências de Nota Fiscal por dia</h2><div class="empty">Nenhuma pendência — tudo lançado no Bling.</div></div>';
+  if(pendencias.length===0) return '<div class="card"><h2>📋 Pendências de Nota Fiscal por dia (Carga de Gás P13)</h2><div class="empty">Nenhuma pendência — tudo lançado no Bling.</div></div>';
   const totalGeral = pendencias.reduce((s,p)=>s+p.pendente,0);
-  return '<div class="card"><h2>📋 Pendências de Nota Fiscal por dia <span class="pill">'+fmtNumBR(totalGeral)+' un. no total</span></h2>'+
-    '<div class="hint">Só entra aqui o que foi vendido com nota "Nota fiscal" — vai acumulando dia após dia até você lançar no Bling e dar baixa aqui.</div>'+
+  return '<div class="card"><h2>📋 Pendências de Nota Fiscal por dia (Carga de Gás P13) <span class="pill">'+fmtNumBR(totalGeral)+' un. no total</span></h2>'+
+    '<div class="hint">Por enquanto, só a Carga de Gás P13 pode virar nota fiscal — só entra aqui o que foi vendido desse item com nota "Nota fiscal", um dia de cada vez, acumulando até você lançar no Bling e dar baixa aqui.</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Dia</th><th>Vendido</th><th>Já baixado</th><th>Pendente</th><th></th></tr></thead><tbody>'+
     pendencias.map(p=>'<tr><td>'+fmtDate(p.data)+'</td><td>'+fmtNumBR(p.total)+'</td><td>'+fmtNumBR(p.baixado)+'</td><td><strong>'+fmtNumBR(p.pendente)+'</strong></td>'+
     '<td><input type="number" class="input-baixa-bling" data-data-baixa="'+p.data+'" min="0" step="0.01" value="'+p.pendente+'" style="width:80px;"> <button type="button" class="btn small" data-dar-baixa-bling="'+p.data+'">✔ Dar baixa</button></td></tr>').join('')+
@@ -8916,7 +8971,7 @@ function htmlPendenciasNotaFiscal(){
 }
 function relatorioNotas(){
   return htmlPendenciasNotaFiscal()+
-    '<h3>Filtrar</h3><div class="form-row">'+
+    '<h3>Filtrar</h3><div class="hint" style="margin-bottom:6px;">Por enquanto só a Carga de Gás P13 pode virar nota fiscal — o filtro "Nota fiscal" abaixo só traz esse item; os outros tipos de nota (Cupom não fiscal, Já lançado, Não lança) continuam mostrando todos os produtos normalmente.</div><div class="form-row">'+
     '<div><label>De</label><input type="date" id="rn-de" value="'+todayStr()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rn-ate" value="'+todayStr()+'"></div>'+
     '<div><label>Tipo de nota</label><select id="rn-tipo"><option value="">Todas</option>'+NOTAS.map(n=>'<option>'+n+'</option>').join('')+'</select></div></div>'+
@@ -9473,7 +9528,10 @@ function corNota(tipo){
 function renderRelatorioNotasResultado(){
   const de = document.getElementById('rn-de').value, ate = document.getElementById('rn-ate').value;
   const tipo = document.getElementById('rn-tipo').value;
-  const filtradas = state.vendas.filter(v=> v.data>=de && v.data<=ate && (!tipo || v.nota===tipo));
+  // Por enquanto só a Carga de Gás P13 pode virar nota fiscal — outros itens marcados como
+  // "Nota fiscal" por engano ficam de fora daqui (não entram na conta nem no agrupamento
+  // abaixo), pra não misturar com o que pode ser lançado de verdade no Bling como nota fiscal.
+  const filtradas = state.vendas.filter(v=> v.data>=de && v.data<=ate && (!tipo || v.nota===tipo) && elegivelComoNotaFiscal(v));
   const total = filtradas.reduce((s,v)=>s+v.valor_total,0);
   const legenda = NOTAS.map(n=>'<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;"><span style="width:12px;height:12px;border-radius:3px;background:'+corNota(n)+';display:inline-block;border:1px solid var(--border);"></span>'+n+'</span>').join('');
   // Agrupado por tipo de nota e, dentro de cada um, por produto (somando as quantidades) —
@@ -10287,7 +10345,7 @@ function attachHandlers(){
     // e a linha lá embaixo que confere "empresa" pra cadastrar automaticamente quebrava com um erro
     // de JavaScript bem antes de chegar no save('vendas'). Isso travava o salvamento da edição
     // inteira (os dados até chegavam a mudar na tela, mas nunca eram gravados).
-    const empresaFormVenda = (f.get('empresa')||'').trim();
+    const empresaFormVenda = resolverNomeEmpresa(f.get('empresa')||'');
     let grupoIdVendaSubmetidaWizard = null; // usado só pelo assistente de importação por texto, pra saber o que essa venda mexeu no estoque
     if(editVendaId){
       const v = state.vendas.find(x=>x.id===editVendaId);
@@ -10297,7 +10355,7 @@ function attachHandlers(){
         v.categoria=categoria; v.produto=produto; v.quantidade=quantidade; v.valor_unit=valor_unit; v.valor_total=valor_total;
         v.pagamento=f.get('pagamento'); v.nota=f.get('nota'); v.tipo_entrega=f.get('tipo_entrega'); v.cupom=(f.get('cupom')||'').trim().toUpperCase();
         v.vale_pendente = (f.get('pagamento')==='Gás do povo' && !!f.get('vale_pendente'));
-        v.empresa=f.get('empresa')||''; v.entrega_data=f.get('entrega_data')||(f.get('entrega_hora')?f.get('data'):''); v.entrega_hora=f.get('entrega_hora')||''; v.obs=f.get('obs')||'';
+        v.empresa=empresaFormVenda; v.entrega_data=f.get('entrega_data')||(f.get('entrega_hora')?f.get('data'):''); v.entrega_hora=f.get('entrega_hora')||''; v.obs=f.get('obs')||'';
         v.frete = TIPOS_ENTREGA_COM_FRETE.includes(v.tipo_entrega) ? (Number(f.get('frete'))||0) : 0;
         const chkDividirPagamentoEdit = document.getElementById('chk-dividir-pagamento');
         if(chkDividirPagamentoEdit && chkDividirPagamentoEdit.checked){
@@ -10415,7 +10473,7 @@ function attachHandlers(){
         data: f.get('data'), cliente: resolverNomeCliente(f.get('cliente')||''), canal: f.get('canal'),
         pagamento: f.get('pagamento'), tipo_entrega: f.get('tipo_entrega'), cupom:(f.get('cupom')||'').trim().toUpperCase(),
         vale_pendente: (f.get('pagamento')==='Gás do povo' && !!f.get('vale_pendente')),
-        empresa: f.get('empresa')||'', entrega_data: f.get('entrega_data')||(f.get('entrega_hora')?f.get('data'):''), entrega_hora: f.get('entrega_hora')||'',
+        empresa: empresaFormVenda, entrega_data: f.get('entrega_data')||(f.get('entrega_hora')?f.get('data'):''), entrega_hora: f.get('entrega_hora')||'',
         obs: f.get('obs')||''
       };
       const freteTotal = TIPOS_ENTREGA_COM_FRETE.includes(camposComuns.tipo_entrega) ? (Number(f.get('frete'))||0) : 0;
@@ -11287,6 +11345,17 @@ function attachHandlers(){
       if(!c) return;
       if(!confirm('Juntar as '+c.qtdLinhas+' linha(s) de '+c.cliente+' em '+fmtDate(c.data)+' numa única venda? Confirme antes que é mesmo a mesma visita/compra — se ele comprou duas vezes de verdade nesse dia, cancele.')) return;
       await juntarVendasDoCliente(c.vendas);
+      renderAll();
+    });
+    document.querySelectorAll('[data-ignorar-vendas-cliente]').forEach(btn=>btn.onclick=async()=>{
+      const idx = Number(btn.dataset.ignorarVendasCliente);
+      const clusters = encontrarClientesComVendasSeparadas();
+      const c = clusters[idx];
+      if(!c) return;
+      if(!confirm('Marcar o caso de '+c.cliente+' em '+fmtDate(c.data)+' como já resolvido? Ele some dessa lista de avisos — as vendas continuam exatamente como estão, nada é juntado nem apagado.')) return;
+      if(!state.vendasSeparadasIgnoradas) state.vendasSeparadasIgnoradas = [];
+      state.vendasSeparadasIgnoradas.push(c.chave);
+      await save('vendasSeparadasIgnoradas');
       renderAll();
     });
     document.querySelectorAll('[data-edit-venda]').forEach(btn=>btn.onclick=()=>{
@@ -13216,6 +13285,11 @@ function attachHandlers(){
       return;
     }
     const temFrete = TIPOS_ENTREGA_COM_FRETE.includes(f.get('tipo_entrega'));
+    // Igual à venda avulsa: a empresa conveniada também precisa ser salva quando a forma de
+    // pagamento for "Convênio", mesmo numa entrega "Retirada" sem frete (antes só salvava com
+    // frete, então uma entrega paga por convênio sem frete ficava de fora do relatório).
+    const pagamentoConvenioAg = f.get('pagamento') === 'Convênio';
+    const empresaVisivelAg = temFrete || pagamentoConvenioAg;
     const agendadoForm = !!f.get('agendado');
     const horaForm = agendadoForm ? (f.get('hora')||'') : '';
     if(agendadoForm && !horaForm){
@@ -13238,13 +13312,13 @@ function attachHandlers(){
       if(a){
         a.cliente=resolverNomeCliente(f.get('cliente')); a.data=dataForm; a.hora=horaForm; a.agendado=agendadoForm;
         a.categoria=categoriaAg; a.produto=produtoAg; a.quantidade=quantidadeAg; a.produto_nota=produtoNotaAg;
-        a.tipo_entrega=f.get('tipo_entrega'); a.empresa=temFrete?(f.get('empresa')||''):'';
+        a.tipo_entrega=f.get('tipo_entrega'); a.empresa=empresaVisivelAg?resolverNomeEmpresa(f.get('empresa')||''):'';
         a.pagamento=f.get('pagamento')||''; a.valor=Math.round((quantidadeAg*valorUnitAg)*100)/100; a.frete=temFrete?(Number(f.get('frete'))||0):0;
         a.entregadorId=f.get('entregadorId')||''; a.pago=!!f.get('pago');
       }
       editAgendamentoId = null;
       fa.querySelector('button[type=submit]').textContent='Registrar entrega e gerar venda';
-      const empresaAg = temFrete ? (f.get('empresa')||'') : '';
+      const empresaAg = empresaVisivelAg ? resolverNomeEmpresa(f.get('empresa')||'') : '';
       if(empresaAg) await garantirEmpresaCadastrada(empresaAg);
       await save('agendamentos');
       atualizarBadgeApp();
@@ -13268,7 +13342,7 @@ function attachHandlers(){
         itensAg.push({categoria:cat, produto:prod, quantidade:qtd, valor_unit:vUnit, valor_total: Math.round(qtd*vUnit*100)/100, nota: notaItem});
       }
     });
-    const empresaAg = temFrete ? (f.get('empresa')||'') : '';
+    const empresaAg = empresaVisivelAg ? resolverNomeEmpresa(f.get('empresa')||'') : '';
     const freteAg = temFrete ? (Number(f.get('frete'))||0) : 0;
     const totalItensAg = itensAg.reduce((s,i)=>s+i.valor_total,0);
     const totalGeralAg = Math.round((totalItensAg+freteAg)*100)/100;
