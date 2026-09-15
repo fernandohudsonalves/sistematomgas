@@ -3119,6 +3119,22 @@ function toggleEmpresaConvenioVenda(){
     const empresaEl = wrap.querySelector('[name="empresa"]');
     if(empresaEl) empresaEl.value = '';
   }
+  aoDigitarEmpresaVenda();
+}
+// Roda a cada letra digitada/selecionada no campo Empresa da venda avulsa. Se o nome bater com uma
+// empresa da lista EMPRESAS_CONVENIO_OBRIGATORIO (hoje Alvorada e Fundifoz), trava a forma de
+// pagamento em "Convênio" na hora — o campo continua visível e editável pro atendente, só a forma
+// de pagamento é forçada, já que pra essas duas empresas não existe outra forma válida.
+function aoDigitarEmpresaVenda(){
+  const empresaEl = document.getElementById('input-empresa-venda');
+  const selPagamento = document.getElementById('sel-forma-pagamento');
+  const avisoEl = document.getElementById('aviso-convenio-obrigatorio-venda');
+  if(!empresaEl || !selPagamento) return;
+  const exige = empresaExigeConvenioObrigatorio(empresaEl.value);
+  if(avisoEl) avisoEl.style.display = exige ? 'block' : 'none';
+  if(exige && selPagamento.value !== 'Convênio'){
+    selPagamento.value = 'Convênio';
+  }
 }
 function toggleDetalhesFaltaRetirarVenda(){
   const sel = document.getElementById('sel-tipo-entrega');
@@ -3169,6 +3185,19 @@ function toggleEmpresaConvenioAgendamento(){
   if(!mostrar){
     const empresaEl = wrap.querySelector('[name="empresa"]');
     if(empresaEl) empresaEl.value = '';
+  }
+  aoDigitarEmpresaAgendamento();
+}
+// Mesma lógica da venda avulsa (aoDigitarEmpresaVenda), aplicada ao formulário de agendamento.
+function aoDigitarEmpresaAgendamento(){
+  const empresaEl = document.getElementById('input-empresa-ag');
+  const selPagamento = document.getElementById('sel-forma-pagamento-ag');
+  const avisoEl = document.getElementById('aviso-convenio-obrigatorio-ag');
+  if(!empresaEl || !selPagamento) return;
+  const exige = empresaExigeConvenioObrigatorio(empresaEl.value);
+  if(avisoEl) avisoEl.style.display = exige ? 'block' : 'none';
+  if(exige && selPagamento.value !== 'Convênio'){
+    selPagamento.value = 'Convênio';
   }
 }
 function toggleHoraAgendamento(){
@@ -4902,6 +4931,18 @@ function resolverNomeEmpresa(texto){
   const existente = (state.empresas||[]).find(e=>chaveNormalizada(e.nome||'')===norm);
   return existente ? existente.nome : t;
 }
+// Empresas conveniadas cujas vendas/entregas são OBRIGATORIAMENTE pagas por "Convênio" — hoje só
+// Alvorada e Fundifoz. Sempre que o campo Empresa (venda ou agendamento) bater com um desses nomes
+// (ignorando acento/maiúscula/espaço), a forma de pagamento é travada em "Convênio" automaticamente:
+// em tempo real na tela (aoDigitarEmpresaVenda/Agendamento) e de novo, como rede de segurança, no
+// envio do formulário — assim nenhuma venda dessas duas empresas fica de fora do relatório de
+// Empresas conveniadas por ter sido lançada com outra forma de pagamento por engano.
+const EMPRESAS_CONVENIO_OBRIGATORIO = ['Alvorada','Fundifoz'];
+function empresaExigeConvenioObrigatorio(nomeEmpresa){
+  const norm = chaveNormalizada(nomeEmpresa||'');
+  if(!norm) return false;
+  return EMPRESAS_CONVENIO_OBRIGATORIO.some(n=>chaveNormalizada(n)===norm);
+}
 // Fingerprint único de uma venda, usado tanto na importação da planilha (pra nunca lançar a
 // mesma venda duas vezes se o arquivo for reimportado por engano) quanto na ferramenta de
 // limpeza "Vendas duplicadas" em Config. Normaliza texto (maiúscula/acento/espaço), pagamento
@@ -5960,8 +6001,9 @@ function viewVendas(){
     '</div>'+
     '</div>'+
     '<div id="wrap-empresa-convenio-venda" class="item-venda-row" style="display:none;margin-top:10px;">'+
-    '<div><label>Empresa conveniada</label><input list="lista-empresas" name="empresa" placeholder="Nome da empresa"><datalist id="lista-empresas">'+empresasOptions()+'</datalist>'+
-    '<div class="hint">Aparece automaticamente quando a entrega tem frete (moto/carro/Strada) ou quando a forma de pagamento é "Convênio". Se ficar em branco, essa venda não entra no relatório de Empresas conveniadas.</div></div>'+
+    '<div><label>Empresa conveniada</label><input list="lista-empresas" name="empresa" id="input-empresa-venda" placeholder="Nome da empresa"><datalist id="lista-empresas">'+empresasOptions()+'</datalist>'+
+    '<div class="hint">Aparece automaticamente quando a entrega tem frete (moto/carro/Strada) ou quando a forma de pagamento é "Convênio". Se ficar em branco, essa venda não entra no relatório de Empresas conveniadas.</div>'+
+    '<div id="aviso-convenio-obrigatorio-venda" class="hint" style="display:none;font-weight:700;color:var(--warning,#f59e0b);">🔒 Essa empresa só compra por Convênio — a forma de pagamento foi travada em "Convênio" automaticamente.</div></div>'+
     '</div>'+
     '<div id="detalhes-falta-retirar-venda" class="item-venda-row" style="display:none;margin-top:10px;border:1px dashed var(--warning,#f59e0b);">'+
     '<div class="hint" style="margin-bottom:6px;">Essa venda ainda está pendente em "Falta retirar". Preencha aqui embaixo só quando o cliente já tiver retirado ou vocês já tiverem entregado — se ainda não aconteceu, deixe "Ainda pendente" e o estoque continua reservado.</div>'+
@@ -7298,8 +7340,9 @@ function viewAgendamentos(){
     '<div><label>Valor do frete (R$)</label><input type="number" id="input-frete-ag" name="frete" min="0" step="0.01" placeholder="0,00"></div>'+
     '</div></div>'+
     '<div id="wrap-empresa-convenio-ag" class="item-venda-row" style="display:none;margin-top:10px;">'+
-    '<div><label>Empresa conveniada</label><input list="lista-empresas-ag" name="empresa">'+
-    '<datalist id="lista-empresas-ag">'+empresasOptions()+'</datalist></div>'+
+    '<div><label>Empresa conveniada</label><input list="lista-empresas-ag" name="empresa" id="input-empresa-ag">'+
+    '<datalist id="lista-empresas-ag">'+empresasOptions()+'</datalist>'+
+    '<div id="aviso-convenio-obrigatorio-ag" class="hint" style="display:none;font-weight:700;color:var(--warning,#f59e0b);">🔒 Essa empresa só compra por Convênio — a forma de pagamento foi travada em "Convênio" automaticamente.</div></div>'+
     '</div>'+
     '<button type="submit" class="btn small" style="margin-top:12px;">Registrar entrega e gerar venda</button></form></div>'+
     '<div class="card"><h2>Entregas</h2>'+
@@ -10332,6 +10375,13 @@ function attachHandlers(){
   if(detalhesVendaManual) detalhesVendaManual.ontoggle = ()=>{ vendaManualAberta = detalhesVendaManual.open; };
   if(fv) fv.onsubmit = async(e)=>{
     e.preventDefault();
+    // Rede de segurança: garante que Alvorada/Fundifoz nunca sejam salvas com outra forma de
+    // pagamento, mesmo que o JS de tela (aoDigitarEmpresaVenda) não tenha rodado por algum motivo.
+    const empresaInputCheckVenda = fv.querySelector('[name="empresa"]');
+    const selPagamentoCheckVenda = fv.querySelector('[name="pagamento"]');
+    if(empresaInputCheckVenda && selPagamentoCheckVenda && empresaExigeConvenioObrigatorio(empresaInputCheckVenda.value)){
+      selPagamentoCheckVenda.value = 'Convênio';
+    }
     const f = new FormData(fv);
     const categoria = f.get('categoria');
     // Regra: quem leva Gás do povo tem que pagar com "Gás do povo" nesse item — frete e os outros
@@ -10733,6 +10783,8 @@ function attachHandlers(){
   if(fv && fv.quantidade) fv.quantidade.oninput = atualizarTotalCarrinho;
   if(fv && fv.valor_unit) fv.valor_unit.oninput = atualizarTotalCarrinho;
   if(fv && fv.cliente) fv.cliente.oninput = atualizarBoxCreditoVenda;
+  const empresaVendaInput = document.getElementById('input-empresa-venda');
+  if(empresaVendaInput) empresaVendaInput.oninput = aoDigitarEmpresaVenda;
   const selTipoEntrega = document.getElementById('sel-tipo-entrega');
   if(selTipoEntrega) selTipoEntrega.onchange = toggleDetalhesEntregaVenda;
   const selFormaPagamentoVenda = document.getElementById('sel-forma-pagamento');
@@ -13290,6 +13342,13 @@ function attachHandlers(){
   const fa = document.getElementById('form-agendamento');
   if(fa) fa.onsubmit = async(e)=>{
     e.preventDefault();
+    // Rede de segurança: garante que Alvorada/Fundifoz nunca sejam salvas com outra forma de
+    // pagamento, mesmo que o JS de tela (aoDigitarEmpresaAgendamento) não tenha rodado.
+    const empresaInputCheckAg = fa.querySelector('[name="empresa"]');
+    const selPagamentoCheckAg = fa.querySelector('[name="pagamento"]');
+    if(empresaInputCheckAg && selPagamentoCheckAg && empresaExigeConvenioObrigatorio(empresaInputCheckAg.value)){
+      selPagamentoCheckAg.value = 'Convênio';
+    }
     const f = new FormData(fa);
     const dataForm = f.get('data');
     const confirmaRetroativo = document.getElementById('ag-confirma-retroativo');
@@ -13443,6 +13502,8 @@ function attachHandlers(){
   if(selTipoEntregaAg) selTipoEntregaAg.onchange = toggleDetalhesEntregaAgendamento;
   const selFormaPagamentoAg = document.getElementById('sel-forma-pagamento-ag');
   if(selFormaPagamentoAg) selFormaPagamentoAg.onchange = toggleEmpresaConvenioAgendamento;
+  const empresaAgInput = document.getElementById('input-empresa-ag');
+  if(empresaAgInput) empresaAgInput.oninput = aoDigitarEmpresaAgendamento;
   toggleDetalhesEntregaAgendamento();
   const chkAgAgendado = document.getElementById('chk-ag-agendado');
   if(chkAgAgendado) chkAgAgendado.onchange = toggleHoraAgendamento;
