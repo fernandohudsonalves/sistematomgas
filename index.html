@@ -274,6 +274,7 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 #lista-vendas-wrap .table-wrap.tabela-vendas{max-height:65vh;overflow-y:auto;}
 .tabela-vendas thead th{position:sticky;top:0;background:var(--card);z-index:2;box-shadow:0 2px 0 var(--border);color:#00338D;font-weight:800;padding-top:10px;padding-bottom:14px;}
 .tabela-vendas tbody tr:nth-child(even){background:rgba(128,128,128,.15);}
+.tabela-fiado-lista tbody tr:nth-child(even), .tabela-fiado-cliente tbody tr:nth-child(even){background:rgba(128,128,128,.03);}
 /* Vendas de hoje: ainda mais compacta que o histórico, pra caber tudo na tela sem
    precisar rolar (nem pro lado, nem pra baixo) — geralmente é uma lista curta do dia. */
 .tabela-vendas-compacta th,.tabela-vendas-compacta td{font-size:9.5px;padding:2px 3px;line-height:1.25;}
@@ -524,12 +525,25 @@ html[data-theme="dark"] .tabela-vendas thead th, html[data-theme="natal"] .tabel
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
 #whats-fab{position:fixed;right:18px;bottom:18px;z-index:500;width:56px;height:56px;border-radius:50%;background:#25D366;border:none;box-shadow:0 6px 18px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
-#calc-fab{position:fixed;right:18px;bottom:228px;z-index:500;width:56px;height:56px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 6px 18px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:34px;line-height:1;padding:0;}
+#calc-fab{position:fixed;right:18px;bottom:228px;z-index:500;width:56px;height:56px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 6px 18px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:46px;line-height:1;padding:0;}
 #calc-fab:hover{transform:scale(1.06);}
 #calc-fab:active{transform:scale(.96);}
 #fiado-fab{position:fixed;right:18px;bottom:158px;z-index:500;width:56px;height:56px;border-radius:50%;background:#EA580C;border:none;box-shadow:0 6px 18px rgba(234,88,12,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:28px;line-height:1;padding:0;}
 #fiado-fab:hover{transform:scale(1.06);}
 #fiado-fab:active{transform:scale(.96);}
+#sim-venda-fab{position:fixed;right:18px;bottom:364px;z-index:500;width:48px;height:48px;border-radius:50%;background:#16A34A;border:none;box-shadow:0 6px 18px rgba(22,163,74,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:24px;line-height:1;padding:0;}
+#sim-venda-fab:hover{transform:scale(1.06);}
+#sim-venda-fab:active{transform:scale(.96);}
+#sim-venda-panel{position:fixed;right:18px;bottom:364px;z-index:2500;width:300px;max-height:70vh;overflow-y:auto;background:var(--card,#fff);color:var(--text,#222);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow-x:hidden;display:none;}
+#sim-venda-panel.open{display:block;}
+#sim-venda-head{background:#16A34A;color:#fff;padding:10px 12px;font-weight:700;cursor:move;display:flex;align-items:center;justify-content:space-between;font-size:14px;}
+#sim-venda-head button{background:none;border:none;color:#fff;font-size:16px;cursor:pointer;}
+#sim-venda-body{padding:10px 12px;}
+.sim-venda-item{display:flex;gap:4px;align-items:center;margin-bottom:6px;}
+.sim-venda-item select{flex:2;min-width:0;font-size:12px;}
+.sim-venda-item input.sim-qtd{width:44px;font-size:12px;}
+.sim-venda-item input.sim-valor{width:64px;font-size:12px;}
+.sim-venda-item button{flex:0 0 auto;background:none;border:none;color:var(--danger,#DC2626);cursor:pointer;font-size:15px;}
 #recado-fab{position:fixed;right:18px;bottom:294px;z-index:500;width:48px;height:48px;border-radius:50%;background:#F5B800;border:none;box-shadow:0 6px 18px rgba(245,184,0,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;}
 #recado-fab-badge{position:absolute;top:-4px;right:-4px;background:#DC2626;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 5px;display:none;}
 #recado-panel{position:fixed;right:18px;bottom:350px;z-index:2500;width:270px;max-height:360px;overflow-y:auto;background:#FFF6C9;color:#333;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);display:none;}
@@ -671,7 +685,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_14_09_2026";
+const APP_BUILD_HORARIO = "1.0_18_09_2026";
 const AUTH_APP_HTML = `
   <header>
     <div id="natal-luzes" aria-hidden="true">${Array.from({length:40},(_,i)=>'<span class="luz" style="animation-delay:'+((i%10)*0.12).toFixed(2)+'s"></span>').join('')}</div>
@@ -799,6 +813,7 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
 </div>
 <button id="rota-fab" title="Gerar rota rápida">🗺️</button>
 <button id="calc-fab" title="Calculadora">🖩</button>
+<button id="sim-venda-fab" title="Simular vendas do dia">🧮</button>
 <button id="fiado-fab" title="Marcou / Fiados">📒</button>
 <button id="recado-fab" title="Recados / Post-it">📌<span id="recado-fab-badge"></span></button>
 <div id="recado-panel">
@@ -823,6 +838,17 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
       <button type="button" data-calc="1">1</button><button type="button" data-calc="2">2</button><button type="button" data-calc="3">3</button><button type="button" data-calc="+">+</button>
       <button type="button" data-calc="0">0</button><button type="button" data-calc=".">,</button><button type="button" data-calc="del">⌫</button><button type="button" data-calc="=">=</button>
     </div>
+  </div>
+</div>
+<div id="sim-venda-panel">
+  <div id="sim-venda-head">🧮 Simulador de vendas do dia <button type="button" id="sim-venda-fechar">✕</button></div>
+  <div id="sim-venda-body">
+    <div class="hint" style="margin:0 0 8px;">Só pra ter uma ideia de quanto vendeu hoje, antes de lançar as vendas de verdade. Nada aqui é salvo no sistema.</div>
+    <div id="sim-venda-itens"></div>
+    <button type="button" class="btn small ghost" id="sim-venda-add-item" style="margin-top:6px;">+ adicionar produto</button>
+    <div style="margin-top:10px;"><label>Frete (R$)</label><input type="text" inputmode="decimal" id="sim-venda-frete" placeholder="0,00"></div>
+    <div id="sim-venda-total" style="margin-top:10px;font-weight:700;font-size:16px;">Total: R$ 0,00</div>
+    <button type="button" class="btn small" id="sim-venda-limpar" style="margin-top:8px;">Limpar tudo</button>
   </div>
 </div>
 <div id="rota-overlay">
@@ -1202,6 +1228,68 @@ function initCalculadora(){
     aplicarTecla(v);
   });
 }
+// Simulador rápido de vendas do dia: só uma conta de cabeça (produto x quantidade x valor + frete)
+// pra saber quanto vendeu antes de lançar as vendas de verdade. Não salva nada no state/Supabase.
+let simVendaItens = [{produto:'', qtd:1, valor:0}];
+function initSimuladorVenda(){
+  const fab=document.getElementById('sim-venda-fab'), panel=document.getElementById('sim-venda-panel'), head=document.getElementById('sim-venda-head');
+  if(!fab||!panel) return;
+  fab.onclick=()=>{ panel.classList.toggle('open'); renderSimVenda(); };
+  document.getElementById('sim-venda-fechar').onclick=()=>panel.classList.remove('open');
+  document.getElementById('sim-venda-add-item').onclick=()=>{ simVendaItens.push({produto:'', qtd:1, valor:0}); renderSimVenda(); };
+  document.getElementById('sim-venda-limpar').onclick=()=>{ simVendaItens=[{produto:'', qtd:1, valor:0}]; document.getElementById('sim-venda-frete').value=''; renderSimVenda(); };
+  document.getElementById('sim-venda-frete').oninput = atualizarTotalSimVenda;
+  tornarArrastavel(panel, head);
+  renderSimVenda();
+}
+function renderSimVenda(){
+  const wrap = document.getElementById('sim-venda-itens');
+  if(!wrap) return;
+  const produtosAtivos = (state.produtos||[]).filter(p=>p.ativo!==false);
+  wrap.innerHTML = simVendaItens.map(function(it,i){
+    const opts = '<option value="">Produto...</option>'+produtosAtivos.map(function(p){
+      return '<option value="'+p.id+'"'+(it.produto===p.id?' selected':'')+'>'+escapeHtmlCampanha(p.nome)+'</option>';
+    }).join('');
+    return '<div class="sim-venda-item">'+
+      '<select data-sim-idx="'+i+'" class="sim-produto">'+opts+'</select>'+
+      '<input type="number" min="1" class="sim-qtd" data-sim-idx="'+i+'" value="'+it.qtd+'">'+
+      '<input type="text" inputmode="decimal" class="sim-valor" data-sim-idx="'+i+'" value="'+Number(it.valor).toFixed(2).replace('.',',')+'" placeholder="0,00">'+
+      '<button type="button" class="sim-remover" data-sim-idx="'+i+'" title="Remover">🗑</button>'+
+      '</div>';
+  }).join('');
+  wrap.querySelectorAll('.sim-produto').forEach(function(sel){
+    sel.onchange = function(){
+      const i = Number(this.dataset.simIdx);
+      simVendaItens[i].produto = this.value;
+      const p = (state.produtos||[]).find(x=>x.id===this.value);
+      if(p) simVendaItens[i].valor = Number(p.preco)||0;
+      renderSimVenda();
+    };
+  });
+  wrap.querySelectorAll('.sim-qtd').forEach(function(inp){
+    inp.oninput = function(){ simVendaItens[Number(this.dataset.simIdx)].qtd = Number(this.value)||0; atualizarTotalSimVenda(); };
+  });
+  wrap.querySelectorAll('.sim-valor').forEach(function(inp){
+    inp.oninput = function(){ simVendaItens[Number(this.dataset.simIdx)].valor = parseValorBR(this.value)||0; atualizarTotalSimVenda(); };
+  });
+  wrap.querySelectorAll('.sim-remover').forEach(function(btn){
+    btn.onclick = function(){
+      const i = Number(this.dataset.simIdx);
+      simVendaItens.splice(i,1);
+      if(simVendaItens.length===0) simVendaItens=[{produto:'', qtd:1, valor:0}];
+      renderSimVenda();
+    };
+  });
+  atualizarTotalSimVenda();
+}
+function atualizarTotalSimVenda(){
+  const totalEl = document.getElementById('sim-venda-total');
+  if(!totalEl) return;
+  const freteEl = document.getElementById('sim-venda-frete');
+  const frete = freteEl ? (parseValorBR(freteEl.value)||0) : 0;
+  const totalItens = simVendaItens.reduce((s,it)=>s+(Number(it.qtd)||0)*(Number(it.valor)||0),0);
+  totalEl.textContent = 'Total: '+fmtMoney(totalItens+frete);
+}
 function initRotaFab(){
   const fab=document.getElementById('rota-fab'), panel=document.getElementById('rota-panel'), head=panel?panel.querySelector('.rt-head'):null;
   if(!fab||!panel) return;
@@ -1445,6 +1533,15 @@ function optsCategoriaDespesaComIcone(lista, selecionada){
   }).join('');
 }
 function ehCategoriaESG(cat){ return cat==='Energia Elétrica' || cat==='Água / Saneamento' || /^Desperdício/i.test(cat||''); }
+// Qual "conta"/bolso pagou a despesa — separa gasto da empresa (Tom Gás, Seahorse, Paulo Mecânico)
+// de conta pessoal dos sócios, pra dar pra somar quanto cada um já tirou pro pró-labore.
+const CONTAS_DESPESA = ['Tom Gás','Seahorse','Paulo Mecânico','Conta pessoal Suh','Conta pessoal Fernando','Conta pessoal Paulo'];
+const CONTAS_DESPESA_PESSOAIS = ['Conta pessoal Suh','Conta pessoal Fernando','Conta pessoal Paulo'];
+function optsContaDespesa(selecionada){
+  return '<option value="">-- não informado --</option>'+CONTAS_DESPESA.map(function(c){
+    return '<option value="'+escapeHtmlCampanha(c)+'"'+(selecionada===c?' selected':'')+'>'+c+'</option>';
+  }).join('');
+}
 const PALAVRAS_CHAVE_VEICULO = ['combust','manuten','ipva','seguro','pneu','oleo','peca','peça','oficina','revis','veicul','licenciamento'];
 function categoriaParaceVeiculo(cat){ const k=chaveNormalizada(cat); return PALAVRAS_CHAVE_VEICULO.some(p=>k.includes(chaveNormalizada(p))); }
 /* Mesmos ícones usados no "tipo de entrega" (moto/carro/Strada), reaproveitados aqui pros
@@ -6148,9 +6245,9 @@ function viewVendas(){
   const pendentesCupom = state.vendas.filter(v=>v.nota==='Cupom não fiscal').length;
   const cardPendenciasBling = (totalPendenteNF<=0 && pendentesCupom===0) ? '' :
     '<div class="card metric-link" data-ir-relatorio="notas" style="border-left:4px solid #8B5CF6;cursor:pointer;">'+
-    '<strong style="color:#8B5CF6;">📋 Pendências no Bling'+(totalPendenteNF>0?' — '+fmtNumBR(totalPendenteNF)+' un. de Nota fiscal (Carga de Gás P13)':'')+(pendentesCupom>0?' · '+pendentesCupom+' Cupom não fiscal':'')+'</strong>'+
-    '<div class="hint" style="margin-top:4px;">Por enquanto só a Carga de Gás P13 pode virar nota fiscal. Vai acumulando dia após dia até você lançar no Bling e dar baixa. Clique aqui para abrir o relatório de Notas para o Bling.</div></div>';
-  return cardPendenciasBling+cardVendasDuplicadasTopo+cardVendasSeparadas+htmlPlanilhaVendas(hoje)+htmlAssistenteImportacaoTexto(hoje)+'<div class="card"><details id="details-venda-manual"'+((vendaManualAberta||importTextoWizard)?' open':'')+'><summary><strong>'+(importTextoWizard?'Lançamento manual (usado pelo assistente de importação acima)':'Lançamento manual (clique para abrir)')+'</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
+    '<strong style="color:#8B5CF6;">📋 Pendências no Bling'+(totalPendenteNF>0?' — '+fmtNumBR(totalPendenteNF)+' un. de gás em Nota fiscal':'')+(pendentesCupom>0?' · '+pendentesCupom+' Cupom não fiscal':'')+'</strong>'+
+    '<div class="hint" style="margin-top:4px;">Itens de gás vendidos com nota "Nota fiscal" e ainda não lançados no Bling. Vai acumulando dia após dia até você lançar no Bling e dar baixa. Clique aqui para abrir o relatório de Notas para o Bling.</div></div>';
+  return cardPendenciasBling+cardVendasDuplicadasTopo+cardVendasSeparadas+htmlPlanilhaVendas(hoje)+'<div class="card"><details id="details-venda-manual"'+((vendaManualAberta||importTextoWizard)?' open':'')+'><summary><strong>'+(importTextoWizard?'Lançamento manual (usado pelo assistente de importação acima)':'Lançamento manual (clique para abrir)')+'</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
     '<div class="hint">Editando uma venda daqui (✎ no Histórico): se você corrigir o produto ou a quantidade de uma venda que já tinha descontado o estoque, o sistema já corrige sozinho — devolve o que foi descontado errado e desconta o certo. Não precisa mexer no Estoque manualmente. Exceção: vendas bem antigas, de antes desse controle existir no sistema, podem não reverter sozinhas — depois de salvar, confira o Estoque pra garantir.</div>'+
     '<form id="form-venda">'+
     '<div class="form-row">'+
@@ -6193,7 +6290,7 @@ function viewVendas(){
     '<div id="carrinho-total" class="carrinho-total-badge">Total do carrinho: R$ 0,00</div>'+
     '</div>'+
     '<div id="bloco-casco-venda" class="item-venda-row" style="margin-top:12px;background:var(--amber-tint,#FEF3C7);border-color:var(--amber,#B45309);">'+
-    '<label class="checkbox-item"><input type="checkbox" id="chk-casco-pendente"> 🛢️ O cliente ficou com o casco/vasilhame (falta devolver)</label>'+
+    '<label class="checkbox-item"><input type="checkbox" id="chk-casco-pendente"> '+iconVasilhame(false,'#1E3A8A',18,'P13')+' O cliente ficou com o casco/vasilhame (falta devolver)</label>'+
     '<div class="hint">Marque quando a carga saiu mas o vasilhame vazio não voltou. Ao salvar, o sistema lança sozinho o casco no comodato do cliente (somando na conta se ele já devia algum), marca o aviso de pendência no cadastro dele e não conta esse vazio no estoque.</div>'+
     '<div id="casco-pendente-itens" style="display:none;margin-top:8px;"></div>'+
     '</div>'+
@@ -6571,7 +6668,7 @@ function viewDespesas(){
   const despesasHoje = state.despesas.filter(d=>d.data===hoje).sort((a,b)=>b.criadoEm-a.criadoEm);
   const totalHoje = despesasHoje.reduce((s,d)=>s+d.valor,0);
 
-  return htmlPlanilhaDespesas(hoje)+htmlAssistenteImportacaoTextoDespesas(hoje)+
+  return htmlPlanilhaDespesas(hoje)+
     '<div class="card"><details id="details-despesa-manual"'+(despesaManualAberta||importTextoDespesasWizard?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar despesa</h2>'+
     '<div class="hint">Use este lançamento manual só pra gastos avulsos do dia a dia. Se a conta já está agendada em <strong>Contas a Pagar</strong>, não lance aqui — vá lá e clique em "Marcar paga" que a despesa é criada sozinha, sem duplicar. Se for gasto de um veículo (peça, combustível, manutenção), prefira lançar pela aba <strong>Veículos</strong>, que já entra aqui automaticamente com todos os detalhes.</div>'+
     '<form id="form-despesa">'+
@@ -6580,6 +6677,7 @@ function viewDespesas(){
     '<div><label>Categoria <span class="req">*</span></label><select name="categoria" required><option value="" selected disabled>Escolha uma categoria</option>'+optsCategoriaDespesaComIcone(state.categoriasDespesas)+'</select>'+
     '<button type="button" class="link-btn" id="btn-nova-cat-despesa">+ nova categoria de despesa</button></div>'+
     '<div><label>Valor (R$) <span class="req">*</span></label><input type="text" inputmode="decimal" name="valor" placeholder="0,00" required></div>'+
+    '<div><label>Conta / de quem saiu</label><select name="conta">'+optsContaDespesa()+'</select></div>'+
     '</div>'+
     '<div id="nova-cat-despesa-wrap" style="display:none;"><div class="inline-add">'+
     '<input type="text" id="nova-cat-despesa-input" placeholder="Nome da nova categoria">'+
@@ -6602,10 +6700,11 @@ function viewDespesas(){
 }
 function despesasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma despesa encontrada.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Veículo</th><th>Valor</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Conta</th><th>Veículo</th><th>Valor</th><th></th></tr></thead><tbody>'+
   list.map(d=>{
     const v = d.veiculoId ? (state.veiculos||[]).find(x=>x.id===d.veiculoId) : null;
-    return '<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+(d.contaPagarId?' <span class="hint" title="Gerada a partir de Contas a Pagar">📑</span>':'')+'</td><td>'+iconeCategoriaDespesaHtml(d.categoria)+d.categoria+'</td><td>'+(v?(iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)):'—')+'</td><td>'+fmtMoney(d.valor)+'</td>'+
+    const contaBadge = d.conta ? '<span class="badge" style="background:'+(CONTAS_DESPESA_PESSOAIS.includes(d.conta)?'var(--amber-tint)':'var(--blue-tint)')+';color:'+(CONTAS_DESPESA_PESSOAIS.includes(d.conta)?'var(--amber)':'var(--royal)')+';">'+d.conta+'</span>' : '—';
+    return '<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+(d.contaPagarId?' <span class="hint" title="Gerada a partir de Contas a Pagar">📑</span>':'')+'</td><td>'+iconeCategoriaDespesaHtml(d.categoria)+d.categoria+'</td><td>'+contaBadge+'</td><td>'+(v?(iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)):'—')+'</td><td>'+fmtMoney(d.valor)+'</td>'+
     '<td><button class="act-link" data-edit-despesa="'+d.id+'">✎ editar</button><button class="del-link" data-del-despesa="'+d.id+'">🗑 excluir</button></td></tr>';
   }).join('')+'</tbody></table></div>';
 }
@@ -8066,8 +8165,14 @@ function tabelaPatrimonioGrupo(titulo, linhasGrupo){
       '<td style="font-weight:700;">'+l.patrimonio+'</td></tr>'
     ).join('')).join('')+
     '</tbody><tfoot><tr style="font-weight:700;"><td colspan="2">Total '+titulo+'</td>'+
-    '<td>'+soma('fisicoQtd')+'</td><td>'+soma('emprestado')+'</td><td>'+soma('devendo')+'</td><td>'+soma('patrimonio')+'</td></tr></tfoot>'+
-    '</table></div>';
+    '<td style="color:var(--royal-light);">'+soma('fisicoQtd')+'</td><td style="color:var(--amber);">'+soma('emprestado')+'</td><td style="color:var(--danger);">'+soma('devendo')+'</td><td style="color:var(--green);">'+soma('patrimonio')+'</td></tr></tfoot>'+
+    '</table></div>'+
+    '<div class="hint" style="margin-top:6px;display:flex;gap:14px;flex-wrap:wrap;">'+
+    '<span><span style="color:var(--royal-light);font-weight:700;">●</span> Estoque físico</span>'+
+    '<span><span style="color:var(--amber);font-weight:700;">●</span> Emprestado ao cliente</span>'+
+    '<span><span style="color:var(--danger);font-weight:700;">●</span> Devemos ao atacadista</span>'+
+    '<span><span style="color:var(--green);font-weight:700;">●</span> Patrimônio real</span>'+
+    '</div>';
 }
 function relatorioPatrimonio(){
   const linhasGas = ITENS_GAS_COMODATO.map(t=>linhaPatrimonioItem('gas', t, t));
@@ -8115,15 +8220,15 @@ function relatorioComodatos(){
 function comodatosListaHtml(lista){
   const todos = (lista||state.comodatos).slice().sort((a,b)=>b.data.localeCompare(a.data));
   if(todos.length===0) return '<div class="empty">Nenhum comodato lançado ainda.</div>';
-  return '<div class="table-wrap"><table><colgroup><col style="width:8%"><col style="width:11%"><col style="width:14%"><col style="width:12%"><col style="width:8%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:20%"></colgroup>'+
+  return '<div class="table-wrap"><table><colgroup><col style="width:8%"><col style="width:11%"><col style="width:14%"><col style="width:12%"><col style="width:8%"><col style="width:6%"><col style="width:9%"><col style="width:16%"><col style="width:16%"></colgroup>'+
     '<thead><tr><th>Direção</th><th>Nome</th><th>Categoria / Item</th><th>Produto</th><th>Data</th><th>Qtd</th><th>Estoque</th><th>Observação</th><th></th></tr></thead><tbody>'+
     todos.map(c=>'<tr><td>'+(c.direcao==='cliente'?'Cliente':'Atacadista')+'</td><td>'+c.nome+(c.whatsapp?'<br><span class="hint">📱 '+c.whatsapp+'</span>':'')+'</td>'+
     '<td>'+c.categoria+' — '+itemComodatoLabel(c.categoria,c.item)+'</td><td>'+c.produto+'</td><td>'+fmtDate(c.data)+'</td>'+
     '<td>'+(c.quantidade>0?'+':'')+c.quantidade+'</td>'+
     '<td>'+(c.baixaEstoque?'<span class="badge status-pago">ajustou</span>':'<span class="badge" style="background:var(--border);color:var(--text2);">não mexeu</span>')+'</td>'+
     '<td>'+(c.obs||'—')+'</td>'+
-    '<td class="cel-acoes"><button class="act-link" data-edit-comodato="'+c.id+'">✎ editar</button><button class="del-link" data-del-comodato="'+c.id+'">🗑 excluir</button>'+
-    '<br><button class="act-link" data-copiar-comodato="'+c.id+'">📋 copiar</button></td></tr>').join('')+
+    '<td class="cel-acoes"><button class="act-link" data-edit-comodato="'+c.id+'" style="font-size:11px;padding:4px 6px;">✎ editar</button><button class="del-link" data-del-comodato="'+c.id+'" style="font-size:11px;padding:4px 6px;">🗑 excluir</button>'+
+    '<button class="act-link" data-copiar-comodato="'+c.id+'" style="font-size:11px;padding:4px 6px;">📋 copiar</button></td></tr>').join('')+
     '</tbody></table></div>';
 }
 function relatorioEntregas(){
@@ -8690,6 +8795,7 @@ function crmFichaCliente(nome){
     '</div>'+
     '<div class="card"><h3>🛒 Últimas compras</h3>'+(ultimasCompras.length===0?'<div class="empty">Nenhuma compra registrada ainda.</div>':'<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Canal</th><th>Pagto</th></tr></thead><tbody>'+linhasCompras+'</tbody></table></div>')+'</div>'+
     '<div class="card"><h3>🗒️ Histórico de interações</h3>'+
+    ajudaHtml('crm-interacoes','Registre aqui cada contato que você tem com esse cliente fora da venda em si — uma ligação, uma visita, uma reclamação, um elogio no WhatsApp etc. Escolha o tipo, a data e escreva em poucas palavras o que aconteceu. Serve como um diário do relacionamento com o cliente: com o tempo você tem um histórico completo pra consultar antes de ligar de novo, entender um cliente insatisfeito, ou lembrar de um combinado antigo.')+
     '<form id="form-interacao-cliente" data-cliente="'+escapeHtmlCampanha(nome)+'" class="form-row">'+
     '<div><label>Tipo</label><select name="tipo">'+TIPOS_INTERACAO_CLIENTE.map(t=>'<option>'+t+'</option>').join('')+'</select></div>'+
     '<div><label>Data</label><input type="date" name="data" value="'+hoje+'" max="'+hoje+'"></div>'+
@@ -8698,6 +8804,7 @@ function crmFichaCliente(nome){
     (interacoes.length===0?'<div class="empty" style="margin-top:10px;">Nenhuma interação registrada ainda.</div>':'<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Data</th><th>Tipo</th><th>O que aconteceu</th><th></th></tr></thead><tbody>'+linhasInteracoes+'</tbody></table></div>')+
     '</div>'+
     '<div class="card"><h3>⏰ Follow-ups / lembretes de contato</h3>'+
+    ajudaHtml('crm-followups','Crie aqui um lembrete de algo que você precisa fazer com esse cliente numa data futura — ex: ligar confirmando se recebeu tudo certo, cobrar um retorno, avisar sobre uma promoção. Informe o que fazer e pra quando, e clique em "+ Criar follow-up". Ele fica pendente até você marcar "✅ concluir"; se passar da data sem concluir, aparece em vermelho como atrasado. Os follow-ups pendentes de todos os clientes também aparecem juntos no painel geral do CRM, pra você não esquecer nenhum.')+
     '<form id="form-tarefa-cliente" data-cliente="'+escapeHtmlCampanha(nome)+'" class="form-row">'+
     '<div style="flex:2;min-width:200px;"><label>O que fazer</label><input type="text" name="titulo" placeholder="Ex: ligar confirmando se recebeu tudo certo" required></div>'+
     '<div><label>Pra quando</label><input type="date" name="dataPrevista" value="'+hoje+'" required></div>'+
@@ -9253,17 +9360,20 @@ function fiadoListaHtml(filtro){
         '<td class="cel-acoes">'+acoes+'</td></tr>';
     }).join('')+'</tbody></table></div>';
 }
-// Por enquanto, só a Carga de Gás P13 pode virar nota fiscal de verdade — outros itens que
-// tenham sido marcados como "Nota fiscal" por engano (P5, P20, P45, água, outros produtos)
-// não entram nem nas pendências nem no relatório de Notas para o Bling, até isso mudar.
-const CATEGORIA_ELEGIVEL_NOTA_FISCAL = 'Carga de Gás P13';
+// Só itens de gás (qualquer carga ou vasilhame de gás — P5, P13, P20, P45, Gás do Povo) entram nas
+// pendências de Nota Fiscal do Bling. Água e outros produtos, mesmo marcados "Nota fiscal" por
+// engano, ficam de fora — assim como itens de gás que não sejam "Nota fiscal" (Cupom, Já lançado etc).
+function ehItemGas(categoria){
+  const info = CATEGORIAS_ESTOQUE[categoria];
+  return !!(info && info.grupo==='gas');
+}
 function elegivelComoNotaFiscal(v){
-  return v.nota!=='Nota fiscal' || v.categoria===CATEGORIA_ELEGIVEL_NOTA_FISCAL;
+  return v.nota!=='Nota fiscal' || ehItemGas(v.categoria);
 }
 function pendenciasNotaFiscalPorDia(){
   const porDia = {};
   (state.vendas||[]).forEach(v=>{
-    if(v.nota==='Nota fiscal' && v.categoria===CATEGORIA_ELEGIVEL_NOTA_FISCAL) porDia[v.data] = (porDia[v.data]||0) + (v.quantidade||0);
+    if(v.nota==='Nota fiscal' && ehItemGas(v.categoria)) porDia[v.data] = (porDia[v.data]||0) + (v.quantidade||0);
   });
   const baixasPorDia = {};
   (state.blingBaixas||[]).forEach(b=>{ baixasPorDia[b.data] = (baixasPorDia[b.data]||0) + (b.quantidade||0); });
@@ -9275,18 +9385,18 @@ function pendenciasNotaFiscalPorDia(){
 }
 function htmlPendenciasNotaFiscal(){
   const pendencias = pendenciasNotaFiscalPorDia();
-  if(pendencias.length===0) return '<div class="card"><h2>📋 Pendências de Nota Fiscal por dia (Carga de Gás P13)</h2><div class="empty">Nenhuma pendência — tudo lançado no Bling.</div></div>';
+  if(pendencias.length===0) return '<div class="card"><h2>📋 Pendências de Nota Fiscal por dia (itens de gás)</h2><div class="empty">Nenhuma pendência — tudo lançado no Bling.</div></div>';
   const totalGeral = pendencias.reduce((s,p)=>s+p.pendente,0);
-  return '<div class="card"><h2>📋 Pendências de Nota Fiscal por dia (Carga de Gás P13) <span class="pill">'+fmtNumBR(totalGeral)+' un. no total</span></h2>'+
-    '<div class="hint">Por enquanto, só a Carga de Gás P13 pode virar nota fiscal — só entra aqui o que foi vendido desse item com nota "Nota fiscal", um dia de cada vez, acumulando até você lançar no Bling e dar baixa aqui.</div>'+
+  return '<div class="card"><h2>📋 Pendências de Nota Fiscal por dia (itens de gás) <span class="pill">'+fmtNumBR(totalGeral)+' un. no total</span></h2>'+
+    '<div class="hint">Um dia de calendário por linha: mostra quanto de gás (qualquer carga ou vasilhame) foi vendido com nota "Nota fiscal" naquele dia e ainda não foi lançado no Bling. Vai acumulando dia após dia até você lançar no Bling e dar baixa aqui manualmente.</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Dia</th><th>Vendido</th><th>Já baixado</th><th>Pendente</th><th></th></tr></thead><tbody>'+
     pendencias.map(p=>'<tr><td>'+fmtDate(p.data)+'</td><td>'+fmtNumBR(p.total)+'</td><td>'+fmtNumBR(p.baixado)+'</td><td><strong>'+fmtNumBR(p.pendente)+'</strong></td>'+
-    '<td><input type="number" class="input-baixa-bling" data-data-baixa="'+p.data+'" min="0" step="0.01" value="'+p.pendente+'" style="width:80px;"> <button type="button" class="btn small" data-dar-baixa-bling="'+p.data+'">✔ Dar baixa</button></td></tr>').join('')+
+    '<td><input type="number" class="input-baixa-bling" data-data-baixa="'+p.data+'" min="0" step="0.01" value="'+p.pendente+'" style="width:80px;"> <button type="button" class="btn small" data-dar-baixa-bling="'+p.data+'">✔ Já dei baixa</button></td></tr>').join('')+
     '</tbody></table></div></div>';
 }
 function relatorioNotas(){
   return htmlPendenciasNotaFiscal()+
-    '<h3>Filtrar</h3><div class="hint" style="margin-bottom:6px;">Por enquanto só a Carga de Gás P13 pode virar nota fiscal — o filtro "Nota fiscal" abaixo só traz esse item; os outros tipos de nota (Cupom não fiscal, Já lançado, Não lança) continuam mostrando todos os produtos normalmente.</div><div class="form-row">'+
+    '<h3>Filtrar</h3><div class="hint" style="margin-bottom:6px;">O filtro "Nota fiscal" abaixo só traz itens de gás (qualquer carga ou vasilhame); os outros tipos de nota (Cupom não fiscal, Já lançado, Não lança) continuam mostrando todos os produtos normalmente.</div><div class="form-row">'+
     '<div><label>De</label><input type="date" id="rn-de" value="'+todayStr()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rn-ate" value="'+todayStr()+'"></div>'+
     '<div><label>Tipo de nota</label><select id="rn-tipo"><option value="">Todas</option>'+NOTAS.map(n=>'<option>'+n+'</option>').join('')+'</select></div></div>'+
@@ -9824,11 +9934,22 @@ function renderRelatorioDespesasResultado(){
   const de = document.getElementById('rd-de').value, ate = document.getElementById('rd-ate').value;
   const filtradas = state.despesas.filter(d=> d.data>=de && d.data<=ate);
   const total = filtradas.reduce((s,d)=>s+d.valor,0);
+  // Quanto saiu de cada conta — o que interessa pra montar o pró-labore é a soma das 3 contas
+  // pessoais (Suh, Fernando, Paulo), já que isso é dinheiro que cada um adiantou/gastou por conta própria.
+  const porConta = {};
+  filtradas.forEach(d=>{ const c=d.conta||'Não informado'; porConta[c]=(porConta[c]||0)+d.valor; });
+  const totalPessoal = CONTAS_DESPESA_PESSOAIS.reduce((s,c)=>s+(porConta[c]||0),0);
+  const linhasConta = CONTAS_DESPESA.map(c=>'<tr><td>'+c+'</td><td>'+fmtMoney(porConta[c]||0)+'</td></tr>').join('') +
+    (porConta['Não informado'] ? '<tr><td>Não informado</td><td>'+fmtMoney(porConta['Não informado'])+'</td></tr>' : '');
+  const cardContas = '<div class="card" style="margin:12px 0;"><h3>💼 Gasto por conta (pró-labore)</h3>'+
+    '<div class="metric neg" style="max-width:260px;margin-bottom:10px;"><div class="label">Total em contas pessoais no período</div><div class="value">'+fmtMoney(totalPessoal)+'</div></div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Conta</th><th>Valor</th></tr></thead><tbody>'+linhasConta+'</tbody></table></div></div>';
   document.getElementById('rd-resultado').innerHTML =
     '<div class="metric neg" style="max-width:260px;margin-bottom:12px;"><div class="label">Total no período</div><div class="value">'+fmtMoney(total)+'</div></div>'+
+    cardContas+
     (filtradas.length===0?'<div class="empty">Nenhuma despesa encontrada.</div>':
-    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody>'+
-    filtradas.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>'<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+iconeCategoriaDespesaHtml(d.categoria)+d.categoria+'</td><td>'+fmtMoney(d.valor)+'</td></tr>').join('')+
+    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Conta</th><th>Valor</th></tr></thead><tbody>'+
+    filtradas.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>'<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+iconeCategoriaDespesaHtml(d.categoria)+d.categoria+'</td><td>'+(d.conta||'—')+'</td><td>'+fmtMoney(d.valor)+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function corNota(tipo){
@@ -9843,8 +9964,8 @@ function corNota(tipo){
 function renderRelatorioNotasResultado(){
   const de = document.getElementById('rn-de').value, ate = document.getElementById('rn-ate').value;
   const tipo = document.getElementById('rn-tipo').value;
-  // Por enquanto só a Carga de Gás P13 pode virar nota fiscal — outros itens marcados como
-  // "Nota fiscal" por engano ficam de fora daqui (não entram na conta nem no agrupamento
+  // Só itens de gás marcados "Nota fiscal" entram aqui — outros produtos marcados como
+  // "Nota fiscal" por engano ficam de fora (não entram na conta nem no agrupamento
   // abaixo), pra não misturar com o que pode ser lançado de verdade no Bling como nota fiscal.
   const filtradas = state.vendas.filter(v=> v.data>=de && v.data<=ate && (!tipo || v.nota===tipo) && elegivelComoNotaFiscal(v));
   const total = filtradas.reduce((s,v)=>s+v.valor_total,0);
@@ -11301,10 +11422,10 @@ function attachHandlers(){
     const _contasPagarAntesSalvarManual = JSON.parse(JSON.stringify(state.contasPagar));
     if(editDespesaId){
       const d = state.despesas.find(x=>x.id===editDespesaId);
-      if(d){ d.data=f.get('data'); d.categoria=f.get('categoria'); d.valor=valorLancado; d.descricao=f.get('descricao'); d.veiculoId=veiculoId; }
+      if(d){ d.data=f.get('data'); d.categoria=f.get('categoria'); d.valor=valorLancado; d.descricao=f.get('descricao'); d.veiculoId=veiculoId; d.conta=f.get('conta')||undefined; }
       editDespesaId = null;
     } else {
-      const novaDespesa = {id:uid(), criadoEm:Date.now(), data:f.get('data'), categoria:f.get('categoria'), valor:valorLancado, descricao:f.get('descricao'), veiculoId};
+      const novaDespesa = {id:uid(), criadoEm:Date.now(), data:f.get('data'), categoria:f.get('categoria'), valor:valorLancado, descricao:f.get('descricao'), veiculoId, conta:f.get('conta')||undefined};
       // Tenta casar com uma conta a pagar pendente (mesmo com nome digitado diferente/errado)
       const pendentes = (state.contasPagar||[]).filter(c=>c.status==='pendente');
       let melhor=null, melhorScore=0;
@@ -11887,6 +12008,7 @@ function attachHandlers(){
       const wrapVeicEdit = document.getElementById('wrap-veiculo-despesa');
       if(wrapVeicEdit) wrapVeicEdit.style.display = categoriaParaceVeiculo(d.categoria) ? 'block' : 'none';
       if(fdEl.veiculoId) fdEl.veiculoId.value = d.veiculoId || '';
+      if(fdEl.conta) fdEl.conta.value = d.conta || '';
       fdEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       fdEl.scrollIntoView({behavior:'smooth'});
     });
@@ -15319,9 +15441,11 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         const valor = parseNumeroPlanilha(r['Valor'])||0;
         if(!valor || valor<=0){ ignoradas++; return; }
         const categoriaTxt = (r['Categoria']||'').trim();
-        const categoriaExistente = state.categoriasDespesas.find(c=>chaveNormalizada(c)===chaveNormalizada(categoriaTxt));
+        const categoriaExata = state.categoriasDespesas.find(c=>chaveNormalizada(c)===chaveNormalizada(categoriaTxt));
+        const sugestaoCategoria = categoriaTxt && !categoriaExata ? sugerirCategoriaDespesaSimilar(categoriaTxt) : null;
+        const categoriaExistente = categoriaExata || (sugestaoCategoria && sugestaoCategoria.score>=0.72 ? sugestaoCategoria.categoria : null);
         const categoria = categoriaExistente || categoriaTxt || state.categoriasDespesas[0];
-        if(categoriaTxt && !categoriaExistente && !state.categoriasDespesas.includes(categoria)){state.categoriasDespesas.push(categoria);adicionarPendenciaConferencia('despesa','categoria',categoriaTxt,'Categoria não encontrada exatamente no cadastro; confira.');}
+        if(categoriaTxt && !categoriaExistente && !state.categoriasDespesas.includes(categoria)){state.categoriasDespesas.push(categoria);adicionarPendenciaConferencia('despesa','categoria',categoriaTxt,'Categoria não encontrada no cadastro (nem parecida o bastante); confira.');}
         const data = r['Data'] ? normalizarDataImportada(r['Data'], hoje) : hoje;
         const descricao = (r['Descrição']||'').trim();
         const veiculoTxt = (r['Veículo']||'').trim();
@@ -15845,9 +15969,24 @@ function similaridadeTexto(a,b){
   const x=chaveNormalizada(a), y=chaveNormalizada(b);
   if(!x||!y) return 0;
   if(x===y) return 1;
+  // Um nome contido dentro do outro (ex: "João" dentro de "João Silva") é quase sempre a mesma
+  // pessoa/produto digitado de forma abreviada — sem isso, a diferença de tamanho derrubava
+  // injustamente a nota e o sistema achava que era algo novo.
+  if(x.includes(y) || y.includes(x)){
+    const minLen = Math.min(x.length,y.length), maxLen = Math.max(x.length,y.length);
+    return 0.7 + 0.3*(minLen/maxLen);
+  }
   const maxLen = Math.max(x.length,y.length);
   if(maxLen===0) return 1;
   return 1 - (distanciaLevenshtein(x,y)/maxLen);
+}
+function sugerirCategoriaDespesaSimilar(texto){
+  let melhor=null, melhorScore=0;
+  (state.categoriasDespesas||[]).forEach(cat=>{
+    const score = similaridadeTexto(texto, cat);
+    if(score>melhorScore){ melhorScore=score; melhor=cat; }
+  });
+  return {categoria:melhor, score:melhorScore};
 }
 function sugerirCategoriaSimilar(texto){
   let melhor=null, melhorScore=0;
@@ -16302,9 +16441,11 @@ function renderCsvDespesasMapping(){
       const valor = Number(String(valorTxt||'0').replace(/\./g,'').replace(',','.'))||0;
       if(!valor || valor<=0){ ignoradas++; return; }
       const categoriaTxt = colCategoria && r[colCategoria] ? r[colCategoria].trim() : '';
-      const categoriaExistente = state.categoriasDespesas.find(c=>chaveNormalizada(c)===chaveNormalizada(categoriaTxt));
+      const categoriaExata = state.categoriasDespesas.find(c=>chaveNormalizada(c)===chaveNormalizada(categoriaTxt));
+      const sugestaoCategoria = categoriaTxt && !categoriaExata ? sugerirCategoriaDespesaSimilar(categoriaTxt) : null;
+      const categoriaExistente = categoriaExata || (sugestaoCategoria && sugestaoCategoria.score>=0.72 ? sugestaoCategoria.categoria : null);
       const categoria = categoriaExistente || categoriaTxt || categoriaBase;
-      if(categoriaTxt && !categoriaExistente && !state.categoriasDespesas.includes(categoria)){state.categoriasDespesas.push(categoria);adicionarPendenciaConferencia('despesa','categoria',categoriaTxt,'Categoria não encontrada exatamente no cadastro; confira.');}
+      if(categoriaTxt && !categoriaExistente && !state.categoriasDespesas.includes(categoria)){state.categoriasDespesas.push(categoria);adicionarPendenciaConferencia('despesa','categoria',categoriaTxt,'Categoria não encontrada no cadastro (nem parecida o bastante); confira.');}
       const data = colData && r[colData] ? normalizarDataImportada(r[colData], dataBase) : dataBase;
       const descricao = colDescricao ? (r[colDescricao]||'').trim() : '';
       const veiculoTxt = colVeiculo && r[colVeiculo] ? r[colVeiculo].trim() : '';
@@ -16518,6 +16659,7 @@ async function afterLogin(){
   initWhatsFab();
   initRotaFab();
   initCalculadora();
+  initSimuladorVenda();
   initFiadoFab();
   initRecados();
   rodarBackupAutomaticoSeNecessario();
