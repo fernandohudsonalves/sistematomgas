@@ -189,6 +189,11 @@ details.card .pill{font-size:11px;font-weight:600;}
 label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin:10px 0 4px;}
 .req{color:var(--danger);font-weight:700;}
 input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--card);color:var(--text);font-family:inherit;}
+/* Checkbox/radio soltos (fora de .checkbox-item) herdavam o width:100% acima e esticavam até
+   a largura toda do label — com o gap isso empurrava o texto pra bem longe do quadradinho,
+   como aconteceu em "Vale pendente" e "Só entrega, sem produto". Aqui eles voltam ao tamanho
+   natural e não crescem/encolhem dentro do flex, então ficam grudados no texto ao lado. */
+input[type="checkbox"],input[type="radio"]{width:auto;flex-shrink:0;}
 input.flatpickr-alt-input{width:100%;}
 .flatpickr-calendar{background:var(--card);color:var(--text);box-shadow:0 4px 16px rgba(0,0,0,.25);border:1px solid var(--border);}
 .flatpickr-calendar.arrowTop:before,.flatpickr-calendar.arrowTop:after{border-bottom-color:var(--card);}
@@ -231,15 +236,19 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 /* Grid em vez de flex: cada linha da busca fecha em colunas do mesmo tamanho, então quando
    quebra em telas estreitas os campos continuam alinhados certinho (com flex ficava torto,
    porque as larguras eram todas diferentes e não fechavam a linha de forma pareada). */
-.filtro-vendas-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px 12px;align-items:end;}
-.filtro-vendas-row>div{min-width:0;}
-.filtro-vendas-row input,.filtro-vendas-row select,.filtro-vendas-row summary{box-sizing:border-box;width:100%;height:34px;}
+.filtro-vendas-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px 14px;align-items:end;}
+.filtro-vendas-row>div{min-width:0;display:flex;flex-direction:column;justify-content:flex-end;}
+.filtro-vendas-row label{display:block;margin-bottom:5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.filtro-vendas-row input,.filtro-vendas-row select,.filtro-vendas-row summary{box-sizing:border-box;width:100%;height:auto;min-height:40px;padding:9px 10px;line-height:1.3;font-size:14px;}
+.filtro-vendas-row select{padding-right:26px;}
 .filtro-vendas-row .filtro-vendas-busca{grid-column:span 2;}
 .filtro-vendas-row .filtro-vendas-limpar{display:flex;align-items:flex-end;justify-content:flex-start;}
+.filtro-vendas-row .filtro-vendas-limpar .btn{min-height:40px;}
 .filtro-coluna{position:relative;}
 .filtro-coluna summary{list-style:none;cursor:pointer;border:1px solid var(--border,#ccc);border-radius:6px;padding:6px 10px;font-size:12.5px;display:flex;align-items:center;background:var(--card,#fff);color:var(--text,#222);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .filtro-coluna summary::-webkit-details-marker{display:none;}
 .filtro-coluna summary::after{content:'▾';margin-left:auto;padding-left:6px;}
+.filtro-vendas-row .filtro-coluna summary{padding:9px 10px;font-size:14px;min-height:40px;border-radius:8px;}
 .filtro-coluna-lista{position:absolute;z-index:20;top:100%;left:0;margin-top:4px;background:var(--card,#fff);color:var(--text,#222);border:1px solid var(--border,#ccc);border-radius:6px;padding:8px;max-height:220px;overflow-y:auto;min-width:200px;box-shadow:0 4px 10px rgba(0,0,0,.12);}
 .filtro-coluna-lista label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:normal;padding:3px 0;white-space:nowrap;color:var(--text,#222);}
 .filtro-coluna-lista .filtro-coluna-acoes{display:flex;gap:8px;margin-bottom:6px;border-bottom:1px solid var(--border,#eee);padding-bottom:6px;}
@@ -264,6 +273,7 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
    tanto pra baixo (dentro do próprio quadro, com altura limitada) quanto pro lado. */
 #lista-vendas-wrap .table-wrap.tabela-vendas{max-height:65vh;overflow-y:auto;}
 .tabela-vendas thead th{position:sticky;top:0;background:var(--card);z-index:2;box-shadow:0 2px 0 var(--border);color:#00338D;font-weight:800;padding-top:10px;padding-bottom:14px;}
+.tabela-vendas tbody tr:nth-child(even){background:rgba(128,128,128,.15);}
 /* Vendas de hoje: ainda mais compacta que o histórico, pra caber tudo na tela sem
    precisar rolar (nem pro lado, nem pra baixo) — geralmente é uma lista curta do dia. */
 .tabela-vendas-compacta th,.tabela-vendas-compacta td{font-size:9.5px;padding:2px 3px;line-height:1.25;}
@@ -594,6 +604,10 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 #new-ag-fab{position:fixed;right:18px;bottom:88px;z-index:500;width:56px;height:56px;border-radius:50%;background:#39FF14;border:none;box-shadow:0 6px 18px rgba(57,255,20,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:30px;font-weight:800;color:#0a2b0a;line-height:1;}
 #new-ag-fab:hover{transform:scale(1.06);}
 #new-ag-fab:active{transform:scale(.96);}
+#toast-salvo-wrap{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;}
+.toast-salvo{background:var(--green,#16A34A);color:#fff;font-weight:700;font-size:13px;padding:9px 16px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.25);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;white-space:nowrap;}
+.toast-salvo.show{opacity:1;transform:translateY(0);}
+@media (max-width:640px){#toast-salvo-wrap{bottom:64px;}.toast-salvo{font-size:12px;padding:8px 14px;}}
 </style>
 <script>
 (function(){
@@ -2018,7 +2032,35 @@ function valorTotalCompradoCliente(nome){
   return state.vendas.filter(v=>v.cliente===nome).reduce((s,v)=>s+(v.valor_total||0),0);
 }
 function saldoComodatoCliente(nome){
-  return state.comodatos.filter(c=>c.cliente===nome).reduce((s,c)=>s+(c.quantidade||0),0);
+  // Os lançamentos de comodato guardam o nome em .nome (e não .cliente) e podem ser de cliente ou
+  // de atacadista — por isso o filtro é por direcao + nome normalizado (apelido/acentos/caixa).
+  const chave = chaveNormalizada(nome||'');
+  if(!chave) return 0;
+  return state.comodatos
+    .filter(c=>c.direcao==='cliente' && chaveNormalizada(c.nome||c.cliente||'')===chave)
+    .reduce((s,c)=>s+(c.quantidade||0),0);
+}
+/* Quebra o que o cliente deve por item (P13, Água D'Fonte etc.), pra mostrar no aviso/flag. */
+function detalheComodatoCliente(nome){
+  const chave = chaveNormalizada(nome||'');
+  if(!chave) return [];
+  const mapa = {};
+  state.comodatos.filter(c=>c.direcao==='cliente' && chaveNormalizada(c.nome||c.cliente||'')===chave).forEach(c=>{
+    const k = (c.categoria||'')+'|'+(c.item||'')+'|'+(c.produto||'');
+    if(!mapa[k]) mapa[k] = {label:(c.categoria||'')+' '+itemComodatoLabel(c.categoria,c.item)+' — '+(c.produto||'item'), saldo:0};
+    mapa[k].saldo += (c.quantidade||0);
+  });
+  return Object.values(mapa).filter(x=>x.saldo>0);
+}
+function textoComodatoCliente(nome){
+  return detalheComodatoCliente(nome).map(d=>d.saldo+'x '+d.label).join(' · ');
+}
+/* Etiqueta de aviso usada na lista de clientes, no CRM e no lançamento de venda. Vale pra
+   qualquer comodato em aberto — inclusive os lançados à mão/retroativos, não só os automáticos. */
+function flagComodatoClienteHtml(nome){
+  const n = saldoComodatoCliente(nome);
+  if(n<=0) return '';
+  return '<span class="pill" title="'+escapeHtmlCampanha('Ainda não devolveu: '+textoComodatoCliente(nome))+'" style="background:var(--amber-tint,#FEF3C7);color:var(--amber,#B45309);">🛢️ deve '+n+' vasilhame'+(n>1?'s':'')+'</span>';
 }
 const PUBLICO_TIPOS=[
   {v:'grupo',label:'Grupo(s) / lote(s)',desc:'Clientes marcados no(s) grupo(s) escolhidos abaixo.'},
@@ -3056,7 +3098,53 @@ function atualizarHintDivisaoPagamento(){
   if(restante<=0.004){ hint.textContent = 'Cobre o valor total ('+fmtMoney(totalVenda)+') — nada mais a pagar.'; return; }
   hint.textContent = 'Restante de '+fmtMoney(restante)+(forma2 ? (' vai para "'+(forma2==='Marcou/Fiado'?'Fiado (a receber)':forma2)+'"') : ' — selecione a forma de pagamento do restante.');
 }
+/* Aviso de pendência de casco/vasilhame do cliente escolhido na venda (vale pra comodato
+   automático da venda e pros lançados à mão/retroativos — sai tudo da mesma conta). */
+function atualizarAvisoComodatoVenda(){
+  const bloco = document.getElementById('bloco-casco-venda');
+  const fvEl = document.getElementById('form-venda');
+  if(!bloco || !fvEl) return;
+  let box = document.getElementById('aviso-comodato-cliente-venda');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'aviso-comodato-cliente-venda';
+    box.style.marginTop = '8px';
+    bloco.appendChild(box);
+  }
+  const nomeCliente = fvEl.cliente ? fvEl.cliente.value.trim() : '';
+  const saldo = nomeCliente ? saldoComodatoCliente(nomeCliente) : 0;
+  box.innerHTML = saldo>0
+    ? '<div style="font-weight:700;">⚠️ '+escapeHtmlCampanha(nomeCliente)+' já está devendo '+saldo+' vasilhame(s): '+escapeHtmlCampanha(textoComodatoCliente(nomeCliente))+'</div>'
+    : '';
+}
+/* Monta uma linha por item de carga (Gás/Água) que está no carrinho, pra dizer quantos cascos
+   ficaram com o cliente em cada um — por padrão vem a quantidade toda do item. */
+function montarCascoPendenteItens(){
+  const wrap = document.getElementById('casco-pendente-itens');
+  const chk = document.getElementById('chk-casco-pendente');
+  if(!wrap || !chk) return;
+  if(!chk.checked){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+  const linhas = [];
+  todasLinhasItemVenda().forEach((row, i)=>{
+    const catEl = row.classList.contains('iv-item-principal') ? document.getElementById('sel-categoria') : row.querySelector('.iv-categoria');
+    const qtdEl = row.querySelector('[name="quantidade"]') || row.querySelector('.iv-quantidade');
+    const cat = catEl ? catEl.value : '';
+    const info = CATEGORIAS_ESTOQUE[cat];
+    if(!cat || !info || info.tipo!=='carga') return;
+    const qtd = Number(qtdEl ? qtdEl.value : 0)||0;
+    if(qtd<=0) return;
+    linhas.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">'+
+      '<span style="min-width:190px;">'+escapeHtmlCampanha(cat)+' ('+qtd+' na venda)</span>'+
+      '<input type="number" min="0" step="1" max="'+qtd+'" value="'+qtd+'" data-casco-cat="'+escapeHtmlCampanha(cat)+'" style="width:90px;">'+
+      '<span class="hint" style="margin:0;">casco(s) que ficaram com o cliente</span></div>');
+  });
+  wrap.style.display='block';
+  wrap.innerHTML = linhas.length
+    ? linhas.join('')
+    : '<div class="hint" style="margin:0;">Nenhum item de carga de Gás/Água no carrinho — não há casco pra ficar pendente.</div>';
+}
 function atualizarBoxCreditoVenda(){
+  atualizarAvisoComodatoVenda();
   const box = document.getElementById('credito-cliente-box');
   const fvEl = document.getElementById('form-venda');
   if(!box || !fvEl) return;
@@ -3799,6 +3887,20 @@ async function loadAll(){
     }
   }
 }
+let toastSalvoTimer = null;
+// Aviso pequeno e discreto (some sozinho) que aparece toda vez que o save() salva de verdade no
+// Supabase — vale pra qualquer tela do sistema, sem precisar de alert() bloqueando a tela. Se várias
+// chaves forem salvas em sequência pela mesma ação (ex.: vendas + estoque), só atualiza o mesmo
+// avisinho em vez de empilhar vários.
+function mostrarToastSalvo(){
+  let wrap = document.getElementById('toast-salvo-wrap');
+  if(!wrap){ wrap = document.createElement('div'); wrap.id = 'toast-salvo-wrap'; document.body.appendChild(wrap); }
+  let el = wrap.querySelector('.toast-salvo');
+  if(!el){ el = document.createElement('div'); el.className = 'toast-salvo'; el.textContent = '✅ Salvo'; wrap.appendChild(el); }
+  requestAnimationFrame(()=> el.classList.add('show'));
+  clearTimeout(toastSalvoTimer);
+  toastSalvoTimer = setTimeout(()=>{ el.classList.remove('show'); }, 1600);
+}
 async function save(key){
   try{
     const { data, error } = await supabaseClient.from('app_data')
@@ -3810,7 +3912,7 @@ async function save(key){
       alert('Os dados não foram salvos no Supabase. Confira se a tabela app_data tem a política de UPDATE para usuários autenticados, além da de INSERT.');
       return false;
     }
-    if(key!=='logAtividades') registrarLogAtividade(key);
+    if(key!=='logAtividades'){ registrarLogAtividade(key); mostrarToastSalvo(); }
     return true;
   }catch(e){ console.error('Erro ao salvar', key, e); alert('Não foi possível salvar no Supabase: '+(e.message||e)); return false; }
 }
@@ -5873,6 +5975,12 @@ async function salvarPlanilhaVendas(){
   });
   let totalVendasCriadas = 0;
   const avisosEntregador = [];
+  // Guarda o que foi criado nesta chamada pra poder desfazer tudo na tela caso o save() no
+  // Supabase falhe no fim (ver checagem depois do loop) — sem isso, uma falha de salvar deixava
+  // a tela mostrando vendas que na verdade nunca foram gravadas no banco (sumiam no dia seguinte).
+  const todosIdsCriados = [];
+  const estoqueParaReverterSeFalhar = [];
+  const fiadosIdsCriados = [];
   for(const grupo of grupos){
     const grupoId = uid();
     const primeiro = grupo.itens[0];
@@ -5891,9 +5999,10 @@ async function salvarPlanilhaVendas(){
         categoria: l.categoria, produto, quantidade: l.qtd, valor_unit: l.valorUnit, valor_total: Math.round(l.qtd*l.valorUnit*100)/100, nota: l.nota,
         vale_pendente: (l.pagamento==='Gás do povo' && l.valePendente), entregadorId: l.entregadorId||''
       };
-      if(!pendenteRetirada){ ajustaEstoquePorVenda(l.categoria, l.qtd, false); venda.estoqueBaixado = true; }
+      if(!pendenteRetirada){ ajustaEstoquePorVenda(l.categoria, l.qtd, false); venda.estoqueBaixado = true; estoqueParaReverterSeFalhar.push({categoria:l.categoria, qtd:l.qtd}); }
       state.vendas.push(venda);
       idsCriados.push(id);
+      todosIdsCriados.push(id);
       totalVendasCriadas++;
     }
     // Dividir pagamento — só considera o que foi preenchido na 1ª linha do grupo, vale pra venda toda.
@@ -5910,6 +6019,7 @@ async function salvarPlanilhaVendas(){
         const novoFiado = {id:uid(), cliente:clienteResolvido, valor:restante, data:primeiro.data,
           descricao:'Restante da venda de '+fmtMoney(totalGrupo)+' (parte paga com '+primeiro.pagamento+')', status:'aberto'};
         state.fiados.push(novoFiado);
+        fiadosIdsCriados.push(novoFiado.id);
         if(vendasDoGrupo[0]) vendasDoGrupo[0].pagamentoSplit.fiadoId = novoFiado.id;
         await save('fiados');
         verificarLimiteCreditoCliente(clienteResolvido);
@@ -5930,7 +6040,20 @@ async function salvarPlanilhaVendas(){
       });
     }
   }
-  await save('vendas'); await save('estoque');
+  const okVendasSalvas = await save('vendas');
+  const okEstoqueSalvo = await save('estoque');
+  if(!okVendasSalvas || !okEstoqueSalvo){
+    // O save() no Supabase falhou (sessão expirada, RLS ou internet) — desfaz na tela tudo que foi
+    // criado nesta chamada, pra tela e banco não ficarem diferentes. Sem isso o usuário via "lançado
+    // com sucesso", a venda somia da tela só no dia seguinte (quando o sistema recarrega do banco),
+    // dando a falsa impressão de que "sumiu sozinha".
+    state.vendas = state.vendas.filter(v=>!todosIdsCriados.includes(v.id));
+    state.fiados = state.fiados.filter(f=>!fiadosIdsCriados.includes(f.id));
+    estoqueParaReverterSeFalhar.forEach(e=>ajustaEstoquePorVenda(e.categoria, e.qtd, true));
+    renderAll();
+    alert('⚠️ NÃO SALVOU! As vendas foram calculadas aqui na tela, mas não foram gravadas no banco de dados (Supabase) — por segurança, desfiz o lançamento na tela também, então nada ficou pela metade. Confira sua internet (ou se sua sessão não expirou — tente sair e entrar de novo) e clique em "Salvar todas as linhas" outra vez.');
+    return;
+  }
   alert(totalVendasCriadas+' item(ns) lançado(s) em '+grupos.length+' venda(s)!');
   avisosEntregador.forEach(dados=>enviarWhatsAppEntregador(dados));
   renderAll();
@@ -5994,11 +6117,31 @@ function viewVendas(){
   const cardVendasSeparadas = clientesSeparados.length===0 ? '' :
     '<div class="card" style="border:1px solid var(--amber);">'+
     '<strong style="color:var(--amber);">⚠ '+clientesSeparados.length+' cliente(s) com venda separada em mais de uma "venda" no mesmo dia</strong>'+
-    '<div class="hint" style="margin-top:4px;">Mesmo cliente e mesma data, mas os produtos ficaram em carrinhos (vendas) diferentes — normalmente porque a planilha do dia não marcou "Repete a venda da linha de cima?" nem preencheu "Nº da Venda" pra essas linhas. Isso infla a contagem de "vendas do dia" (cada produto conta como uma venda em vez de todos juntos contarem como uma só). Reveja cada caso antes de juntar — só junte se for realmente a mesma visita/compra; se o cliente comprou duas vezes de verdade no mesmo dia, deixe separado e clique em "Já resolvi" pra esse caso sumir da lista sem mexer nas vendas.</div>'+
-    '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Data</th><th>Cliente</th><th>Linhas</th><th>Virou quantas vendas</th><th></th></tr></thead><tbody>'+
-    clientesSeparados.map((c,i)=>'<tr><td>'+fmtDate(c.data)+'</td><td>'+c.cliente+'</td><td>'+c.qtdLinhas+'</td><td>'+c.qtdGrupos+'</td>'+
-      '<td><button type="button" class="btn small ghost" data-juntar-vendas-cliente="'+i+'">🔗 Juntar em 1 venda</button> <button type="button" class="btn small ghost" data-ignorar-vendas-cliente="'+i+'">✔ Já resolvi</button></td></tr>').join('')+
-    '</tbody></table></div></div>';
+    '<div class="hint" style="margin-top:4px;">Mesmo cliente e mesma data, mas os produtos ficaram em carrinhos (vendas) diferentes — normalmente porque a planilha do dia não marcou "Repete a venda da linha de cima?" nem preencheu "Nº da Venda" pra essas linhas. Confira as linhas de cada carrinho abaixo antes de decidir: se for mesma visita/compra, junte; se o cliente comprou duas vezes de verdade no mesmo dia, mantenha separado.</div>'+
+    clientesSeparados.map((c,i)=>{
+      const gruposMap = new Map();
+      c.vendas.forEach(v=>{ const gid = v.grupoId||v.id; if(!gruposMap.has(gid)) gruposMap.set(gid, []); gruposMap.get(gid).push(v); });
+      const gruposArr = Array.from(gruposMap.values()).sort((a,b)=>(a[0].criadoEm||0)-(b[0].criadoEm||0));
+      const blocosHtml = gruposArr.map((itensGrupo, gi)=>{
+        const hora = itensGrupo[0].criadoEm ? new Date(itensGrupo[0].criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+        const totalGrupo = itensGrupo.reduce((s,v)=>s+(v.valor_total||0),0);
+        return '<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:8px;">'+
+          '<div style="font-size:12.5px;font-weight:700;color:var(--text2);">Carrinho '+(gi+1)+' — lançado às '+hora+' — total '+fmtMoney(totalGrupo)+'</div>'+
+          '<table style="margin-top:4px;"><thead><tr><th>Produto</th><th>Qtd</th><th>Valor</th><th>Pagamento</th></tr></thead><tbody>'+
+          itensGrupo.map(v=>'<tr><td>'+(v.produto||v.categoria||'—')+'</td><td>'+v.quantidade+'</td><td>'+fmtMoney(v.valor_total)+'</td><td>'+(v.pagamento||'—')+'</td></tr>').join('')+
+          '</tbody></table></div>';
+      }).join('');
+      return '<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:12px;">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'+
+        '<div><strong>'+c.cliente+'</strong> <span class="hint">'+fmtDate(c.data)+' — virou '+c.qtdGrupos+' vendas</span></div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+        '<button type="button" class="btn small ghost" data-juntar-vendas-cliente="'+i+'">🔗 Juntar em 1 venda</button>'+
+        '<button type="button" class="btn small ghost" data-ignorar-vendas-cliente="'+i+'" title="Fica exatamente como está, sem juntar nem apagar nada — só some desse aviso">✔ Manter separado (são compras diferentes)</button>'+
+        '</div></div>'+
+        blocosHtml+
+        '</div>';
+    }).join('')+
+    '</div>';
 
   const pendenciasNFDash = pendenciasNotaFiscalPorDia();
   const totalPendenteNF = pendenciasNFDash.reduce((s,p)=>s+p.pendente,0);
@@ -6048,6 +6191,11 @@ function viewVendas(){
     '<button type="button" class="btn small ghost" id="btn-add-item-venda">+ Incluir item de outra categoria</button>'+
     '</div>'+
     '<div id="carrinho-total" class="carrinho-total-badge">Total do carrinho: R$ 0,00</div>'+
+    '</div>'+
+    '<div id="bloco-casco-venda" class="item-venda-row" style="margin-top:12px;background:var(--amber-tint,#FEF3C7);border-color:var(--amber,#B45309);">'+
+    '<label class="checkbox-item"><input type="checkbox" id="chk-casco-pendente"> 🛢️ O cliente ficou com o casco/vasilhame (falta devolver)</label>'+
+    '<div class="hint">Marque quando a carga saiu mas o vasilhame vazio não voltou. Ao salvar, o sistema lança sozinho o casco no comodato do cliente (somando na conta se ele já devia algum), marca o aviso de pendência no cadastro dele e não conta esse vazio no estoque.</div>'+
+    '<div id="casco-pendente-itens" style="display:none;margin-top:8px;"></div>'+
     '</div>'+
     '<h3 style="margin-top:20px;padding-top:14px;border-top:2px dashed var(--border);">💳 Pagamento e entrega <span class="hint" style="font-weight:400;text-transform:none;">(vale para a venda toda, com todos os itens acima)</span></h3>'+
     '<div class="form-row" style="margin-top:14px;">'+
@@ -6102,15 +6250,15 @@ function viewVendas(){
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje, {compacta:true})+'</div></div>'+
     '<div class="card"><h2>Histórico de vendas</h2>'+
     '<div class="filtro-vendas-row">'+
-    '<div class="filtro-vendas-busca"><label style="font-size:11px;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por produto, categoria, cliente, empresa, canal, pagamento, entrega, nota, cupom, data, valor..."></div>'+
-    '<div><label style="font-size:11px;">De</label><input type="date" id="busca-venda-data-de" title="Filtrar a partir desta data"></div>'+
-    '<div><label style="font-size:11px;">Até</label><input type="date" id="busca-venda-data-ate" title="Filtrar até esta data"></div>'+
-    '<div><label style="font-size:11px;">Categoria</label><select id="sel-filtro-categoria-venda"><option value="">Todas</option><option value="gas">Gás</option><option value="agua">Água</option><option value="outros">Outros</option></select></div>'+
-    '<div><label style="font-size:11px;">Tipo da categoria</label><select id="sel-filtro-tipo-venda"><option value="">Todos</option></select></div>'+
-    '<div style="position:relative;"><label style="font-size:11px;">Produto</label>'+
+    '<div class="filtro-vendas-busca"><label style="font-size:12px;font-weight:600;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por produto, categoria, cliente, empresa, canal, pagamento, entrega, nota, cupom, data, valor..."></div>'+
+    '<div><label style="font-size:12px;font-weight:600;">De</label><input type="date" id="busca-venda-data-de" title="Filtrar a partir desta data"></div>'+
+    '<div><label style="font-size:12px;font-weight:600;">Até</label><input type="date" id="busca-venda-data-ate" title="Filtrar até esta data"></div>'+
+    '<div><label style="font-size:12px;font-weight:600;">Categoria</label><select id="sel-filtro-categoria-venda"><option value="">Todas</option><option value="gas">Gás</option><option value="agua">Água</option><option value="outros">Outros</option></select></div>'+
+    '<div><label style="font-size:12px;font-weight:600;">Tipo da categoria</label><select id="sel-filtro-tipo-venda"><option value="">Todos</option></select></div>'+
+    '<div style="position:relative;"><label style="font-size:12px;font-weight:600;">Produto</label>'+
     '<details id="filtro-produto-venda-details" class="filtro-coluna"><summary id="filtro-produto-venda-resumo">Todos os produtos</summary>'+
     '<div id="filtro-produto-venda-lista" class="filtro-coluna-lista"></div></details></div>'+
-    '<div><label style="font-size:11px;">Por página</label><select id="sel-vendas-por-pagina"><option value="30">30</option><option value="50">50</option><option value="100">100</option></select></div>'+
+    '<div><label style="font-size:12px;font-weight:600;">Por página</label><select id="sel-vendas-por-pagina"><option value="30">30</option><option value="50">50</option><option value="100">100</option></select></div>'+
     '<div class="filtro-vendas-limpar"><button type="button" class="btn small ghost" id="btn-vendas-filtro-limpar">Limpar filtros</button></div>'+
     '</div>'+
     '<div id="lista-vendas-wrap">'+vendasTable(state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).slice(0,30))+'</div>'+
@@ -6877,7 +7025,7 @@ function clientesTable(list){
     const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="12" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
     const cadastradoEmHtml = c.criadoEm ? '<div class=\"hint\" style=\"font-size:10px;margin-top:2px;\">cadastrado em '+fmtDate(new Date(c.criadoEm).toISOString().slice(0,10))+'</div>' : '';
     const autoCadastradoHtml = (c.autoCadastrado && !c.telefone) ? ' <span class=\"pill\" title=\"Criado automaticamente a partir de uma venda/fiado/agendamento — complete telefone e endereço quando puder\" style=\"background:var(--amber-tint,#FEF3C7);color:var(--amber,#B45309);\">🆕 completar cadastro</span>' : '';
-    return '<tr><td>'+escapeHtmlCampanha(c.nome)+autoCadastradoHtml+cadastradoEmHtml+'</td><td>'+etiquetaFrequenciaClienteHtml(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+(((c.apelidos||[]).map(a=>'<span class="pill">'+escapeHtmlCampanha(a)+'</span>').join(' '))||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td><td>'+badgeBotijaoReservaHtml(c)+'</td><td>'+(c.indicadoPor?escapeHtmlCampanha(c.indicadoPor):'—')+'</td>'+
+    return '<tr><td>'+escapeHtmlCampanha(c.nome)+autoCadastradoHtml+' '+flagComodatoClienteHtml(c.nome)+cadastradoEmHtml+'</td><td>'+etiquetaFrequenciaClienteHtml(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+(((c.apelidos||[]).map(a=>'<span class="pill">'+escapeHtmlCampanha(a)+'</span>').join(' '))||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td><td>'+badgeBotijaoReservaHtml(c)+'</td><td>'+(c.indicadoPor?escapeHtmlCampanha(c.indicadoPor):'—')+'</td>'+
     '<td><button type="button" class="act-link" data-ver-anexos-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Ver anexos">📎'+anexosCli.length+'</button></td>'+
     '<td>'+resumoVinculosClienteHtml(c.nome)+'</td>'+
     '<td class="cel-acoes">'+botaoWhatsApp(c.telefone, true)+'<button type="button" class="act-link" data-ir-crm-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Abrir ficha no CRM">🤝</button><button class="act-link" data-edit-cliente="'+c.id+'" title="editar">✎</button><button class="del-link" data-del-cliente="'+c.id+'" title="excluir">🗑</button></td></tr>'+linhaAnexos;
@@ -7820,6 +7968,32 @@ function itemComodatoLabel(categoria, item){
   const par = ITENS_AGUA_COMODATO.find(p=>p[1]===item);
   return par ? par[0] : item;
 }
+/* Lança um casco/vasilhame na conta do cliente. Se ele JÁ tem um comodato em aberto do mesmo
+   item, só soma na quantidade daquele lançamento (não cria linha nova a cada venda) — é o
+   "auto incrementar". Só cria linha nova quando não existe nenhuma compatível. */
+function registrarComodatoCliente(dados){
+  const chave = chaveNormalizada(dados.nome||'');
+  const qtd = Number(dados.quantidade)||0;
+  if(!chave || !qtd) return null;
+  const alvo = state.comodatos.find(c=>c.direcao==='cliente'
+    && chaveNormalizada(c.nome||c.cliente||'')===chave
+    && c.categoria===dados.categoria && c.item===dados.item && c.produto===dados.produto
+    && !c.baixaEstoque);
+  if(alvo){
+    alvo.quantidade = (Number(alvo.quantidade)||0) + qtd;
+    alvo.data = dados.data || alvo.data;
+    const obsNova = (alvo.obs ? alvo.obs+' | ' : '') + (dados.obs||'');
+    alvo.obs = obsNova.length>500 ? obsNova.slice(-500) : obsNova;
+    return alvo;
+  }
+  const novo = {
+    id: uid(), direcao:'cliente', nome: dados.nome, categoria: dados.categoria, item: dados.item,
+    produto: dados.produto, quantidade: qtd, data: dados.data||todayStr(), obs: dados.obs||'',
+    auto: dados.origem||'venda'
+  };
+  state.comodatos.push(novo);
+  return novo;
+}
 function chaveComodato(c){ return [c.direcao, chaveNormalizada(c.nome), c.categoria, c.item, c.produto].join('|'); }
 /* Monta um objeto no mesmo formato usado pelos lançamentos de "Ajustar estoque manualmente"
    (tipo/item/itemChave/estado/direcao/quantidade), a partir de um lançamento de comodato,
@@ -8512,7 +8686,7 @@ function crmFichaCliente(nome){
     '<div class="metric"><div class="label">Compras no histórico</div><div class="value" style="font-size:16px;">'+compras.length+'</div></div>'+
     '<div class="metric"><div class="label">Fiado em aberto</div><div class="value" style="font-size:16px;'+(saldoFiado>0?'color:var(--danger);':'')+'">'+fmtMoney(saldoFiado)+'</div></div>'+
     '<div class="metric"><div class="label">Crédito em haver</div><div class="value" style="font-size:16px;">'+fmtMoney(saldoCredito)+'</div></div>'+
-    '</div>'+(saldoComodato>0?'<div class="hint" style="margin-top:8px;">📦 '+saldoComodato+' item(ns) em comodato com esse cliente.</div>':'')+
+    '</div>'+(saldoComodato>0?'<div class="hint" style="margin-top:8px;">'+flagComodatoClienteHtml(nome)+' — ainda não devolveu: '+escapeHtmlCampanha(textoComodatoCliente(nome))+'</div>':'')+
     '</div>'+
     '<div class="card"><h3>🛒 Últimas compras</h3>'+(ultimasCompras.length===0?'<div class="empty">Nenhuma compra registrada ainda.</div>':'<div class="table-wrap"><table><thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Canal</th><th>Pagto</th></tr></thead><tbody>'+linhasCompras+'</tbody></table></div>')+'</div>'+
     '<div class="card"><h3>🗒️ Histórico de interações</h3>'+
@@ -9714,6 +9888,25 @@ function renderRelatorioEmpresasResultado(){
   const total = totalVendas + totalLanc;
   const saldo = total - totalPago;
   const mesRef = monthKey(de);
+  // Extrato consolidado (igual ao do fiado): tudo que gerou dívida e tudo que abateu, em ordem
+  // de data, com o saldo acumulado linha a linha — dá pra ver exatamente de onde veio o saldo.
+  const movimentosConvenio = vendasEmpresa.map(v=>({data:v.data, tipo:'debito', desc:(v.produto||v.categoria||'Venda')+(v.cliente?' — '+v.cliente:''), valor:v.valor_total}))
+    .concat(lancEmpresa.map(c=>({data:c.data, tipo:'debito', desc:(c.descricao||'Lançamento manual'), valor:c.valor})))
+    .concat(pagEmpresa.map(p=>({data:p.data, tipo:'credito', desc:'Pagamento recebido'+(p.forma_pagamento?' ('+p.forma_pagamento+')':''), valor:p.valor})))
+    .sort((a,b)=>a.data.localeCompare(b.data));
+  let saldoCorrente = 0;
+  const linhasExtratoConvenio = movimentosConvenio.map(m=>{
+    saldoCorrente += (m.tipo==='debito' ? m.valor : -m.valor);
+    return '<tr><td>'+fmtDate(m.data)+'</td><td>'+escapeHtmlCampanha(m.desc)+'</td>'+
+      '<td>'+(m.tipo==='debito'?fmtMoney(m.valor):'—')+'</td>'+
+      '<td style="color:var(--green);">'+(m.tipo==='credito'?'− '+fmtMoney(m.valor):'—')+'</td>'+
+      '<td style="font-weight:700;">'+fmtMoney(Math.round(saldoCorrente*100)/100)+'</td></tr>';
+  }).join('');
+  const extratoConvenioHtml = '<h3 style="margin-top:18px;">📑 Extrato consolidado do período</h3>'+
+    '<div class="hint">Cada linha mostra o que aumentou a dívida (vendas e lançamentos) e o que abateu (pagamentos recebidos), com o saldo acumulado até ali — igual ao extrato do fiado.</div>'+
+    (movimentosConvenio.length===0 ? '<div class="empty">Nada movimentado nesse período.</div>' :
+      '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Dívida</th><th>Abatimento</th><th>Saldo</th></tr></thead><tbody>'+
+      linhasExtratoConvenio+'</tbody></table></div>');
   const empresaObj = state.empresas.find(e=>e.nome===empresaSel);
   const linhasVendas = vendasEmpresa.map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td>'+
     '<td><button class="act-link" data-edit-venda-emp="'+v.id+'">✎ editar</button><button class="del-link" data-del-venda-emp="'+v.id+'">🗑 excluir</button></td></tr>');
@@ -9759,6 +9952,7 @@ function renderRelatorioEmpresasResultado(){
     '<div style="margin:-6px 0 12px;"><button type="button" class="link-btn" id="btn-quitar-tudo-convenio">Preencher com o valor total (quitação total)</button></div>'+
     '<button type="submit" class="btn small green">Registrar pagamento</button></form>'+
     tabelaPag+
+    extratoConvenioHtml+
     '<h3 style="margin-top:18px;">Anexos do convênio — '+nomeMes(mesRef)+'</h3>'+
     '<div class="hint">Fotos do talão fiscal e PDFs de nota — não precisam ser anexados na hora da venda, suba quando for mais prático (ex: no fim do dia). No dia 01, gere o PDF completo do mês anterior com um clique.</div>'+
     '<input type="file" id="re-anexo-input" accept="image/*,.pdf" multiple style="margin-top:8px;">'+
@@ -9964,7 +10158,20 @@ function lerArquivoComoDataURL(file){
     reader.readAsDataURL(file);
   });
 }
-async function gerarPdfConvenio(empresa, de, ate, vendas, anexos){
+/* A fonte padrão do PDF (Helvetica) só aceita caracteres da tabela WinAnsi. Qualquer coisa fora
+   dela (emoji, espaço fino/NBSP que o fmtMoney do navegador coloca no "R$ 1.234,56", travessões
+   longos, aspas curvas) faz o pdf-lib estourar no meio da geração — era isso que deixava o botão
+   preso em "Gerando..." sem baixar nada. Aqui a gente troca os casos comuns e remove o resto. */
+function textoPdfSeguro(t){
+  return String(t==null?'':t)
+    .replace(/[\u00A0\u2007\u202F\u2009\u200A\u2002-\u2006]/g,' ')
+    .replace(/[\u2018\u2019\u201B]/g,"'")
+    .replace(/[\u201C\u201D]/g,'"')
+    .replace(/[\u2013\u2014]/g,'-')
+    .replace(/\u2026/g,'...')
+    .replace(/[^\x20-\x7E\xA1-\xFF]/g,'');
+}
+async function gerarPdfConvenio(empresa, de, ate, vendas, anexos, pagamentos){
   const { PDFDocument, StandardFonts, rgb } = PDFLib;
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
@@ -9973,7 +10180,7 @@ async function gerarPdfConvenio(empresa, de, ate, vendas, anexos){
   let y = 800;
   const linha = (texto, tamanho, negrito)=>{
     if(y<50){ page = pdf.addPage([595,842]); y = 800; }
-    page.drawText(texto, {x:40, y, size:tamanho||11, font: negrito?fontBold:font, color:rgb(0.1,0.1,0.15)});
+    page.drawText(textoPdfSeguro(texto), {x:40, y, size:tamanho||11, font: negrito?fontBold:font, color:rgb(0.1,0.1,0.15)});
     y -= (tamanho||11)+8;
   };
   linha('Relatório de Convênio — '+empresa, 16, true);
@@ -9984,9 +10191,19 @@ async function gerarPdfConvenio(empresa, de, ate, vendas, anexos){
   y -= 10;
   linha('Data        Produto                          Cliente                  Valor', 10, true);
   vendas.forEach(v=>{
-    const l = fmtDate(v.data)+'  '+(v.categoria||'').padEnd(30).slice(0,30)+' '+(v.cliente||'—').padEnd(22).slice(0,22)+' '+fmtMoney(v.valor_total);
+    const l = fmtDate(v.data)+'  '+String(v.categoria||'').padEnd(30).slice(0,30)+' '+String(v.cliente||'-').padEnd(22).slice(0,22)+' '+fmtMoney(v.valor_total);
     linha(l, 9.5);
   });
+  // Abatimentos (pagamentos recebidos) e saldo — mesmo formato do extrato de fiado.
+  const listaPag = pagamentos||[];
+  const totalPagoPdf = listaPag.reduce((soma,p)=>soma+(p.valor||0),0);
+  y -= 10;
+  linha('Pagamentos recebidos (abatimentos)', 12, true);
+  if(listaPag.length===0) linha('Nenhum pagamento registrado no periodo.', 10);
+  else listaPag.forEach(p=>linha(fmtDate(p.data)+'  '+String(p.forma_pagamento||'-').padEnd(22).slice(0,22)+' '+fmtMoney(p.valor), 9.5));
+  y -= 8;
+  linha('Total pago no periodo: '+fmtMoney(totalPagoPdf), 11, true);
+  linha('Saldo a receber: '+fmtMoney(Math.round((total-totalPagoPdf)*100)/100), 13, true);
   for(const anexo of anexos){
     if(anexo.tipo==='pdf'){
       try{
@@ -10029,7 +10246,7 @@ async function gerarPdfExtratoBytes(cliente){
   let y = 800;
   const linha = (texto, tamanho, negrito)=>{
     if(y<50){ page = pdf.addPage([595,842]); y = 800; }
-    page.drawText(texto, {x:40, y, size:tamanho||11, font: negrito?fontBold:font, color:rgb(0.1,0.1,0.15)});
+    page.drawText(textoPdfSeguro(texto), {x:40, y, size:tamanho||11, font: negrito?fontBold:font, color:rgb(0.1,0.1,0.15)});
     y -= (tamanho||11)+8;
   };
   linha('Extrato de fiado — '+cliente, 16, true);
@@ -10458,8 +10675,17 @@ function attachHandlers(){
   const fv = document.getElementById('form-venda');
   const detalhesVendaManual = document.getElementById('details-venda-manual');
   if(detalhesVendaManual) detalhesVendaManual.ontoggle = ()=>{ vendaManualAberta = detalhesVendaManual.open; };
+  const chkCascoPend = document.getElementById('chk-casco-pendente');
+  if(chkCascoPend) chkCascoPend.onchange = montarCascoPendenteItens;
+  atualizarAvisoComodatoVenda();
   if(fv) fv.onsubmit = async(e)=>{
     e.preventDefault();
+    // Snapshot de vendas/estoque ANTES de qualquer mudança nesta submissão (lançamento novo ou
+    // edição) — serve pra desfazer tudo na tela caso o save() final no Supabase falhe, sem
+    // precisar rastrear cada mudança feita ao longo da função (venda editada em memória, itens
+    // extras criados, baixas/devoluções de estoque, etc.).
+    const _vendasAntesSubmitVenda = JSON.parse(JSON.stringify(state.vendas));
+    const _estoqueAntesSubmitVenda = JSON.parse(JSON.stringify(state.estoque));
     // Rede de segurança: garante que Alvorada/Fundifoz nunca sejam salvas com outra forma de
     // pagamento, mesmo que o JS de tela (aoDigitarEmpresaVenda) não tenha rodado por algum motivo.
     const empresaInputCheckVenda = fv.querySelector('[name="empresa"]');
@@ -10730,8 +10956,58 @@ function attachHandlers(){
         verificarLimiteCreditoCliente(camposComuns.cliente);
       }
     }
+    // ---- Casco/vasilhame que ficou com o cliente (comodato automático) ----
+    // Vale tanto pra venda nova quanto pra edição. Cada casco marcado aqui entra na conta de
+    // comodato do cliente (somando no lançamento que já existe, se existir) e sai do estoque de
+    // vazios — porque a venda da carga já tinha devolvido esse vazio pro estoque automaticamente.
+    const nomeClienteCasco = (f.get('cliente')||'').trim();
+    const inputsCasco = Array.from(document.querySelectorAll('#casco-pendente-itens [data-casco-cat]'));
+    const cascoMarcado = document.getElementById('chk-casco-pendente') && document.getElementById('chk-casco-pendente').checked;
+    let houveCasco = false;
+    if(cascoMarcado && inputsCasco.length){
+      if(!nomeClienteCasco){
+        alert('Pra marcar casco/vasilhame pendente é preciso informar o cliente na venda — sem nome não dá pra lançar no comodato. A venda foi salva normalmente, mas o casco não foi lançado.');
+      } else {
+        const dataCasco = f.get('data') || todayStr();
+        inputsCasco.forEach(inp=>{
+          const catCasco = inp.getAttribute('data-casco-cat');
+          const qtdCasco = Number(inp.value)||0;
+          const infoCasco = CATEGORIAS_ESTOQUE[catCasco];
+          if(qtdCasco<=0 || !infoCasco || infoCasco.tipo!=='carga') return;
+          const categoriaComodato = infoCasco.grupo==='gas' ? 'Gás' : 'Água';
+          registrarComodatoCliente({
+            nome: nomeClienteCasco, categoria: categoriaComodato, item: infoCasco.chave,
+            produto: 'Vasilhame vazio', quantidade: qtdCasco, data: dataCasco,
+            obs: 'Casco não devolvido na venda de '+catCasco+' em '+fmtDate(dataCasco), origem:'venda'
+          });
+          const lancCasco = {
+            id: uid(), criadoEm: Date.now(), data: dataCasco, tipo: categoriaComodato,
+            item: categoriaComodato==='Gás' ? infoCasco.chave : itemComodatoLabel(categoriaComodato, infoCasco.chave),
+            itemChave: infoCasco.chave, estado:'Vazio', direcao:'saida', quantidade: qtdCasco,
+            motivo: 'Casco não devolvido — ficou com '+nomeClienteCasco+' (comodato automático da venda)',
+            usuario: usuarioAtualNome
+          };
+          aplicarEfeitoEstoqueLanc(lancCasco, false);
+          state.estoqueLancamentos.push(lancCasco);
+          houveCasco = true;
+        });
+      }
+    }
+    if(houveCasco){ await save('comodatos'); await save('estoqueLancamentos'); }
     if(empresaFormVenda) await garantirEmpresaCadastrada(empresaFormVenda);
-    await save('vendas'); await save('estoque');
+    const okVendaFinalSalva = await save('vendas');
+    const okEstoqueFinalSalvo = await save('estoque');
+    if(!okVendaFinalSalva || !okEstoqueFinalSalvo){
+      // Sem essa checagem, a tela seguia como se o lançamento (ou a edição) tivesse dado certo —
+      // fechava/mantinha o formulário mostrando sucesso — mesmo com o save() tendo falhado no
+      // Supabase (sessão expirada, RLS ou internet). A venda editada/lançada sumia (ou voltava
+      // ao estado antigo) sozinha no dia seguinte, sem aviso claro. Desfaz tudo na tela.
+      state.vendas = _vendasAntesSubmitVenda;
+      state.estoque = _estoqueAntesSubmitVenda;
+      renderAll();
+      alert('⚠️ NÃO SALVOU! A venda foi calculada aqui na tela, mas não foi gravada no banco de dados (Supabase) — por segurança, desfiz o lançamento/edição na tela também, então nada ficou pela metade. Confira sua internet (ou se sua sessão não expirou — tente sair e entrar de novo) e tente salvar de novo.');
+      return;
+    }
     // Se essa venda veio da conferência de um bloco do assistente de importação por texto,
     // avança pro próximo bloco em vez do fluxo normal do lançamento manual.
     if(importTextoWizard && grupoIdVendaSubmetidaWizard){
@@ -10785,9 +11061,19 @@ function attachHandlers(){
       estoqueBaixado: baixaEstoque, retirado:true, retiradoForma:'', retiradoEm:null,
       vendaAnterior: true
     };
+    const _vendasAntesVendaAntiga = JSON.parse(JSON.stringify(state.vendas));
+    const _estoqueAntesVendaAntiga = JSON.parse(JSON.stringify(state.estoque));
     state.vendas.push(venda);
     if(baixaEstoque) ajustaEstoquePorVenda(categoria, quantidade, false);
-    await save('vendas'); await save('estoque');
+    const okVendaAntigaSalva = await save('vendas');
+    const okEstoqueVendaAntigaSalvo = await save('estoque');
+    if(!okVendaAntigaSalva || !okEstoqueVendaAntigaSalvo){
+      state.vendas = _vendasAntesVendaAntiga;
+      state.estoque = _estoqueAntesVendaAntiga;
+      renderAll();
+      alert('⚠️ NÃO SALVOU! O lançamento foi calculado aqui na tela, mas não foi gravado no banco de dados (Supabase) — por segurança, desfiz o lançamento na tela também. Confira sua internet (ou se sua sessão não expirou) e lance de novo.');
+      return;
+    }
     fva.reset();
     if(wrapVendaAntigaValorExtra) wrapVendaAntigaValorExtra.style.display = 'none';
     alert('Lançamento anterior registrado'+(baixaEstoque?' e estoque atualizado.':', sem mexer no estoque.'));
@@ -10809,8 +11095,15 @@ function attachHandlers(){
       estoqueBaixado: false, retirado:false, retiradoForma:'', retiradoEm:null,
       vendaAnterior: true
     };
+    const _vendasAntesFaltaRetirar = JSON.parse(JSON.stringify(state.vendas));
     state.vendas.push(venda);
-    await save('vendas');
+    const okFaltaRetirarSalvo = await save('vendas');
+    if(!okFaltaRetirarSalvo){
+      state.vendas = _vendasAntesFaltaRetirar;
+      renderAll();
+      alert('⚠️ NÃO SALVOU! O lançamento foi calculado aqui na tela, mas não foi gravado no banco de dados (Supabase) — por segurança, desfiz o lançamento na tela também. Confira sua internet (ou se sua sessão não expirou) e lance de novo.');
+      return;
+    }
     ffr.reset();
     alert('Falta retirar registrado. Ele aparece na lista de pendentes até você dar baixa (o estoque não foi mexido).');
     renderAll();
@@ -11004,6 +11297,8 @@ function attachHandlers(){
       return;
     }
     const veiculoId = f.get('veiculoId') || undefined;
+    const _despesasAntesSalvarManual = JSON.parse(JSON.stringify(state.despesas));
+    const _contasPagarAntesSalvarManual = JSON.parse(JSON.stringify(state.contasPagar));
     if(editDespesaId){
       const d = state.despesas.find(x=>x.id===editDespesaId);
       if(d){ d.data=f.get('data'); d.categoria=f.get('categoria'); d.valor=valorLancado; d.descricao=f.get('descricao'); d.veiculoId=veiculoId; }
@@ -11027,8 +11322,19 @@ function attachHandlers(){
       state.despesas.push(novaDespesa);
     }
     const salvouOk = await save('despesas');
+    if(!salvouOk){
+      // Antes disso, mesmo com "salvouOk" calculado, a tela seguia normalmente (fechava o form,
+      // avançava o assistente de importação) mesmo com o save() tendo falhado no Supabase — a
+      // despesa sumia da tela sozinha no dia seguinte. Desfaz na tela (despesa e o vínculo com
+      // conta a pagar, se tinha) pra não ficar diferente do banco.
+      state.despesas = _despesasAntesSalvarManual;
+      state.contasPagar = _contasPagarAntesSalvarManual;
+      renderAll();
+      alert('⚠️ NÃO SALVOU! A despesa foi calculada aqui na tela, mas não foi gravada no banco de dados (Supabase) — por segurança, desfiz o lançamento na tela também. Confira sua internet (ou se sua sessão não expirou — tente sair e entrar de novo) e lance de novo.');
+      return;
+    }
     despesaManualAberta = true; // mantém o painel aberto pra não parecer que "sumiu" a tela
-    if(importTextoDespesasWizard && salvouOk){
+    if(importTextoDespesasWizard){
       importTextoDespesasWizard.total++;
       importTextoDespesasWizard.indice++;
       if(importTextoDespesasWizard.indice < importTextoDespesasWizard.blocos.length){
@@ -11036,10 +11342,8 @@ function attachHandlers(){
       }
     }
     renderAll();
-    if(salvouOk){
-      const wrapHoje = document.getElementById('lista-despesas-hoje-wrap');
-      if(wrapHoje) wrapHoje.scrollIntoView({behavior:'smooth', block:'start'});
-    }
+    const wrapHoje = document.getElementById('lista-despesas-hoje-wrap');
+    if(wrapHoje) wrapHoje.scrollIntoView({behavior:'smooth', block:'start'});
   };
 
   const fc = document.getElementById('form-cliente');
@@ -11311,6 +11615,7 @@ function attachHandlers(){
   if(ff) ff.onsubmit = async(e)=>{
     e.preventDefault();
     const f = new FormData(ff);
+    const _fiadosAntesSalvarManual = JSON.parse(JSON.stringify(state.fiados));
     if(editFiadoId){
       const fi = state.fiados.find(x=>x.id===editFiadoId);
       if(fi){ fi.cliente=resolverNomeCliente(f.get('cliente')); fi.valor=Number(f.get('valor')); fi.data=f.get('data'); fi.descricao=f.get('descricao')||''; fi.vale_pendente=!!f.get('vale_pendente'); }
@@ -11320,7 +11625,16 @@ function attachHandlers(){
       state.fiados.push({id:uid(), cliente:clienteFiado, valor:Number(f.get('valor')), data:f.get('data'), descricao:f.get('descricao')||'', status:'aberto', vale_pendente:!!f.get('vale_pendente')});
       verificarLimiteCreditoCliente(clienteFiado);
     }
-    await save('fiados');
+    const okFiadoManualSalvo = await save('fiados');
+    if(!okFiadoManualSalvo){
+      // Sem essa checagem, a tela mostrava o fiado lançado normalmente mesmo se o save() no
+      // Supabase tivesse falhado (sessão expirada, RLS ou internet) — e o lançamento sumia da
+      // tela só no dia seguinte, sem aviso. Desfaz na tela pra não ficar diferente do banco.
+      state.fiados = _fiadosAntesSalvarManual;
+      renderAll();
+      alert('⚠️ NÃO SALVOU! O fiado foi calculado aqui na tela, mas não foi gravado no banco de dados (Supabase) — por segurança, desfiz o lançamento na tela também. Confira sua internet (ou se sua sessão não expirou — tente sair e entrar de novo) e lance de novo.');
+      return;
+    }
     renderAll();
   };
 
@@ -12372,6 +12686,7 @@ function attachHandlers(){
     const f = new FormData(formCredito);
     const valor = Number(f.get('valor'))||0;
     const forma_pagamento = f.get('forma_pagamento')||'';
+    const _creditosAntesSalvarManual = JSON.parse(JSON.stringify(state.creditos));
     if(editCreditoId){
       const c = state.creditos.find(x=>x.id===editCreditoId);
       if(c){ c.cliente=resolverNomeCliente(f.get('cliente')); c.valor=valor; c.data=f.get('data'); c.obs=f.get('obs')||''; c.forma_pagamento=forma_pagamento; }
@@ -12380,7 +12695,16 @@ function attachHandlers(){
     } else {
       state.creditos.push({id:uid(), cliente:resolverNomeCliente(f.get('cliente')), valor, data:f.get('data'), obs:f.get('obs')||'', forma_pagamento});
     }
-    await save('creditos');
+    const okCreditoManualSalvo = await save('creditos');
+    if(!okCreditoManualSalvo){
+      // Mesmo cuidado do fiado manual: sem checar o retorno, a tela seguia mostrando o crédito
+      // lançado mesmo se o save() no Supabase tivesse falhado, e ele sumia da tela sozinho no
+      // dia seguinte. Desfaz na tela pra não ficar diferente do banco.
+      state.creditos = _creditosAntesSalvarManual;
+      renderAll();
+      alert('⚠️ NÃO SALVOU! O crédito foi calculado aqui na tela, mas não foi gravado no banco de dados (Supabase) — por segurança, desfiz o lançamento na tela também. Confira sua internet (ou se sua sessão não expirou — tente sair e entrar de novo) e lance de novo.');
+      return;
+    }
     renderAll();
   };
 
@@ -13134,14 +13458,23 @@ function attachHandlers(){
   if(btnGerarPdfConvenio) btnGerarPdfConvenio.onclick = async ()=>{
     const de = document.getElementById('re-de').value, ate = document.getElementById('re-ate').value;
     const empresaSel = document.getElementById('re-empresa').value;
-    const ctx = window.__anexosConvenioAtual;
-    if(!empresaSel || !ctx) return;
+    if(!empresaSel){ alert('Selecione uma empresa conveniada antes de gerar o PDF.'); return; }
     btnGerarPdfConvenio.disabled = true; btnGerarPdfConvenio.textContent = 'Gerando...';
     try{
+      // Antes o PDF só saía se os anexos já tivessem terminado de carregar (window.__anexosConvenioAtual).
+      // Se o carregamento ainda estava em andamento ou tinha falhado, o clique não fazia absolutamente
+      // nada — nem erro. Agora, se não tiver o contexto pronto, busca na hora; se falhar, gera sem anexos.
+      let ctx = window.__anexosConvenioAtual;
+      if(!ctx || ctx.empresa!==empresaSel){
+        let lista = [];
+        try{ lista = await carregarAnexosConvenio(empresaSel, monthKey(de)); }catch(err){ console.error(err); }
+        ctx = {empresa:empresaSel, mes:monthKey(de), lista:lista||[]};
+      }
       const vendasEmpresa = state.vendas.filter(v=>v.data>=de && v.data<=ate && v.empresa===empresaSel && v.pagamento==='Convênio').sort((a,b)=>a.data.localeCompare(b.data));
       const lancEmpresa = state.convenioLancamentos.filter(c=>c.empresa===empresaSel && c.data>=de && c.data<=ate).map(c=>({data:c.data, categoria:c.descricao||'Lançamento manual', cliente:'', valor_total:c.valor}));
       const itensConvenio = vendasEmpresa.concat(lancEmpresa).sort((a,b)=>a.data.localeCompare(b.data));
-      await gerarPdfConvenio(empresaSel, de, ate, itensConvenio, ctx.lista);
+      const pagsConvenio = (state.convenioPagamentos||[]).filter(p=>p.empresa===empresaSel && p.data>=de && p.data<=ate).sort((a,b)=>a.data.localeCompare(b.data));
+      await gerarPdfConvenio(empresaSel, de, ate, itensConvenio, ctx.lista, pagsConvenio);
     }catch(e){ console.error(e); alert('Não foi possível gerar o PDF: '+(e.message||e)); }
     btnGerarPdfConvenio.disabled = false; btnGerarPdfConvenio.textContent = '📄 Gerar PDF do convênio (vendas + anexos)';
   };
@@ -14752,6 +15085,10 @@ function processarImportacaoDiariaExcel(file){
 async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasClientes, linhasProdutos, linhasContasPagar, linhasFechamentoCaixa){
     linhasContasPagar = linhasContasPagar||[]; linhasFechamentoCaixa = linhasFechamentoCaixa||[];
     const resumo = [];
+    // Lista do que NÃO conseguiu gravar de verdade no Supabase (sessão expirada, RLS ou internet
+    // instável) — sem essa checagem, o alerta final de "Importação concluída" aparecia igual mesmo
+    // quando nada tinha sido salvo, e os dados sumiam sozinhos no próximo carregamento do sistema.
+    const falhasSalvar = [];
     const hoje = todayStr();
     const nomesClientesExistentes = new Set(state.clientes.map(c=>chaveNormalizada(c.nome)));
 
@@ -14963,7 +15300,10 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           }
         }
       });
-      if(importadas>0){ await save('vendas'); await save('estoque'); await save('categoriasProdutos'); await save('produtos'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia'); }
+      if(importadas>0){
+        const okVend = await save('vendas'); const okEstq = await save('estoque'); await save('categoriasProdutos'); await save('produtos'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia');
+        if(!okVend || !okEstq) falhasSalvar.push(importadas+' venda(s) da aba Vendas');
+      }
       if(clientesNovosDeVendas>0) await save('clientes');
       if(creditosAlterados) await save('creditos');
       if(fiadosGeradosPorAbate>0) await save('fiados');
@@ -14996,7 +15336,10 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           formaPagamento, parcelas, garantiaAte: garantiaAte||undefined, proximaManutencao: proximaManutencao||undefined});
         importadas++;
       });
-      if(importadas>0){ await save('despesas'); await save('categoriasDespesas'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia'); }
+      if(importadas>0){
+        const okDesp = await save('despesas'); await save('categoriasDespesas'); if((state.pendenciasConferencia||[]).length) await save('pendenciasConferencia');
+        if(!okDesp) falhasSalvar.push(importadas+' despesa(s) da aba Despesas');
+      }
       resumo.push(importadas+' despesa(s) importada(s)'+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem valor)':''));
     }
 
@@ -15024,7 +15367,10 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         state.contasPagar.push(conta);
         importadas++;
       });
-      if(importadas>0){ await save('contasPagar'); await save('despesas'); }
+      if(importadas>0){
+        const okCP = await save('contasPagar'); await save('despesas');
+        if(!okCP) falhasSalvar.push(importadas+' conta(s) a pagar');
+      }
       resumo.push(importadas+' conta(s) a pagar importada(s)'+(marcadasPagas>0?' ('+marcadasPagas+' já marcadas como pagas, com despesa lançada)':'')+(ignoradas>0?' — '+ignoradas+' ignorada(s) (sem descrição ou valor)':''));
     }
 
@@ -15040,7 +15386,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         state.fechamentosCaixa.push(Object.assign({id:uid(), criadoEm:Date.now()}, dadosFechamento));
         importados++;
       });
-      if(importados>0) await save('fechamentosCaixa');
+      if(importados>0){ const okFC = await save('fechamentosCaixa'); if(!okFC) falhasSalvar.push(importados+' fechamento(s) de caixa'); }
       resumo.push(importados+' fechamento(s) de caixa importado(s)');
     }
 
@@ -15055,7 +15401,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         state.clientes.push({id:uid(), nome, telefone:(r['Telefone']||'').trim(), endereco:(r['Endereço']||'').trim(), complemento:(r['Complemento']||'').trim(), obs:(r['Observação']||'').trim(), indicadoPor:(r['Indicado Por']||'').trim(), aniversario: r['Aniversário'] ? normalizarDataImportada(r['Aniversário'],'') : '', criadoEm:Date.now()});
         novos++;
       });
-      if(novos>0) await save('clientes');
+      if(novos>0){ const okCli = await save('clientes'); if(!okCli) falhasSalvar.push(novos+' cliente(s) novo(s) (aba Clientes)'); }
       resumo.push(novos+' cliente(s) novo(s) cadastrado(s) a partir da aba Clientes'+(duplicados>0?' — '+duplicados+' já existiam':''));
     }
 
@@ -15080,7 +15426,10 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
         state.produtos.push({id:uid(), nome, categoria, preco, ativo:true});
         novos++;
       });
-      if(novos>0){ await save('produtos'); await save('categoriasProdutos'); }
+      if(novos>0){
+        const okProd = await save('produtos'); await save('categoriasProdutos');
+        if(!okProd) falhasSalvar.push(novos+' produto(s) novo(s)');
+      }
       if(categoriasGrupoAlterado) await save('categoriasProdutosGrupo');
       resumo.push(novos+' produto(s) novo(s)'+(ignorados>0?' — '+ignorados+' ignorado(s)':''));
     }
@@ -15095,7 +15444,9 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
     }
 
     renderAll();
-    alert('Importação concluída:\n\n'+resumo.join('\n'));
+    const avisoFalhaSalvar = falhasSalvar.length ?
+      '⚠️⚠️⚠️ ATENÇÃO — NÃO SALVOU NO BANCO: '+falhasSalvar.join(', ')+'.\nIsso apareceu aqui na tela agora, mas vai SUMIR sozinho se você sair ou atualizar a página, porque não foi gravado de verdade no Supabase (provavelmente sua sessão expirou ou faltou internet nesse momento). Confira sua internet, saia e entre de novo no sistema, e refaça a importação dessa planilha antes de continuar.\n\n' : '';
+    alert(avisoFalhaSalvar+'Importação concluída:\n\n'+resumo.join('\n'));
 }
 function lerArquivoPlanilha(file, onResult, containerId){
   if(typeof XLSX==='undefined' && /\.(xlsx|xls)$/i.test(file.name)){
