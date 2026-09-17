@@ -938,8 +938,8 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Relatórios: Controle ESG', kw:'esg desperdicio energia agua sustentabilidade', tab:'relatorios', sub:'esg'},
   {label:'Relatórios: Comparar Campanhas', kw:'comparar campanhas conversao', tab:'relatorios', sub:'compararcampanhas'},
   {label:'Relatórios: Itens por categoria', kw:'itens por categoria produtos vendidos', tab:'relatorios', sub:'itens'},
-  {label:'Relatórios: Entregas por período', kw:'entregas por periodo relatorio', tab:'relatorios', sub:'entregas'},
-  {label:'Relatórios: Despesas por período', kw:'despesas por periodo relatorio', tab:'relatorios', sub:'despesas'},
+  {label:'Relatórios: Entregas por período', kw:'entregas por periodo relatorio frete fretes valor de frete cobranca de frete taxa de entrega', tab:'relatorios', sub:'entregas'},
+  {label:'Relatórios: Despesas por período', kw:'despesas por periodo relatorio gastos', tab:'relatorios', sub:'despesas'},
   {label:'Relatórios: Veículos', kw:'veiculos km quilometragem gasto comparativo relatorio', tab:'relatorios', sub:'veiculos'},
   {label:'Relatórios: Fiado / A receber', kw:'fiado a receber relatorio', tab:'relatorios', sub:'fiado'},
   {label:'Relatórios: Créditos em haver', kw:'creditos em haver relatorio', tab:'relatorios', sub:'creditos'},
@@ -987,12 +987,20 @@ function initBuscaSistema(){
       });
     }
     const achadosDados = [];
-    (state.clientes||[]).forEach(c=>{ if(achadosDados.length<8 && chaveBusca((c.nome||'')+' '+(c.telefone||'')+' '+(c.endereco||'')).includes(termo)) achadosDados.push({label:'👤 Cliente: '+c.nome, tipo:'cliente', valor:c.nome}); });
-    (state.empresas||[]).forEach(e=>{ if(achadosDados.length<10 && chaveBusca(e.nome||'').includes(termo)) achadosDados.push({label:'🏢 Empresa conveniada: '+e.nome, tipo:'empresa', valor:e.nome}); });
-    (state.produtos||[]).forEach(p=>{ if(achadosDados.length<12 && chaveBusca(p.nome||'').includes(termo)) achadosDados.push({label:'📦 Produto: '+p.nome, tipo:'produto', valor:p.nome}); });
-    (state.entregadores||[]).forEach(en=>{ if(achadosDados.length<14 && chaveBusca(en.nome||'').includes(termo)) achadosDados.push({label:'🛵 Entregador: '+en.nome, tipo:'entregador', valor:en.nome}); });
-    (state.veiculos||[]).forEach(v=>{ if(achadosDados.length<16 && chaveBusca(v.nome||'').includes(termo)) achadosDados.push({label:'🚗 Veículo: '+v.nome, tipo:'veiculo', valor:v.nome}); });
-    const achados = achadosMenu.concat(achadosLapidar).concat(achadosDados).slice(0,16);
+    (state.clientes||[]).forEach(c=>{ if(achadosDados.length<6 && chaveBusca((c.nome||'')+' '+(c.telefone||'')+' '+(c.endereco||'')+' '+((c.apelidos||[]).join(' '))).includes(termo)) achadosDados.push({label:'👤 Cliente: '+c.nome, tipo:'cliente', valor:c.nome}); });
+    (state.empresas||[]).forEach(e=>{ if(achadosDados.length<8 && chaveBusca(e.nome||'').includes(termo)) achadosDados.push({label:'🏢 Empresa conveniada: '+e.nome, tipo:'empresa', valor:e.nome}); });
+    (state.produtos||[]).forEach(p=>{ if(achadosDados.length<10 && chaveBusca(p.nome||'').includes(termo)) achadosDados.push({label:'📦 Produto: '+p.nome, tipo:'produto', valor:p.nome}); });
+    (state.entregadores||[]).forEach(en=>{ if(achadosDados.length<11 && chaveBusca(en.nome||'').includes(termo)) achadosDados.push({label:'🛵 Entregador: '+en.nome, tipo:'entregador', valor:en.nome}); });
+    (state.veiculos||[]).forEach(v=>{ if(achadosDados.length<12 && chaveBusca(v.nome||'').includes(termo)) achadosDados.push({label:'🚗 Veículo: '+v.nome, tipo:'veiculo', valor:v.nome}); });
+    (state.vendas||[]).forEach(v=>{ if(achadosDados.length<15 && chaveBusca((v.categoria||'')+' '+(v.produto||'')+' '+(v.cliente||'')+' '+(v.empresa||'')+' '+(v.canal||'')+' '+(v.pagamento||'')+' '+(v.obs||'')).includes(termo)) achadosDados.push({label:'💰 Venda: '+fmtDate(v.data)+' — '+(v.produto||v.categoria)+(v.cliente?' — '+v.cliente:'')+' — '+fmtMoney(v.valor_total||0), tab:'vendas'}); });
+    (state.despesas||[]).forEach(d=>{ if(achadosDados.length<18 && chaveBusca((d.descricao||'')+' '+(d.categoria||'')).includes(termo)) achadosDados.push({label:'💸 Despesa: '+fmtDate(d.data)+' — '+(d.descricao||d.categoria)+' — '+fmtMoney(d.valor||0), tab:'despesas'}); });
+    (state.agendamentos||[]).forEach(a=>{ if(achadosDados.length<20 && chaveBusca((a.cliente||'')+' '+(a.produto_nota||'')+' '+(a.empresa||'')).includes(termo)) achadosDados.push({label:'📅 Entrega agendada: '+fmtDate(a.data)+' '+(a.hora||'')+' — '+(a.cliente||'')+' — '+(a.produto_nota||''), tab:'agendamentos'}); });
+    (state.contasPagar||[]).forEach(cp=>{ if(achadosDados.length<22 && chaveBusca((cp.descricao||'')+' '+(cp.categoria||'')).includes(termo)) achadosDados.push({label:'📑 Conta a pagar: '+(cp.descricao||cp.categoria)+' — '+fmtMoney(cp.valor||0), tab:'contaspagar'}); });
+    (state.comodatos||[]).forEach(cm=>{ if(achadosDados.length<24 && chaveBusca((cm.cliente||cm.nome||'')+' '+(cm.item||'')+' '+(cm.obs||'')).includes(termo)) achadosDados.push({label:'🔁 Comodato: '+(cm.cliente||cm.nome||'')+' — '+(cm.item||''), tab:'relatorios', sub:'comodatos'}); });
+    if('fiado a receber divida'.includes(termo) || (termo.length>2 && chaveBusca('fiado a receber').includes(termo))){
+      achadosDados.push({label:'📒 Relatório: Fiado / A receber', tab:'relatorios', sub:'fiado'});
+    }
+    const achados = achadosMenu.concat(achadosLapidar).concat(achadosDados).slice(0,22);
     if(achados.length===0){ resDiv.innerHTML = '<div style="padding:10px;font-size:13px;color:#777;">Nada encontrado.</div>'; resDiv.style.display='block'; return; }
     resDiv.innerHTML = achados.map((item,i)=>'<div class="busca-sistema-item" data-idx="'+i+'" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;">'+item.label+'</div>').join('');
     resDiv.style.display='block';
@@ -1670,6 +1678,7 @@ const TABS = [
   {id:'checklist', label:'Checklist'},
   {id:'agenda', label:'Agenda'},
   {id:'pessoasocupadas', label:'Pessoas Ocupadas'},
+  {id:'dicas', label:'Dicas & Treinos'},
   {id:'relatorios', label:'Relatórios'},
   {id:'config', label:'Config'},
 ];
@@ -3524,7 +3533,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas','dicasTreinamentos','categoriasDicas'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -3651,6 +3660,8 @@ async function loadAll(){
   if(!Array.isArray(state.respostasPesquisaManual)) state.respostasPesquisaManual = [];
   if(!Array.isArray(state.calendarioEditorial)) state.calendarioEditorial = [];
   if(!Array.isArray(state.usuariosSistema)) state.usuariosSistema = [];
+  if(!Array.isArray(state.dicasTreinamentos)) state.dicasTreinamentos = [];
+  if(!Array.isArray(state.categoriasDicas) || state.categoriasDicas.length===0) state.categoriasDicas = ['Instalação de Gás','Manutenção','Segurança','Sistema (Tom Gás)','Atendimento ao Cliente','Outros'];
   if(!Array.isArray(state.setores)) state.setores = [];
   if(!Array.isArray(state.blingBaixas)) state.blingBaixas = [];
   if(state.setores.length===0){
@@ -4148,6 +4159,7 @@ function renderAll(){
   if(currentTab==='campanhas') main.innerHTML = viewCampanhas();
   if(currentTab==='checklist') main.innerHTML = viewChecklist();
   if(currentTab==='agenda') main.innerHTML = viewAgendaAdmin();
+  if(currentTab==='dicas') main.innerHTML = viewDicasTreinamentos();
   if(currentTab==='relatorios') main.innerHTML = viewRelatorios();
   if(currentTab==='config') main.innerHTML = viewConfig();
   if(currentTab==='meuPerfil') main.innerHTML = viewMeuPerfil();
@@ -4156,6 +4168,57 @@ function renderAll(){
   renderRecadosFab();
   initNovoAgendamentoFab();
   initBuscaSistema();
+}
+
+/* ---------- DICAS & TREINAMENTOS ---------- */
+let dicaCategoriaFiltro = '';
+let editDicaId = null;
+let dicaImagemSelecionada = null, dicaVideoSelecionado = null, dicaArquivoSelecionado = null;
+function iconeTipoDica(tipo){ return {texto:'📝',imagem:'🖼️',video:'🎬',link:'🔗',arquivo:'📄'}[tipo]||'📌'; }
+function viewDicasTreinamentos(){
+  const editando = editDicaId ? (state.dicasTreinamentos||[]).find(d=>d.id===editDicaId) : null;
+  const categorias = (state.categoriasDicas&&state.categoriasDicas.length) ? state.categoriasDicas : ['Instalação de Gás','Manutenção','Segurança','Sistema (Tom Gás)','Atendimento ao Cliente','Outros'];
+  const lista = (state.dicasTreinamentos||[]).slice().sort((a,b)=>(b.criadoEm||0)-(a.criadoEm||0));
+  const filtradas = dicaCategoriaFiltro ? lista.filter(d=>d.categoria===dicaCategoriaFiltro) : lista;
+  const chipsCategorias = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">'+
+    '<button type="button" class="btn small '+(dicaCategoriaFiltro===''?'':'ghost')+'" data-dica-filtro-categoria="">Todas</button>'+
+    categorias.map(c=>'<button type="button" class="btn small '+(dicaCategoriaFiltro===c?'':'ghost')+'" data-dica-filtro-categoria="'+escapeHtmlCampanha(c)+'">'+escapeHtmlCampanha(c)+'</button>').join('')+
+    '</div>';
+  const cardsLista = filtradas.length===0 ? '<div class="empty">Nenhuma dica cadastrada'+(dicaCategoriaFiltro?' nessa categoria':'')+' ainda.</div>' :
+    '<div class="lc-grid">'+filtradas.map(d=>{
+      const linkPublico = location.origin+location.pathname+'?dica='+d.id;
+      return '<div class="lc-card"><div class="lc-top"><strong>'+iconeTipoDica(d.tipo)+' '+escapeHtmlCampanha(d.titulo)+'</strong><span class="badge roxo">'+escapeHtmlCampanha(d.categoria||'Outros')+'</span></div>'+
+        (d.conteudoTexto ? '<div class="lc-msg">'+escapeHtmlCampanha(d.conteudoTexto.slice(0,140))+((d.conteudoTexto||'').length>140?'…':'')+'</div>' : '')+
+        '<div class="lc-meta">'+(d.publico?'🔓 Link para clientes disponível':'🔒 Uso interno (sem link para clientes)')+'</div>'+
+        '<div class="lc-acoes">'+
+        (d.publico ? ('<button type="button" class="act-link" data-copiar-link-dica="'+linkPublico+'">🔗 copiar link</button><a class="act-link" href="'+linkPublico+'" target="_blank" rel="noopener">👁️ ver como cliente</a>') : '')+
+        '<button type="button" class="act-link" data-edit-dica="'+d.id+'">✎ editar</button>'+
+        '<button type="button" class="del-link" data-del-dica="'+d.id+'">🗑 excluir</button>'+
+        '</div></div>';
+    }).join('')+'</div>';
+  return '<div class="card"><h2>💡 Dicas & Treinamentos</h2>'+ajudaHtml('dicas','Registre aqui explicações de como fazer coisas do gás (instalar, trocar a borrachinha, trocar o botijão) ou do próprio sistema. Marque "gerar link para clientes" para criar uma página simples e pública (sem precisar de login) que você pode mandar pelo WhatsApp direto pro cliente.')+
+    '<div class="hint">Use texto, imagem, vídeo (upload ou link do YouTube), link externo ou arquivo (PDF/Word) — tudo organizado por categoria.</div></div>'+
+    '<div class="card"><h3 style="margin-top:0;">'+(editando?'Editar':'Nova')+' dica/treinamento</h3>'+
+    '<form id="form-dica" data-edit-id="'+(editando?editando.id:'')+'">'+
+    '<div class="form-row">'+
+    '<div><label>Título <span class="req">*</span></label><input type="text" name="titulo" value="'+(editando?escapeHtmlCampanha(editando.titulo):'')+'" required placeholder="Ex: Como trocar a borrachinha do regulador"></div>'+
+    '<div><label>Categoria</label><input type="text" name="categoria" list="lista-cat-dicas" value="'+(editando?escapeHtmlCampanha(editando.categoria||''):'')+'" placeholder="Ex: Manutenção"><datalist id="lista-cat-dicas">'+categorias.map(c=>'<option value="'+escapeHtmlCampanha(c)+'">').join('')+'</datalist></div>'+
+    '</div>'+
+    '<label>Tipo de conteúdo</label><select name="tipo" id="sel-tipo-dica">'+
+    ['texto','imagem','video','link','arquivo'].map(t=>'<option value="'+t+'" '+(editando&&editando.tipo===t?'selected':'')+'>'+({texto:'📝 Texto explicativo',imagem:'🖼️ Imagem',video:'🎬 Vídeo',link:'🔗 Link externo',arquivo:'📄 Arquivo (PDF/Word)'})[t]+'</option>').join('')+
+    '</select>'+
+    '<label>Texto / explicação (aparece sempre, mesmo com outro tipo de mídia)</label><textarea name="conteudoTexto" rows="4" placeholder="Explique o passo a passo aqui...">'+(editando?escapeHtmlCampanha(editando.conteudoTexto||''):'')+'</textarea>'+
+    '<div id="campo-dica-imagem" style="display:'+(editando&&editando.tipo==='imagem'?'block':'none')+';margin-top:8px;"><label>Imagem</label><input type="file" id="input-dica-imagem" accept="image/*">'+
+    '<div id="preview-dica-imagem" style="margin-top:8px;">'+(editando&&editando.imagemBase64?('<img src="'+editando.imagemBase64+'" style="max-height:140px;border-radius:8px;">'):'')+'</div></div>'+
+    '<div id="campo-dica-video" style="display:'+(editando&&editando.tipo==='video'?'block':'none')+';margin-top:8px;"><label>Link de vídeo (YouTube, etc.)</label><input type="url" name="videoLink" value="'+(editando?escapeHtmlCampanha(editando.videoLink||''):'')+'" placeholder="https://youtube.com/..."><label style="margin-top:8px;">Ou vídeo do computador (até 15 MB)</label><input type="file" id="input-dica-video" accept="video/*"><div id="preview-dica-video" style="margin-top:8px;">'+(editando&&editando.videoDataUrl?('<video src="'+editando.videoDataUrl+'" controls style="max-width:100%;max-height:200px;border-radius:8px;"></video>'):'')+'</div></div>'+
+    '<div id="campo-dica-link" style="display:'+(editando&&editando.tipo==='link'?'block':'none')+';margin-top:8px;"><label>Link</label><input type="url" name="linkUrl" value="'+(editando?escapeHtmlCampanha(editando.linkUrl||''):'')+'" placeholder="https://..."></div>'+
+    '<div id="campo-dica-arquivo" style="display:'+(editando&&editando.tipo==='arquivo'?'block':'none')+';margin-top:8px;"><label>Arquivo (PDF ou Word, até 8 MB)</label><input type="file" id="input-dica-arquivo" accept=".pdf,.doc,.docx">'+
+    '<div id="preview-dica-arquivo" style="margin-top:6px;">'+(editando&&editando.arquivoNome?('<span class="hint">Arquivo atual: '+escapeHtmlCampanha(editando.arquivoNome)+'</span>'):'')+'</div></div>'+
+    '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;"><input type="checkbox" name="publico" style="width:auto;" '+(editando&&editando.publico?'checked':'')+'> Gerar link público para enviar aos clientes (sem precisar de login)</label>'+
+    '<button type="submit" class="btn small" style="margin-top:12px;">'+(editando?'Salvar alterações':'Salvar')+'</button>'+
+    (editando?' <button type="button" class="btn small ghost" id="btn-cancelar-dica">Cancelar</button>':'')+
+    '</form></div>'+
+    '<div class="card"><h3 style="margin-top:0;">Dicas cadastradas <span class="pill">'+lista.length+'</span></h3>'+chipsCategorias+cardsLista+'</div>';
 }
 
 /* ---------- DASHBOARD ---------- */
@@ -4982,6 +5045,21 @@ const PALAVRAS_PAGAMENTO_TEXTO_LIVRE = [
 function detectarPagamentoTextoLivre(txt){
   for(let i=0;i<PALAVRAS_PAGAMENTO_TEXTO_LIVRE.length;i++){ if(PALAVRAS_PAGAMENTO_TEXTO_LIVRE[i][0].test(txt||'')) return PALAVRAS_PAGAMENTO_TEXTO_LIVRE[i][1]; }
   return null;
+}
+// Usada nas importações de planilha/CSV: garante que qualquer forma de pagamento digitada
+// (com acento diferente, maiúscula/minúscula, ou variações como "fiado"/"marcou"/"Fiado ")
+// vire exatamente um dos valores oficiais de PAGAMENTOS (ex.: "Marcou/Fiado"). Sem essa
+// normalização, uma venda digitada como "fiado" (minúsculo) nunca aparecia nos relatórios
+// de Fiado/A receber, porque o resto do sistema compara com === 'Marcou/Fiado' (texto exato).
+function normalizarFormaPagamentoImportada(txt){
+  const bruto = (txt||'').trim();
+  if(!bruto) return {valor:'', reconhecido:true};
+  const chave = chaveNormalizada(bruto);
+  const exata = PAGAMENTOS.find(p=>chaveNormalizada(p)===chave);
+  if(exata) return {valor:exata, reconhecido:true};
+  const detectado = detectarPagamentoTextoLivre(bruto);
+  if(detectado) return {valor:detectado, reconhecido:true};
+  return {valor:bruto, reconhecido:false};
 }
 const PALAVRAS_CANAL_TEXTO_LIVRE = [
   [/portaria/i,'Portaria'], [/whats\s*app|whatsapp/i,'WhatsApp'], [/venda\s*ativa/i,'Venda Ativa'],
@@ -6770,6 +6848,8 @@ function viewClientes(){
     '<div><label>Telefone / WhatsApp <span class="req">*</span></label><input type="text" name="telefone" placeholder="(00) 00000-0000" required></div></div>'+
     '<div class="form-row"><div><label>Endereço</label><input type="text" name="endereco"></div>'+
     '<div><label>Complemento</label><input type="text" name="complemento" placeholder="Bloco, apto, ponto de referência..."></div></div>'+
+    '<label>Possui botijão reserva?</label><select name="botijaoReserva"><option value="">Não informado</option><option value="sim">✅ Sim, tem reserva</option><option value="nao">❌ Não tem reserva</option></select>'+
+    '<div class="hint">Padrão do cadastro — ajuda a saber quem já tem um botijão sobressalente em casa, útil pra avisar quando o gás estiver acabando e pra organizar a logística de entrega.</div>'+
     '<label>Apelidos / como o nome pode vir digitado (opcional)</label><input type="text" name="apelidos" placeholder="Ex: bandini, cida, restaurante">'+
     '<div class="hint">Separe por vírgula. Sempre que esse nome aparecer na planilha ou num lançamento (mesmo abreviado ou só o apelido), o sistema já reconhece sozinho como sendo este cliente, sem precisar corrigir na mão.</div>'+
     '<label>Indicado por (opcional)</label><input type="text" name="indicadoPor" placeholder="Nome de quem indicou esse cliente">'+
@@ -6784,15 +6864,20 @@ function viewClientes(){
     '<input type="file" id="csv-input" accept=".csv,.txt,.tsv,.xlsx,.xls" style="margin-top:10px;"><div id="csv-mapping"></div></div>';
 }
 
+function badgeBotijaoReservaHtml(c){
+  if(c.botijaoReserva==='sim') return '<span class="pill" style="background:var(--green-tint);color:var(--green);">✅ Sim</span>';
+  if(c.botijaoReserva==='nao') return '<span class="pill" style="background:var(--danger-tint);color:var(--danger);">❌ Não</span>';
+  return '<span class="hint">—</span>';
+}
 function clientesTable(list){
   if(list.length===0) return '<div class="empty">Nenhum cliente cadastrado ainda.</div>';
-  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:12%;"><col style="width:8%;"><col style="width:8%;"><col style="width:8%;"><col style="width:6%;"><col style="width:11%;"><col style="width:8%;"><col style="width:7%;"><col style="width:6%;"><col style="width:10%;"><col style="width:16%;"></colgroup><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Apelidos</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Indicado por</th><th>Anexos</th><th>Vínculos no sistema</th><th></th></tr></thead><tbody>'+
+  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:11%;"><col style="width:7%;"><col style="width:7%;"><col style="width:7%;"><col style="width:5%;"><col style="width:10%;"><col style="width:7%;"><col style="width:6%;"><col style="width:6%;"><col style="width:5%;"><col style="width:9%;"><col style="width:14%;"></colgroup><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Apelidos</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Botijão Reserva</th><th>Indicado por</th><th>Anexos</th><th>Vínculos no sistema</th><th></th></tr></thead><tbody>'+
   list.map(c=>{
     const anexosCli = anexosDoContexto({cliente:c.nome});
-    const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="11" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
+    const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="12" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
     const cadastradoEmHtml = c.criadoEm ? '<div class=\"hint\" style=\"font-size:10px;margin-top:2px;\">cadastrado em '+fmtDate(new Date(c.criadoEm).toISOString().slice(0,10))+'</div>' : '';
     const autoCadastradoHtml = (c.autoCadastrado && !c.telefone) ? ' <span class=\"pill\" title=\"Criado automaticamente a partir de uma venda/fiado/agendamento — complete telefone e endereço quando puder\" style=\"background:var(--amber-tint,#FEF3C7);color:var(--amber,#B45309);\">🆕 completar cadastro</span>' : '';
-    return '<tr><td>'+escapeHtmlCampanha(c.nome)+autoCadastradoHtml+cadastradoEmHtml+'</td><td>'+etiquetaFrequenciaClienteHtml(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+(((c.apelidos||[]).map(a=>'<span class="pill">'+escapeHtmlCampanha(a)+'</span>').join(' '))||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td><td>'+(c.indicadoPor?escapeHtmlCampanha(c.indicadoPor):'—')+'</td>'+
+    return '<tr><td>'+escapeHtmlCampanha(c.nome)+autoCadastradoHtml+cadastradoEmHtml+'</td><td>'+etiquetaFrequenciaClienteHtml(c.nome)+'</td><td>'+(c.telefone||'—')+'</td><td>'+(((c.apelidos||[]).map(a=>'<span class="pill">'+escapeHtmlCampanha(a)+'</span>').join(' '))||'—')+'</td><td>'+((gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' '))||'—')+'</td><td>'+(c.endereco||'—')+'</td><td>'+(c.complemento||'—')+'</td><td>'+badgeBotijaoReservaHtml(c)+'</td><td>'+(c.indicadoPor?escapeHtmlCampanha(c.indicadoPor):'—')+'</td>'+
     '<td><button type="button" class="act-link" data-ver-anexos-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Ver anexos">📎'+anexosCli.length+'</button></td>'+
     '<td>'+resumoVinculosClienteHtml(c.nome)+'</td>'+
     '<td class="cel-acoes">'+botaoWhatsApp(c.telefone, true)+'<button type="button" class="act-link" data-ir-crm-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Abrir ficha no CRM">🤝</button><button class="act-link" data-edit-cliente="'+c.id+'" title="editar">✎</button><button class="del-link" data-del-cliente="'+c.id+'" title="excluir">🗑</button></td></tr>'+linhaAnexos;
@@ -10964,10 +11049,10 @@ function attachHandlers(){
     const apelidosArr = (f.get('apelidos')||'').split(',').map(s=>s.trim()).filter(Boolean);
     if(editClienteId){
       const c = state.clientes.find(x=>x.id===editClienteId);
-      if(c){ c.nome=f.get('nome'); c.telefone=f.get('telefone')||''; c.endereco=f.get('endereco')||''; c.complemento=f.get('complemento')||''; c.obs=f.get('obs')||''; c.apelidos=apelidosArr; c.indicadoPor=f.get('indicadoPor')||''; c.aniversario=f.get('aniversario')||''; c.limiteCredito=f.get('limiteCredito')?Number(f.get('limiteCredito')):undefined; c.grupos=[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value); }
+      if(c){ c.nome=f.get('nome'); c.telefone=f.get('telefone')||''; c.endereco=f.get('endereco')||''; c.complemento=f.get('complemento')||''; c.obs=f.get('obs')||''; c.apelidos=apelidosArr; c.indicadoPor=f.get('indicadoPor')||''; c.aniversario=f.get('aniversario')||''; c.limiteCredito=f.get('limiteCredito')?Number(f.get('limiteCredito')):undefined; c.botijaoReserva=f.get('botijaoReserva')||''; c.grupos=[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value); }
       editClienteId = null;
     } else {
-      state.clientes.push({id:uid(), nome:f.get('nome'), telefone:f.get('telefone')||'', endereco:f.get('endereco')||'', complemento:f.get('complemento')||'', obs:f.get('obs')||'', apelidos:apelidosArr, indicadoPor:f.get('indicadoPor')||'', aniversario:f.get('aniversario')||'', limiteCredito:f.get('limiteCredito')?Number(f.get('limiteCredito')):undefined, grupos:[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value), criadoEm:Date.now()});
+      state.clientes.push({id:uid(), nome:f.get('nome'), telefone:f.get('telefone')||'', endereco:f.get('endereco')||'', complemento:f.get('complemento')||'', obs:f.get('obs')||'', apelidos:apelidosArr, indicadoPor:f.get('indicadoPor')||'', aniversario:f.get('aniversario')||'', limiteCredito:f.get('limiteCredito')?Number(f.get('limiteCredito')):undefined, botijaoReserva:f.get('botijaoReserva')||'', grupos:[...fc.querySelectorAll('input[name="gruposCliente"]:checked')].map(x=>x.value), criadoEm:Date.now()});
     }
     await save('clientes');
     renderAll();
@@ -11680,7 +11765,7 @@ function attachHandlers(){
       const fcEl = document.getElementById('form-cliente');
       if(!c || !fcEl) return;
       editClienteId = c.id;
-      fcEl.nome.value=c.nome; fcEl.telefone.value=c.telefone||''; fcEl.endereco.value=c.endereco||''; fcEl.complemento.value=c.complemento||''; fcEl.obs.value=c.obs||''; if(fcEl.apelidos) fcEl.apelidos.value=(c.apelidos||[]).join(', '); fcEl.indicadoPor.value=c.indicadoPor||''; if(fcEl.aniversario) fcEl.aniversario.value=c.aniversario||''; if(fcEl.limiteCredito) fcEl.limiteCredito.value=c.limiteCredito||''; fcEl.querySelectorAll('input[name="gruposCliente"]').forEach(x=>x.checked=gruposClienteDoCliente(c).includes(x.value));
+      fcEl.nome.value=c.nome; fcEl.telefone.value=c.telefone||''; fcEl.endereco.value=c.endereco||''; fcEl.complemento.value=c.complemento||''; fcEl.obs.value=c.obs||''; if(fcEl.apelidos) fcEl.apelidos.value=(c.apelidos||[]).join(', '); fcEl.indicadoPor.value=c.indicadoPor||''; if(fcEl.aniversario) fcEl.aniversario.value=c.aniversario||''; if(fcEl.limiteCredito) fcEl.limiteCredito.value=c.limiteCredito||''; if(fcEl.botijaoReserva) fcEl.botijaoReserva.value=c.botijaoReserva||''; fcEl.querySelectorAll('input[name="gruposCliente"]').forEach(x=>x.checked=gruposClienteDoCliente(c).includes(x.value));
       fcEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       fcEl.scrollIntoView({behavior:'smooth'});
     });
@@ -13895,6 +13980,87 @@ function attachHandlers(){
     await save('usuariosSistema'); calcularPermissaoAtual(); renderAll();
   });
   const btnCancelarUsuario = document.getElementById('btn-cancelar-usuario'); if(btnCancelarUsuario) btnCancelarUsuario.onclick=()=>{ editUsuarioId=null; renderAll(); };
+
+  /* ---- Dicas & Treinamentos ---- */
+  document.querySelectorAll('[data-dica-filtro-categoria]').forEach(btn=>btn.onclick=()=>{ dicaCategoriaFiltro = btn.dataset.dicaFiltroCategoria||''; renderAll(); });
+  const selTipoDica = document.getElementById('sel-tipo-dica');
+  const toggleCamposDica = ()=>{
+    if(!selTipoDica) return;
+    const v = selTipoDica.value;
+    ['imagem','video','link','arquivo'].forEach(t=>{ const el=document.getElementById('campo-dica-'+t); if(el) el.style.display = (t===v?'block':'none'); });
+  };
+  if(selTipoDica){ selTipoDica.onchange = toggleCamposDica; toggleCamposDica(); }
+  const inputDicaImagem = document.getElementById('input-dica-imagem');
+  if(inputDicaImagem) inputDicaImagem.onchange = async()=>{
+    const f=inputDicaImagem.files[0]; if(!f) return;
+    dicaImagemSelecionada = await comprimirImagemArquivo(f);
+    const prev=document.getElementById('preview-dica-imagem'); if(prev) prev.innerHTML='<img src="'+dicaImagemSelecionada+'" style="max-height:140px;border-radius:8px;">';
+  };
+  const inputDicaVideo = document.getElementById('input-dica-video');
+  if(inputDicaVideo) inputDicaVideo.onchange = ()=>{
+    const f=inputDicaVideo.files[0]; if(!f) return;
+    if(f.size>15*1024*1024){ alert('Vídeo maior que 15 MB. Use um link em vez de subir o arquivo.'); inputDicaVideo.value=''; return; }
+    const r=new FileReader();
+    r.onload=e=>{ dicaVideoSelecionado=e.target.result; const prev=document.getElementById('preview-dica-video'); if(prev) prev.innerHTML='<video src="'+dicaVideoSelecionado+'" controls style="max-width:100%;max-height:200px;border-radius:8px;"></video>'; };
+    r.readAsDataURL(f);
+  };
+  const inputDicaArquivo = document.getElementById('input-dica-arquivo');
+  if(inputDicaArquivo) inputDicaArquivo.onchange = async()=>{
+    const f=inputDicaArquivo.files[0]; if(!f) return;
+    if(f.size>8*1024*1024){ alert('Arquivo maior que 8 MB.'); inputDicaArquivo.value=''; return; }
+    dicaArquivoSelecionado = { nome:f.name, tipo:f.type, dataUrl: await lerArquivoComoDataURL(f) };
+    const prev=document.getElementById('preview-dica-arquivo'); if(prev) prev.innerHTML='<span class="hint">Selecionado: '+escapeHtmlCampanha(f.name)+'</span>';
+  };
+  const formDica = document.getElementById('form-dica');
+  if(formDica) formDica.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(formDica);
+    const editId = formDica.dataset.editId;
+    const categoria = (f.get('categoria')||'').trim() || 'Outros';
+    if(!Array.isArray(state.categoriasDicas)) state.categoriasDicas = [];
+    if(categoria && !state.categoriasDicas.includes(categoria)) state.categoriasDicas.push(categoria);
+    const dados = {
+      titulo: (f.get('titulo')||'').trim(),
+      categoria,
+      tipo: f.get('tipo'),
+      conteudoTexto: f.get('conteudoTexto')||'',
+      videoLink: (f.get('videoLink')||'').trim(),
+      linkUrl: (f.get('linkUrl')||'').trim(),
+      publico: !!formDica.querySelector('[name="publico"]').checked
+    };
+    if(dicaImagemSelecionada) dados.imagemBase64 = dicaImagemSelecionada;
+    if(dicaVideoSelecionado) dados.videoDataUrl = dicaVideoSelecionado;
+    if(dicaArquivoSelecionado){ dados.arquivoBase64 = dicaArquivoSelecionado.dataUrl; dados.arquivoNome = dicaArquivoSelecionado.nome; dados.arquivoTipo = dicaArquivoSelecionado.tipo; }
+    if(!Array.isArray(state.dicasTreinamentos)) state.dicasTreinamentos = [];
+    if(editId){
+      const d = state.dicasTreinamentos.find(x=>x.id===editId);
+      if(d) Object.assign(d, dados);
+    } else {
+      state.dicasTreinamentos.push(Object.assign({id:uid(), criadoEm:Date.now()}, dados));
+    }
+    dicaImagemSelecionada=null; dicaVideoSelecionado=null; dicaArquivoSelecionado=null;
+    await save('dicasTreinamentos'); await save('categoriasDicas');
+    editDicaId = null;
+    renderAll();
+  };
+  const btnCancelarDica = document.getElementById('btn-cancelar-dica');
+  if(btnCancelarDica) btnCancelarDica.onclick = ()=>{ editDicaId=null; dicaImagemSelecionada=null; dicaVideoSelecionado=null; dicaArquivoSelecionado=null; renderAll(); };
+  document.querySelectorAll('[data-edit-dica]').forEach(btn=>btn.onclick=()=>{
+    editDicaId = btn.dataset.editDica;
+    renderAll();
+    setTimeout(()=>{ const el=document.getElementById('form-dica'); if(el) el.scrollIntoView({behavior:'smooth'}); },30);
+  });
+  document.querySelectorAll('[data-del-dica]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Excluir essa dica/treinamento?')) return;
+    state.dicasTreinamentos = (state.dicasTreinamentos||[]).filter(d=>d.id!==btn.dataset.delDica);
+    await save('dicasTreinamentos');
+    renderAll();
+  });
+  document.querySelectorAll('[data-copiar-link-dica]').forEach(btn=>btn.onclick=async()=>{
+    try{ await navigator.clipboard.writeText(btn.dataset.copiarLinkDica); alert('Link copiado! Já pode mandar pro cliente.'); }
+    catch(e){ alert('Link: '+btn.dataset.copiarLinkDica); }
+  });
+
   if(btnBackupManual) btnBackupManual.onclick = async ()=>{
     const inputObsBackup = document.getElementById('input-obs-backup-manual');
     const obsBackup = inputObsBackup ? inputObsBackup.value.trim() : '';
@@ -14713,7 +14879,15 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           }
         }
         const canal = (r['Canal']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.canal : '') || CANAIS[0];
-        const pagamento = (r['Forma de Pagamento']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.pagamento : '') || PAGAMENTOS[0];
+        const pagamentoDigitado = (r['Forma de Pagamento']||'').trim();
+        let pagamento;
+        if(pagamentoDigitado){
+          const normPag = normalizarFormaPagamentoImportada(pagamentoDigitado);
+          pagamento = normPag.valor;
+          if(!normPag.reconhecido) adicionarPendenciaConferencia('venda','forma_pagamento',pagamentoDigitado,'Forma de pagamento não reconhecida exatamente (ficou salva como digitada); confira se essa venda deveria ser Marcou/Fiado, Abateu ou outra forma da lista.');
+        } else {
+          pagamento = (repeteVendaAnterior ? ultimaVendaAncora.pagamento : '') || PAGAMENTOS[0];
+        }
         const nota = (r['Nota']||'').trim() || (repeteVendaAnterior ? ultimaVendaAncora.nota : '') || 'Não lança';
         const tipoEntregaDigitado = (r['Tipo de Entrega']||'').trim();
         let tipo_entrega = tipoEntregaDigitado || (repeteVendaAnterior ? ultimaVendaAncora.tipo_entrega : '') || TIPOS_ENTREGA[0];
@@ -15708,7 +15882,15 @@ function renderCsvVendasMapping(){
         }
       }
       const canal = colCanal && r[colCanal] ? r[colCanal].trim() : canalBase;
-      const pagamento = colPagamento && r[colPagamento] ? r[colPagamento].trim() : pagamentoBase;
+      const pagamentoDigitadoCsv = colPagamento && r[colPagamento] ? r[colPagamento].trim() : '';
+      let pagamento;
+      if(pagamentoDigitadoCsv){
+        const normPagCsv = normalizarFormaPagamentoImportada(pagamentoDigitadoCsv);
+        pagamento = normPagCsv.valor;
+        if(!normPagCsv.reconhecido) adicionarPendenciaConferencia('venda','forma_pagamento',pagamentoDigitadoCsv,'Forma de pagamento não reconhecida exatamente (ficou salva como digitada); confira se essa venda deveria ser Marcou/Fiado, Abateu ou outra forma da lista.');
+      } else {
+        pagamento = pagamentoBase;
+      }
       const tipo_entrega = colEntrega && r[colEntrega] ? r[colEntrega].trim() : entregaBase;
       const empresa = colEmpresa ? (r[colEmpresa]||'').trim() : '';
       const frete = (colFrete && r[colFrete] && TIPOS_ENTREGA_COM_FRETE.includes(tipo_entrega)) ? (parseNumeroPlanilha(r[colFrete])||0) : 0;
@@ -16707,6 +16889,36 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
   render();
 }
 
+async function iniciarDicaPublica(id){
+  document.body.innerHTML = '<div id="dica-publica" style="max-width:560px;margin:0 auto;padding:20px;font-family:Arial,sans-serif;background:#fff;min-height:100vh;box-sizing:border-box;">Carregando...</div>';
+  const wrap = document.getElementById('dica-publica');
+  try{
+    const { data, error } = await supabaseClient.from('app_data').select('valor').eq('chave','dicasTreinamentos');
+    if(error) throw error;
+    const lista = (data && data[0] && data[0].valor) || [];
+    const dica = lista.find(d=>d.id===id && d.publico);
+    if(!dica){ wrap.innerHTML = '<h2>Conteúdo não encontrado</h2><p>Esse link pode estar errado, ou o conteúdo não está mais disponível publicamente.</p>'; return; }
+    function embedVideo(link){
+      if(!link) return '';
+      const yt = link.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]{6,})/);
+      if(yt) return '<iframe width="100%" height="260" src="https://www.youtube.com/embed/'+yt[1]+'" frameborder="0" allowfullscreen style="border-radius:12px;"></iframe>';
+      return '<a href="'+link+'" target="_blank" rel="noopener" style="display:block;padding:14px;background:#eef3fb;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#1a3a7a;">▶️ Assistir vídeo</a>';
+    }
+    let corpo = '';
+    if(dica.conteudoTexto) corpo += '<div style="white-space:pre-wrap;line-height:1.6;margin-bottom:16px;">'+escapeHtmlCampanha(dica.conteudoTexto)+'</div>';
+    if(dica.tipo==='imagem' && dica.imagemBase64) corpo += '<img src="'+dica.imagemBase64+'" style="width:100%;border-radius:12px;margin-bottom:16px;">';
+    if(dica.tipo==='video'){
+      if(dica.videoDataUrl) corpo += '<video src="'+dica.videoDataUrl+'" controls style="width:100%;border-radius:12px;margin-bottom:16px;"></video>';
+      else if(dica.videoLink) corpo += embedVideo(dica.videoLink)+'<div style="margin-bottom:16px;"></div>';
+    }
+    if(dica.tipo==='link' && dica.linkUrl) corpo += '<a href="'+dica.linkUrl+'" target="_blank" rel="noopener" style="display:block;padding:14px;background:#eef3fb;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#1a3a7a;margin-bottom:16px;">🔗 Abrir link</a>';
+    if(dica.tipo==='arquivo' && dica.arquivoBase64) corpo += '<a href="'+dica.arquivoBase64+'" download="'+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'" style="display:block;padding:14px;background:#eef3fb;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#1a3a7a;margin-bottom:16px;">📄 Baixar '+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'</a>';
+    wrap.innerHTML = '<div style="text-align:center;margin-bottom:18px;"><div style="font-size:30px;">💡</div><h2 style="margin:6px 0;">'+escapeHtmlCampanha(dica.titulo)+'</h2>'+(dica.categoria?('<div style="color:#777;font-size:13px;">'+escapeHtmlCampanha(dica.categoria)+'</div>'):'')+'</div>'+corpo+'<div style="text-align:center;color:#999;font-size:12px;margin-top:20px;">Tom Gás — Dicas & Treinamentos</div>';
+  }catch(e){
+    wrap.innerHTML = '<h2>Não foi possível abrir</h2><p>Confira sua conexão e tente novamente.</p>';
+    console.error(e);
+  }
+}
 async function iniciarRastreioPublico(entregadorId){
   document.body.innerHTML = '<div id="rastreio-wrap" style="max-width:420px;margin:0 auto;padding:24px 18px;font-family:Arial,sans-serif;background:#fff;min-height:100vh;box-sizing:border-box;text-align:center;">Carregando...</div>';
   const wrap = document.getElementById('rastreio-wrap');
@@ -16964,6 +17176,8 @@ async function init(){
   if(rastrearId){ await iniciarRastreioPublico(rastrearId); return; }
   const pesquisaManualParam = paramsUrl.get('pesquisamanual');
   if(pesquisaManualParam){ await iniciarPesquisaManualPublica(); return; }
+  const dicaParam = paramsUrl.get('dica');
+  if(dicaParam){ await iniciarDicaPublica(dicaParam); return; }
   attachAuthHandlers();
   attachLogoInput();
   registerServiceWorker();
