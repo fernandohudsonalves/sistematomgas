@@ -846,7 +846,8 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
     <div class="hint" style="margin:0 0 8px;">Só pra ter uma ideia de quanto vendeu hoje, antes de lançar as vendas de verdade. Nada aqui é salvo no sistema.</div>
     <div id="sim-venda-itens"></div>
     <button type="button" class="btn small ghost" id="sim-venda-add-item" style="margin-top:6px;">+ adicionar produto</button>
-    <div style="margin-top:10px;"><label>Frete (R$)</label><input type="text" inputmode="decimal" id="sim-venda-frete" placeholder="0,00"></div>
+    <div id="sim-venda-fretes" style="margin-top:10px;"></div>
+    <button type="button" class="btn small ghost" id="sim-venda-add-frete" style="margin-top:4px;">+ adicionar frete</button>
     <div id="sim-venda-total" style="margin-top:10px;font-weight:700;font-size:16px;">Total: R$ 0,00</div>
     <button type="button" class="btn small" id="sim-venda-limpar" style="margin-top:8px;">Limpar tudo</button>
   </div>
@@ -1231,14 +1232,15 @@ function initCalculadora(){
 // Simulador rápido de vendas do dia: só uma conta de cabeça (produto x quantidade x valor + frete)
 // pra saber quanto vendeu antes de lançar as vendas de verdade. Não salva nada no state/Supabase.
 let simVendaItens = [{produto:'', qtd:1, valor:0}];
+let simVendaFretes = [0];
 function initSimuladorVenda(){
   const fab=document.getElementById('sim-venda-fab'), panel=document.getElementById('sim-venda-panel'), head=document.getElementById('sim-venda-head');
   if(!fab||!panel) return;
   fab.onclick=()=>{ panel.classList.toggle('open'); renderSimVenda(); };
   document.getElementById('sim-venda-fechar').onclick=()=>panel.classList.remove('open');
   document.getElementById('sim-venda-add-item').onclick=()=>{ simVendaItens.push({produto:'', qtd:1, valor:0}); renderSimVenda(); };
-  document.getElementById('sim-venda-limpar').onclick=()=>{ simVendaItens=[{produto:'', qtd:1, valor:0}]; document.getElementById('sim-venda-frete').value=''; renderSimVenda(); };
-  document.getElementById('sim-venda-frete').oninput = atualizarTotalSimVenda;
+  document.getElementById('sim-venda-add-frete').onclick=()=>{ simVendaFretes.push(0); renderSimVendaFretes(); };
+  document.getElementById('sim-venda-limpar').onclick=()=>{ simVendaItens=[{produto:'', qtd:1, valor:0}]; simVendaFretes=[0]; renderSimVenda(); };
   tornarArrastavel(panel, head);
   renderSimVenda();
 }
@@ -1280,13 +1282,35 @@ function renderSimVenda(){
       renderSimVenda();
     };
   });
+  renderSimVendaFretes();
+}
+function renderSimVendaFretes(){
+  const wrapF = document.getElementById('sim-venda-fretes');
+  if(!wrapF) return;
+  wrapF.innerHTML = '<label>Frete (R$)</label>'+simVendaFretes.map(function(v,i){
+    return '<div style="display:flex;gap:6px;align-items:center;margin-top:4px;">'+
+      '<input type="text" inputmode="decimal" class="sim-frete" data-sim-frete-idx="'+i+'" value="'+(v?Number(v).toFixed(2).replace('.',','):'')+'" placeholder="0,00" style="flex:1;">'+
+      (simVendaFretes.length>1?'<button type="button" class="sim-frete-remover" data-sim-frete-idx="'+i+'" title="Remover frete">🗑</button>':'')+
+      '</div>';
+  }).join('');
+  wrapF.querySelectorAll('.sim-frete').forEach(function(inp){
+    inp.oninput = function(){ simVendaFretes[Number(this.dataset.simFreteIdx)] = parseValorBR(this.value)||0; atualizarTotalSimVenda(); };
+  });
+  wrapF.querySelectorAll('.sim-frete-remover').forEach(function(btn){
+    btn.onclick = function(){
+      const i = Number(this.dataset.simFreteIdx);
+      simVendaFretes.splice(i,1);
+      if(simVendaFretes.length===0) simVendaFretes=[0];
+      renderSimVendaFretes();
+      atualizarTotalSimVenda();
+    };
+  });
   atualizarTotalSimVenda();
 }
 function atualizarTotalSimVenda(){
   const totalEl = document.getElementById('sim-venda-total');
   if(!totalEl) return;
-  const freteEl = document.getElementById('sim-venda-frete');
-  const frete = freteEl ? (parseValorBR(freteEl.value)||0) : 0;
+  const frete = simVendaFretes.reduce((s,v)=>s+(Number(v)||0),0);
   const totalItens = simVendaItens.reduce((s,it)=>s+(Number(it.qtd)||0)*(Number(it.valor)||0),0);
   totalEl.textContent = 'Total: '+fmtMoney(totalItens+frete);
 }
@@ -1517,7 +1541,14 @@ const ICONES_CATEGORIA_DESPESA = {
   'Plano celular Wellington':'📱','Fatura Cartões':'💳','Builderall':'💻','Boletos Natura':'💄',
   'Médico Fer':'🏥','IPVAS E Impostos Veículos':'🚗','Boletos Natura e Avon':'💄',
   'Manutenção Veículos':'🔧','Tratamento Vera':'🧘','Fretes Toninho':'🚚','teste':'🧪',
-  'Ovos funcionário araovos':'🥚','Produtos Naturais Fer':'🌿','Encargos':'💰'
+  'Ovos funcionário araovos':'🥚','Produtos Naturais Fer':'🌿','Encargos':'💰',
+  // Ícones pedidos pelo usuário — nomes exatos como provavelmente estão cadastrados hoje.
+  // Se algum não bater, é só me avisar o nome certo da categoria que eu ajusto a chave.
+  'Boleto Bling':'💲','Boletos Bling':'💲',
+  'Scorpions Futsal':'⚽',
+  'Táxi e Uber':'🚕','Taxi e Uber':'🚕','Táxi / Uber':'🚕','Taxi / Uber':'🚕','Táxi':'🚕','Taxi':'🚕','Uber':'🚕',
+  'Orli Aromas':'🧴',
+  'Honorários Escritório de Contabilidade':'🧾','Honorários Escritório':'🧾','Honorários Contábeis':'🧾','Honorários Contabilidade':'🧾'
 };
 function iconeCategoriaDespesaHtml(cat){
   const ic = ICONES_CATEGORIA_DESPESA[cat];
