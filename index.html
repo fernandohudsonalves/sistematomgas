@@ -865,8 +865,12 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
         <label>Saindo de</label>
         <input type="text" id="rt-origem-manual" placeholder="Ex: Rua Tal, 123 - Bairro, Cidade">
       </div>
-      <label>Endereço de destino <span class="req">*</span></label>
+      <label>Cliente (opcional — preenche o endereço sozinho)</label>
+      <select id="rt-cliente-select"><option value="">Digitar endereço manualmente...</option></select>
+      <label style="margin-top:8px;">Endereço de destino <span class="req">*</span></label>
       <input type="text" id="rt-destino" placeholder="Ex: Rua Tal, 123 - Bairro, Cidade">
+      <label style="margin-top:8px;">Enviar rota pra qual entregador?</label>
+      <select id="rt-entregador-select"><option value="">Escolher no WhatsApp (compartilhar)</option></select>
       <button type="button" class="btn" id="rt-gerar" style="width:100%;">Gerar rota</button>
       <div id="rt-resultado" class="rt-resultado">
         <div class="rt-btn-linha">
@@ -939,6 +943,73 @@ function renderPainelConferenciaLista(){
   });
 }
 function initConferenciaBadge(){let b=document.getElementById('conferencia-badge');if(!b){b=document.createElement('button');b.id='conferencia-badge';b.style='position:fixed;right:18px;bottom:300px;z-index:9999;border:0;border-radius:999px;padding:10px 14px;background:#f59e0b;color:#fff;font-weight:700;cursor:pointer';document.body.appendChild(b);b.onclick=abrirPainelConferencia;}const n=(state.pendenciasConferencia||[]).filter(x=>x.status==='pendente').length;b.style.display=n?'block':'none';b.textContent='⚠ '+n+' conferência(s)';}
+// Lista única de todos os relatórios (usada tanto pela tela de Relatórios quanto pela busca do sistema).
+// Assim, todo relatório novo que for criado aqui já aparece automaticamente na busca, sem precisar cadastrar em dois lugares.
+const RELATORIOS_SUBTABS = [
+  {id:'vendas', label:'Vendas por período'},
+  {id:'meta', label:'Meta de Cargas P13'},
+  {id:'gestaocanal', label:'Gestão à Vista — Canal'},
+  {id:'gestaoentregador', label:'Gestão à Vista — Entregador'},
+  {id:'remuneracao', label:'Remuneração Variável'},
+  {id:'resumodia', label:'Resumo do Dia'},
+  {id:'ranking', label:'Ranking de Clientes'},
+  {id:'abc', label:'Curva ABC de Clientes'},
+  {id:'indicacoes', label:'Programa de Indicação'},
+  {id:'kpis', label:'Indicadores (KPIs)'},
+  {id:'pesquisa', label:'Pesquisa de Clientes'},
+  {id:'pesquisasmanuais', label:'Pesquisas Manuais'},
+  {id:'novosclientes', label:'Novos Clientes'},
+  {id:'painelacao', label:'Painel de Ação'},
+  {id:'esg', label:'Controle ESG'},
+  {id:'compararcampanhas', label:'Comparar Campanhas'},
+  {id:'itens', label:'Itens por categoria'},
+  {id:'porvasilhame', label:'Vendas por Vasilhame (conferência)'},
+  {id:'cruzamento', label:'Gasto x Venda (Cruzamento)'},
+  {id:'entregas', label:'Entregas por período'},
+  {id:'fretes', label:'Fretes por período'},
+  {id:'combustivelfrete', label:'Combustível x Frete'},
+  {id:'despesas', label:'Despesas por período'},
+  {id:'diastrabalho', label:'Dias de trabalho p/ pagar contas'},
+  {id:'custosfixosvar', label:'Saúde da empresa / Ponto de equilíbrio'},
+  {id:'veiculos', label:'Veículos'},
+  {id:'fiado', label:'Fiado / A receber'},
+  {id:'creditos', label:'Créditos em haver'},
+  {id:'comodatos', label:'Comodatos / Empréstimos'},
+  {id:'patrimonio', label:'Patrimônio real'},
+  {id:'notas', label:'Notas para o Bling'},
+  {id:'empresas', label:'Empresas conveniadas'},
+  {id:'reajuste', label:'Simulador de Reajuste'},
+  {id:'analises', label:'Análises e Gráficos'},
+];
+// Sinônimos extras por relatório, só pra melhorar a busca (não precisa existir um item pra cada relatório aqui).
+const RELATORIOS_KW_EXTRA = {
+  meta: 'grafico de pilhas p13 objetivo mensal diario',
+  porvasilhame: 'conferencia venda por vasilhame p13 p20 p45 p5 numerada cliente baixa estoque meta',
+  gestaocanal: 'gestao a vista canal hub ativa',
+  gestaoentregador: 'gestao a vista entregador motoboy',
+  remuneracao: 'comissao entregador motoboy variavel',
+  kpis: 'nps pesquisa satisfacao nota rfm ltv sumidos',
+  pesquisa: 'sugestao critica melhoria opiniao',
+  pesquisasmanuais: 'link enviar cliente nota satisfacao',
+  novosclientes: 'cadastrados conferencia mes',
+  painelacao: 'alertas',
+  esg: 'desperdicio energia agua sustentabilidade',
+  compararcampanhas: 'conversao whatsapp',
+  cruzamento: 'gasto x venda categoria comparativo',
+  entregas: 'frete fretes valor de frete cobranca de frete taxa de entrega tipo de entrega',
+  fretes: 'frete valor cobranca taxa de entrega',
+  combustivelfrete: 'combustivel frete comparativo gasto veiculo',
+  diastrabalho: 'conta fixa aluguel salario receita media',
+  custosfixosvar: 'custo fixo variavel faturamento bruto ponto de equilibrio',
+  fiado: 'a receber divida',
+  creditos: 'credito em haver',
+  comodatos: 'emprestimos',
+  patrimonio: 'real',
+  notas: 'bling',
+  empresas: 'conveniadas convenio valor',
+  reajuste: 'preco simulador',
+  analises: 'graficos',
+};
 const BUSCA_SISTEMA_INDEX = [
   {label:'Painel', kw:'painel dashboard inicio', tab:'dashboard'},
   {label:'Metas', kw:'metas objetivo vendas mes', tab:'metas'},
@@ -966,31 +1037,8 @@ const BUSCA_SISTEMA_INDEX = [
   {label:'Campanhas', kw:'campanhas marketing whatsapp publico calendario cupom', tab:'campanhas'},
   {label:'Checklist', kw:'checklist rotina diario', tab:'checklist'},
   {label:'Importação diária de planilha', kw:'importar planilha excel importacao diaria', tab:'checklist'},
-  {label:'Relatórios: Vendas por período', kw:'relatorio vendas periodo', tab:'relatorios', sub:'vendas'},
-  {label:'Relatórios: Resumo do Dia', kw:'resumo do dia relatorio', tab:'relatorios', sub:'resumodia'},
-  {label:'Relatórios: Ranking de Clientes', kw:'ranking clientes quem mais compra', tab:'relatorios', sub:'ranking'},
-  {label:'Relatórios: Curva ABC de Clientes', kw:'curva abc clientes', tab:'relatorios', sub:'abc'},
-  {label:'Relatórios: Programa de Indicação', kw:'indicacao indique e ganhe recompensa', tab:'relatorios', sub:'indicacoes'},
-  {label:'Relatórios: Indicadores (KPIs) e NPS', kw:'kpi indicadores nps pesquisa satisfacao nota rfm ltv sumidos', tab:'relatorios', sub:'kpis'},
-  {label:'Relatórios: Pesquisa de Clientes (sugestão/crítica)', kw:'pesquisa clientes sugestao critica melhoria', tab:'relatorios', sub:'pesquisa'},
-  {label:'Relatórios: Pesquisas Manuais', kw:'pesquisa manual link enviar cliente nota satisfacao', tab:'relatorios', sub:'pesquisasmanuais'},
-  {label:'Relatórios: Novos Clientes', kw:'novos clientes cadastrados conferencia mes', tab:'relatorios', sub:'novosclientes'},
-  {label:'Relatórios: Painel de Ação', kw:'painel de acao alertas', tab:'relatorios', sub:'painelacao'},
-  {label:'Relatórios: Controle ESG', kw:'esg desperdicio energia agua sustentabilidade', tab:'relatorios', sub:'esg'},
-  {label:'Relatórios: Comparar Campanhas', kw:'comparar campanhas conversao', tab:'relatorios', sub:'compararcampanhas'},
-  {label:'Relatórios: Itens por categoria', kw:'itens por categoria produtos vendidos', tab:'relatorios', sub:'itens'},
-  {label:'Relatórios: Entregas por período', kw:'entregas por periodo relatorio frete fretes valor de frete cobranca de frete taxa de entrega', tab:'relatorios', sub:'entregas'},
-  {label:'Relatórios: Despesas por período', kw:'despesas por periodo relatorio gastos', tab:'relatorios', sub:'despesas'},
-  {label:'Relatórios: Veículos', kw:'veiculos km quilometragem gasto comparativo relatorio', tab:'relatorios', sub:'veiculos'},
-  {label:'Relatórios: Fiado / A receber', kw:'fiado a receber relatorio', tab:'relatorios', sub:'fiado'},
-  {label:'Relatórios: Créditos em haver', kw:'creditos em haver relatorio', tab:'relatorios', sub:'creditos'},
-  {label:'Relatórios: Comodatos / Empréstimos', kw:'comodatos emprestimos relatorio', tab:'relatorios', sub:'comodatos'},
-  {label:'Relatórios: Patrimônio real', kw:'patrimonio real relatorio', tab:'relatorios', sub:'patrimonio'},
-  {label:'Relatórios: Notas para o Bling', kw:'notas bling relatorio', tab:'relatorios', sub:'notas'},
-  {label:'Relatórios: Custos Fixos x Variáveis / Saúde da empresa', kw:'custo fixo variavel faturamento bruto relatorio saude empresa ponto de equilibrio', tab:'relatorios', sub:'custosfixosvar'},
-  {label:'Relatórios: Empresas conveniadas', kw:'empresas conveniadas relatorio editar valor convenio', tab:'relatorios', sub:'empresas'},
-  {label:'Relatórios: Simulador de Reajuste', kw:'simulador de reajuste preco', tab:'relatorios', sub:'reajuste'},
-  {label:'Relatórios: Análises e Gráficos', kw:'analises graficos relatorio', tab:'relatorios', sub:'analises'},
+  {label:'Dicas & Treinamentos', kw:'dicas treinamentos manual como fazer video imagem arquivo', tab:'dicas'},
+  ...RELATORIOS_SUBTABS.map(st=>({label:'Relatórios: '+st.label, kw:'relatorio '+st.label+' '+(RELATORIOS_KW_EXTRA[st.id]||''), tab:'relatorios', sub:st.id})),
   {label:'Configurações', kw:'config configuracoes categorias produtos backup motivo observacao usuarios permissoes google negocio limpar cache do site cookies', tab:'config'},
   {label:'💎 Lapidar (itens marcados do sistema)', kw:'lapidar diamante marcados apresentar sistema clientes', tab:'config'},
 ];
@@ -1318,12 +1366,19 @@ function initRotaFab(){
   const fab=document.getElementById('rota-fab'), panel=document.getElementById('rota-panel'), head=panel?panel.querySelector('.rt-head'):null;
   if(!fab||!panel) return;
   const fechar=()=> panel.classList.remove('open');
-  fab.onclick=()=>{ panel.classList.add('open'); rotaBuscarLocalizacao(); };
+  fab.onclick=()=>{ panel.classList.add('open'); rotaBuscarLocalizacao(); rotaPopularSelects(); };
   document.getElementById('rt-fechar').onclick=fechar;
   document.getElementById('rt-origem-atualizar').onclick=rotaBuscarLocalizacao;
   document.getElementById('rt-origem-manual-toggle').onclick=()=>{
     const wrap=document.getElementById('rt-origem-manual-wrap');
     wrap.style.display = wrap.style.display==='none' ? 'block' : 'none';
+  };
+  document.getElementById('rt-cliente-select').onchange=(e)=>{
+    const nome=e.target.value;
+    if(!nome) return;
+    const end=getClienteEndereco(nome);
+    document.getElementById('rt-destino').value = end==='—' ? '' : end;
+    if(end==='—') alert('Esse cliente não tem endereço cadastrado. Digite manualmente.');
   };
   document.getElementById('rt-gerar').onclick=rotaGerarLinks;
   document.getElementById('rt-copiar-msg').onclick=rotaCopiarMensagem;
@@ -1359,6 +1414,14 @@ function rotaObterOrigem(){
   if(rotaOrigemCoords) return { coords: rotaOrigemCoords };
   return null;
 }
+function rotaPopularSelects(){
+  const selC=document.getElementById('rt-cliente-select');
+  if(selC) selC.innerHTML='<option value="">Digitar endereço manualmente...</option>'+
+    (state.clientes||[]).slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">'+escapeHtmlCampanha(c.nome)+'</option>').join('');
+  const selE=document.getElementById('rt-entregador-select');
+  if(selE) selE.innerHTML='<option value="">Escolher no WhatsApp (compartilhar)</option>'+
+    (state.entregadores||[]).map(e=>'<option value="'+e.id+'">'+escapeHtmlCampanha(e.nome)+'</option>').join('');
+}
 function rotaGerarLinks(){
   const destino=(document.getElementById('rt-destino').value||'').trim();
   if(!destino){ alert('Digite o endereço de destino.'); return; }
@@ -1388,8 +1451,11 @@ async function rotaCopiarMensagem(){
   catch(e){ alert('Não foi possível copiar automaticamente. Copie manualmente os links.'); }
 }
 function rotaEnviarWhats(){
-  const texto=encodeURIComponent(rotaMontarMensagem());
-  window.open('https://wa.me/?text='+texto, '_blank');
+  const entregadorId=(document.getElementById('rt-entregador-select')||{}).value||'';
+  const numero=entregadorId?whatsappEntregador(entregadorId):'';
+  const link=numero?linkWhatsAppComTexto(numero, rotaMontarMensagem()):('https://wa.me/?text='+encodeURIComponent(rotaMontarMensagem()));
+  if(entregadorId && !numero) alert('Esse entregador não tem WhatsApp cadastrado. Vou abrir pra você escolher manualmente.');
+  window.open(link, '_blank');
 }
 function normalizarBuscaWs(str){return (str||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
 function renderWsResultados(termo){
@@ -3265,6 +3331,34 @@ function montarCascoPendenteItens(){
     ? linhas.join('')
     : '<div class="hint" style="margin:0;">Nenhum item de carga de Gás/Água no carrinho — não há casco pra ficar pendente.</div>';
 }
+/* Monta uma linha por item de carga (Gás/Água) com mais de 1 unidade no carrinho, pra separar
+   quantos o cliente leva agora do que fica pendente como "Falta retirar" — e se o vasilhame
+   vazio da parte pendente já foi deixado ou não (info importante pra quando ele vier retirar). */
+function montarRetiradaParcialItens(){
+  const wrap = document.getElementById('retirada-parcial-itens');
+  const chk = document.getElementById('chk-retirada-parcial');
+  if(!wrap || !chk) return;
+  if(!chk.checked){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+  const linhas = [];
+  todasLinhasItemVenda().forEach((row)=>{
+    const catEl = row.classList.contains('iv-item-principal') ? document.getElementById('sel-categoria') : row.querySelector('.iv-categoria');
+    const qtdEl = row.querySelector('[name="quantidade"]') || row.querySelector('.iv-quantidade');
+    const cat = catEl ? catEl.value : '';
+    const info = CATEGORIAS_ESTOQUE[cat];
+    if(!cat || !info || info.tipo!=='carga') return;
+    const qtd = Number(qtdEl ? qtdEl.value : 0)||0;
+    if(qtd<=1) return; // só faz sentido separar se tiver mais de 1 unidade
+    linhas.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">'+
+      '<span style="min-width:190px;">'+escapeHtmlCampanha(cat)+' ('+qtd+' na venda)</span>'+
+      '<label style="font-weight:400;margin:0;">Leva agora: <input type="number" min="0" step="1" max="'+qtd+'" value="'+qtd+'" data-retparcial-leva="'+escapeHtmlCampanha(cat)+'" style="width:70px;"></label>'+
+      '<label class="checkbox-item" style="margin:0;"><input type="checkbox" data-retparcial-vazio="'+escapeHtmlCampanha(cat)+'"> vasilhame vazio da parte pendente já foi deixado</label>'+
+      '</div>');
+  });
+  wrap.style.display='block';
+  wrap.innerHTML = linhas.length
+    ? linhas.join('')
+    : '<div class="hint" style="margin:0;">Nenhum item de carga com mais de 1 unidade no carrinho — não há o que separar.</div>';
+}
 function atualizarBoxCreditoVenda(){
   atualizarAvisoComodatoVenda();
   const box = document.getElementById('credito-cliente-box');
@@ -3631,6 +3725,59 @@ function avisarClienteACaminho(nomeCliente){
   const msg = 'Oi, '+primeiroNome+'! 🚚💨 Sua entrega já está a caminho, chega em breve. Qualquer coisa é só chamar por aqui!';
   const link = linkWhatsAppComTexto(tel, msg);
   if(link) window.open(link, '_blank');
+}
+/* ---------- Concluir entrega direto pelo painel (sem depender do link do entregador) ----------
+   Serve pra quando o entregador não usa o passo a passo (já chegou, já entregou etc.) — o
+   admin marca a entrega como concluída aqui e, se ainda faltar acertar o pagamento (não é fiado
+   e não estava pago antes), já cai a pendência de acerto em Acertos → Acertos com entregadores,
+   igual cairia se o entregador tivesse confirmado pelo link. */
+async function criarOuAtualizarAcertoAdmin(p){
+  if(!Array.isArray(state.acertosEntrega)) state.acertosEntrega = [];
+  let a = state.acertosEntrega.find(x=>(p.agendamentoId && x.agendamentoId===p.agendamentoId)||(p.vendaGrupoId && x.vendaGrupoId===p.vendaGrupoId));
+  const entregadorObj = entregadorPorId(p.entregadorId);
+  if(!a){
+    a = {id:uid(), data:todayStr(), criadoEm:Date.now(), status:'pendente', confirmadoEm:null,
+      cliente:p.cliente||'', telefoneCliente:getClienteTelefone(p.cliente)||'', enderecoCliente:getClienteEndereco(p.cliente)||'', complementoCliente:'',
+      produtoResumo:p.produtoResumo||'', pagamento:p.pagamento||'', valor:p.valor||0, itensExcel:p.itensExcel||[],
+      entregadorId:p.entregadorId||'', entregadorNome:entregadorObj?entregadorObj.nome:'',
+      entregadorConfirmouRecebimento:true, concluidoPeloPainel:true,
+      agendamentoId:p.agendamentoId||null, vendaGrupoId:p.vendaGrupoId||null};
+    state.acertosEntrega.push(a);
+  } else {
+    a.valor=p.valor||0; a.pagamento=p.pagamento||''; a.entregadorConfirmouRecebimento=true; a.itensExcel=p.itensExcel||[];
+  }
+  await save('acertosEntrega');
+}
+async function concluirEntregaAdminEGerarAcerto(origem, id){
+  let cliente, pagamento, entregadorId, valorTotal, produtoResumo, itensExcel, jaPago, agendamentoIdRef=null, vendaGrupoIdRef=null;
+  if(origem==='venda'){
+    const v = state.vendas.find(x=>x.id===id);
+    if(!v) return;
+    const linhas = itensDoGrupo(v.grupoId, v.id);
+    linhas.forEach(l=>{ l.entrega_status='entregue'; l.notif_saiu=true; l.notif_chegou=true; });
+    cliente=v.cliente; pagamento=v.pagamento; entregadorId=v.entregadorId||'';
+    valorTotal = linhas.reduce((s,l)=>s+(Number(l.valor_total)||0)+(Number(l.frete)||0),0);
+    produtoResumo = linhas.map(l=>l.quantidade+'x '+l.produto).join(', ');
+    itensExcel = linhas.map((l,i)=>({canal:l.canal||'', produto:l.produto||l.categoria||'', quantidade:l.quantidade||1, valorUnit:Number(l.valor_unit)||0, notaVenda:l.nota||'', tipoEntrega:l.tipo_entrega||'', empresa:l.empresa||'', frete:i===0?(Number(l.frete)||0):0, observacao:l.obs||''}));
+    jaPago = false;
+    vendaGrupoIdRef = v.grupoId||v.id;
+    await save('vendas');
+  } else {
+    const ag = state.agendamentos.find(x=>x.id===id);
+    if(!ag) return;
+    ag.status='concluido'; ag.notif_saiu=true; ag.notif_chegou=true;
+    cliente=ag.cliente; pagamento=ag.pagamento||''; entregadorId=ag.entregadorId||'';
+    valorTotal = ag.valor||0; produtoResumo = ag.produto_nota||'';
+    itensExcel = [{canal:'', produto:ag.produto||ag.produto_nota||'', quantidade:ag.quantidade||1, valorUnit: ag.quantidade?(Number(ag.valor)||0)/ag.quantidade:(Number(ag.valor)||0), notaVenda:'', tipoEntrega:ag.tipo_entrega||'', empresa:ag.empresa||'', frete:Number(ag.frete)||0, observacao:''}];
+    jaPago = !!ag.pago;
+    agendamentoIdRef = ag.id;
+    await save('agendamentos');
+  }
+  if(pagamento!=='Marcou/Fiado' && !jaPago){
+    await criarOuAtualizarAcertoAdmin({agendamentoId:agendamentoIdRef, vendaGrupoId:vendaGrupoIdRef, cliente, pagamento, entregadorId, valor:valorTotal, produtoResumo, itensExcel});
+  }
+  atualizarBadgeApp();
+  renderAll();
 }
 function localizacaoEntregadoresHtml(){
   const locs = state.localizacaoEntregadores || {};
@@ -4398,7 +4545,16 @@ function renderAll(){
 let dicaCategoriaFiltro = '';
 let editDicaId = null;
 let dicaImagemSelecionada = null, dicaVideoSelecionado = null, dicaArquivoSelecionado = null;
-function iconeTipoDica(tipo){ return {texto:'📝',imagem:'🖼️',video:'🎬',link:'🔗',arquivo:'📄'}[tipo]||'📌'; }
+let dicaImagemRemovida = false, dicaVideoRemovida = false, dicaArquivoRemovida = false;
+function iconesDica(d){
+  let ic = '';
+  if(d.imagemBase64) ic += '🖼️';
+  if(d.videoDataUrl || d.videoLink) ic += '🎬';
+  if(d.linkUrl) ic += '🔗';
+  if(d.arquivoBase64) ic += '📄';
+  if(!ic) ic = '📝';
+  return ic;
+}
 function viewDicasTreinamentos(){
   const editando = editDicaId ? (state.dicasTreinamentos||[]).find(d=>d.id===editDicaId) : null;
   const categorias = (state.categoriasDicas&&state.categoriasDicas.length) ? state.categoriasDicas : ['Instalação de Gás','Manutenção','Segurança','Sistema (Tom Gás)','Atendimento ao Cliente','Outros'];
@@ -4411,7 +4567,7 @@ function viewDicasTreinamentos(){
   const cardsLista = filtradas.length===0 ? '<div class="empty">Nenhuma dica cadastrada'+(dicaCategoriaFiltro?' nessa categoria':'')+' ainda.</div>' :
     '<div class="lc-grid">'+filtradas.map(d=>{
       const linkPublico = location.origin+location.pathname+'?dica='+d.id;
-      return '<div class="lc-card"><div class="lc-top"><strong>'+iconeTipoDica(d.tipo)+' '+escapeHtmlCampanha(d.titulo)+'</strong><span class="badge roxo">'+escapeHtmlCampanha(d.categoria||'Outros')+'</span></div>'+
+      return '<div class="lc-card"><div class="lc-top"><strong>'+iconesDica(d)+' '+escapeHtmlCampanha(d.titulo)+'</strong><span class="badge roxo">'+escapeHtmlCampanha(d.categoria||'Outros')+'</span></div>'+
         (d.conteudoTexto ? '<div class="lc-msg">'+escapeHtmlCampanha(d.conteudoTexto.slice(0,140))+((d.conteudoTexto||'').length>140?'…':'')+'</div>' : '')+
         '<div class="lc-meta">'+(d.publico?'🔓 Link para clientes disponível':'🔒 Uso interno (sem link para clientes)')+'</div>'+
         '<div class="lc-acoes">'+
@@ -4421,23 +4577,21 @@ function viewDicasTreinamentos(){
         '</div></div>';
     }).join('')+'</div>';
   return '<div class="card"><h2>💡 Dicas & Treinamentos</h2>'+ajudaHtml('dicas','Registre aqui explicações de como fazer coisas do gás (instalar, trocar a borrachinha, trocar o botijão) ou do próprio sistema. Marque "gerar link para clientes" para criar uma página simples e pública (sem precisar de login) que você pode mandar pelo WhatsApp direto pro cliente.')+
-    '<div class="hint">Use texto, imagem, vídeo (upload ou link do YouTube), link externo ou arquivo (PDF/Word) — tudo organizado por categoria.</div></div>'+
+    '<div class="hint">Combine texto, imagem, vídeo (upload ou link do YouTube), link externo e arquivo (PDF/Word) na mesma dica — tudo organizado por categoria.</div></div>'+
     '<div class="card"><h3 style="margin-top:0;">'+(editando?'Editar':'Nova')+' dica/treinamento</h3>'+
     '<form id="form-dica" data-edit-id="'+(editando?editando.id:'')+'">'+
     '<div class="form-row">'+
     '<div><label>Título <span class="req">*</span></label><input type="text" name="titulo" value="'+(editando?escapeHtmlCampanha(editando.titulo):'')+'" required placeholder="Ex: Como trocar a borrachinha do regulador"></div>'+
     '<div><label>Categoria</label><input type="text" name="categoria" list="lista-cat-dicas" value="'+(editando?escapeHtmlCampanha(editando.categoria||''):'')+'" placeholder="Ex: Manutenção"><datalist id="lista-cat-dicas">'+categorias.map(c=>'<option value="'+escapeHtmlCampanha(c)+'">').join('')+'</datalist><div class="hint" style="margin-top:4px;">Escolha uma já existente ou digite um nome novo — ela é criada automaticamente ao salvar.</div></div>'+
     '</div>'+
-    '<label>Tipo de conteúdo</label><select name="tipo" id="sel-tipo-dica">'+
-    ['texto','imagem','video','link','arquivo'].map(t=>'<option value="'+t+'" '+(editando&&editando.tipo===t?'selected':'')+'>'+({texto:'📝 Texto explicativo',imagem:'🖼️ Imagem',video:'🎬 Vídeo',link:'🔗 Link externo',arquivo:'📄 Arquivo (PDF/Word)'})[t]+'</option>').join('')+
-    '</select>'+
-    '<label>Texto / explicação (aparece sempre, mesmo com outro tipo de mídia)</label><textarea name="conteudoTexto" rows="4" placeholder="Explique o passo a passo aqui...">'+(editando?escapeHtmlCampanha(editando.conteudoTexto||''):'')+'</textarea>'+
-    '<div id="campo-dica-imagem" style="display:'+(editando&&editando.tipo==='imagem'?'block':'none')+';margin-top:8px;"><label>Imagem</label><input type="file" id="input-dica-imagem" accept="image/*">'+
-    '<div id="preview-dica-imagem" style="margin-top:8px;">'+(editando&&editando.imagemBase64?('<img src="'+editando.imagemBase64+'" style="max-height:140px;border-radius:8px;">'):'')+'</div></div>'+
-    '<div id="campo-dica-video" style="display:'+(editando&&editando.tipo==='video'?'block':'none')+';margin-top:8px;"><label>Link de vídeo (YouTube, etc.)</label><input type="url" name="videoLink" value="'+(editando?escapeHtmlCampanha(editando.videoLink||''):'')+'" placeholder="https://youtube.com/..."><label style="margin-top:8px;">Ou vídeo do computador (até 15 MB)</label><input type="file" id="input-dica-video" accept="video/*"><div id="preview-dica-video" style="margin-top:8px;">'+(editando&&editando.videoDataUrl?('<video src="'+editando.videoDataUrl+'" controls style="max-width:100%;max-height:200px;border-radius:8px;"></video>'):'')+'</div></div>'+
-    '<div id="campo-dica-link" style="display:'+(editando&&editando.tipo==='link'?'block':'none')+';margin-top:8px;"><label>Link</label><input type="url" name="linkUrl" value="'+(editando?escapeHtmlCampanha(editando.linkUrl||''):'')+'" placeholder="https://..."></div>'+
-    '<div id="campo-dica-arquivo" style="display:'+(editando&&editando.tipo==='arquivo'?'block':'none')+';margin-top:8px;"><label>Arquivo (PDF ou Word, até 8 MB)</label><input type="file" id="input-dica-arquivo" accept=".pdf,.doc,.docx">'+
-    '<div id="preview-dica-arquivo" style="margin-top:6px;">'+(editando&&editando.arquivoNome?('<span class="hint">Arquivo atual: '+escapeHtmlCampanha(editando.arquivoNome)+'</span>'):'')+'</div></div>'+
+    '<label>Texto / explicação (opcional, aparece junto com as mídias abaixo)</label><textarea name="conteudoTexto" rows="4" placeholder="Explique o passo a passo aqui...">'+(editando?escapeHtmlCampanha(editando.conteudoTexto||''):'')+'</textarea>'+
+    '<div class="hint" style="margin-top:6px;">Preencha quantos campos quiser abaixo — pode ter imagem, vídeo, link e arquivo juntos na mesma dica/treinamento.</div>'+
+    '<div id="campo-dica-imagem" style="margin-top:8px;"><label>Imagem</label><input type="file" id="input-dica-imagem" accept="image/*">'+
+    '<div id="preview-dica-imagem" style="margin-top:8px;">'+(editando&&editando.imagemBase64?('<img src="'+editando.imagemBase64+'" style="max-height:140px;border-radius:8px;"><button type="button" class="del-link" data-remover-dica-imagem="1" style="display:block;margin-top:4px;">🗑 remover imagem</button>'):'')+'</div></div>'+
+    '<div id="campo-dica-video" style="margin-top:8px;"><label>Link de vídeo (YouTube, etc.)</label><input type="url" name="videoLink" value="'+(editando?escapeHtmlCampanha(editando.videoLink||''):'')+'" placeholder="https://youtube.com/..."><label style="margin-top:8px;">Ou vídeo do computador (até 15 MB)</label><input type="file" id="input-dica-video" accept="video/*"><div id="preview-dica-video" style="margin-top:8px;">'+(editando&&editando.videoDataUrl?('<video src="'+editando.videoDataUrl+'" controls style="max-width:100%;max-height:200px;border-radius:8px;"></video><button type="button" class="del-link" data-remover-dica-video="1" style="display:block;margin-top:4px;">🗑 remover vídeo</button>'):'')+'</div></div>'+
+    '<div id="campo-dica-link" style="margin-top:8px;"><label>Link</label><input type="url" name="linkUrl" value="'+(editando?escapeHtmlCampanha(editando.linkUrl||''):'')+'" placeholder="https://..."></div>'+
+    '<div id="campo-dica-arquivo" style="margin-top:8px;"><label>Arquivo (PDF ou Word, até 8 MB)</label><input type="file" id="input-dica-arquivo" accept=".pdf,.doc,.docx">'+
+    '<div id="preview-dica-arquivo" style="margin-top:6px;">'+(editando&&editando.arquivoNome?('<span class="hint">Arquivo atual: '+escapeHtmlCampanha(editando.arquivoNome)+'</span> <button type="button" class="del-link" data-remover-dica-arquivo="1">🗑 remover arquivo</button>'):'')+'</div></div>'+
     '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;"><input type="checkbox" name="publico" style="width:auto;" '+(editando&&editando.publico?'checked':'')+'> Gerar link público para enviar aos clientes (sem precisar de login)</label>'+
     '<button type="submit" class="btn small" style="margin-top:12px;">'+(editando?'Salvar alterações':'Salvar')+'</button>'+
     (editando?' <button type="button" class="btn small ghost" id="btn-cancelar-dica">Cancelar</button>':'')+
@@ -6125,6 +6279,11 @@ function viewVendas(){
     '<div class="hint">Marque quando a carga saiu mas o vasilhame vazio não voltou. Ao salvar, o sistema lança sozinho o casco no comodato do cliente (somando na conta se ele já devia algum), marca o aviso de pendência no cadastro dele e não conta esse vazio no estoque.</div>'+
     '<div id="casco-pendente-itens" style="display:none;margin-top:8px;"></div>'+
     '</div>'+
+    '<div id="bloco-retirada-parcial-venda" class="item-venda-row" style="margin-top:12px;background:var(--amber-tint,#FEF3C7);border-color:var(--amber,#B45309);">'+
+    '<label class="checkbox-item"><input type="checkbox" id="chk-retirada-parcial"> 📦 O cliente pagou tudo mas não vai levar tudo agora (parte fica "falta retirar")</label>'+
+    '<div class="hint">Ex: pagou 2 cargas de P13, mas só levou 1 agora. Marque, informe quantas leva agora e o sistema já separa o restante como "Falta retirar" sozinho — sem descontar do estoque disponível até você confirmar a retirada depois.</div>'+
+    '<div id="retirada-parcial-itens" style="display:none;margin-top:8px;"></div>'+
+    '</div>'+
     '<h3 style="margin-top:20px;padding-top:14px;border-top:2px dashed var(--border);">💳 Pagamento e entrega <span class="hint" style="font-weight:400;text-transform:none;">(vale para a venda toda, com todos os itens acima)</span></h3>'+
     '<div class="form-row" style="margin-top:14px;">'+
     '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select><div class="hint" id="hint-forma-pagamento">"Abateu" desconta automaticamente do crédito em haver do cliente selecionado, limitado ao saldo disponível — se o crédito não cobrir tudo, a diferença já entra como fiado (a receber) sozinha.</div>'+
@@ -6211,7 +6370,9 @@ function pendenciasRetiradaTable(list){
       const info = CATEGORIAS_ESTOQUE[v.categoria];
       const badgeClass = info ? (info.grupo==='gas'?'gas':(info.chave==='dfonte'?'dfonte':'agua')) : 'outro';
       return '<tr><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
-        '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+'x — <span style="color:var(--green);font-weight:600;">✓ já pago ('+fmtMoney(v.valor_total)+')</span></td>'+
+        '<td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+'x — <span style="color:var(--green);font-weight:600;">✓ já pago ('+fmtMoney(v.valor_total)+')</span>'+
+        (v.vasilhameVazioPendenteDeixado===true?'<br><span class="hint" style="color:var(--green);">🛢️ vasilhame vazio já deixado</span>':(v.vasilhameVazioPendenteDeixado===false?'<br><span class="hint" style="color:var(--danger);">🛢️ vasilhame vazio ainda não deixado</span>':''))+
+        '</td>'+
         '<td class="cel-acoes"><button type="button" class="btn small green" data-retirar-toggle="'+v.id+'">🚚 Retirar</button> '+
         '<button class="act-link" data-edit-venda="'+v.id+'">✎ editar</button>'+
         '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>'+
@@ -6263,6 +6424,7 @@ function viewFaltaRetirar(){
     '<div><label>Quantidade <span class="req">*</span></label><div class="qty-stepper"><button type="button" class="qty-btn qty-minus">−</button><input type="number" name="quantidade" min="1" value="1" step="1" required><button type="button" class="qty-btn qty-plus">+</button></div></div>'+
     '</div>'+
     '<div><label>Observação (opcional)</label><input type="text" name="obs" placeholder="Ex: aproveitou o preço, vai retirar quando acabar o de casa"></div>'+
+    '<label class="checkbox-item"><input type="checkbox" name="vasilhame_vazio_deixado"> O vasilhame vazio dessa carga já foi deixado no depósito</label>'+
     '<div><label>Como já foi pago (opcional)</label><select name="pagamento_ja_recebido"><option value="">Não informar agora</option>'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(p=>'<option>'+p+'</option>').join('')+'</select></div>'+
     '<button type="submit" class="btn" style="margin-top:10px;">Registrar falta retirar</button>'+
     '</form></details></div>'+
@@ -6356,6 +6518,7 @@ function vendasTable(list, opts){
         '<td>'+(v.empresa||'—')+'</td><td>'+(v.cupom||'—')+'</td><td title="'+escapeHtmlCampanha(v.obs||'')+'">'+(v.obs||'—')+'</td><td>'+lancadoEmTxt+'</td>'+
         '<td class="cel-acoes"><button class="act-link" title="Editar" data-edit-venda="'+v.id+'">✎</button>'+
         (TIPOS_ENTREGA_COM_ENTREGADOR.includes(v.tipo_entrega) ? '<button class="act-link" title="Reenviar link da entrega no WhatsApp" data-wa-venda="'+v.id+'">💬</button>' : '')+
+        (TIPOS_ENTREGA_COM_ENTREGADOR.includes(v.tipo_entrega) && v.entrega_status!=='entregue' ? '<button class="act-link" title="Concluir entrega e lançar acerto com o financeiro (se ainda não pago/fiado) — use quando o entregador não usou o passo a passo" data-concluir-venda-acerto="'+v.id+'">✓</button>' : '')+
         '<button class="del-link" title="Excluir" data-del-venda="'+v.id+'">🗑</button></td></tr>';
     }).join('')+'</tbody></table></div>';
 }
@@ -7198,12 +7361,12 @@ function agendamentosTable(lista, mostrarData){
         (v.cliente?('<button class="act-link" title="Avisar cliente" data-avisar-cliente="'+escapeHtmlCampanha(v.cliente)+'">📲</button>'):'')+
         (v.status==='concluido' ?
           '<button class="act-link" title="Reabrir" data-reabrir-ag="'+v.id+'">↺</button>' :
-          '<button class="act-link" title="Marcar como entregue" data-concluir-ag="'+v.id+'">✓</button>')+
+          '<button class="act-link" title="Concluir entrega e lançar acerto com o financeiro (se ainda não pago/fiado)" data-concluir-ag="'+v.id+'">✓</button>')+
         '<button class="del-link" title="Excluir" data-del-ag="'+v.id+'">🗑</button>' :
         '<button class="act-link" title="Editar venda" data-edit-venda-ag="'+v.id+'">✎</button>'+
         (v.status==='concluido' ?
           '<button class="act-link" title="Reabrir" data-reabrir-venda-entrega="'+v.id+'">↺</button>' :
-          '<button class="act-link" title="Finalizar entrega" data-finalizar-venda-entrega="'+v.id+'">✓</button>');
+          '<button class="act-link" title="Concluir entrega e lançar acerto com o financeiro (se ainda não pago/fiado)" data-finalizar-venda-entrega="'+v.id+'">✓</button>');
       const pagtoStatus = v.origem==='agendamento'
         ? (v.pago ? ' <span class="badge status-pago">✅ pago</span>' : (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber">📒 fiado</span>' : ' <span class="badge status-receber">💰 cobrar</span>'))
         : (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber">A receber</span>' : (v.pagamento ? ' <span class="badge status-pago">Pago</span>' : ''));
@@ -7734,41 +7897,7 @@ function viewLogAtividades(){
     '</details></div>';
 }
 function viewRelatorios(){
-  const subtabs = [
-    {id:'vendas', label:'Vendas por período'},
-    {id:'meta', label:'Meta de Cargas P13'},
-    {id:'gestaocanal', label:'Gestão à Vista — Canal'},
-    {id:'gestaoentregador', label:'Gestão à Vista — Entregador'},
-    {id:'remuneracao', label:'Remuneração Variável'},
-    {id:'resumodia', label:'Resumo do Dia'},
-    {id:'ranking', label:'Ranking de Clientes'},
-    {id:'abc', label:'Curva ABC de Clientes'},
-    {id:'indicacoes', label:'Programa de Indicação'},
-    {id:'kpis', label:'Indicadores (KPIs)'},
-    {id:'pesquisa', label:'Pesquisa de Clientes'},
-    {id:'pesquisasmanuais', label:'Pesquisas Manuais'},
-    {id:'novosclientes', label:'Novos Clientes'},
-    {id:'painelacao', label:'Painel de Ação'},
-    {id:'esg', label:'Controle ESG'},
-    {id:'compararcampanhas', label:'Comparar Campanhas'},
-    {id:'itens', label:'Itens por categoria'},
-    {id:'cruzamento', label:'Gasto x Venda (Cruzamento)'},
-    {id:'entregas', label:'Entregas por período'},
-    {id:'fretes', label:'Fretes por período'},
-    {id:'combustivelfrete', label:'Combustível x Frete'},
-    {id:'despesas', label:'Despesas por período'},
-    {id:'diastrabalho', label:'Dias de trabalho p/ pagar contas'},
-    {id:'custosfixosvar', label:'Saúde da empresa / Ponto de equilíbrio'},
-    {id:'veiculos', label:'Veículos'},
-    {id:'fiado', label:'Fiado / A receber'},
-    {id:'creditos', label:'Créditos em haver'},
-    {id:'comodatos', label:'Comodatos / Empréstimos'},
-    {id:'patrimonio', label:'Patrimônio real'},
-    {id:'notas', label:'Notas para o Bling'},
-    {id:'empresas', label:'Empresas conveniadas'},
-    {id:'reajuste', label:'Simulador de Reajuste'},
-    {id:'analises', label:'Análises e Gráficos'},
-  ];
+  const subtabs = RELATORIOS_SUBTABS;
   let content = '';
   if(relatorioSub==='vendas') content = relatorioVendas();
   else if(relatorioSub==='meta') content = relatorioMeta();
@@ -7788,6 +7917,7 @@ function viewRelatorios(){
   else if(relatorioSub==='compararcampanhas') content = relatorioCompararCampanhas();
   else if(relatorioSub==='ranking') content = relatorioRanking();
   else if(relatorioSub==='itens') content = relatorioItens();
+  else if(relatorioSub==='porvasilhame') content = relatorioPorVasilhame();
   else if(relatorioSub==='cruzamento') content = relatorioCruzamento();
   else if(relatorioSub==='entregas') content = relatorioEntregas();
   else if(relatorioSub==='fretes') content = relatorioFretes();
@@ -8080,6 +8210,49 @@ function relatorioItens(){
     '<button type="button" class="btn small" id="ri-filtrar">Contar</button>'+
     '</div>'+
     '<div id="ri-resultado" style="margin-top:16px;"></div>';
+}
+/* Relatório de conferência: lista, em ordem cronológica, cada venda de UM tipo controlado
+   (ex: "Carga de Gás P13") numerada 1, 2, 3... com o cliente daquela venda. Serve pra bater o
+   olho e conferir se uma venda específica que o usuário lembra de ter feito realmente está no
+   sistema, se deu baixa no estoque certinho e se contou pra meta (equivalente em P13). */
+function relatorioPorVasilhame(){
+  const opcoes = CATEGORIAS_CONTROLADAS.map(c=>'<option value="'+escapeHtmlCampanha(c)+'">'+(ICONES_CATEGORIA[c]||'')+' '+escapeHtmlCampanha(c)+'</option>').join('');
+  return '<div class="hint" style="margin-bottom:10px;">Escolha um tipo (ex: Carga de Gás P13) e um período. O sistema lista cada venda daquele tipo em ordem, numerada — assim dá pra conferir se uma venda que você lembra de ter feito (ex: "a 3ª carga de P13 hoje foi pro Fulano") está batendo com o que o sistema gravou, se deu baixa no estoque e se contou pra meta.</div>'+
+    '<div class="form-row">'+
+    '<div><label>Tipo (categoria controlada)</label><select id="pv-tipo">'+opcoes+'</select></div>'+
+    '<div><label>De</label><input type="date" id="pv-de" value="'+firstOfMonth()+'"></div>'+
+    '<div><label>Até</label><input type="date" id="pv-ate" value="'+todayStr()+'"></div>'+
+    '</div>'+
+    '<button type="button" class="btn small" id="pv-filtrar">Gerar lista</button>'+
+    '<div id="pv-resultado" style="margin-top:16px;"></div>';
+}
+function renderRelatorioPorVasilhameResultado(){
+  const tipo = document.getElementById('pv-tipo').value;
+  const de = document.getElementById('pv-de').value, ate = document.getElementById('pv-ate').value;
+  const filtradas = state.vendas.filter(v=>v.categoria===tipo && v.data>=de && v.data<=ate)
+    .slice().sort((a,b)=> a.data.localeCompare(b.data) || (a.criadoEm||0)-(b.criadoEm||0));
+  const contaMeta = (CATEGORIAS_ESTOQUE[tipo]||{}).tipo==='carga' && (CATEGORIAS_ESTOQUE[tipo]||{}).grupo==='gas';
+  if(filtradas.length===0){ document.getElementById('pv-resultado').innerHTML = '<div class="empty">Nenhuma venda de "'+escapeHtmlCampanha(tipo)+'" nesse período.</div>'; return; }
+  let somaQtd=0, somaValor=0, somaMeta=0, somaBaixadas=0;
+  const linhas = filtradas.map((v,i)=>{
+    somaQtd += v.quantidade||0; somaValor += v.valor_total||0;
+    const equiv = contaMeta ? equivalenteCargasP13(v) : null;
+    if(equiv) somaMeta += equiv;
+    if(v.estoqueBaixado) somaBaixadas++;
+    return '<tr><td><strong>'+(i+1)+'</strong></td><td>'+fmtDate(v.data)+'</td><td>'+(v.cliente||'—')+'</td><td>'+v.quantidade+'</td><td>'+fmtMoney(v.valor_total)+'</td><td>'+(v.pagamento||'—')+'</td>'+
+      '<td>'+(v.estoqueBaixado?'✅':'❌ não baixou'+(v.vasilhameVazioPendenteDeixado===true?' <span class="hint" style="color:var(--green);">(vazio já deixado)</span>':(v.vasilhameVazioPendenteDeixado===false?' <span class="hint" style="color:var(--danger);">(vazio ainda não deixado)</span>':'')))+'</td>'+
+      '<td>'+(contaMeta ? arred1(equiv)+' P13' : '—')+'</td></tr>';
+  }).join('');
+  document.getElementById('pv-resultado').innerHTML =
+    '<div class="form-row" style="flex-wrap:wrap;">'+
+    '<div class="metric" style="max-width:200px;"><div class="label">Total de vendas</div><div class="value">'+filtradas.length+'</div></div>'+
+    '<div class="metric" style="max-width:200px;"><div class="label">Quantidade somada</div><div class="value">'+somaQtd+'</div></div>'+
+    '<div class="metric" style="max-width:200px;"><div class="label">Valor total</div><div class="value">'+fmtMoney(somaValor)+'</div></div>'+
+    '<div class="metric" style="max-width:220px;"><div class="label">Deram baixa no estoque</div><div class="value">'+somaBaixadas+' de '+filtradas.length+'</div></div>'+
+    (contaMeta?'<div class="metric" style="max-width:220px;"><div class="label">Equivalente somado p/ meta</div><div class="value">'+arred1(somaMeta)+' P13</div></div>':'')+
+    '</div>'+
+    (somaBaixadas<filtradas.length?'<div class="hint" style="color:var(--danger);margin:8px 0;">⚠️ Tem venda nessa lista que NÃO deu baixa no estoque (coluna "❌ não baixou") — geralmente é "Falta retirar" ainda pendente.</div>':'')+
+    '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Nº</th><th>Data</th><th>Cliente</th><th>Qtd</th><th>Valor</th><th>Pagamento</th><th>Baixou estoque?</th><th>Conta p/ meta</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
 }
 // ---------- CRUZAMENTO GASTO x VENDA ----------
 // Deixa o usuário montar "grupos" ligando categorias de DESPESA (o que ele compra, ex: cargas de
@@ -10487,6 +10660,8 @@ function attachHandlers(){
   if(detalhesVendaManual) detalhesVendaManual.ontoggle = ()=>{ vendaManualAberta = detalhesVendaManual.open; };
   const chkCascoPend = document.getElementById('chk-casco-pendente');
   if(chkCascoPend) chkCascoPend.onchange = montarCascoPendenteItens;
+  const chkRetiradaParcial = document.getElementById('chk-retirada-parcial');
+  if(chkRetiradaParcial) chkRetiradaParcial.onchange = montarRetiradaParcialItens;
   atualizarAvisoComodatoVenda();
   if(fv) fv.onsubmit = async(e)=>{
     e.preventDefault();
@@ -10651,6 +10826,29 @@ function attachHandlers(){
           itens.push(itemObj);
         }
       });
+      // ---- Retirada parcial: cliente pagou tudo mas leva só parte agora — separa a diferença
+      // como um item "Falta retirar" à parte, dentro da mesma venda (mesmo grupoId). ----
+      if(document.getElementById('chk-retirada-parcial') && document.getElementById('chk-retirada-parcial').checked){
+        const levaInputs = Array.from(document.querySelectorAll('[data-retparcial-leva]'));
+        const vazioInputs = Array.from(document.querySelectorAll('[data-retparcial-vazio]'));
+        const itensPendentesParcial = [];
+        itens.forEach(item=>{
+          const inputLeva = levaInputs.find(el=>el.getAttribute('data-retparcial-leva')===item.categoria);
+          if(!inputLeva) return;
+          const leva = Math.max(0, Math.min(item.quantidade, Number(inputLeva.value)||0));
+          const pendente = item.quantidade - leva;
+          if(pendente<=0) return;
+          const chkVazio = vazioInputs.find(el=>el.getAttribute('data-retparcial-vazio')===item.categoria);
+          const vazioJaDeixado = !!(chkVazio && chkVazio.checked);
+          item.quantidade = leva;
+          item.valor_total = Math.round(leva*item.valor_unit*100)/100;
+          itensPendentesParcial.push({categoria:item.categoria, produto:item.produto, quantidade:pendente, valor_unit:item.valor_unit,
+            valor_total: Math.round(pendente*item.valor_unit*100)/100, nota:item.nota,
+            __faltaRetirarParcial:true, __vasilhameVazioDeixado:vazioJaDeixado});
+        });
+        for(let i=itens.length-1;i>=0;i--) if(itens[i].quantidade<=0) itens.splice(i,1);
+        itens.push(...itensPendentesParcial);
+      }
       const camposComuns = {
         data: f.get('data'), cliente: resolverNomeCliente(f.get('cliente')||''), canal: f.get('canal'),
         pagamento: f.get('pagamento'), tipo_entrega: f.get('tipo_entrega'), cupom:(f.get('cupom')||'').trim().toUpperCase(),
@@ -10664,9 +10862,16 @@ function attachHandlers(){
       // na lista de pendências, que o cliente retirou ou que foi entregue.
       const pendenteRetiradaNova = camposComuns.tipo_entrega === 'Falta retirar';
       itens.forEach((item,idx)=>{
-        const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':'', estoqueBaixado: !pendenteRetiradaNova, retirado:false, retiradoForma:'', retiradoEm:null}, camposComuns, item);
+        const pendenteEsteItem = pendenteRetiradaNova || item.__faltaRetirarParcial;
+        const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':'', estoqueBaixado: !pendenteEsteItem, retirado:false, retiradoForma:'', retiradoEm:null}, camposComuns, item);
+        if(item.__faltaRetirarParcial){
+          venda.tipo_entrega = 'Falta retirar';
+          venda.vasilhameVazioPendenteDeixado = item.__vasilhameVazioDeixado;
+          venda.obs = (venda.obs?venda.obs+' — ':'')+'Retirada parcial: ficaram '+item.quantidade+' de '+item.categoria+' pra retirar depois ('+(item.__vasilhameVazioDeixado?'vasilhame vazio já deixado':'vasilhame vazio ainda não deixado')+').';
+          delete venda.__faltaRetirarParcial; delete venda.__vasilhameVazioDeixado;
+        }
         state.vendas.push(venda);
-        if(!pendenteRetiradaNova) ajustaEstoquePorVenda(item.categoria, item.quantidade, false);
+        if(!pendenteEsteItem) ajustaEstoquePorVenda(item.categoria, item.quantidade, false);
       });
       const chkUsarCreditoVenda = document.getElementById('chk-usar-credito');
       if(chkUsarCreditoVenda && chkUsarCreditoVenda.checked && camposComuns.cliente){
@@ -10838,7 +11043,7 @@ function attachHandlers(){
       frete: 0, entrega_data:'', entrega_hora:'', entrega_status:'',
       obs: (f.get('obs')||'').trim() || 'Falta retirar — gás já vendido/recebido, ainda não retirado/entregue',
       estoqueBaixado: false, retirado:false, retiradoForma:'', retiradoEm:null,
-      vendaAnterior: true
+      vendaAnterior: true, vasilhameVazioPendenteDeixado: !!f.get('vasilhame_vazio_deixado')
     };
     const _vendasAntesFaltaRetirar = JSON.parse(JSON.stringify(state.vendas));
     state.vendas.push(venda);
@@ -10968,6 +11173,10 @@ function attachHandlers(){
       empresa: v.empresa, obs: v.obs, entregadorId: v.entregadorId||'',
       vendaGrupoId: v.grupoId || v.id
     });
+  });
+  document.querySelectorAll('[data-concluir-venda-acerto]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('Marcar essa entrega como concluída e lançar para acerto com o financeiro (se ainda não foi pago/fiado)? Use isso quando o entregador não usou o link de passo a passo.')) return;
+    await concluirEntregaAdminEGerarAcerto('venda', btn.dataset.concluirVendaAcerto);
   });
 
   const detalhesDespesaManual = document.getElementById('details-despesa-manual');
@@ -13091,6 +13300,7 @@ function attachHandlers(){
     await save('recompensasIndicacao'); renderAll();
   });
   const riFiltrar = document.getElementById('ri-filtrar'); if(riFiltrar) riFiltrar.onclick = renderRelatorioItensResultado;
+  const pvFiltrar = document.getElementById('pv-filtrar'); if(pvFiltrar) pvFiltrar.onclick = renderRelatorioPorVasilhameResultado;
   const riMarcarTodas = document.getElementById('ri-marcar-todas');
   if(riMarcarTodas) riMarcarTodas.onclick = ()=>{ document.querySelectorAll('.ri-grupo').forEach(c=>c.checked=true); renderRelatorioItensResultado(); };
   const riLimpar = document.getElementById('ri-limpar');
@@ -13235,6 +13445,7 @@ function attachHandlers(){
   if(relatorioSub==='notas' && document.getElementById('rn-resultado')) renderRelatorioNotasResultado();
   if(relatorioSub==='empresas' && document.getElementById('re-resultado')) renderRelatorioEmpresasResultado();
   if(relatorioSub==='itens' && document.getElementById('ri-resultado')) renderRelatorioItensResultado();
+  if(relatorioSub==='porvasilhame' && document.getElementById('pv-resultado') && document.getElementById('pv-tipo')) renderRelatorioPorVasilhameResultado();
   if(relatorioSub==='cruzamento' && document.getElementById('cz-resultado')) renderRelatorioCruzamentoResultado();
 
   const dbFiltrar = document.getElementById('db-filtrar'); if(dbFiltrar) dbFiltrar.onclick = renderDashboardRelatorios;
@@ -13793,6 +14004,15 @@ function attachHandlers(){
         state.vendas.filter(v=>v.grupoId===a.vendaId).forEach(v=>{ v.retirado=true; if(!v.retiradoEm) v.retiradoEm=Date.now(); });
         await save('vendas');
       }
+      if((a.pagamento||'')!=='Marcou/Fiado' && !a.pago){
+        const linhasVendaAg = a.vendaId ? state.vendas.filter(v=>v.grupoId===a.vendaId) : [];
+        const valorAcertoAg = linhasVendaAg.length ? linhasVendaAg.reduce((s,l)=>s+(Number(l.valor_total)||0)+(Number(l.frete)||0),0) : (a.valor||0);
+        await criarOuAtualizarAcertoAdmin({
+          agendamentoId: a.id, vendaGrupoId: null, cliente: a.cliente, pagamento: a.pagamento||'', entregadorId: a.entregadorId||'',
+          valor: valorAcertoAg, produtoResumo: a.produto_nota||'',
+          itensExcel: linhasVendaAg.length ? linhasVendaAg.map((l,i)=>({canal:l.canal||'', produto:l.produto||l.categoria||'', quantidade:l.quantidade||1, valorUnit:Number(l.valor_unit)||0, notaVenda:l.nota||'', tipoEntrega:l.tipo_entrega||'', empresa:l.empresa||'', frete:i===0?(Number(l.frete)||0):0, observacao:l.obs||''})) : []
+        });
+      }
       await save('agendamentos'); atualizarBadgeApp(); renderAll();
     });
     document.querySelectorAll('[data-reabrir-ag]').forEach(btn=>btn.onclick=async()=>{
@@ -13842,8 +14062,7 @@ function attachHandlers(){
       renderAll();
     });
     document.querySelectorAll('[data-finalizar-venda-entrega]').forEach(btn=>btn.onclick=async()=>{
-      const v = state.vendas.find(x=>x.id===btn.dataset.finalizarVendaEntrega);
-      if(v){ v.entrega_status='entregue'; await save('vendas'); atualizarBadgeApp(); renderAll(); }
+      await concluirEntregaAdminEGerarAcerto('venda', btn.dataset.finalizarVendaEntrega);
     });
     document.querySelectorAll('[data-reabrir-venda-entrega]').forEach(btn=>btn.onclick=async()=>{
       const v = state.vendas.find(x=>x.id===btn.dataset.reabrirVendaEntrega);
@@ -14062,17 +14281,16 @@ function attachHandlers(){
 
   /* ---- Dicas & Treinamentos ---- */
   document.querySelectorAll('[data-dica-filtro-categoria]').forEach(btn=>btn.onclick=()=>{ dicaCategoriaFiltro = btn.dataset.dicaFiltroCategoria||''; renderAll(); });
-  const selTipoDica = document.getElementById('sel-tipo-dica');
-  const toggleCamposDica = ()=>{
-    if(!selTipoDica) return;
-    const v = selTipoDica.value;
-    ['imagem','video','link','arquivo'].forEach(t=>{ const el=document.getElementById('campo-dica-'+t); if(el) el.style.display = (t===v?'block':'none'); });
-  };
-  if(selTipoDica){ selTipoDica.onchange = toggleCamposDica; toggleCamposDica(); }
+  const btnRemoverDicaImagem = document.querySelector('[data-remover-dica-imagem]');
+  if(btnRemoverDicaImagem) btnRemoverDicaImagem.onclick=()=>{ dicaImagemRemovida=true; dicaImagemSelecionada=null; const prev=document.getElementById('preview-dica-imagem'); if(prev) prev.innerHTML=''; };
+  const btnRemoverDicaVideo = document.querySelector('[data-remover-dica-video]');
+  if(btnRemoverDicaVideo) btnRemoverDicaVideo.onclick=()=>{ dicaVideoRemovida=true; dicaVideoSelecionado=null; const prev=document.getElementById('preview-dica-video'); if(prev) prev.innerHTML=''; };
+  const btnRemoverDicaArquivo = document.querySelector('[data-remover-dica-arquivo]');
+  if(btnRemoverDicaArquivo) btnRemoverDicaArquivo.onclick=()=>{ dicaArquivoRemovida=true; dicaArquivoSelecionado=null; const prev=document.getElementById('preview-dica-arquivo'); if(prev) prev.innerHTML=''; };
   const inputDicaImagem = document.getElementById('input-dica-imagem');
   if(inputDicaImagem) inputDicaImagem.onchange = async()=>{
     const f=inputDicaImagem.files[0]; if(!f) return;
-    dicaImagemSelecionada = await comprimirImagemArquivo(f);
+    dicaImagemSelecionada = await comprimirImagemArquivo(f); dicaImagemRemovida=false;
     const prev=document.getElementById('preview-dica-imagem'); if(prev) prev.innerHTML='<img src="'+dicaImagemSelecionada+'" style="max-height:140px;border-radius:8px;">';
   };
   const inputDicaVideo = document.getElementById('input-dica-video');
@@ -14080,14 +14298,14 @@ function attachHandlers(){
     const f=inputDicaVideo.files[0]; if(!f) return;
     if(f.size>15*1024*1024){ alert('Vídeo maior que 15 MB. Use um link em vez de subir o arquivo.'); inputDicaVideo.value=''; return; }
     const r=new FileReader();
-    r.onload=e=>{ dicaVideoSelecionado=e.target.result; const prev=document.getElementById('preview-dica-video'); if(prev) prev.innerHTML='<video src="'+dicaVideoSelecionado+'" controls style="max-width:100%;max-height:200px;border-radius:8px;"></video>'; };
+    r.onload=e=>{ dicaVideoSelecionado=e.target.result; dicaVideoRemovida=false; const prev=document.getElementById('preview-dica-video'); if(prev) prev.innerHTML='<video src="'+dicaVideoSelecionado+'" controls style="max-width:100%;max-height:200px;border-radius:8px;"></video>'; };
     r.readAsDataURL(f);
   };
   const inputDicaArquivo = document.getElementById('input-dica-arquivo');
   if(inputDicaArquivo) inputDicaArquivo.onchange = async()=>{
     const f=inputDicaArquivo.files[0]; if(!f) return;
     if(f.size>8*1024*1024){ alert('Arquivo maior que 8 MB.'); inputDicaArquivo.value=''; return; }
-    dicaArquivoSelecionado = { nome:f.name, tipo:f.type, dataUrl: await lerArquivoComoDataURL(f) };
+    dicaArquivoSelecionado = { nome:f.name, tipo:f.type, dataUrl: await lerArquivoComoDataURL(f) }; dicaArquivoRemovida=false;
     const prev=document.getElementById('preview-dica-arquivo'); if(prev) prev.innerHTML='<span class="hint">Selecionado: '+escapeHtmlCampanha(f.name)+'</span>';
   };
   const formDica = document.getElementById('form-dica');
@@ -14101,15 +14319,15 @@ function attachHandlers(){
     const dados = {
       titulo: (f.get('titulo')||'').trim(),
       categoria,
-      tipo: f.get('tipo'),
       conteudoTexto: f.get('conteudoTexto')||'',
       videoLink: (f.get('videoLink')||'').trim(),
       linkUrl: (f.get('linkUrl')||'').trim(),
       publico: !!formDica.querySelector('[name="publico"]').checked
     };
-    if(dicaImagemSelecionada) dados.imagemBase64 = dicaImagemSelecionada;
-    if(dicaVideoSelecionado) dados.videoDataUrl = dicaVideoSelecionado;
+    if(dicaImagemSelecionada) dados.imagemBase64 = dicaImagemSelecionada; else if(dicaImagemRemovida) dados.imagemBase64 = '';
+    if(dicaVideoSelecionado) dados.videoDataUrl = dicaVideoSelecionado; else if(dicaVideoRemovida) dados.videoDataUrl = '';
     if(dicaArquivoSelecionado){ dados.arquivoBase64 = dicaArquivoSelecionado.dataUrl; dados.arquivoNome = dicaArquivoSelecionado.nome; dados.arquivoTipo = dicaArquivoSelecionado.tipo; }
+    else if(dicaArquivoRemovida){ dados.arquivoBase64=''; dados.arquivoNome=''; dados.arquivoTipo=''; }
     if(!Array.isArray(state.dicasTreinamentos)) state.dicasTreinamentos = [];
     if(editId){
       const d = state.dicasTreinamentos.find(x=>x.id===editId);
@@ -14118,14 +14336,17 @@ function attachHandlers(){
       state.dicasTreinamentos.push(Object.assign({id:uid(), criadoEm:Date.now()}, dados));
     }
     dicaImagemSelecionada=null; dicaVideoSelecionado=null; dicaArquivoSelecionado=null;
+    dicaImagemRemovida=false; dicaVideoRemovida=false; dicaArquivoRemovida=false;
     await save('dicasTreinamentos'); await save('categoriasDicas');
     editDicaId = null;
     renderAll();
   };
   const btnCancelarDica = document.getElementById('btn-cancelar-dica');
-  if(btnCancelarDica) btnCancelarDica.onclick = ()=>{ editDicaId=null; dicaImagemSelecionada=null; dicaVideoSelecionado=null; dicaArquivoSelecionado=null; renderAll(); };
+  if(btnCancelarDica) btnCancelarDica.onclick = ()=>{ editDicaId=null; dicaImagemSelecionada=null; dicaVideoSelecionado=null; dicaArquivoSelecionado=null; dicaImagemRemovida=false; dicaVideoRemovida=false; dicaArquivoRemovida=false; renderAll(); };
   document.querySelectorAll('[data-edit-dica]').forEach(btn=>btn.onclick=()=>{
     editDicaId = btn.dataset.editDica;
+    dicaImagemSelecionada=null; dicaVideoSelecionado=null; dicaArquivoSelecionado=null;
+    dicaImagemRemovida=false; dicaVideoRemovida=false; dicaArquivoRemovida=false;
     renderAll();
     setTimeout(()=>{ const el=document.getElementById('form-dica'); if(el) el.scrollIntoView({behavior:'smooth'}); },30);
   });
@@ -17023,13 +17244,11 @@ async function iniciarDicaPublica(id){
     }
     let corpo = '';
     if(dica.conteudoTexto) corpo += '<div style="white-space:pre-wrap;line-height:1.6;margin-bottom:16px;color:#E7ECF7;">'+escapeHtmlCampanha(dica.conteudoTexto)+'</div>';
-    if(dica.tipo==='imagem' && dica.imagemBase64) corpo += '<img src="'+dica.imagemBase64+'" style="width:100%;border-radius:12px;margin-bottom:16px;">';
-    if(dica.tipo==='video'){
-      if(dica.videoDataUrl) corpo += '<video src="'+dica.videoDataUrl+'" controls style="width:100%;border-radius:12px;margin-bottom:16px;"></video>';
-      else if(dica.videoLink) corpo += embedVideo(dica.videoLink)+'<div style="margin-bottom:16px;"></div>';
-    }
-    if(dica.tipo==='link' && dica.linkUrl) corpo += '<a href="'+dica.linkUrl+'" target="_blank" rel="noopener" style="display:block;padding:14px;background:#182642;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#5BA3F5;margin-bottom:16px;">🔗 Abrir link</a>';
-    if(dica.tipo==='arquivo' && dica.arquivoBase64) corpo += '<a href="'+dica.arquivoBase64+'" download="'+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'" style="display:block;padding:14px;background:#182642;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#5BA3F5;margin-bottom:16px;">📄 Baixar '+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'</a>';
+    if(dica.imagemBase64) corpo += '<img src="'+dica.imagemBase64+'" style="width:100%;border-radius:12px;margin-bottom:16px;">';
+    if(dica.videoDataUrl) corpo += '<video src="'+dica.videoDataUrl+'" controls style="width:100%;border-radius:12px;margin-bottom:16px;"></video>';
+    else if(dica.videoLink) corpo += embedVideo(dica.videoLink)+'<div style="margin-bottom:16px;"></div>';
+    if(dica.linkUrl) corpo += '<a href="'+dica.linkUrl+'" target="_blank" rel="noopener" style="display:block;padding:14px;background:#182642;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#5BA3F5;margin-bottom:16px;">🔗 Abrir link</a>';
+    if(dica.arquivoBase64) corpo += '<a href="'+dica.arquivoBase64+'" download="'+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'" style="display:block;padding:14px;background:#182642;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#5BA3F5;margin-bottom:16px;">📄 Baixar '+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'</a>';
     wrap.innerHTML = '<div style="text-align:center;margin-bottom:18px;"><div style="font-size:30px;">💡</div><h2 style="margin:6px 0;color:#E7ECF7;">'+escapeHtmlCampanha(dica.titulo)+'</h2>'+(dica.categoria?('<div style="color:#A9B6CC;font-size:13px;">'+escapeHtmlCampanha(dica.categoria)+'</div>'):'')+'</div>'+corpo+'<div style="text-align:center;color:#7C8AA3;font-size:12px;margin-top:20px;">Tom Gás — Dicas & Treinamentos</div>';
   }catch(e){
     wrap.innerHTML = '<h2 style="color:#E7ECF7;">Não foi possível abrir</h2><p style="color:#A9B6CC;">Confira sua conexão e tente novamente.</p>';
