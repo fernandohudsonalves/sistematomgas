@@ -4395,7 +4395,7 @@ function viewDicasTreinamentos(){
     '<form id="form-dica" data-edit-id="'+(editando?editando.id:'')+'">'+
     '<div class="form-row">'+
     '<div><label>Título <span class="req">*</span></label><input type="text" name="titulo" value="'+(editando?escapeHtmlCampanha(editando.titulo):'')+'" required placeholder="Ex: Como trocar a borrachinha do regulador"></div>'+
-    '<div><label>Categoria</label><input type="text" name="categoria" list="lista-cat-dicas" value="'+(editando?escapeHtmlCampanha(editando.categoria||''):'')+'" placeholder="Ex: Manutenção"><datalist id="lista-cat-dicas">'+categorias.map(c=>'<option value="'+escapeHtmlCampanha(c)+'">').join('')+'</datalist></div>'+
+    '<div><label>Categoria</label><input type="text" name="categoria" list="lista-cat-dicas" value="'+(editando?escapeHtmlCampanha(editando.categoria||''):'')+'" placeholder="Ex: Manutenção"><datalist id="lista-cat-dicas">'+categorias.map(c=>'<option value="'+escapeHtmlCampanha(c)+'">').join('')+'</datalist><div class="hint" style="margin-top:4px;">Escolha uma já existente ou digite um nome novo — ela é criada automaticamente ao salvar.</div></div>'+
     '</div>'+
     '<label>Tipo de conteúdo</label><select name="tipo" id="sel-tipo-dica">'+
     ['texto','imagem','video','link','arquivo'].map(t=>'<option value="'+t+'" '+(editando&&editando.tipo===t?'selected':'')+'>'+({texto:'📝 Texto explicativo',imagem:'🖼️ Imagem',video:'🎬 Vídeo',link:'🔗 Link externo',arquivo:'📄 Arquivo (PDF/Word)'})[t]+'</option>').join('')+
@@ -16976,7 +16976,7 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
 }
 
 async function iniciarDicaPublica(id){
-  document.body.innerHTML = '<div id="dica-publica" style="max-width:560px;margin:0 auto;padding:20px;font-family:Arial,sans-serif;background:#fff;min-height:100vh;box-sizing:border-box;">Carregando...</div>';
+  document.body.innerHTML = '<div id="dica-publica" style="max-width:560px;margin:0 auto;padding:20px;font-family:Arial,sans-serif;background:#0B1220;color:#E7ECF7;min-height:100vh;box-sizing:border-box;">Carregando...</div>';
   const wrap = document.getElementById('dica-publica');
   try{
     const { data, error } = await supabaseClient.from('app_data').select('valor').eq('chave','dicasTreinamentos');
@@ -16988,20 +16988,20 @@ async function iniciarDicaPublica(id){
       if(!link) return '';
       const yt = link.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]{6,})/);
       if(yt) return '<iframe width="100%" height="260" src="https://www.youtube.com/embed/'+yt[1]+'" frameborder="0" allowfullscreen style="border-radius:12px;"></iframe>';
-      return '<a href="'+link+'" target="_blank" rel="noopener" style="display:block;padding:14px;background:#eef3fb;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#1a3a7a;">▶️ Assistir vídeo</a>';
+      return '<a href="'+link+'" target="_blank" rel="noopener" style="display:block;padding:14px;background:#182642;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#5BA3F5;">▶️ Assistir vídeo</a>';
     }
     let corpo = '';
-    if(dica.conteudoTexto) corpo += '<div style="white-space:pre-wrap;line-height:1.6;margin-bottom:16px;">'+escapeHtmlCampanha(dica.conteudoTexto)+'</div>';
+    if(dica.conteudoTexto) corpo += '<div style="white-space:pre-wrap;line-height:1.6;margin-bottom:16px;color:#E7ECF7;">'+escapeHtmlCampanha(dica.conteudoTexto)+'</div>';
     if(dica.tipo==='imagem' && dica.imagemBase64) corpo += '<img src="'+dica.imagemBase64+'" style="width:100%;border-radius:12px;margin-bottom:16px;">';
     if(dica.tipo==='video'){
       if(dica.videoDataUrl) corpo += '<video src="'+dica.videoDataUrl+'" controls style="width:100%;border-radius:12px;margin-bottom:16px;"></video>';
       else if(dica.videoLink) corpo += embedVideo(dica.videoLink)+'<div style="margin-bottom:16px;"></div>';
     }
-    if(dica.tipo==='link' && dica.linkUrl) corpo += '<a href="'+dica.linkUrl+'" target="_blank" rel="noopener" style="display:block;padding:14px;background:#eef3fb;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#1a3a7a;margin-bottom:16px;">🔗 Abrir link</a>';
-    if(dica.tipo==='arquivo' && dica.arquivoBase64) corpo += '<a href="'+dica.arquivoBase64+'" download="'+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'" style="display:block;padding:14px;background:#eef3fb;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#1a3a7a;margin-bottom:16px;">📄 Baixar '+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'</a>';
-    wrap.innerHTML = '<div style="text-align:center;margin-bottom:18px;"><div style="font-size:30px;">💡</div><h2 style="margin:6px 0;">'+escapeHtmlCampanha(dica.titulo)+'</h2>'+(dica.categoria?('<div style="color:#777;font-size:13px;">'+escapeHtmlCampanha(dica.categoria)+'</div>'):'')+'</div>'+corpo+'<div style="text-align:center;color:#999;font-size:12px;margin-top:20px;">Tom Gás — Dicas & Treinamentos</div>';
+    if(dica.tipo==='link' && dica.linkUrl) corpo += '<a href="'+dica.linkUrl+'" target="_blank" rel="noopener" style="display:block;padding:14px;background:#182642;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#5BA3F5;margin-bottom:16px;">🔗 Abrir link</a>';
+    if(dica.tipo==='arquivo' && dica.arquivoBase64) corpo += '<a href="'+dica.arquivoBase64+'" download="'+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'" style="display:block;padding:14px;background:#182642;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#5BA3F5;margin-bottom:16px;">📄 Baixar '+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'</a>';
+    wrap.innerHTML = '<div style="text-align:center;margin-bottom:18px;"><div style="font-size:30px;">💡</div><h2 style="margin:6px 0;color:#E7ECF7;">'+escapeHtmlCampanha(dica.titulo)+'</h2>'+(dica.categoria?('<div style="color:#A9B6CC;font-size:13px;">'+escapeHtmlCampanha(dica.categoria)+'</div>'):'')+'</div>'+corpo+'<div style="text-align:center;color:#7C8AA3;font-size:12px;margin-top:20px;">Tom Gás — Dicas & Treinamentos</div>';
   }catch(e){
-    wrap.innerHTML = '<h2>Não foi possível abrir</h2><p>Confira sua conexão e tente novamente.</p>';
+    wrap.innerHTML = '<h2 style="color:#E7ECF7;">Não foi possível abrir</h2><p style="color:#A9B6CC;">Confira sua conexão e tente novamente.</p>';
     console.error(e);
   }
 }
