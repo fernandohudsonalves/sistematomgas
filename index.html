@@ -522,15 +522,15 @@ html[data-theme="dark"] .tabela-vendas thead th, html[data-theme="natal"] .tabel
 .chk-drawer-item.done .chk-label{color:var(--text3);text-decoration:line-through;}
 .chk-drawer-hint{font-size:10px;color:var(--text3);margin-top:10px;padding-top:8px;border-top:1px solid var(--border);text-align:center;}
 #checklist-hover-drawer .empty{font-size:11px;padding:5px 4px;}
-#estoque-gas-hover-drawer{position:fixed;left:0;top:330px;width:260px;max-height:260px;background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(255,255,255,.99));backdrop-filter:blur(10px);border:1px solid rgba(3,105,161,.1);border-left:none;box-shadow:0 16px 40px rgba(16,32,62,.18);border-radius:0 18px 18px 0;transform:translateX(calc(-100% + 6px));transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:9997;overflow:hidden;display:flex;flex-direction:column;}
+#estoque-gas-hover-drawer{position:fixed;left:0;top:460px;width:180px;max-height:180px;background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(255,255,255,.99));backdrop-filter:blur(10px);border:1px solid rgba(3,105,161,.1);border-left:none;box-shadow:0 12px 30px rgba(16,32,62,.16);border-radius:0 14px 14px 0;transform:translateX(calc(-100% + 5px));transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:9997;overflow:hidden;display:flex;flex-direction:column;}
 #estoque-gas-hover-drawer:hover,#estoque-gas-hover-drawer.open{transform:translateX(0);}
-#estoque-gas-hover-tab{position:absolute;right:-38px;top:16px;background:linear-gradient(135deg,#38BDF8,#0369A1);color:#fff;padding:10px 8px;border-radius:0 12px 12px 0;writing-mode:vertical-rl;font-weight:700;font-size:11px;letter-spacing:.4px;box-shadow:3px 4px 14px rgba(3,105,161,.35);display:flex;align-items:center;gap:6px;}
-#estoque-gas-hover-content{padding:13px 12px 15px;overflow-y:auto;}
-#estoque-gas-hover-content h3{margin:0 0 8px;font-size:13px;color:#0369A1;font-weight:800;display:flex;align-items:center;gap:6px;}
-.gas-drawer-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 6px;border-radius:9px;margin-bottom:4px;background:var(--blue-tint);}
-.gas-drawer-item .gas-label{font-size:12px;font-weight:700;color:var(--text);}
-.gas-drawer-item .gas-qtds{display:flex;gap:10px;font-size:11.5px;color:var(--text2);}
-.gas-drawer-item .gas-qtds span{display:flex;align-items:center;gap:3px;white-space:nowrap;}
+#estoque-gas-hover-tab{position:absolute;right:-30px;top:12px;background:linear-gradient(135deg,#38BDF8,#0369A1);color:#fff;padding:7px 6px;border-radius:0 10px 10px 0;writing-mode:vertical-rl;font-weight:700;font-size:9.5px;letter-spacing:.3px;box-shadow:2px 3px 10px rgba(3,105,161,.35);display:flex;align-items:center;gap:4px;}
+#estoque-gas-hover-content{padding:9px 8px 10px;overflow-y:auto;}
+#estoque-gas-hover-content h3{margin:0 0 6px;font-size:11px;color:#0369A1;font-weight:800;display:flex;align-items:center;gap:5px;}
+.gas-drawer-item{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:4px 5px;border-radius:7px;margin-bottom:3px;background:var(--blue-tint);}
+.gas-drawer-item .gas-label{font-size:10px;font-weight:700;color:var(--text);}
+.gas-drawer-item .gas-qtds{display:flex;gap:6px;font-size:9.5px;color:var(--text2);}
+.gas-drawer-item .gas-qtds span{display:flex;align-items:center;gap:2px;white-space:nowrap;}
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
 #whats-fab{position:fixed;right:18px;bottom:18px;z-index:500;width:56px;height:56px;border-radius:50%;background:#25D366;border:none;box-shadow:0 6px 18px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
@@ -811,7 +811,7 @@ document.getElementById('mnd-close').addEventListener('click', fecharMenuMobile)
 document.getElementById('mobile-nav-overlay').addEventListener('click', fecharMenuMobile);
 window.addEventListener('resize', ()=>{ if(window.innerWidth>640) fecharMenuMobile(); });
 document.getElementById('app').insertAdjacentHTML('beforeend','<aside id="checklist-hover-drawer"><div id="checklist-hover-tab">☑ Checklist<span class="chk-tab-dot" id="chk-tab-dot"></span></div><div id="checklist-hover-content"></div></aside>');
-document.getElementById('app').insertAdjacentHTML('beforeend','<aside id="estoque-gas-hover-drawer"><div id="estoque-gas-hover-tab">🛢 Estoque Gás</div><div id="estoque-gas-hover-content"></div></aside>');
+document.getElementById('app').insertAdjacentHTML('beforeend','<aside id="estoque-gas-hover-drawer"><div id="estoque-gas-hover-tab">🛢 Gás</div><div id="estoque-gas-hover-content"></div></aside>');
 document.getElementById('app').insertAdjacentHTML('beforeend',`
 <button id="whats-fab" title="Buscar cliente no WhatsApp">${iconWhatsApp('#fff',28)}</button>
 <div id="whats-search-overlay">
@@ -913,13 +913,13 @@ function renderEstoqueGasHoverDrawer(){
   const e=document.getElementById('estoque-gas-hover-content');if(!e)return;
   const est = state.estoque && state.estoque.gas ? state.estoque.gas : {};
   const tipos = ['P13','P20','P45'];
-  e.innerHTML='<h3>🛢 Estoque de Gás</h3>'+
+  e.innerHTML='<h3>🛢 Estoque</h3>'+
     tipos.map(t=>{
       const item = est[t] || {cheio:0,vazio:0};
       return '<div class="gas-drawer-item"><span class="gas-label">'+t+'</span>'+
         '<span class="gas-qtds">'+
-        '<span title="Cheios">'+iconVasilhame(true,null,18,t)+' '+fmtNumBR(item.cheio||0)+'</span>'+
-        '<span title="Vazios">'+iconVasilhame(false,null,18,t)+' '+fmtNumBR(item.vazio||0)+'</span>'+
+        '<span title="Cheios">'+iconVasilhame(true,null,13,t)+' '+Math.round(item.cheio||0)+'</span>'+
+        '<span title="Vazios">'+iconVasilhame(false,null,13,t)+' '+Math.round(item.vazio||0)+'</span>'+
         '</span></div>';
     }).join('');
 }
