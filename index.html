@@ -1980,6 +1980,7 @@ let state = {
   ],
   fiados: [],
   fiadoPagamentos: [],
+  fiadoDestinatarios: {},
   creditos: [],
   comodatos: [],
   agendamentos: [],
@@ -4128,7 +4129,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','contasDespesaExtra','gruposCruzamento','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas','dicasTreinamentos','categoriasDicas'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','contasDespesaExtra','gruposCruzamento','fiados','fiadoPagamentos','fiadoDestinatarios','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas','dicasTreinamentos','categoriasDicas'];
 async function loadAll(){
   try{
     const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
@@ -4143,6 +4144,7 @@ async function loadAll(){
   if(!state.agendamentos) state.agendamentos = [];
   if(!state.empresas) state.empresas = [];
   if(!state.fiadoPagamentos) state.fiadoPagamentos = [];
+  if(!state.fiadoDestinatarios || typeof state.fiadoDestinatarios!=='object' || Array.isArray(state.fiadoDestinatarios)) state.fiadoDestinatarios = {};
   if(!state.convenioLancamentos) state.convenioLancamentos = [];
   if(!state.convenioPagamentos) state.convenioPagamentos = [];
   if(!state.vendasSeparadasIgnoradas) state.vendasSeparadasIgnoradas = [];
@@ -7759,7 +7761,7 @@ function iniciarEditarAgendamento(id){
   const enderecoPreview = document.getElementById('ag-endereco-preview');
   if(enderecoPreview){
     const end = a.cliente ? getClienteEndereco(a.cliente) : '';
-    enderecoPreview.innerHTML = end ? '📍 '+escapeHtmlCampanha(end) : '';
+    enderecoPreview.innerHTML = (end && end!=='—') ? '📍 '+escapeHtmlCampanha(end) : (a.cliente ? '<span style="color:var(--danger);">⚠ Cliente sem endereço cadastrado.</span>' : '');
   }
   atualizarTotalCarrinhoAgendamento();
   fa.querySelector('button[type=submit]').textContent='Salvar alterações';
@@ -9469,7 +9471,12 @@ function relatorioFiado(){
       '<button type="submit" class="btn small">'+(editando?'Salvar alterações':'Registrar pagamento')+'</button> '+(function(){const c=state.clientes.find(x=>chaveNormalizada(x.nome)===chaveNormalizada(clienteRegistrandoPagamento));return c&&c.telefone?botaoWhatsApp(c.telefone):'';})()+' '+
       '<button type="button" class="link-btn" id="btn-cancelar-pagamento-fiado">cancelar</button></form></div>';
   }
-  return '<h3>Lançar fiado existente (sem precisar registrar uma venda)</h3>'+
+  return '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">'+
+    '<h3 style="margin-top:0;">📤 Enviar listagem de fiados</h3>'+
+    '<div class="hint">Gera um PDF com todos os fiados em aberto <strong>no momento do clique</strong> e envia pelo WhatsApp para Fernando Hudson Alves e Sueli Correia de Oliveira. Se o envio automático não funcionar, o PDF é gerado do mesmo jeito pra você mandar manualmente.</div>'+
+    '<button type="button" class="btn small" id="btn-enviar-listagem-fiados" style="margin-top:8px;">📄 Gerar PDF e enviar</button>'+
+    '<div id="fiado-envio-status" style="margin-top:10px;"></div></div>'+
+    '<h3>Lançar fiado existente (sem precisar registrar uma venda)</h3>'+
     '<form id="form-fiado"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-fiado" name="cliente" required>'+
     '<datalist id="lista-clientes-fiado">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist></div>'+
@@ -10660,6 +10667,339 @@ async function enviarExtratoWhatsApp(cliente){
   } else {
     alert('PDF baixado. Esse cliente não tem telefone cadastrado — cadastre o telefone dele (em Clientes) pra também abrir a conversa do WhatsApp automaticamente.');
   }
+}
+
+/* ---------- LISTAGEM GERAL DE FIADOS: gera o PDF de todos os fiados em aberto e envia por WhatsApp ----------
+   Botão fica na aba Fiado. No clique: congela os fiados daquele instante, gera o PDF (pdf-lib) e tenta
+   mandar automaticamente (mesma função do Supabase usada nas campanhas) pra Fernando Hudson Alves e
+   Sueli Correia de Oliveira. Se o envio automático falhar, o PDF é baixado do mesmo jeito e a tela
+   mostra botões pra mandar o arquivo manualmente. */
+const DESTINATARIOS_LISTAGEM_FIADOS = [
+  {nome:'Fernando Hudson Alves', buscas:[['fernando','hudson']]},
+  {nome:'Sueli Correia de Oliveira', buscas:[['sueli','correia'],['sueli','oliveira']]}
+];
+let ultimaListagemFiados = null; // {bytes, nomeArquivo, snap, dests} do último clique (usado pelos botões de envio manual)
+
+function telefoneValidoFiado(t){ const d = apenasDigitos(t||''); return d.length>=10 && d.length<=13; }
+function normalizarTelefoneBR(t){ let d = apenasDigitos(t||''); if(d.length<=11) d = '55'+d; return d; }
+function dataHoraBR(d){
+  return d.toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).replace(/,?\s+/,' às ');
+}
+
+// Procura o WhatsApp da pessoa nos cadastros (Clientes, Entregadores, Fornecedores) pelo nome.
+function acharContatoListagemFiados(alvo){
+  const fontes = [
+    (state.clientes||[]).map(c=>({nome:c.nome, tel:c.telefone, origem:'Clientes'})),
+    (state.entregadores||[]).map(e=>({nome:e.nome, tel:e.whatsapp, origem:'Entregadores'})),
+    (state.fornecedoresGas||[]).map(f=>({nome:f.nome, tel:f.whatsapp, origem:'Fornecedores'}))
+  ];
+  for(const tokens of alvo.buscas){
+    for(const lista of fontes){
+      const achado = lista.find(x=>{
+        const n = chaveNormalizada(x.nome||'');
+        return tokens.every(t=>n.includes(t)) && telefoneValidoFiado(x.tel);
+      });
+      if(achado) return {nome:alvo.nome, nomeCadastro:achado.nome, telefone:normalizarTelefoneBR(achado.tel), origem:achado.origem};
+    }
+  }
+  const salvo = (state.fiadoDestinatarios||{})[alvo.nome];
+  if(telefoneValidoFiado(salvo)) return {nome:alvo.nome, nomeCadastro:alvo.nome, telefone:normalizarTelefoneBR(salvo), origem:'número informado antes'};
+  return null;
+}
+async function resolverDestinatariosListagemFiados(){
+  const res = [];
+  for(const alvo of DESTINATARIOS_LISTAGEM_FIADOS){
+    let c = acharContatoListagemFiados(alvo);
+    if(!c){
+      const resp = prompt('Não achei o WhatsApp de "'+alvo.nome+'" nos cadastros (Clientes, Entregadores).\n\nDigite o número com DDD (ex.: 43 99999-9999) pra eu usar agora e guardar pras próximas vezes.\n\nSe deixar em branco, o PDF é gerado mas não é enviado pra essa pessoa.');
+      if(resp && telefoneValidoFiado(resp)){
+        if(!state.fiadoDestinatarios || typeof state.fiadoDestinatarios!=='object' || Array.isArray(state.fiadoDestinatarios)) state.fiadoDestinatarios = {};
+        state.fiadoDestinatarios[alvo.nome] = apenasDigitos(resp);
+        await save('fiadoDestinatarios');
+        c = {nome:alvo.nome, nomeCadastro:alvo.nome, telefone:normalizarTelefoneBR(resp), origem:'número informado agora'};
+      } else if(resp){
+        alert('Número inválido: "'+resp+'". Vou seguir sem enviar pra '+alvo.nome+'.');
+      }
+    }
+    res.push(c || {nome:alvo.nome, nomeCadastro:alvo.nome, telefone:'', origem:''});
+  }
+  return res;
+}
+
+// Foto dos fiados em aberto neste instante (mesma conta do resto do sistema: débitos - pagamentos).
+function snapshotFiadosAgora(){
+  const linhas = clientesComFiado().map(nome=>{
+    const debitos = debitosDoCliente(nome);
+    const pagamentos = pagamentosDoCliente(nome);
+    const totalDeb = debitos.reduce((s,d)=>s+d.valor,0);
+    const totalPag = pagamentos.reduce((s,p)=>s+p.valor,0);
+    return {
+      nome, telefone: telefoneDoCliente(nome)||'', debitos, pagamentos,
+      saldo: Math.max(0, Math.round((totalDeb-totalPag)*100)/100),
+      dias: diasFiadoAtrasado(nome),
+      maisAntiga: debitos.length ? debitos[0].data : ''
+    };
+  }).filter(l=>l.saldo>0.004).sort((a,b)=>(b.dias-a.dias) || (b.saldo-a.saldo));
+  const total = Math.round(linhas.reduce((s,l)=>s+l.saldo,0)*100)/100;
+  return {geradoEm:new Date(), linhas, total};
+}
+
+async function gerarPdfListagemFiados(snap){
+  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const W=595, H=842, M=40, DIR=W-M;
+  const tinta=rgb(0.1,0.1,0.15), suave=rgb(0.42,0.42,0.48), fundo=rgb(0.93,0.93,0.95), linhaCor=rgb(0.86,0.86,0.89);
+  const vermelho=rgb(0.75,0.15,0.1), laranja=rgb(0.72,0.4,0.05), verde=rgb(0.1,0.5,0.25);
+  let page = pdf.addPage([W,H]);
+  let y = H-M;
+  const cortar = (t,f,s,larg)=>{
+    t = textoPdfSeguro(t);
+    if(f.widthOfTextAtSize(t,s)<=larg) return t;
+    while(t.length>1 && f.widthOfTextAtSize(t+'...',s)>larg) t = t.slice(0,-1);
+    return t+'...';
+  };
+  const esq = (t,x,s,f,c,yy)=>page.drawText(textoPdfSeguro(t),{x, y:(yy===undefined?y:yy), size:s, font:f||font, color:c||tinta});
+  const dir = (t,xd,s,f,c,yy)=>{
+    t = textoPdfSeguro(t); const ff = f||font;
+    page.drawText(t,{x:xd-ff.widthOfTextAtSize(t,s), y:(yy===undefined?y:yy), size:s, font:ff, color:c||tinta});
+  };
+  const novaPagina = ()=>{ page = pdf.addPage([W,H]); y = H-M; };
+  const cabecalhoTabela = ()=>{
+    page.drawRectangle({x:M-4, y:y-5, width:W-2*M+8, height:17, color:fundo});
+    esq('#',M,9,bold); esq('Cliente',M+22,9,bold); esq('Telefone',268,9,bold); esq('Desde',368,9,bold);
+    dir('Dias',462,9,bold); dir('Saldo',DIR,9,bold);
+    y -= 20;
+  };
+
+  // Cabeçalho + resumo
+  esq('Listagem de fiados em aberto',M,18,bold); y -= 22;
+  esq('Gerada em '+dataHoraBR(snap.geradoEm),M,10,font,suave); y -= 26;
+  const atrasados = snap.linhas.filter(l=>l.dias>60);
+  page.drawRectangle({x:M-4, y:y-40, width:W-2*M+8, height:54, color:fundo});
+  esq('Total a receber',M+4,9,font,suave);               esq(fmtMoney(snap.total),M+4,17,bold,tinta,y-20);
+  esq('Clientes com fiado',290,9,font,suave);            esq(String(snap.linhas.length),290,17,bold,tinta,y-20);
+  esq('Atrasados há mais de 60 dias',390,9,font,suave);  esq(String(atrasados.length),390,17,bold,atrasados.length?vermelho:tinta,y-20);
+  y -= 66;
+
+  // Tabela-resumo
+  cabecalhoTabela();
+  snap.linhas.forEach((l,i)=>{
+    if(y<M+40){ novaPagina(); cabecalhoTabela(); }
+    esq(String(i+1),M,9,font,suave);
+    esq(cortar(l.nome,font,9.5,196),M+22,9.5);
+    esq(cortar(l.telefone||'-',font,9,92),268,9,font,suave);
+    esq(l.maisAntiga?fmtDate(l.maisAntiga):'-',368,9);
+    dir(String(l.dias),462,9,font,l.dias>60?vermelho:(l.dias>30?laranja:tinta));
+    dir(fmtMoney(l.saldo),DIR,9.5,bold);
+    page.drawLine({start:{x:M-4,y:y-4}, end:{x:DIR+4,y:y-4}, thickness:.5, color:linhaCor});
+    y -= 16;
+  });
+  if(y<M+40) novaPagina();
+  y -= 8;
+  dir('TOTAL EM ABERTO   '+fmtMoney(snap.total),DIR,12,bold);
+
+  // Detalhamento por cliente (compras e pagamentos, como no extrato individual)
+  novaPagina();
+  esq('Detalhamento por cliente',M,15,bold); y -= 26;
+  snap.linhas.forEach(l=>{
+    if(y<M+70) novaPagina();
+    page.drawRectangle({x:M-4, y:y-5, width:W-2*M+8, height:17, color:fundo});
+    esq(cortar(l.nome,bold,10.5,340),M,10.5,bold);
+    dir('Saldo '+fmtMoney(l.saldo),DIR,10.5,bold);
+    y -= 19;
+    const linha = (dt,desc,valor,cor)=>{
+      if(y<M+20) novaPagina();
+      esq(dt,M,9,font,suave); esq(cortar(desc,font,9,330),M+62,9); dir(valor,DIR,9,font,cor);
+      y -= 13;
+    };
+    l.debitos.forEach(d=>linha(fmtDate(d.data), d.descricao||'', fmtMoney(d.valor)));
+    l.pagamentos.forEach(p=>linha(fmtDate(p.data), 'Pagamento'+(p.forma_pagamento?' - '+p.forma_pagamento:''), '- '+fmtMoney(p.valor), verde));
+    y -= 9;
+  });
+
+  // Rodapé com numeração em todas as páginas
+  const paginas = pdf.getPages();
+  paginas.forEach((p,i)=>{
+    const t = textoPdfSeguro('Fiados em aberto - '+dataHoraBR(snap.geradoEm)+'   |   Página '+(i+1)+' de '+paginas.length);
+    p.drawText(t,{x:(W-font.widthOfTextAtSize(t,8))/2, y:22, size:8, font, color:suave});
+  });
+  return pdf.save();
+}
+
+function mensagemListagemFiados(snap, nome, comAnexo){
+  const primeiro = (nome||'').split(' ')[0];
+  const n = snap.linhas.length;
+  let msg = 'Oi '+primeiro+'! 📒 *Fiados em aberto — '+dataHoraBR(snap.geradoEm)+'*\n\n'+
+    'Total a receber: *'+fmtMoney(snap.total)+'* ('+n+' cliente'+(n===1?'':'s')+')\n';
+  if(comAnexo) return msg+'\nSegue o PDF com a listagem completa em anexo.';
+  msg += '\n';
+  let incluidos = 0;
+  for(let i=0;i<n;i++){
+    const l = snap.linhas[i];
+    const linha = (i+1)+'. '+l.nome+' — '+fmtMoney(l.saldo)+' ('+l.dias+'d)\n';
+    if((msg+linha).length>3200) break;
+    msg += linha; incluidos++;
+  }
+  if(incluidos<n) msg += '\n... e mais '+(n-incluidos)+' cliente(s). O PDF completo está no sistema.';
+  return msg;
+}
+
+// Envio automático (texto) pela mesma função do Supabase usada nas campanhas de WhatsApp.
+async function enviarTextoAutomaticoWhatsFiados(dest, mensagem){
+  const { data, error } = await supabaseClient.functions.invoke('enviar-whatsapp-campanha',{ body:{
+    campanhaId:'listagem-fiados-'+Date.now(), clienteId:null, nome:dest.nome, telefone:dest.telefone,
+    mensagem, imagemBase64:null, videoDataUrl:null, linkVideo:null
+  }});
+  if(error) throw error;
+  if(data && data.ok===false) throw new Error(data.error||'Falha no envio');
+}
+
+function baixarPdfListagemFiados(){
+  const u = ultimaListagemFiados; if(!u) return;
+  const url = URL.createObjectURL(new Blob([u.bytes],{type:'application/pdf'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = u.nomeArquivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+// Envio manual do PDF: no celular abre o compartilhar com o arquivo já anexado; no computador
+// baixa o PDF e abre a conversa da pessoa no WhatsApp pra anexar.
+async function enviarPdfListagemFiadosWhats(idx){
+  const u = ultimaListagemFiados; if(!u) return;
+  const d = u.dests[idx]; if(!d) return;
+  const texto = mensagemListagemFiados(u.snap, d.nome, true);
+  try{
+    const file = new File([new Blob([u.bytes],{type:'application/pdf'})], u.nomeArquivo, {type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Fiados em aberto', text:texto});
+      return;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  baixarPdfListagemFiados();
+  if(d.telefone){
+    alert('PDF baixado. Vou abrir a conversa com '+d.nome+' no WhatsApp — é só anexar o arquivo baixado.');
+    window.open(linkWhatsAppComTexto(d.telefone, texto), '_blank');
+  } else {
+    alert('PDF baixado. Não tenho o WhatsApp de '+d.nome+' — anexe o arquivo manualmente na conversa dela(e).');
+  }
+}
+
+async function gerarEEnviarListagemFiados(btn){
+  const setStatus = html=>{ const el = document.getElementById('fiado-envio-status'); if(el) el.innerHTML = html; };
+  const textoBtn = btn.textContent;
+  const snap = snapshotFiadosAgora(); // congela os fiados exatamente no momento do clique
+  if(snap.linhas.length===0){ alert('Não há nenhum fiado em aberto neste momento.'); return; }
+  btn.disabled = true;
+  try{
+    btn.textContent = '⏳ Preparando...';
+    const dests = await resolverDestinatariosListagemFiados();
+    const resumoDest = dests.map(d=>'• '+d.nome+': '+(d.telefone?('+'+d.telefone+(d.nomeCadastro&&d.nomeCadastro!==d.nome?' (cadastro: '+d.nomeCadastro+')':'')):'SEM número — não será enviado')).join('\n');
+    if(!confirm('Gerar o PDF com '+snap.linhas.length+' cliente(s) em fiado ('+fmtMoney(snap.total)+') e enviar para:\n\n'+resumoDest+'\n\nConfirmar?')) return;
+
+    btn.textContent = '⏳ Gerando PDF...';
+    const bytes = await gerarPdfListagemFiados(snap);
+    const g = snap.geradoEm, p2 = n=>String(n).padStart(2,'0');
+    const nomeArquivo = 'fiados-'+g.getFullYear()+'-'+p2(g.getMonth()+1)+'-'+p2(g.getDate())+'-'+p2(g.getHours())+'h'+p2(g.getMinutes())+'.pdf';
+    ultimaListagemFiados = {bytes, nomeArquivo, snap, dests};
+
+    const resultados = [];
+    for(const d of dests){
+      if(!d.telefone){ resultados.push({d, ok:false, erro:'sem número de WhatsApp cadastrado'}); continue; }
+      btn.textContent = '⏳ Enviando para '+d.nome.split(' ')[0]+'...';
+      try{ await enviarTextoAutomaticoWhatsFiados(d, mensagemListagemFiados(snap, d.nome, false)); resultados.push({d, ok:true}); }
+      catch(e){ console.error('Envio automático da listagem de fiados falhou', e); resultados.push({d, ok:false, erro:(e&&e.message)||String(e)}); }
+    }
+    const algumaFalha = resultados.some(r=>!r.ok);
+    if(algumaFalha) baixarPdfListagemFiados(); // garantia: o PDF sempre fica com você
+
+    setStatus(
+      '<div class="hint" style="margin-bottom:6px;">PDF gerado com os fiados de '+dataHoraBR(snap.geradoEm)+' — '+snap.linhas.length+' cliente(s), total '+fmtMoney(snap.total)+'.'+(algumaFalha?' <strong>O PDF foi baixado no seu aparelho.</strong>':'')+'</div>'+
+      resultados.map(r=>'<div style="margin:4px 0;">'+(r.ok?'✅':'⚠️')+' <strong>'+escapeHtmlCampanha(r.d.nome)+'</strong> — '+(r.ok?'resumo enviado automaticamente pelo WhatsApp.':'não foi possível enviar automaticamente ('+escapeHtmlCampanha(r.erro)+').')+'</div>').join('')+
+      '<div class="hint" style="margin-top:6px;">O envio automático manda o resumo em texto. Pra mandar o <strong>arquivo PDF</strong> use os botões abaixo (no celular abre o compartilhar já com o PDF anexado — é só escolher a pessoa).</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'+
+      '<button type="button" class="btn small ghost" id="btn-baixar-pdf-fiados">📥 Baixar PDF</button>'+
+      dests.map((d,i)=>'<button type="button" class="btn small" data-pdf-fiados-whats="'+i+'" style="background:#25D366;">'+iconWhatsApp('#fff',13)+' PDF p/ '+escapeHtmlCampanha(d.nome.split(' ')[0])+'</button>').join('')+
+      '</div>'
+    );
+    const bBaixar = document.getElementById('btn-baixar-pdf-fiados');
+    if(bBaixar) bBaixar.onclick = baixarPdfListagemFiados;
+    document.querySelectorAll('[data-pdf-fiados-whats]').forEach(b=>b.onclick=()=>enviarPdfListagemFiadosWhats(Number(b.dataset.pdfFiadosWhats)));
+  }catch(e){
+    console.error(e);
+    alert('Não foi possível gerar a listagem de fiados: '+(e.message||e));
+  }finally{
+    btn.disabled = false; btn.textContent = textoBtn;
+  }
+}
+
+/* ---------- AVISO DE CLIENTE SEM ENDEREÇO NA NOVA ENTREGA ----------
+   Antes de gerar uma entrega com entregador, confere se o cliente tem endereço cadastrado. Se não tiver,
+   abre um aviso pra informar o endereço na hora (fica salvo no cadastro do cliente) — assim o entregador
+   nunca recebe uma entrega sem saber pra onde ir. Dá pra voltar ao formulário ou registrar mesmo assim. */
+function clienteTemEnderecoCadastrado(nome){
+  const c = encontrarClientePorNomeOuApelido(nome||'');
+  return !!(c && (c.endereco||'').trim());
+}
+function modalEnderecoEntrega(nomeCliente, clienteNovo){
+  return new Promise(resolve=>{
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(8,14,30,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+    ov.innerHTML =
+      '<div role="dialog" aria-modal="true" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:14px;max-width:460px;width:100%;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.35);">'+
+      '<h3 style="margin:0 0 6px;">📍 Cliente sem endereço</h3>'+
+      '<div class="hint" style="margin-bottom:12px;"><strong>'+escapeHtmlCampanha(nomeCliente)+'</strong> '+(clienteNovo?'ainda não está cadastrado':'não tem endereço cadastrado')+'. Sem o endereço, o entregador recebe a entrega sem saber pra onde ir e a rota não é montada. Informe agora — ele fica salvo no cadastro do cliente.</div>'+
+      '<label>Endereço</label><input type="text" id="end-entrega-input" placeholder="Rua, número - Bairro">'+
+      '<label style="margin-top:8px;">Complemento (opcional)</label><input type="text" id="end-entrega-compl" placeholder="Ex: casa dos fundos, apto 12">'+
+      '<div id="end-entrega-erro" style="color:var(--danger);font-size:12px;min-height:16px;margin-top:6px;"></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;">'+
+      '<button type="button" class="btn small" id="end-entrega-salvar">Salvar endereço e registrar entrega</button>'+
+      '<button type="button" class="btn small ghost" id="end-entrega-voltar">Voltar</button>'+
+      '<button type="button" class="link-btn" id="end-entrega-sem">Registrar sem endereço</button></div></div>';
+    document.body.appendChild(ov);
+    const inp = ov.querySelector('#end-entrega-input'), compl = ov.querySelector('#end-entrega-compl'), erro = ov.querySelector('#end-entrega-erro');
+    const fechar = res=>{ document.removeEventListener('keydown', aoTecla, true); ov.remove(); resolve(res); };
+    const salvar = ()=>{
+      const end = inp.value.trim();
+      if(end.length<5){ erro.textContent = 'Digite o endereço (rua e número).'; inp.focus(); return; }
+      fechar({acao:'salvar', endereco:end, complemento:compl.value.trim()});
+    };
+    const aoTecla = e=>{ if(e.key==='Escape'){ e.stopPropagation(); fechar({acao:'cancelar'}); } };
+    document.addEventListener('keydown', aoTecla, true);
+    ov.querySelector('#end-entrega-salvar').onclick = salvar;
+    ov.querySelector('#end-entrega-voltar').onclick = ()=>fechar({acao:'cancelar'});
+    ov.querySelector('#end-entrega-sem').onclick = ()=>fechar({acao:'sem'});
+    [inp, compl].forEach(el=>el.onkeydown = e=>{ if(e.key==='Enter'){ e.preventDefault(); salvar(); } });
+    setTimeout(()=>inp.focus(), 30);
+  });
+}
+// Devolve true se pode seguir com a entrega (endereço ok, informado agora ou "registrar sem endereço") e false se o usuário voltou.
+async function garantirEnderecoClienteParaEntrega(nomeDigitado){
+  const nome = (nomeDigitado||'').trim();
+  if(!nome) return true;
+  const existente = encontrarClientePorNomeOuApelido(nome);
+  if(existente && (existente.endereco||'').trim()) return true;
+  const r = await modalEnderecoEntrega(existente ? existente.nome : nome, !existente);
+  if(r.acao==='cancelar') return false;
+  if(r.acao==='sem') return true;
+  let cli = existente;
+  const criadoAgora = !cli;
+  if(!cli){
+    cli = {id:uid(), nome, telefone:'', endereco:'', complemento:'', obs:'', criadoEm:Date.now(), autoCadastrado:true};
+    state.clientes.push(cli);
+  }
+  const enderecoAntes = cli.endereco, complementoAntes = cli.complemento;
+  cli.endereco = r.endereco;
+  if(r.complemento) cli.complemento = r.complemento;
+  const ok = await save('clientes');
+  if(!ok){
+    cli.endereco = enderecoAntes; cli.complemento = complementoAntes;
+    if(criadoAgora) state.clientes = state.clientes.filter(x=>x!==cli);
+    alert('⚠️ Não consegui salvar o endereço no cadastro do cliente (veja o aviso acima). A entrega NÃO foi registrada — tente de novo.');
+    return false;
+  }
+  return true;
 }
 
 /* ---------- HANDLERS ---------- */
@@ -11947,6 +12287,8 @@ function attachHandlers(){
     });
   };
   attachFiadoPorClienteHandlers();
+  const btnListagemFiados = document.getElementById('btn-enviar-listagem-fiados');
+  if(btnListagemFiados) btnListagemFiados.onclick = ()=>gerarEEnviarListagemFiados(btnListagemFiados);
   const attachFiadoListaHandlers = ()=>{
     document.querySelectorAll('[data-marcar-vale-fiado]').forEach(el=>el.onclick=async()=>{
       const fi = state.fiados.find(x=>x.id===el.dataset.marcarValeFiado);
@@ -14082,6 +14424,11 @@ function attachHandlers(){
       renderAll();
       return;
     }
+    // ---- Nova entrega: antes de gerar pro entregador, garante que o cliente tem endereço ----
+    if(TIPOS_ENTREGA_COM_ENTREGADOR.includes(f.get('tipo_entrega'))){
+      const enderecoOkAg = await garantirEnderecoClienteParaEntrega(f.get('cliente')||'');
+      if(!enderecoOkAg) return;
+    }
     // ---- Nova entrega: monta o carrinho (item principal + extras), igual ao lançamento de Vendas ----
     const clienteAg = resolverNomeCliente(f.get('cliente')||'');
     if(!controladaAg) await garantirProdutoCadastrado(produtoAg, categoriaAg, valorUnitAg);
@@ -14262,10 +14609,10 @@ function attachHandlers(){
     if(!agClienteInput || !agEnderecoPreview) return;
     const nome = agClienteInput.value.trim();
     if(!nome){ agEnderecoPreview.innerHTML=''; return; }
-    const c = state.clientes.find(x=>x.nome===nome);
-    if(!c){ agEnderecoPreview.innerHTML = '<span style="color:var(--danger);">Cliente ainda não cadastrado — o endereço não vai aparecer na rota.</span>'; return; }
-    const end = getClienteEndereco(nome);
-    agEnderecoPreview.innerHTML = end ? '📍 '+escapeHtmlCampanha(end) : '<span style="color:var(--danger);">Cliente sem endereço cadastrado.</span>';
+    const c = encontrarClientePorNomeOuApelido(nome);
+    if(!c){ agEnderecoPreview.innerHTML = '<span style="color:var(--danger);">⚠ Cliente ainda não cadastrado — se for entrega, vou pedir o endereço na hora de registrar.</span>'; return; }
+    const end = getClienteEndereco(c.nome);
+    agEnderecoPreview.innerHTML = (end && end!=='—') ? '📍 '+escapeHtmlCampanha(end) : '<span style="color:var(--danger);">⚠ Cliente sem endereço cadastrado — se for entrega, vou pedir o endereço na hora de registrar.</span>';
   };
   if(agClienteInput){ agClienteInput.oninput = atualizarEnderecoPreviewAg; agClienteInput.onchange = atualizarEnderecoPreviewAg; atualizarEnderecoPreviewAg(); }
   const btnRotaAgendamentos = document.getElementById('btn-rota-agendamentos');
