@@ -116,6 +116,11 @@ html[data-theme="natal"] #natal-luzes{
 #natal-luzes .luz:nth-child(5n+4){color:#0A84FF;}
 #natal-luzes .luz:nth-child(5n+5){color:#FF375F;}
 @keyframes pisca-luz-natal{0%,100%{opacity:1;filter:brightness(1.4);}50%{opacity:.3;filter:brightness(.55);}}
+/* Neve caindo no fundo — só aparece no tema de Natal, efeito puramente em CSS (leve, sem JS a cada quadro) */
+#natal-neve{display:none;}
+html[data-theme="natal"] #natal-neve{display:block;position:fixed;top:0;left:0;width:100%;height:100%;overflow:hidden;pointer-events:none;z-index:1;}
+#natal-neve .floco{position:absolute;top:-10px;border-radius:50%;background:#fff;box-shadow:0 0 2px rgba(255,255,255,.6);animation-name:cair-neve;animation-timing-function:linear;animation-iteration-count:infinite;}
+@keyframes cair-neve{0%{transform:translate3d(0,-10px,0);}50%{transform:translate3d(var(--dx,10px),50vh,0);}100%{transform:translate3d(0,110vh,0);}}
 #theme-toggle{background:rgba(255,255,255,.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
 #theme-toggle:hover{background:rgba(255,255,255,.28);}
 #auth-theme-toggle{position:fixed;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:17px;z-index:50;display:flex;align-items:center;justify-content:center;}
@@ -543,7 +548,7 @@ html[data-theme="dark"] .tabela-vendas thead th, html[data-theme="natal"] .tabel
 #sim-venda-fab{position:fixed;right:18px;bottom:364px;z-index:500;width:48px;height:48px;border-radius:50%;background:#16A34A;border:none;box-shadow:0 6px 18px rgba(22,163,74,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:24px;line-height:1;padding:0;}
 #sim-venda-fab:hover{transform:scale(1.06);}
 #sim-venda-fab:active{transform:scale(.96);}
-#sim-venda-panel{position:fixed;right:18px;bottom:364px;z-index:2500;width:300px;max-height:70vh;overflow-y:auto;background:var(--card,#fff);color:var(--text,#222);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow-x:hidden;display:none;}
+#sim-venda-panel{position:fixed;right:18px;bottom:364px;z-index:2500;width:300px;max-height:50vh;overflow-y:auto;background:var(--card,#fff);color:var(--text,#222);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow-x:hidden;display:none;}
 #sim-venda-panel.open{display:block;}
 #sim-venda-head{background:#16A34A;color:#fff;padding:10px 12px;font-weight:700;cursor:move;display:flex;align-items:center;justify-content:space-between;font-size:14px;}
 #sim-venda-head button{background:none;border:none;color:#fff;font-size:16px;cursor:pointer;}
@@ -649,7 +654,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
     <div class="sub">Acesso restrito à equipe do depósito</div>
     <div class="auth-tabs">
       <button data-authtab="login" class="active">Entrar</button>
-      <button data-authtab="cadastro">Criar conta</button>
+      <button data-authtab="cadastro" id="auth-tab-cadastro">Criar conta</button>
       <button data-authtab="recuperar">Esqueci a senha</button>
     </div>
 
@@ -694,8 +699,21 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_18_09_2026";
+const APP_BUILD_HORARIO = "1.0_20_09_2026";
+// Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
+// de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
+const CADASTRO_ATIVO = false;
+const MASCOTE_DICAS_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB4CAYAAAA5ZDbSAAAlb0lEQVR42u2de5hedXXvP+u3935v885Mkklmcr+QQEJQuSQUUG4R8VYUtQ1C+7T6eFrp04q2arU92AJHe2w9x3pHT7U9emq1Jaf20SNCS3skHBQEElAkAZKQkMskmVzm9t733r91/vj93skkJECYd2Zy288zZIaZ9/b77nVf67uEybxUQ0SSrOoHBP5MUxQh4GS/DBaIDfx6VeRhVANE0sl4K+EJcR6bbY8UTbfGKCFyXA8WQI/4fvT/m5Qb170HO0D7ZJ/t5AJ8tfsn+I20bkKjmsTJcb+nFDD+ezsK3ND/bF4aiGP+fOTfHg/EEolNk7gOcMPpCnDzSlAESBFEjk+C5wkcUEiAboGaQk5gu0IWqI8Cx/gbQvz3gnvc0X6WI4ANXgT8o90NckKc7AkCcGBCDIIhOYaoBEcFXkEXgNSBmv9+n0AnYARmA5sVIq+/hxV6BBoKw+4xzBGI/c9l4CxxN0FJ3enkvCbYOwr8Qz6E9b890mwoQkSayOkNcLdDM9DgAbUgYZQ7mprUFNDk6M8RH/GVAg0PTAS0CboQZB/oHEHqoDMEKfnXCYCMwFT/uIKX2hkCO9RpiCqwS1+oqk1kxBxhBNRpA20ke8jkngIV1hzlJjgtAF4jKagMrpMft6+o/ara6BqwoyEWlFREb0KCOWiqMEqSm3/Z7aXQjHK29it0ePU9R2CLwkqBnYqk4kDIg+xWKAjkQNtADviX6MIBqx7c0e9K1UoQGGsbj2hq1gIRgnXCHCKWmjX2O+WHpA9UQPQ0VtGioDK8Tn4E/Ohof9G+sr5SjJmjSWoPC6MUZAvoIiAQZDNgFEJxgFQ8QCWnXmUb6HxBDDAIskVhrjipHQbZoeg5giRAPzBTnOLoEWRAnUo33p0zxphUfji0Lvrki9jiSQX3xLHBiLJaA/qOUM77MMzAUm5Ex4g3YZ8iB0Z50Qbo807OgPtXnvTSvV2dvV4saBEkJ3DQS3BFoQ9kUA9Z1SY8Mur1DneVC1yloT/Hw23IWiyIneyTPUEAbqrrF0iAAbGsrB9bCoLRXrJaFEU8FHJEfBx4G/2MIkM4J2wasFthBxChWBSR4LA4+9iXZa0kXKWwVpITMecScrJfI9CrRSIjAagess9m9N+FTjU3HSF2gu7wTxGCBAgCmsaH2/qT+ApPhQ+BWpUgY9QmOzXVLyo8gpICDEZRg5AUi2BG+cAWoYjSICrGcUSKVSPdYuUmMdFqtYl6G3oG4MlGV0woqsnTscZvqq0rbD9CwDuAKaNSHEfKdK+4AKt5/Uv7yuQPxYSf0zSxI+r+DMCTha+AEZGEP6ytL2xnhRaokqweeihY03FZOtx7/dcjWJ1o2jAQDGvKsE0QSNokyPYjH2bePXde1/9/wh+2vS1lCQzfK59vX9l4uwTRKk3j9DCbfAbgVqGGsJyQDZq4DMTRpZcgMjZNtpbWR/8KwDqpAPxzM8QqXJwStAkaZ0Akrwk5mwBWOiUjM+M9ZTZI40fNF9k84t99C8Mq0hfJQguGuzTg3xHWngH45QBruOp+4z1SZUMT2fqxj1gVEc0WVzQ+fngEZSU12fhj/d87b24yoA2sNahpoMTqMMth9LHskuvaOle1R2k1m0hoEYwoDbArsQZc1Hy0V0ZKWuEGSUEVVefPy+SHRke8zRME2NXIoVBJpfOi+CJrWAXmckWvEaToslxH8W4lQMzRP0oZSF8k1ZATyBzDO1ebHCtst5KGxl5s/29yq71j6jujx3Z7zYGqsAbjgD/tAT4c2PZLamerNe8WDd4J9kIJQgHQ9Og5/VHPo02v+YW5EBsIIseq91nE6mEJCR80CwbEHFZfllEhVgX0TSHp7wEzeUZ38COT8g+V18i6ETOjyGRL9OQBvFqDJrCFlfULDeGHEP11Y4I2VcAmoJqO2LrJikubyZHI56pCD3A/2HeI1QsRCoFwIWgvKVX7r7bLfL7+KrkPC151W2RyUpaTcGgqTT2XPb+6MBNlbkXse8SEkVoLNkl9aVAmPdlggXaw/8mMZMD0YoEBkNhVp8go8qxa+6bAkmgoRUEN8HPu5kLuqM6WR72SMZMhzWbCpRZREC2ubPx+JhM9KoH5HZRIkzhFU0VM4BybEyCTFAADoHVcvbhb0LOcttdO0HO8ql5gDA0NZbuqxjbVjFXJ8KsM8GC2Xz/Nds0jYrlLg1NXgr1KLqwozQpM7qtigutduTxOXIXoBEwNGlwjwXLBvl6QnUC399wi0AjIg14hyA6gou4GCEAXSir7NJBUsDnWmw28r3KN/Jwf/zhk1ark1AL4Kg1ZK0n7RY1LCYJvizGLNYnTSbWtL/d0GqBzcaq5KK70GIC9SpCtivSDLnSqWqcKYkG7vd3OirLTptIwofYwrG3p+2uLwn/kLg24ATsRpUQzYeBeGL+NILhPxCzWJE5cdugET+grkAHpBTkI8py6smKsmGfUlR2XgDymrnBxtm8siP1jd6pIQ0ICm8p6bTfbgu/mtuhHuEFSFDMR4mUmAty2FfWbCM33QIo+9XfypEi9jMkT6qSyTZw93g/yHxb5BVBTJAbzqKLLBHlEYTfwKkG7QQsSkFjLUGpNjv+evy+9HZEUO/42efwO2tncpH1F/FYC8y1UA2xqT8q8rrfF7PP9dNsULYNOB0qKvk4gFRhUJBGYJnCeIP9P0QXALNDAGFJVnUFqzjG35TYm5ZrIf+PHGrJq/GrJ4yTBalgjaefK+oUY+SeUCGsVkZOzMhMw0q6jPaCdvvOy2ZNdBtmlMMs16ukcXPfIbnVZVgGpKnQakT0YzdnUVILP5HYlN7FKEh8rnyxOlotzOy5lqk2SnxkTLjnZKzLNmFhnCJIqmgEWCux2rbosEHQWkBW0E6TmbDfDIAOKTgGKzinTDrCXoxIbJaWaZHldPE9+Pl5xcuslajUGRDVJvmqCcImmTYfqJL8EZNg32LcLHADmAtNAHlLkeYWqIgfVNd0XQBeDPV/QmYIu9p0mNTDPipBHZQ9t4VP22+zSgk+GyIkNsI9121fWf0uC8AZNkuSkcqheStfVQad6DBKX5JBH1IHcBzLo1fVOYLtLZzIdONvFyfoGQVcKOhXYo4G2kciF5lX5/faTiFjWtF7gWnjHuBpucQXThORJjOnxfcyGU+VSoAjkBQ1ASop2C/pqcZMQ85zXLL2gSwSdi5Ps2eKa9xOXGJEB0A6QIVU911j2WmG6ubQ6Xx5ttapu3eE71WyhcatE4Uxsak8pcEclPkCR/Youdc0+8gtF9rrfyZPOXstOxdznW3I3KPJLhSLIHjcSI2XQuUa0AyRnjA7Zz4yHim7RE6oBtHNlbZGV8ElUcmDlVOlMfIEUp7hm+Rxot8As4GmFSFz3VxvoDDcuY1cKzPGqvQu0Q5AGyM8tuliQTYp2qOU1gbFPJG+pr4rudZmu1tSTTYukV0A0JfyQmLCAWnvKghtyqI2vOSKzx0t2Qx3oWaeK7fni1PFCNz0hz/lsmFH0AkFD77B1i1IH02X+FFR4qnXTzS0AwY1nFFfodCR5WsRMcwZn7AAbc/gUp6r3RCdJO0vz/RjQGGzBA546QLVb0HkgB0DPE3Q+mIcVe46Tcp0rzgmrgl0hbg5qAKSiqBorBSs6w7y2Oq91rABjl+Cr/KyQpO8yQdjlbe+YwDVeuVeqwmDJMFAyDJcNSQrBJFh1Y1yzUKliGBw2DFQNpdCgFfc7Sk71kngHa4UgGxVSQee6AgShuPRmDnQmyDMKJZcg0aJAw1pmGNGZvPfESlWubfbS2Bsh0FYcZrUuGIELl9U4Z0GDXEbZsz9k/TM59uwPactb14SjEwNuqWJob7NcdV6FBbNjUOX53RnW784xvN9QnGKx+/wc8hBu8LwfZK9LbDBTnJO1XJCHFWb4ZoED7m6WpxWdg9EU2Gnfxm36UURKqMpYO0HGqEbd7FBuhc4PSZ4WY/IvGPE8zsMsVwzLz6rzkd8+wMXnVWjLOTDjROjdF/HNH0zh2/d0EgU67lZeBMpVwxsuKXPLjQdZuqBONuPu51rDsGlrhi9+v4t/39xG27DFTsWBPFNcvXgWMOBmj/VsHx4VQM8VpN+lM5nruv7cCJtaphkju5O3VK5sjbNlxqieDUCgjStMGOaxafqKwRWo1oSLllf529t7WbWyRCFracSGUsUQBsqc7gZ3/F4f//l9B0itjCvAxkClZnj3G4e48092c97iKpnIUqkZKjVDNrIsP7vGnX/Uy40XD1GxBtPwzlYF2KbIE95xmOmcCBUXQhG5hIi+0cCQz45lQM82VvaBNsy1AMwYu48UtuYwzOWjfKFXlupVyETKn//OfmZ1xVTqwv2PFVlzXwdDZcOvnFfjPW/rp7OY8jvvOMijT+X40YNFOtosqW295NYbwqI5Df70fftAlGrNsObfO7nv4SIAb7qsxK9dM0Qua/mTd+/j0fU5tu+IyMxWbBFIfMjUCRzEhVIl75AlYK8QZL9CIK4qVQfZaoWaQfZwGQa4mnRyAV7r3oDCRX6OdkwaQVXYtjvi/HNqfOeeKXzqGzOwFsJA+dkTBdY/neOzH95DtW7pHwoIjI4bW5LxoO7qi1g8t8GnvtHNd+7uJMq413xwXYGN27Lc/v4+duyLqEQGiXCsAPsdU4DmBdkKFBVdapAdFu0R5ClF9gMDii4SyHtjuU+NzgcO6lJS7cLIgbHa4TGoABcedZ6vU2wUP4NE3ejYxi5TC/msMn9mzKbtGRSIQkV9TqxcMSyYnZAJLc/tyhCF4+dliUAjFnq6EjqLlqe3RuSyiZsvBVSVWhyydEFM/1DA/oMBmYyvNOW9Cu729ne5QNalL9nlM1r9vrVHXJys5/hUpohKGaHExdVz5bGx2uGxSLAAaiN6UOnyw3tjshmhgVpD+OWWLLmMxZCSJr5tK7EUcpade0NUIZvRcfWi1ZuMvoMhu/dZ8rkACULsqOn/vLE8szUkzBoyXYoOgvYItONHKoBBdXQRvpKkPc7L1oWC/FShG3QpmIdAlwOCpY0AWAg8NlY7/MoBXo2wBjSNeySMgrFKb9OABwYK2RQlwIQRasFakMDb6bCOSOCoWsY7caUQBSmZTIY0Hqay/WsE8eMABG2XEk1/L/lCB2obaNmAwdV85wIZx+uhcwV5yhcZuhSyAhsVXQI6D1gkyH5chakKsjFVXhOgP0lnAXD/ZDtZoXS5mFQsjJ1nUlVRyYBWGdj8OaTyHxipEeSXE824maB9JTZtMCEt3WrBhCSVzdQ2X093cRt7DrgRpPjAd4n3f4P8ku9hsmdBmrj3lHeFBAZdD5c841tph11npi4XJ81Zn+48qK7s2AXUxUl2Huw7gi4AbgfumIwwyROmqErGKetWiJRTApoepLzxWs7p/BJt/Ji09FMa+75BZePriPd/FzEZd/jjnp8UghDKG3+DG94+j919Zd71azeABIRhnrTyJLVtN6N4J0FHhUkpDtTF3ps2II9Y5HGFPkV2ONYf2YPj6Kq5TBhF/9H2+Zm4MUrw2MVAWujIqiUIQ8qb/phz527imU27+exf/w2IIQxzqDaobbsZW98KJoJx5RezYCKS4ccheZQtWwe5++67eX7bFtAUa50WSYd+TFp+3PU1tFt3ookHOuvDJEBf49pqZYsvF/YpOhP0Aj8XN9vZaHlIkS0gva0hMj2B6rUKJkNa74fy3ezaW+PLX/4K3//+v4Bad6ASoukwSf8P3LjoeEqxukxZWtsOGB555GGuu+461q1zw4PWpoeKIPWtvvNSD2UCZjhHTJ5WV2CoCfK84/SSCugU3DTEZtc0QOyqUbpCXGKk2BpswhMKYASND4KpMjAwxC23fOCQPNlm/4BB496Je1vhVMAiJvCWyKKHmSNFwhnu23iUyCQ+YyXeedpk0ZzAdp+HngaaA84VJ82vFhd5VpzXbXb6m/f+U0aC/fBtOBUxbYgEhGGEMeYFqlOimRPwdgyapgRtKwnyy1Dr+tRd04UByQCWIL+UoHgxmqa+tNRMWvj05BxBhkHbXSmRuU5SOeCdsQ1Owul3NpnQNQowszXQnFgA2wYmM41wyjtQTUlSwar4QmwEmiBBkXDK21E73u1eMvJ62QV3IkE7aMPbfQvaQIJ2/7uiZ0wdFSVGTqLlGYWGIr3qRmB2eHbcIo42cZNPfOz3j2sz6BwOxdunDsBeamxKZs5/ISxe5g5UU2drNUYkIrfwTkx+Mdh4/N++BKhtEHasonDuA0Rdv4nJL8XklxJ1/SaFZWsJO16Ppo0X3mxNRgBfXNCiz3DtBPb6bsydir5GkI1A3bfb7rLusRf557n9lLHBTamxSDid/NJ/I+77GsngvagtYXLnkum+maD90qMf6LhdBrUNgsIF5Jd8G03rHvus5/F4kffSpHvoBwlBpznJpQ66VDAP+aRIQVwLWweQVddqu/lEATjEqI4QH7XIFscQFIjmfpRo9kcPHRS4JMeEN2saVBsu1jehj+iaMynmpYdAFcj5BoBFLi9NqC5G7gJdJC4hsshzUydgBhFuU8PVY0t0jBng6HmtSA8+U9nKQ00YqTJ4vv9D3Ps6OdplROeOtm5KmnkJxkPBdXp0gM4UZLPCFJez1oyTbIlwteEmd+02Yu4Qy9VqJl6CVYXbsbfdr5k7t6bvtXtAEzMOFfjghHUX8D6eHQY+7fqrXvQtBkAvmH7rmuZzrjBhfqrYTtckzx5gEYH2Ynkdb8/dr/+7dhUPjqUZXl4xwCK6ulSa+W9t+a0NTE5efGfJKX0F70xgi3ei7DFDfHS2IAcVnSkQunKhLnVs87LPZbr0bJBem/ArQZjm+a/1vNza3C814So6ARnEVLDkTkt4/WfOdBlyz9qjGw71IVPOx8WzXTutDDnWAM37pEjVP1kdZCvYC0llKtVJyWQ1sbw8SernHOgLssWINI5PyV73Fz0HC7m88sNpbTxhc+RFXyjAo8y2pApDjoZJO4DlLqNl/kWxb/HAH3C7I8xmAl2XBmPNZr0igEUcBf9Hp8jB//Wl57/0xO7CJ+J6YsdrLZ3gkkQ6kraceDDNqEEc6xvwrQqNjGKfxXnGx3pfqXeyKqCXAlsV2SWoUaQE9iKBBpgfWHSBpJwXBDawD2b+KviW96QnoaOjz0UHv/WZ+Y86NubC+OjopgTU5NDP+aOsuBlXdBVq5tBWhqzvgfaAZjOWXEaP3oTQdL5z7iaQx9W18CRgHlfsuYKEQLU5+aAqwwhVHh1cK9u4+pXb35aESVPnNgqQQZO05SpaRElSIZdR3vn6YRbPbfDoU3nu+UkbmUjHYxjvhdgapVw1vPa1Ja69tMTAcMCa+zrYezAgG+mIJB+1HN7cE9FcrtWcL97r1vnoua7hTg4q2gYsFHS6s8NMN3lQmfQ4uJEENjC+ctfi8xYR4kT4yw/2sfoNg1Trwm9fN8BffXM6n//2NKZ2WpJx5HQNAzg4GPDWy0t88WN7yGYsmVC54sIK77tjNpWqIQhepDesGb6XmtIA0u/+WP3CLekHe7XAdEfxQB30taCx59G6emxq6oSd3zXiRliWLqxz7SUl9g8EDJUD+ocMH7rpAO94/TD9g4YwGD9wB0uGV59d5y/+oA9VZWAoYO/BkBXnVrnyogrlmhuxedmilPG2uAEMu74sR+AyKhmyQwm+Aeb7tiWpyhN6QFt8yN20bWHgepIbifDpW/p48+Vl+gcDghbz5TXBXTKvwZc/vpvO9pR6LIShIqJYexz7a/WQ/W3WgnWOwCxxwM4EehV5wBcZ2sFeAfa1HpqrT1GArUIuqzy9LcN/PFKks+jUcSD4KUPL5z+yh3e/eZCBYYO1Y588NMZ99Q8FXLisxt/e1sv8WTGVmhAa17fdXlB+uSXL2nVttOXsS3d3NlkBqk6CpeEeIJtdYZ9hByoJ6EIg70Onh0+5gv+xD/2TX5/OhueytBcOgRynbi3ZX96ylz97/36CAIbKBiMct0Qb4x5TrQuliuGmNw/yd7f3MmdGTLl6CNxMqJSqhlu/0s3AsCEMX2avYXMeqTn5ELmEB3M86PtBL/K5wN2KPNY6f+aEBlgVspFyYCDkg5+ZyZ4DEW15S+xBttaBcvO7DvIPn9rJ6y8uU20IQ2VDag8BZ4yz6SNf/v83Jb45h3z2vAZf/NgePn3LXnKZlGr9ELhhoBgDH/9CD+s35ijm9eXH481qWNFLbIyjgNiBI00Tv0dx2E1ByGbfbdkKc3OiS7C10FawPLs9y82fms3Xbu1l9oyYofIhB2ugZDhvcZ3/8YleHljfxl33dfDoU3kODgaoNkHWEWJ/tZBYF9oUC5YLl9W5/uphrrtiiKkdKcMVM5JcSay7yUD448/3cPeDRaYUj3PgzXjJbTjplT0ezGkCOUFzvt6acb/Ts0Azo2zwHacwwABpCu1tll9uyfLe2+bwuY/u4fyza/QPH1LJlZorZr3+4hJXrSjz3M4M6zbmeXJzlud7I/qH3TSEAG15y5zuhOWL6lx0bpXzFtcp5i3lqmGobAh81ixJob1gGSiFfPwLPfzrQ23HD+7oq7keoJnrba7am+vol0jA3KPYj4PNnSYSfCTIz+2KeM+fz+HPf3cf1189RL0h1BtmREJLFUeksWhOg2UL61h1o6C1ulPbIm6uKZdRwlCJE6FWFwZKh26W1Dts0zos65/O84mvdPOLTVmmtFvSscTdAkz3dtuvppdfKvZ6gzyjyDAjxOOmZE8vgJsgt+WUcsXw4c/O5KFfFLjlxgPMnxlTqrqkiMih+d5qXUbIU6JIR9bnWIVy1S9F8b834jJSgSgdbZZK1fDVNdP4yl3TKFWFzmILwK0AbY6ERXf4fqznPQ3xPMGeDZK4kRd7iTn9AAbv8IRO+r57bwc/eSLPe942yPVXD9HTldBoCLX4UOzc7MZ9QTjjdwOrd4IykZLPWMo1w70/befr35vKYxtyFPKWQk5bM2Q+bVRYVPQdlW3igN/lmfIA0wvGcnoC3PSuATqLlr7+kE9+fTrfvbeD664sce0lJZbMa1AouBg1TYUkdQkTba6cFXVedKgE4hInu/oiHnyiwA/ub+exjTlQ9/xWW1C98vxamhPoUCQFGVLHpxWrA1t9uteCvQDYRkvi4JOaKDS1bkA8Gyk79kZ87tvT+J8/mMJ5Z9VZcW6VZYvqzOtOmNqZks9aAqNYFeoNYbAU0Lsv5NnnszzxbI4nN2Xp3R8SGKWQ82MrrSpLinOgZI/6hjsHupRBuzyB+LA6KsSqb7+ezunjRb+UNKdexeYySpLAz36Z4yc/zxMGUMxb2vKWXNaSy0CcQKVuqNaE4bKhkbh8ci5j6WxzXRnWjgNFU5PINOO2tUjowS37lfIhjltrAUgJNLFnJPhoQBuBtrwiuCpPkrrUoxs7YcQJM0bJZZ20Nln00vFqJJBRajoAGcYtTdzluis16wjUOAu0y3NcrjJnJPhYgjJ66NAIGM/lcWSJoHlTTMibCpyDJX6kBRQWiCNFm+3yzxSAnQrneGk/XZ2s4z1bJrgB5EVPO3CN7vQDB0FfLcgm/+5miBtOy+K6NE/1XPQpdZeFbiZY23Cdk3sVouaOJQ9ugRF2APOIlVbY4DMAT8Tlp3FkwI+GqqNUkucdaYtUnHrWqaCXOEZa+qickeCTDeSK86LJOkZ4R0HsbfA+RcpgvmPRBZB+zNSASezo6HYmzdik5JPncgbFY8fA2oVjvhr2pcF2P6e01e9+mO9aZ3W5ICWQJ9PK5Kro5Q5gEbNPDzmpZ65j2F/pB/biOCubi7Zmgb7KMb/LJh8PTxe0Hcy2oCUV4VcOsI/NGprsxTaqjvFa9Qyix0q74YgBMh70YXf60qvIENAlUFX0HGMoQfj9ZCcA+8bm/Jsx3pvUqvk9KtLre2TOAPwSJyYl702f7Z2p/bix0h7QK0TNP6th2Ma1fwy3ArB60gAWBTVskAaYp8WN7Z4B+FhXgKsiRbh+o5xf0DHFTzTMEKihdAvs1p0N2OGnIiZNgkcIwQ32UU6QXMIJa4cDR5ukPtnBVL+4Y463xzsVdqvaG8FeJD9HpIZVM9Yl0mMD2HvSqcpadYneM2HXsU657iYHiQQZVNgG2u7W4OnZgsRAhMpWkEjXeg/atOKlX/m1xo1flePwUWy6EwnNxJBInmSXPxHtcB71CGFa6lX2TkVzKFOCgH6SYHfwbwBcPXauxjHeIW6MlF9IGbjX2+EzAI9Wzc12WQWJfaF/vlfNAdjrxC217MY6ZWzXld7KRs+iMNkAj/osqf6974sJziA7KsnRZKBtxr4NRnYXMsWvgw9wIdIiRNvNP4Ao97fmHFu1u1AAU1wR/0yC6CLS2J4SO4NbqaIFl5qc7+mFSy7JQQryeKr61gjVdEBmB8vKb5Y+7Nh3JrVOgq8iAElFzBfkTMryhVenB3jYj49WfEbrgB8XXWZSnYuQyLfKb5I+/kmDVoDbOoDXkoLK8L5gjSbJBoLIePLGM5cHlqnAPO9glXzOLwO6SFWvDwzb7bC9zHwObe1yyhbZYFFWY3heagq3Smtpwk9ucBNnczUFjcR1Vvb4kGmOIE+RyjaMLucLtVfJdtZguKN1C6Jbq079ivfiysbdJojeqkmcnla2uDnRX/R2dxjo8VJbBp3ukhsUBWqKnocVNcb22Oeq1wYXuL9CW6WeW+pFA77CpBKY9APWJoOY4PQqQDTDorL3mEOnjqnj2nAiv0N4v0IXMDewDAmS0Q8gMswapJXgth7gO8SyGjP4SH6rWPmgGGNQOb1ssbetwAjvpM72283yvmLUJTCgidlCqKn968rV0T2t3Po9fip6xKvWkLWStK+of0WizO9rHCdua8VpoKKtV9HNhpuqD4cK3qmaIchum3BeGFpN11Y+HFzLaqzLCkrLtd345I7XknKbmuFi5kM2Tu+RKApRTU55gEN/ogO4NtgGMAdkwM0DY4G9NiUfhror3STtwbsRiZ1pEx2ve268dJUBtOu1FBuN5IcShFdqcopLsjonS2cDneJW2lXVka6UgaImUgtDe67daXrja4a/kXuW27SlXvMEAtwEWey0X9GOWNMfSBBc5dQ14SnZ4RPguyNlRIJlo6LnCAzZRGZGYXqJ3Rr/qnlbPEueGi+7O/4q+tD9Y0HNwUdkKFcOrtM0/Z5EUXhKNnM2p/br3kuOHZsdPd57zkahil2fTjFviGfJU6wef3AnQIIPl2SA9pXxpxHzIdRmOZWQ9nRJOk+QhqJGIKvoIlSGTUzKXYEO3TL4rakDEyG5EyTBh0mysFqD4ceiP0XtNyUIDXoKpTM9L7QM6khhgS5UcgZ7gZbi8xt/NvitqQPcpuFEgcuES9AaLEs0C1ypo3qp1dPzBp5n46QUYPW7sgo4SsI2hVCEPpuavcG0aEvmFlRlrH3OJzbAiPYUCEFn+Fy1NJc9RyEMDAek6SFuqxMdbBnh3FJSgdqAoD2CLhF0hh8wi0Dng06jAxFttjlNZOQ2sXdU5BiKRh9SrS783up+DgwE3P1gOwcG3J7ArGfCaRJ+Nud4YWIToOL/I6OWqyiQJFCPDUkCM6alzJ7dYPOOLLLCZa10viIHgU7QrCf1vosJDSAmKyYd+YjGQLVu+MkTBf7x0zt53/UDPPB4gQfWF9iwJcu+/pB67HR5EOgIO12TeW4irmSE5wNSK1gLYQjTOlIuXFbh0ldXuX7VEM9szfK7fz+H9tCSTgf2uCyW9AL91n2INROfe5nUy1rHNvfwEwW+9s9T+aPfPMDcnpgb3zjI7v2OQ2PD1izP7czQuy/k4FAA6ngpy1Uz7mpcFbqmpHQWUzKRMmt6wsLZDZYtqrNsQYN5M2PH+B4pG7ZnIVW3r7DbLb3CALtBLzCT0lR8QmSVrIW2NsvffX8Kb3mdY8lpxLB4boPlZ9X5tWscFUO1brAKP32iwB9/fqZbRGZenrqWUXUtkZf/mCQVCnnLZz+8hwvOqSHi+ECsdew8jVhoJEI2tCQi6PniWd0VvdzTNFwFdunkRISTAnBzqYXgKBZUHVvOgYGQz3xzOqvfMETZUxPqqL8NA6jHwlfumkbfwYBcVl82UI1YCAJ14WosZDMv/Vj15C6bt0f8yZd6uPld/aSeoEVG2WQFcoHyTw93EgrYLtc1KU+CvdKzyvb6ge7Vk2QLJyBQFEFU0cJrrq9u+uBNw7M/8eVOHaoErpt6FBBp6sqielRpF6JQ/c6GlwduHAuzu2P+4g/6yGaUT9zZzZYdmZf9HEag1hCSVDBGjx6LlMFcJoRXMsKJZZ60pO+TVBomsFn71dpZwe+jGiCnaBzs7aUsnV9P3nXNIHNnxjRiGdk12ZSYQs6SzyqFI77yWaVYsC8bGAeOUq0J111R4o2XlbjyojI3vnGI2nHQ8VsfyhUL9gXvaeSrqGRK1hX3Q5Cykr7bwBDC8yCDlH0u4NRV0c0Ip3d/GPzi2Tz7BwLC4HB7qPrivsjxhkeqQpRRHnkqz+btGbIZ5YH1BaLjuElGJ2OO+cFi0E5xJcGNCnMFeUxhAUo7qJA75VU0iM5aoYWyiTdP7QhmHRhIVWT80xniVey8npgwgG29kVuJ00o9WANdJtj3GrTTs9jNA22TJHiOUHP2byqXBjdPtIqeFCdLLUHfQZOGgSeRHOdbWK1jstvVF3gW+dS97HHs1njpYBkXFjUsZAXtAXYpUpJUZxijhck56wl8UVFQ2b2OWnGFbM7k6dYkmtAPm80eUrctvauMd6wMsMSvPC7jasIRWRkAW9ANANw/sYXwib6rBMSq0fencfIRUSl66zYhH1rH+8n7DemsALPeO1slVDqNsQlPT39zcOdOAVYxoRW0/w8lqHm35r+WaAAAAABJRU5ErkJggg==";
 const AUTH_APP_HTML = `
+  <div id="natal-neve" aria-hidden="true">${Array.from({length:45},()=>{
+    var left=(Math.random()*100).toFixed(1);
+    var dur=(9+Math.random()*10).toFixed(1);
+    var delay=(-(Math.random()*18)).toFixed(1);
+    var size=(2+Math.random()*2).toFixed(1);
+    var dx=(Math.random()*40-20).toFixed(0);
+    var op=(0.3+Math.random()*0.5).toFixed(2);
+    return '<span class="floco" style="left:'+left+'%;width:'+size+'px;height:'+size+'px;opacity:'+op+';animation-duration:'+dur+'s;animation-delay:'+delay+'s;--dx:'+dx+'px;"></span>';
+  }).join('')}</div>
   <header>
     <div id="natal-luzes" aria-hidden="true">${Array.from({length:40},(_,i)=>'<span class="luz" style="animation-delay:'+((i%10)*0.12).toFixed(2)+'s"></span>').join('')}</div>
     <div class="brand">
@@ -4648,7 +4666,9 @@ function viewDicasTreinamentos(){
         (d.publico ? ('<button type="button" class="act-link" data-copiar-link-dica="'+linkPublico+'">🔗 copiar link</button><a class="act-link" href="'+linkPublico+'" target="_blank" rel="noopener">👁️ ver como cliente</a>') : '')+
         '<button type="button" class="act-link" data-edit-dica="'+d.id+'">✎ editar</button>'+
         '<button type="button" class="del-link" data-del-dica="'+d.id+'">🗑 excluir</button>'+
-        '</div></div>';
+        '</div>'+
+        '<div style="text-align:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);"><img src="'+MASCOTE_DICAS_B64+'" alt="Tom Gás" style="width:40px;height:auto;"></div>'+
+        '</div>';
     }).join('')+'</div>';
   return '<div class="card"><h2>💡 Dicas & Treinamentos</h2>'+ajudaHtml('dicas','Registre aqui explicações de como fazer coisas do gás (instalar, trocar a borrachinha, trocar o botijão) ou do próprio sistema. Marque "gerar link para clientes" para criar uma página simples e pública (sem precisar de login) que você pode mandar pelo WhatsApp direto pro cliente.')+
     '<div class="hint">Combine texto, imagem, vídeo (upload ou link do YouTube), link externo e arquivo (PDF/Word) na mesma dica — tudo organizado por categoria.</div></div>'+
@@ -5175,6 +5195,8 @@ function preencherFormEdicaoVenda(v, fvEl){
     if(wrapFormaPagtoFREdit) wrapFormaPagtoFREdit.style.display = (v.frete>0) ? 'block' : 'none';
     if(chkBaixaFREdit) chkBaixaFREdit.checked = !!v.estoqueBaixado;
   }
+  const chkNaoBaixarEdit = document.getElementById('chk-nao-baixar-estoque-venda');
+  if(chkNaoBaixarEdit) chkNaoBaixarEdit.checked = !!v.naoBaixaEstoqueRetroativa;
   const chkDividirEdit = document.getElementById('chk-dividir-pagamento');
   const inputValorForma1Edit = document.getElementById('input-valor-forma1');
   const selForma2Edit = document.getElementById('sel-forma2-pagamento');
@@ -6040,6 +6062,7 @@ function criarLinhaPlanilhaVenda(dataPadrao){
     '<td><input type="number" class="pv-frete" min="0" step="0.01" placeholder="0,00"></td>'+
     '<td><input type="text" class="pv-empresa" list="dl-planilha-empresas" style="min-width:130px;"></td>'+
     '<td style="text-align:center;"><input type="checkbox" class="pv-vale-pendente" title="Vale do Gás do povo ainda não validado"></td>'+
+    '<td style="text-align:center;"><input type="checkbox" class="pv-nao-baixar-estoque" title="Venda retroativa (lançada com data errada) — o estoque já foi descontado antes, não desconta de novo"></td>'+
     '<td><input type="text" class="pv-obs" style="min-width:130px;"></td>'+
     '<td><button type="button" class="del-link pv-remover-linha" title="Remover linha">🗑</button></td>';
   const produtoLivreInput = tr.querySelector('.iv-produto-livre');
@@ -6065,13 +6088,13 @@ function htmlPlanilhaVendas(hoje){
   return '<div class="card"><details id="details-planilha-vendas">'+
     '<summary><strong>🧮 Lançar vendas em planilha (estilo Excel)</strong></summary>'+
     '<div class="hint" style="margin-top:8px;">Preencha uma linha por item, célula por célula, igual uma planilha. <strong>Cliente repetido em linhas seguidas vira uma única venda com vários itens</strong> (igual no "colar texto"). Escolha a Categoria (Gás/Água/Outros) — em "Outros" aparece o Tipo da categoria (com um botão "+" pra cadastrar um tipo novo na hora) e depois o Produto, com "Outro (digitar manualmente)" no fim da lista pra quando não achar. Em Gás/Água o Produto já é a própria carga/vasilhame escolhido, sem precisar de Tipo. Pra dividir o pagamento em duas formas, preencha "Pagamento 2" e "R$ na 1ª forma" <strong>só na primeira linha do cliente</strong> — vale pra venda toda. Quando a Entrega escolhida for de verdade (a pé/Celta/moto/Strada), escolha o Entregador — ao salvar, o sistema já manda o link da entrega pra ele no WhatsApp automaticamente (e esse mesmo link fica disponível pra reenviar depois no Histórico, caso ele esqueça qual é a entrega). Nada é lançado até clicar em "Salvar todas as linhas".</div>'+
-    '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:3240px;"><colgroup>'+
+    '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:3390px;"><colgroup>'+
     '<col style="width:150px;"><col style="width:160px;"><col style="width:200px;"><col style="width:360px;"><col style="width:300px;">'+
     '<col style="width:140px;"><col style="width:80px;"><col style="width:120px;"><col style="width:160px;"><col style="width:160px;">'+
     '<col style="width:140px;"><col style="width:160px;"><col style="width:160px;"><col style="width:160px;"><col style="width:120px;">'+
-    '<col style="width:110px;"><col style="width:170px;"><col style="width:120px;"><col style="width:190px;"><col style="width:80px;">'+
+    '<col style="width:110px;"><col style="width:170px;"><col style="width:120px;"><col style="width:150px;"><col style="width:190px;"><col style="width:80px;">'+
     '</colgroup><thead><tr>'+
-    '<th>Data</th><th>Categoria</th><th>Tipo da categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Pagamento 2</th><th>R$ na 1ª forma</th><th>Entrega</th><th>Entregador</th><th>Nota</th><th>Cupom</th><th>Frete</th><th>Empresa conv.</th><th>Vale pendente</th><th>Obs</th><th></th>'+
+    '<th>Data</th><th>Categoria</th><th>Tipo da categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Pagamento 2</th><th>R$ na 1ª forma</th><th>Entrega</th><th>Entregador</th><th>Nota</th><th>Cupom</th><th>Frete</th><th>Empresa conv.</th><th>Vale pendente</th><th title="Marque em vendas retroativas (lançamento feito com data errada) que já tinham descontado o estoque antes">Não baixar estoque</th><th>Obs</th><th></th>'+
     '</tr></thead><tbody id="tbody-planilha-vendas"></tbody></table></div>'+
     '<datalist id="dl-planilha-clientes">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>'+
     '<datalist id="dl-planilha-empresas">'+state.empresas.map(e=>'<option value="'+escapeHtmlCampanha(e.nome)+'">').join('')+'</datalist>'+
@@ -6103,6 +6126,7 @@ async function salvarPlanilhaVendas(){
     const frete = Number(g('.pv-frete').value)||0;
     const empresa = g('.pv-empresa').value.trim();
     const valePendente = g('.pv-vale-pendente').checked;
+    const naoBaixarEstoque = g('.pv-nao-baixar-estoque').checked;
     const obs = g('.pv-obs').value.trim();
     const vazia = !categoria && !cliente && !qtd && !valorUnit && !pagamento && !nota && !produtoLivre;
     if(vazia) continue;
@@ -6118,7 +6142,7 @@ async function salvarPlanilhaVendas(){
       erros.push('Linha "'+(cliente||'(sem cliente)')+'" — Gás do povo: a forma de pagamento desse item precisa ser "Gás do povo".');
       continue;
     }
-    brutas.push({categoria, produtoLivre, cliente, data, canal, qtd, valorUnit, pagamento, pagamento2, valorForma1, entrega, entregadorId, nota, cupom, frete, empresa, valePendente, obs});
+    brutas.push({categoria, produtoLivre, cliente, data, canal, qtd, valorUnit, pagamento, pagamento2, valorForma1, entrega, entregadorId, nota, cupom, frete, empresa, valePendente, naoBaixarEstoque, obs});
   }
   if(erros.length){ alert('Corrija antes de salvar:\n\n'+erros.join('\n')); return; }
   if(brutas.length===0){ alert('Nenhuma linha preenchida pra salvar.'); return; }
@@ -6169,7 +6193,10 @@ async function salvarPlanilhaVendas(){
         categoria: l.categoria, produto, quantidade: l.qtd, valor_unit: l.valorUnit, valor_total: Math.round(l.qtd*l.valorUnit*100)/100, nota: l.nota,
         vale_pendente: (l.pagamento==='Gás do povo' && l.valePendente), entregadorId: l.entregadorId||''
       };
-      if(!pendenteRetirada){ ajustaEstoquePorVenda(l.categoria, l.qtd, false); venda.estoqueBaixado = true; estoqueParaReverterSeFalhar.push({categoria:l.categoria, qtd:l.qtd}); }
+      // Venda retroativa marcada como "não baixar estoque": o estoque já tinha sido descontado antes
+      // (lançamento original com data errada) — não desconta de novo, só registra a venda certinha.
+      if(l.naoBaixarEstoque){ venda.naoBaixaEstoqueRetroativa = true; }
+      else if(!pendenteRetirada){ ajustaEstoquePorVenda(l.categoria, l.qtd, false); venda.estoqueBaixado = true; estoqueParaReverterSeFalhar.push({categoria:l.categoria, qtd:l.qtd}); }
       state.vendas.push(venda);
       idsCriados.push(id);
       todosIdsCriados.push(id);
@@ -6356,6 +6383,10 @@ function viewVendas(){
     '<label class="checkbox-item"><input type="checkbox" id="chk-retirada-parcial"> 📦 O cliente pagou tudo mas não vai levar tudo agora (parte fica "falta retirar")</label>'+
     '<div class="hint">Ex: pagou 2 cargas de P13, mas só levou 1 agora. Marque, informe quantas leva agora e o sistema já separa o restante como "Falta retirar" sozinho — sem descontar do estoque disponível até você confirmar a retirada depois.</div>'+
     '<div id="retirada-parcial-itens" style="display:none;margin-top:8px;"></div>'+
+    '</div>'+
+    '<div class="item-venda-row" style="margin-top:12px;background:var(--amber-tint,#FEF3C7);border-color:var(--amber,#B45309);">'+
+    '<label class="checkbox-item"><input type="checkbox" id="chk-nao-baixar-estoque-venda"> 🔁 Venda retroativa — não descontar do estoque agora</label>'+
+    '<div class="hint">Use quando essa venda já tinha sido contabilizada no estoque antes (lançamento feito com a data errada) e agora você só está corrigindo/relançando certinho — evita descontar o estoque duas vezes.</div>'+
     '</div>'+
     '<h3 style="margin-top:20px;padding-top:14px;border-top:2px dashed var(--border);">💳 Pagamento e entrega <span class="hint" style="font-weight:400;text-transform:none;">(vale para a venda toda, com todos os itens acima)</span></h3>'+
     '<div class="form-row" style="margin-top:14px;">'+
@@ -6585,7 +6616,7 @@ function vendasTable(list, opts){
       const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>')+
         (v.vale_pendente ? ' <span class="badge status-receber" title="Clique pra marcar como validado" data-marcar-vale-validado="'+v.id+'" style="cursor:pointer;">🎫 vale pendente</span>' : '');
       const lancadoEmTxt = v.criadoEm ? fmtDate(v.data)+' '+new Date(v.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
-      return '<tr><td style="text-align:center;">'+bolinhaPagamentoHtml(v.pagamento, v.pagamentoSplit)+'</td><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+'</td>'+
+      return '<tr><td style="text-align:center;">'+bolinhaPagamentoHtml(v.pagamento, v.pagamentoSplit)+'</td><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+(v.naoBaixaEstoqueRetroativa ? ' <span class="badge" style="background:var(--amber-tint,#FEF3C7);color:var(--amber,#B45309);" title="Venda retroativa — não descontou do estoque">🔁 sem baixa</span>' : '')+'</td>'+
         '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td style="text-align:right;">'+(v.frete?fmtMoney(v.frete):'—')+'</td><td>'+statusEntregaTxt+'</td><td style="text-align:center;">'+v.quantidade+'</td>'+
         '<td style="text-align:right;">'+fmtMoney(v.valor_unit)+'</td><td style="text-align:right;">'+fmtMoney(v.valor_total)+'</td><td>'+pagtoTxt+'</td><td><span class="badge nota">'+v.nota+'</span></td>'+
         '<td>'+(v.empresa||'—')+'</td><td>'+(v.cupom||'—')+'</td><td title="'+escapeHtmlCampanha(v.obs||'')+'">'+(v.obs||'—')+'</td><td>'+lancadoEmTxt+'</td>'+
@@ -7724,6 +7755,10 @@ function viewAgendamentos(){
     '<div class="form-row">'+
     '<div><label>Valor do frete (R$)</label><input type="number" id="input-frete-ag" name="frete" min="0" step="0.01" placeholder="0,00"></div>'+
     '</div></div>'+
+    '<div class="item-venda-row" style="margin-top:10px;background:var(--amber-tint,#FEF3C7);border-color:var(--amber,#B45309);">'+
+    '<label class="checkbox-item"><input type="checkbox" id="chk-nao-baixar-estoque-ag"> 🔁 Entrega retroativa — não descontar do estoque agora</label>'+
+    '<div class="hint">Use quando essa venda já tinha sido contabilizada no estoque antes (lançamento feito com a data errada) e agora você só está corrigindo/relançando certinho — evita descontar o estoque duas vezes.</div>'+
+    '</div>'+
     '<div id="wrap-empresa-convenio-ag" class="item-venda-row" style="display:none;margin-top:10px;">'+
     '<div><label>Empresa conveniada</label><input list="lista-empresas-ag" name="empresa" id="input-empresa-ag">'+
     '<datalist id="lista-empresas-ag">'+empresasOptions()+'</datalist>'+
@@ -9457,14 +9492,7 @@ function htmlPendenciasNotaFiscal(){
     '</tbody></table></div></div>';
 }
 function relatorioNotas(){
-  const pendenciasNFDash2 = pendenciasNotaFiscalPorDia();
-  const totalPendenteNF = pendenciasNFDash2.reduce((s,p)=>s+p.pendente,0);
-  const pendentesCupom = state.vendas.filter(v=>v.nota==='Cupom não fiscal').length;
-  const cardTipoNotas = (totalPendenteNF<=0 && pendentesCupom===0) ? '' :
-    '<div class="card" style="border-left:4px solid #8B5CF6;">'+
-    '<strong style="color:#8B5CF6;">📋 Tipo de Notas por Vendas'+(totalPendenteNF>0?' — '+fmtNumInt(totalPendenteNF)+' un. de gás em Nota fiscal':'')+(pendentesCupom>0?' · '+pendentesCupom+' Cupom não fiscal':'')+'</strong>'+
-    '<div class="hint" style="margin-top:4px;">Itens de gás vendidos com nota "Nota fiscal" ainda não lançados no Bling, e total de vendas com "Cupom não fiscal".</div></div>';
-  return cardTipoNotas+htmlPendenciasNotaFiscal()+
+  return htmlPendenciasNotaFiscal()+
     '<h3>Filtrar</h3><div class="hint" style="margin-bottom:6px;">O filtro "Nota fiscal" abaixo só traz itens de gás (qualquer carga ou vasilhame); os outros tipos de nota (Cupom não fiscal, Já lançado, Não lança) continuam mostrando todos os produtos normalmente.</div><div class="form-row">'+
     '<div><label>De</label><input type="date" id="rn-de" value="'+todayStr()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rn-ate" value="'+todayStr()+'"></div>'+
@@ -10853,6 +10881,11 @@ function attachHandlers(){
         }
         if(v.entrega_hora && !v.entrega_status) v.entrega_status='pendente';
         if(!v.entrega_hora) v.entrega_status='';
+        // Venda retroativa (lançamento feito com data errada, corrigindo agora): não desconta do
+        // estoque de novo, já que o desconto original já aconteceu na época. Tem prioridade sobre
+        // a lógica normal de baixa (menos sobre "Falta retirar", que já controla isso do jeito dela).
+        const chkNaoBaixarEditSubmit = document.getElementById('chk-nao-baixar-estoque-venda');
+        const naoBaixarEditSubmit = !!(chkNaoBaixarEditSubmit && chkNaoBaixarEditSubmit.checked);
         // "Falta retirar" só desconta do estoque quando o cliente realmente retirar/for entregue
         // (resolvido pela lista de pendências). Editar a venda pra outro tipo de entrega aqui
         // já conta como resolução (o estoque sai na hora).
@@ -10870,9 +10903,15 @@ function attachHandlers(){
             v.estoqueBaixado = false; v.retirado = false; v.retiradoForma = ''; v.retiradoEm = null;
             v.frete = freteFR>0 ? freteFR : 0;
           }
+          v.naoBaixaEstoqueRetroativa = false;
+        } else if(naoBaixarEditSubmit){
+          v.estoqueBaixado = false;
+          v.naoBaixaEstoqueRetroativa = true;
+          if(!v.retirado){ v.retirado = true; v.retiradoForma = 'Editado manualmente'; v.retiradoEm = Date.now(); }
         } else {
           ajustaEstoquePorVenda(categoria, quantidade, false);
           v.estoqueBaixado = true;
+          v.naoBaixaEstoqueRetroativa = false;
           if(!v.retirado){ v.retirado = true; v.retiradoForma = 'Editado manualmente'; v.retiradoEm = Date.now(); }
         }
         if(v.cliente && (v.pagamento||'').includes('Fiado')) verificarLimiteCreditoCliente(v.cliente);
@@ -10880,7 +10919,7 @@ function attachHandlers(){
         // fazer no lançamento normal — cada item extra vira um novo registro de venda ligado ao
         // mesmo grupoId (mesma venda), com os mesmos dados de cliente/pagamento/entrega já salvos acima.
         const grupoIdVendaEditada = v.grupoId || v.id;
-        const pendenteRetiradaEdit = v.tipo_entrega === 'Falta retirar' && !v.estoqueBaixado;
+        const pendenteRetiradaEdit = (v.tipo_entrega === 'Falta retirar' && !v.estoqueBaixado) || naoBaixarEditSubmit;
         document.querySelectorAll('.iv-extra-row').forEach(row=>{
           const catExtra = row.querySelector('.iv-categoria').value;
           if(!catExtra) return;
@@ -10902,7 +10941,8 @@ function attachHandlers(){
             entrega_status: v.entrega_hora?'pendente':'', estoqueBaixado: !pendenteRetiradaEdit, retirado: !pendenteRetiradaEdit, retiradoForma: pendenteRetiradaEdit?'':'Editado manualmente', retiradoEm: pendenteRetiradaEdit?null:Date.now(),
             data:v.data, cliente:v.cliente, canal:canalExtra, pagamento:pagamentoExtra, tipo_entrega:v.tipo_entrega, cupom:v.cupom,
             empresa:v.empresa, entrega_data:v.entrega_data, entrega_hora:v.entrega_hora, obs:v.obs,
-            categoria:catExtra, produto:prodExtra, quantidade:qtdExtra, valor_unit:vUnitExtra, valor_total: Math.round(qtdExtra*vUnitExtra*100)/100, nota: notaExtra
+            categoria:catExtra, produto:prodExtra, quantidade:qtdExtra, valor_unit:vUnitExtra, valor_total: Math.round(qtdExtra*vUnitExtra*100)/100, nota: notaExtra,
+            naoBaixaEstoqueRetroativa: naoBaixarEditSubmit
           };
           state.vendas.push(novoItemDaVenda);
           if(!pendenteRetiradaEdit) ajustaEstoquePorVenda(catExtra, qtdExtra, false);
@@ -10968,14 +11008,20 @@ function attachHandlers(){
       // "Falta retirar" fica com o estoque reservado (não desconta ainda) até alguém confirmar,
       // na lista de pendências, que o cliente retirou ou que foi entregue.
       const pendenteRetiradaNova = camposComuns.tipo_entrega === 'Falta retirar';
+      // Venda retroativa marcada como "não baixar estoque": o estoque já foi descontado antes
+      // (lançamento original com data errada) — não desconta de novo.
+      const chkNaoBaixarNovaVenda = document.getElementById('chk-nao-baixar-estoque-venda');
+      const naoBaixarEstoqueNova = !!(chkNaoBaixarNovaVenda && chkNaoBaixarNovaVenda.checked);
       itens.forEach((item,idx)=>{
-        const pendenteEsteItem = pendenteRetiradaNova || item.__faltaRetirarParcial;
+        const pendenteEsteItem = pendenteRetiradaNova || item.__faltaRetirarParcial || naoBaixarEstoqueNova;
         const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':'', estoqueBaixado: !pendenteEsteItem, retirado:false, retiradoForma:'', retiradoEm:null}, camposComuns, item);
         if(item.__faltaRetirarParcial){
           venda.tipo_entrega = 'Falta retirar';
           venda.vasilhameVazioPendenteDeixado = item.__vasilhameVazioDeixado;
           venda.obs = (venda.obs?venda.obs+' — ':'')+'Retirada parcial: ficaram '+item.quantidade+' de '+item.categoria+' pra retirar depois ('+(item.__vasilhameVazioDeixado?'vasilhame vazio já deixado':'vasilhame vazio ainda não deixado')+').';
           delete venda.__faltaRetirarParcial; delete venda.__vasilhameVazioDeixado;
+        } else if(naoBaixarEstoqueNova){
+          venda.naoBaixaEstoqueRetroativa = true;
         }
         state.vendas.push(venda);
         if(!pendenteEsteItem) ajustaEstoquePorVenda(item.categoria, item.quantidade, false);
@@ -13916,6 +13962,10 @@ function attachHandlers(){
     const grupoId = uid();
     const entregadorIdAg = f.get('entregadorId')||'';
     const pendenteRetiradaAg = f.get('tipo_entrega')==='Falta retirar';
+    // Entrega retroativa marcada como "não baixar estoque": o estoque já foi descontado antes
+    // (lançamento original com data errada) — não desconta de novo.
+    const chkNaoBaixarAg = document.getElementById('chk-nao-baixar-estoque-ag');
+    const naoBaixarEstoqueAg = !!(chkNaoBaixarAg && chkNaoBaixarAg.checked);
     itensAg.forEach((item,idx)=>{
       const venda = {
         id: idx===0?grupoId:uid(), criadoEm: Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteAg:0,
@@ -13927,7 +13977,8 @@ function attachHandlers(){
         valor_total:item.valor_total, nota:item.nota, entregadorId: entregadorIdAg
       };
       state.vendas.push(venda);
-      if(!pendenteRetiradaAg){ ajustaEstoquePorVenda(item.categoria, item.quantidade, false); venda.estoqueBaixado = true; }
+      if(naoBaixarEstoqueAg && !pendenteRetiradaAg){ venda.naoBaixaEstoqueRetroativa = true; }
+      else if(!pendenteRetiradaAg){ ajustaEstoquePorVenda(item.categoria, item.quantidade, false); venda.estoqueBaixado = true; }
     });
     // Pagamento dividido em duas formas (mesma lógica da tela de Vendas)
     if(document.getElementById('chk-dividir-pagamento-ag') && document.getElementById('chk-dividir-pagamento-ag').checked){
@@ -16524,6 +16575,10 @@ function showAuthMsg(text, ok){
     '<div class="auth-msg '+(ok?'ok':'err')+'">'+text+'</div>';
 }
 function switchAuthTab(tab){
+  if(tab==='cadastro' && !CADASTRO_ATIVO){
+    showAuthMsg('Criação de conta temporariamente desativada. Fale com um administrador pra ganhar acesso.', false);
+    return;
+  }
   document.querySelectorAll('[data-authtab]').forEach(b=>b.classList.toggle('active', b.dataset.authtab===tab));
   document.querySelectorAll('.auth-form').forEach(f=>f.classList.remove('active'));
   document.getElementById('form-'+tab).classList.add('active');
@@ -16554,6 +16609,14 @@ function detectarLoginEmail(identificador){
 function attachAuthHandlers(){
   document.querySelectorAll('[data-authtab]').forEach(b=>b.onclick=()=>switchAuthTab(b.dataset.authtab));
 
+  const abaCadastro = document.getElementById('auth-tab-cadastro');
+  if(abaCadastro && !CADASTRO_ATIVO){
+    abaCadastro.disabled = true;
+    abaCadastro.title = 'Criação de conta temporariamente desativada';
+    abaCadastro.style.opacity = '0.5';
+    abaCadastro.style.cursor = 'not-allowed';
+  }
+
   const cadastroTipo = document.getElementById('cadastro-tipo');
   if(cadastroTipo) cadastroTipo.onchange = ()=>{
     document.getElementById('cadastro-campo-email').style.display = cadastroTipo.value==='email' ? 'block' : 'none';
@@ -16572,6 +16635,10 @@ function attachAuthHandlers(){
 
   document.getElementById('form-cadastro').onsubmit = async(e)=>{
     e.preventDefault();
+    if(!CADASTRO_ATIVO){
+      showAuthMsg('Criação de conta temporariamente desativada. Fale com um administrador pra ganhar acesso.', false);
+      return;
+    }
     const f = new FormData(e.target);
     if(f.get('senha') !== f.get('senha2')){ showAuthMsg('As senhas não conferem.', false); return; }
     const tipo = document.getElementById('cadastro-tipo').value;
@@ -17389,7 +17456,7 @@ async function iniciarDicaPublica(id){
     else if(dica.videoLink) corpo += embedVideo(dica.videoLink)+'<div style="margin-bottom:16px;"></div>';
     if(dica.linkUrl) corpo += '<a href="'+dica.linkUrl+'" target="_blank" rel="noopener" style="display:block;padding:14px;background:#182642;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#5BA3F5;margin-bottom:16px;">🔗 Abrir link</a>';
     if(dica.arquivoBase64) corpo += '<a href="'+dica.arquivoBase64+'" download="'+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'" style="display:block;padding:14px;background:#182642;border-radius:10px;text-align:center;font-weight:bold;text-decoration:none;color:#5BA3F5;margin-bottom:16px;">📄 Baixar '+escapeHtmlCampanha(dica.arquivoNome||'arquivo')+'</a>';
-    wrap.innerHTML = '<div style="text-align:center;margin-bottom:18px;"><div style="font-size:30px;">💡</div><h2 style="margin:6px 0;color:#E7ECF7;">'+escapeHtmlCampanha(dica.titulo)+'</h2>'+(dica.categoria?('<div style="color:#A9B6CC;font-size:13px;">'+escapeHtmlCampanha(dica.categoria)+'</div>'):'')+'</div>'+corpo+'<div style="text-align:center;color:#7C8AA3;font-size:12px;margin-top:20px;">Tom Gás — Dicas & Treinamentos</div>';
+    wrap.innerHTML = '<div style="text-align:center;margin-bottom:18px;"><div style="font-size:30px;">💡</div><h2 style="margin:6px 0;color:#E7ECF7;">'+escapeHtmlCampanha(dica.titulo)+'</h2>'+(dica.categoria?('<div style="color:#A9B6CC;font-size:13px;">'+escapeHtmlCampanha(dica.categoria)+'</div>'):'')+'</div>'+corpo+'<div style="text-align:center;color:#7C8AA3;font-size:12px;margin-top:20px;"><img src="'+MASCOTE_DICAS_B64+'" alt="Tom Gás" style="width:40px;height:auto;display:block;margin:0 auto 6px;">Tom Gás — Dicas & Treinamentos</div>';
   }catch(e){
     wrap.innerHTML = '<h2 style="color:#E7ECF7;">Não foi possível abrir</h2><p style="color:#A9B6CC;">Confira sua conexão e tente novamente.</p>';
     console.error(e);
