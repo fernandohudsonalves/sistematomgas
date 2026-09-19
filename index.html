@@ -1960,6 +1960,16 @@ function localizarItemChecklist(id){
 
 function fmtMoney(v){ return (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function fmtNumBR(v){ return (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// Ordena vendas da mais recente pra mais antiga pela DATA da venda (não pelo horário em que foi
+// gravada no sistema) — importações de planilha feitas de uma vez (catching up de vários dias)
+// gravam várias vendas quase no mesmo instante, então ordenar só por "criadoEm" embaralhava a
+// ordem. Dentro do mesmo dia, desempata pela ordem de lançamento (criadoEm mais recente primeiro).
+function compararVendaRecente(a,b){
+  return (b.data||'').localeCompare(a.data||'') || ((b.criadoEm||0)-(a.criadoEm||0));
+}
+// Números inteiros, sem vírgula nem casas decimais — usado nas quantidades de "Notas para o
+// Bling" (o Bling lança em unidades inteiras, então mostrar "13,00" só atrapalha a conferência).
+function fmtNumInt(v){ return Math.round(Number(v)||0).toLocaleString('pt-BR',{maximumFractionDigits:0}); }
 function fmtDate(d){ const p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 // IMPORTANTE: usa a data LOCAL do aparelho (ano/mês/dia), nunca toISOString() puro — toISOString()
 // converte pra UTC, e no horário de Brasília (UTC-3) isso faz o sistema achar que já é "outro dia"
@@ -6410,7 +6420,7 @@ function viewVendas(){
     '<div><label style="font-size:12px;font-weight:600;">Por página</label><select id="sel-vendas-por-pagina"><option value="30">30</option><option value="50">50</option><option value="100">100</option></select></div>'+
     '<div class="filtro-vendas-limpar"><button type="button" class="btn small ghost" id="btn-vendas-filtro-limpar">Limpar filtros</button></div>'+
     '</div>'+
-    '<div id="lista-vendas-wrap">'+vendasTable(state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm).slice(0,30))+'</div>'+
+    '<div id="lista-vendas-wrap">'+vendasTable(state.vendas.slice().sort(compararVendaRecente).slice(0,30))+'</div>'+
     '<div id="paginacao-vendas-wrap" style="display:flex;align-items:center;gap:10px;justify-content:center;margin-top:10px;"></div>'+
     '<div class="hint" style="margin-top:8px;">Use a busca ou o período (De/Até) para filtrar; navegue pelas páginas para ver vendas mais antigas.</div>'+
     '<details style="margin-top:10px;"><summary style="cursor:pointer;color:var(--royal);font-weight:600;font-size:13px;">🔧 Corrigir fuso horário agora (vendas lançadas à noite com data errada)</summary>'+
@@ -9442,7 +9452,7 @@ function htmlPendenciasNotaFiscal(){
   return '<div class="card"><h2>📋 Notas para o Bling <span class="pill">'+pendencias.length+' dia(s) pendente(s)</span></h2>'+
     '<div class="hint">Cada dia com nota fiscal de gás ainda não lançada no Bling aparece aqui. Lance no Bling e clique em Concluir — o dia sai da lista.</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Dia</th><th>Pendente</th><th></th></tr></thead><tbody>'+
-    pendencias.map(p=>'<tr><td>'+fmtDate(p.data)+'</td><td><strong>'+fmtNumBR(p.pendente)+'</strong></td>'+
+    pendencias.map(p=>'<tr><td>'+fmtDate(p.data)+'</td><td><strong>'+fmtNumInt(p.pendente)+'</strong></td>'+
     '<td><button type="button" class="btn small" data-dar-baixa-bling="'+p.data+'" data-qtd-baixa="'+p.pendente+'">✔ Concluir</button></td></tr>').join('')+
     '</tbody></table></div></div>';
 }
@@ -9452,7 +9462,7 @@ function relatorioNotas(){
   const pendentesCupom = state.vendas.filter(v=>v.nota==='Cupom não fiscal').length;
   const cardTipoNotas = (totalPendenteNF<=0 && pendentesCupom===0) ? '' :
     '<div class="card" style="border-left:4px solid #8B5CF6;">'+
-    '<strong style="color:#8B5CF6;">📋 Tipo de Notas por Vendas'+(totalPendenteNF>0?' — '+fmtNumBR(totalPendenteNF)+' un. de gás em Nota fiscal':'')+(pendentesCupom>0?' · '+pendentesCupom+' Cupom não fiscal':'')+'</strong>'+
+    '<strong style="color:#8B5CF6;">📋 Tipo de Notas por Vendas'+(totalPendenteNF>0?' — '+fmtNumInt(totalPendenteNF)+' un. de gás em Nota fiscal':'')+(pendentesCupom>0?' · '+pendentesCupom+' Cupom não fiscal':'')+'</strong>'+
     '<div class="hint" style="margin-top:4px;">Itens de gás vendidos com nota "Nota fiscal" ainda não lançados no Bling, e total de vendas com "Cupom não fiscal".</div></div>';
   return cardTipoNotas+htmlPendenciasNotaFiscal()+
     '<h3>Filtrar</h3><div class="hint" style="margin-bottom:6px;">O filtro "Nota fiscal" abaixo só traz itens de gás (qualquer carga ou vasilhame); os outros tipos de nota (Cupom não fiscal, Já lançado, Não lança) continuam mostrando todos os produtos normalmente.</div><div class="form-row">'+
@@ -12359,7 +12369,7 @@ function attachHandlers(){
     const dataDe = buscaVendaDataDe ? buscaVendaDataDe.value : '';
     const dataAte = buscaVendaDataAte ? buscaVendaDataAte.value : '';
     const porPagina = Number(selVendasPorPagina ? selVendasPorPagina.value : 30) || 30;
-    let base = state.vendas.slice().sort((a,b)=>b.criadoEm-a.criadoEm);
+    let base = state.vendas.slice().sort(compararVendaRecente);
     if(dataDe) base = base.filter(v=>v.data>=dataDe);
     if(dataAte) base = base.filter(v=>v.data<=dataAte);
     if(categoriaVendaSelecionada) base = base.filter(v=>grupoDaCategoria(v.categoria)===categoriaVendaSelecionada);
