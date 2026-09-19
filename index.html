@@ -1,9 +1,25 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+// Detecta cedo se essa é uma página PÚBLICA (link mandado pro entregador/cliente:
+// passo a passo da entrega, rastreio, NPS, pesquisa, dica). Essas páginas não usam
+// Excel/PDF/gráfico/calendário — só o painel do dono usa. Por isso não baixamos essas
+// bibliotecas pesadas pro celular do entregador: numa rua com sinal fraco, esperar
+// vários MB de bibliotecas que ele nem vai usar é a causa mais comum da tela ficar
+// em branco. O painel administrativo continua carregando tudo normalmente.
+window.__ROTA_PUBLICA__ = (function(){
+  try{
+    var qs = new URLSearchParams(location.search);
+    return qs.has('entrega') || qs.has('entregaVenda') || qs.has('nps') || qs.has('rastrear') || qs.has('pesquisamanual') || qs.has('dica');
+  }catch(e){ return false; }
+})();
+if(!window.__ROTA_PUBLICA__){
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>');
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"><\/script>');
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"><\/script>');
+}
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sistema Tom Gás</title>
@@ -16,10 +32,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tom Gás">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+<script>
+if(!window.__ROTA_PUBLICA__){
+  document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"><\/script>');
+  document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">');
+  document.write('<script src="https://cdn.jsdelivr.net/npm/flatpickr"><\/script>');
+  document.write('<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"><\/script>');
+}
+</script>
 <style>
 :root{
   --royal:#1E3A8A;
@@ -88,7 +108,7 @@ html[data-theme="natal"]{
   --royal:#B91C1C;
   --royal-dark:#062B1A;
   --royal-light:#DC2626;
-  --neon:#FFD60A;
+  --neon:#B6FF3D;
   --green:#16A34A;
   --green-tint:#0F2A1B;
 }
@@ -532,10 +552,13 @@ html[data-theme="dark"] .tabela-vendas thead th, html[data-theme="natal"] .tabel
 #estoque-gas-hover-tab{position:absolute;right:-30px;top:12px;background:linear-gradient(135deg,#38BDF8,#0369A1);color:#fff;padding:7px 6px;border-radius:0 10px 10px 0;writing-mode:vertical-rl;font-weight:700;font-size:9.5px;letter-spacing:.3px;box-shadow:2px 3px 10px rgba(3,105,161,.35);display:flex;align-items:center;gap:4px;}
 #estoque-gas-hover-content{padding:9px 8px 10px;overflow-y:auto;}
 #estoque-gas-hover-content h3{margin:0 0 6px;font-size:11px;color:#0369A1;font-weight:800;display:flex;align-items:center;gap:5px;}
-.gas-drawer-item{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:4px 5px;border-radius:7px;margin-bottom:3px;background:var(--blue-tint);}
-.gas-drawer-item .gas-label{font-size:10px;font-weight:700;color:var(--text);}
-.gas-drawer-item .gas-qtds{display:flex;gap:6px;font-size:9.5px;color:var(--text2);}
-.gas-drawer-item .gas-qtds span{display:flex;align-items:center;gap:2px;white-space:nowrap;}
+.gas-drawer-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;margin-bottom:4px;background:var(--blue-tint);cursor:pointer;transition:background .15s,transform .1s;}
+.gas-drawer-item:hover{background:var(--royal-light);transform:translateX(2px);}
+.gas-drawer-item:hover .gas-label,.gas-drawer-item:hover .gas-qtds{color:#fff;}
+.gas-drawer-item .gas-label{font-size:11px;font-weight:800;color:var(--text);width:26px;flex-shrink:0;line-height:1;}
+.gas-drawer-item .gas-qtds{display:flex;align-items:center;gap:10px;font-size:10.5px;font-weight:700;color:var(--text2);flex:1;line-height:1;}
+.gas-drawer-item .gas-qtds span{display:flex;align-items:center;gap:4px;white-space:nowrap;}
+.gas-drawer-item .gas-qtds img{display:block;height:16px;width:auto;flex-shrink:0;}
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
 #whats-fab{position:fixed;right:18px;bottom:18px;z-index:500;width:56px;height:56px;border-radius:50%;background:#25D366;border:none;box-shadow:0 6px 18px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
@@ -643,6 +666,39 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
     var saved = localStorage.getItem('tema-app');
     if(saved === 'dark' || saved === 'natal'){ document.documentElement.setAttribute('data-theme', saved); }
   }catch(e){}
+})();
+</script>
+<script>
+// Rede de segurança pras páginas públicas (link do entregador, rastreio, NPS, pesquisa,
+// dica): se por qualquer motivo (sem internet, erro no sistema, link antigo em cache)
+// a página não conseguir carregar o conteúdo, isso aqui garante que aparece um aviso
+// com botão "tentar novamente" em vez de ficar em branco sem explicação nenhuma.
+(function(){
+  if(!window.__ROTA_PUBLICA__) return;
+  var jaAvisou = false;
+  function aindaNaTelaInicial(){
+    try{
+      var b = document.body;
+      return !!(b && b.children.length && b.querySelector('#auth-screen'));
+    }catch(e){ return true; }
+  }
+  function mostrarFalha(motivo){
+    if(jaAvisou || !aindaNaTelaInicial()) return;
+    jaAvisou = true;
+    try{ console.error('Falha ao carregar página pública:', motivo); }catch(e){}
+    document.body.innerHTML = '<div style="max-width:480px;margin:0 auto;padding:24px 18px;font-family:Arial,sans-serif;background:#fff;min-height:100vh;box-sizing:border-box;">'
+      + '<div style="padding:22px;border-radius:16px;background:#fff3f3;border:1px solid #f3b6b6;color:#8a1c1c;">'
+      + '<h2 style="margin-top:0;">Não foi possível abrir esta página</h2>'
+      + '<p>Isso costuma acontecer por causa da internet do celular estar fraca ou instável no momento.</p>'
+      + '<p style="font-size:13px;color:#666;">Verifique o sinal/Wi-Fi e toque no botão abaixo. Se continuar acontecendo mesmo com internet boa, avise quem cuida do sistema.</p>'
+      + '<button onclick="location.reload()" style="width:100%;padding:14px;border:0;border-radius:10px;background:#1a73e8;color:#fff;font-weight:bold;">🔄 Tentar novamente</button>'
+      + '</div></div>';
+  }
+  window.addEventListener('error', function(e){ mostrarFalha((e && e.message) || 'erro de script'); });
+  window.addEventListener('unhandledrejection', function(e){ mostrarFalha((e && e.reason && (e.reason.message||e.reason)) || 'promessa rejeitada'); });
+  // Se depois de um tempo razoável ainda não saiu da tela inicial (auth-screen), assume
+  // que travou (script pesado demorando, conexão caiu no meio, etc.) e mostra o aviso.
+  setTimeout(function(){ mostrarFalha('tempo de carregamento excedido'); }, 15000);
 })();
 </script>
 </head>
@@ -934,10 +990,10 @@ function renderEstoqueGasHoverDrawer(){
   e.innerHTML='<h3>🛢 Estoque</h3>'+
     tipos.map(t=>{
       const item = est[t] || {cheio:0,vazio:0};
-      return '<div class="gas-drawer-item"><span class="gas-label">'+t+'</span>'+
+      return '<div class="gas-drawer-item" data-drawer-gas-item="1" title="Toque para abrir o Estoque"><span class="gas-label">'+t+'</span>'+
         '<span class="gas-qtds">'+
-        '<span title="Cheios">'+iconVasilhame(true,null,13,t)+' '+Math.round(item.cheio||0)+'</span>'+
-        '<span title="Vazios">'+iconVasilhame(false,null,13,t)+' '+Math.round(item.vazio||0)+'</span>'+
+        '<span title="Cheios">'+iconVasilhame(true,null,13,t)+Math.round(item.cheio||0)+'</span>'+
+        '<span title="Vazios">'+iconVasilhame(false,null,13,t)+Math.round(item.vazio||0)+'</span>'+
         '</span></div>';
     }).join('');
 }
@@ -1198,6 +1254,14 @@ function initEstoqueGasHoverDrawer(){
   const d=document.getElementById('estoque-gas-hover-drawer');if(!d)return;
   d.onmouseenter=()=>{ d.classList.add('open'); renderEstoqueGasHoverDrawer(); };
   d.onmouseleave=()=>d.classList.remove('open');
+  const content=document.getElementById('estoque-gas-hover-content');
+  if(content) content.onclick=(ev)=>{
+    if(!ev.target.closest('[data-drawer-gas-item]')) return;
+    currentTab='estoque';
+    d.classList.remove('open');
+    renderAll();
+    setTimeout(()=>{ const main=document.getElementById('main'); if(main) main.scrollIntoView({behavior:'smooth'}); },50);
+  };
   renderEstoqueGasHoverDrawer();
 }
 let rotaOrigemCoords = null;
