@@ -2360,6 +2360,7 @@ function campanhaThumbHtml(c){
   return '<div style="width:52px;height:52px;border-radius:8px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">💬</div>';
 }
 function clientesSelecionadosOptions(sel){ const set=new Set(sel||[]); return (state.clientes||[]).map(c=>'<option value="'+c.id+'" '+(set.has(c.id)?'selected':'')+'>'+escapeHtmlCampanha(c.nome)+' — '+escapeHtmlCampanha(c.telefone||'sem telefone')+'</option>').join(''); }
+const EMOJIS_RAPIDOS = ['😀','😉','🙏','👍','🎉','🔥','📦','🚚','💰','✅','📅','⚠️','❤️','🥳','💧','📢'];
 const CAMP_DESTINO_HINTS={
   grupo:'Manda pra todo cliente marcado no(s) grupo(s) escolhidos abaixo.',
   clientes:'Manda só pros clientes que você marcar na lista abaixo.',
@@ -2612,19 +2613,27 @@ function listaPublicosHtml(){
   }).join('')+'</div>';
 }
 
-/* ---- Envio manual rápido (poucas pessoas, sem criar campanha) ---- */
+/* ---- Envio manual rápido (poucas pessoas ou toda a lista, sem criar campanha) ---- */
 let rapidoSelecionados=[], rapidoResultado=null;
 function viewEnvioRapido(){
-  return '<h3>Envio manual rápido</h3><div class="hint">Escolha poucos clientes e mande uma mensagem pontual pelo WhatsApp, sem precisar salvar uma campanha.</div>'+
-  '<label>Mensagem <span class="req">*</span></label><textarea id="rapido-mensagem" rows="3" placeholder="Use {nome} para personalizar">'+escapeHtmlCampanha(document.getElementById('rapido-mensagem')?.value||'')+'</textarea>'+
-  '<label>Clientes</label><select id="rapido-clientes" multiple size="8">'+clientesSelecionadosOptions(rapidoSelecionados)+'</select>'+
-  '<div class="hint">Ctrl/Cmd para selecionar vários.</div>'+
+  const totalComTel = (state.clientes||[]).filter(c=>c.telefone).length;
+  return '<h3>Envio manual rápido</h3><div class="hint">Escreva uma mensagem e mande pra poucos clientes ou pra <strong>toda a sua lista de uma vez</strong> pelo WhatsApp — sem precisar criar campanha. Como ainda não temos a API paga do WhatsApp Business, o envio continua manual: o sistema abre a conversa de cada cliente já com o texto pronto, você só confere e aperta enviar. Emojis funcionam normalmente — digite pelo teclado do celular ou use os atalhos abaixo.</div>'+
+  '<label>Mensagem <span class="req">*</span></label>'+
+  '<div id="rapido-emojis" style="margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px;">'+EMOJIS_RAPIDOS.map(e=>'<button type="button" class="btn small ghost" data-emoji="'+e+'" style="padding:4px 9px;font-size:16px;line-height:1.2;">'+e+'</button>').join('')+'</div>'+
+  '<textarea id="rapido-mensagem" rows="4" placeholder="Use {nome} para personalizar. Pode usar emojis 🙂">'+escapeHtmlCampanha(document.getElementById('rapido-mensagem')?.value||'')+'</textarea>'+
+  '<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px;flex-wrap:wrap;gap:8px;">'+
+    '<label style="margin:0;">Clientes</label>'+
+    '<button type="button" class="link-btn" id="btn-selecionar-todos-rapido">☑️ Selecionar toda a lista de clientes ('+totalComTel+' com WhatsApp)</button>'+
+  '</div>'+
+  '<select id="rapido-clientes" multiple size="8">'+clientesSelecionadosOptions(rapidoSelecionados)+'</select>'+
+  '<div class="hint">Ctrl/Cmd para selecionar vários, ou use o botão acima pra marcar todo mundo de uma vez.</div>'+
   '<button type="button" class="btn small green" id="btn-gerar-envio-rapido">✉️ Gerar links de envio</button>'+
   '<div id="rapido-resultado" style="margin-top:14px;">'+(rapidoResultado||'')+'</div>';
 }
 function tabelaEnvioManual(destinatarios, mensagem){
   if(!destinatarios.length) return '<div class="empty">Nenhum cliente com telefone selecionado.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th></th></tr></thead><tbody>'+destinatarios.map(d=>{
+  return '<div class="hint" style="margin-bottom:8px;">'+destinatarios.length+' cliente(s) na lista — clique em "abrir whats" um por um, confira o texto e mande.</div>'+
+  '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th></th></tr></thead><tbody>'+destinatarios.map(d=>{
     const msg=aplicarPlaceholdersMensagem(mensagem,{nome:d.nome});
     return '<tr><td>'+escapeHtmlCampanha(d.nome)+'</td><td>'+escapeHtmlCampanha(d.telefone)+'</td><td><a class="act-link" href="'+linkWhatsAppComTexto(d.telefone,msg)+'" target="_blank" rel="noopener">'+iconWhatsApp('#25D366',13)+' abrir whats</a></td></tr>';
   }).join('')+'</tbody></table></div>';
@@ -9473,8 +9482,8 @@ function relatorioFiado(){
   }
   return '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">'+
     '<h3 style="margin-top:0;">📤 Enviar listagem de fiados</h3>'+
-    '<div class="hint">Gera um PDF com todos os fiados em aberto <strong>no momento do clique</strong> e envia pelo WhatsApp para Fernando Hudson Alves e Sueli Correia de Oliveira. Se o envio automático não funcionar, o PDF é gerado do mesmo jeito pra você mandar manualmente.</div>'+
-    '<button type="button" class="btn small" id="btn-enviar-listagem-fiados" style="margin-top:8px;">📄 Gerar PDF e enviar</button>'+
+    '<div class="hint">Gera um PDF com todos os fiados em aberto <strong>no momento do clique</strong> e prepara o envio pelo WhatsApp para Fernando Hudson Alves e Sueli Correia de Oliveira — é só clicar em cada botão pra abrir a conversa já com o texto pronto e anexar o PDF.</div>'+
+    '<button type="button" class="btn small" id="btn-enviar-listagem-fiados" style="margin-top:8px;">📄 Gerar PDF e preparar envio</button>'+
     '<div id="fiado-envio-status" style="margin-top:10px;"></div></div>'+
     '<h3>Lançar fiado existente (sem precisar registrar uma venda)</h3>'+
     '<form id="form-fiado"><div class="form-row">'+
@@ -10846,24 +10855,6 @@ function mensagemListagemFiados(snap, nome, comAnexo){
   return msg;
 }
 
-// Envio automático (texto) pela mesma função do Supabase usada nas campanhas de WhatsApp.
-async function enviarTextoAutomaticoWhatsFiados(dest, mensagem){
-  const { data, error } = await supabaseClient.functions.invoke('enviar-whatsapp-campanha',{ body:{
-    campanhaId:'listagem-fiados-'+Date.now(), clienteId:null, nome:dest.nome, telefone:dest.telefone,
-    mensagem, imagemBase64:null, videoDataUrl:null, linkVideo:null
-  }});
-  if(error) throw error;
-  if(data && data.ok===false) throw new Error(data.error||'Falha no envio');
-}
-
-function baixarPdfListagemFiados(){
-  const u = ultimaListagemFiados; if(!u) return;
-  const url = URL.createObjectURL(new Blob([u.bytes],{type:'application/pdf'}));
-  const a = document.createElement('a');
-  a.href = url; a.download = u.nomeArquivo;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url), 2000);
-}
 // Envio manual do PDF: no celular abre o compartilhar com o arquivo já anexado; no computador
 // baixa o PDF e abre a conversa da pessoa no WhatsApp pra anexar.
 async function enviarPdfListagemFiadosWhats(idx){
@@ -10896,7 +10887,7 @@ async function gerarEEnviarListagemFiados(btn){
     btn.textContent = '⏳ Preparando...';
     const dests = await resolverDestinatariosListagemFiados();
     const resumoDest = dests.map(d=>'• '+d.nome+': '+(d.telefone?('+'+d.telefone+(d.nomeCadastro&&d.nomeCadastro!==d.nome?' (cadastro: '+d.nomeCadastro+')':'')):'SEM número — não será enviado')).join('\n');
-    if(!confirm('Gerar o PDF com '+snap.linhas.length+' cliente(s) em fiado ('+fmtMoney(snap.total)+') e enviar para:\n\n'+resumoDest+'\n\nConfirmar?')) return;
+    if(!confirm('Gerar o PDF com '+snap.linhas.length+' cliente(s) em fiado ('+fmtMoney(snap.total)+') pra enviar para:\n\n'+resumoDest+'\n\nConfirmar?')) return;
 
     btn.textContent = '⏳ Gerando PDF...';
     const bytes = await gerarPdfListagemFiados(snap);
@@ -10904,20 +10895,9 @@ async function gerarEEnviarListagemFiados(btn){
     const nomeArquivo = 'fiados-'+g.getFullYear()+'-'+p2(g.getMonth()+1)+'-'+p2(g.getDate())+'-'+p2(g.getHours())+'h'+p2(g.getMinutes())+'.pdf';
     ultimaListagemFiados = {bytes, nomeArquivo, snap, dests};
 
-    const resultados = [];
-    for(const d of dests){
-      if(!d.telefone){ resultados.push({d, ok:false, erro:'sem número de WhatsApp cadastrado'}); continue; }
-      btn.textContent = '⏳ Enviando para '+d.nome.split(' ')[0]+'...';
-      try{ await enviarTextoAutomaticoWhatsFiados(d, mensagemListagemFiados(snap, d.nome, false)); resultados.push({d, ok:true}); }
-      catch(e){ console.error('Envio automático da listagem de fiados falhou', e); resultados.push({d, ok:false, erro:(e&&e.message)||String(e)}); }
-    }
-    const algumaFalha = resultados.some(r=>!r.ok);
-    if(algumaFalha) baixarPdfListagemFiados(); // garantia: o PDF sempre fica com você
-
     setStatus(
-      '<div class="hint" style="margin-bottom:6px;">PDF gerado com os fiados de '+dataHoraBR(snap.geradoEm)+' — '+snap.linhas.length+' cliente(s), total '+fmtMoney(snap.total)+'.'+(algumaFalha?' <strong>O PDF foi baixado no seu aparelho.</strong>':'')+'</div>'+
-      resultados.map(r=>'<div style="margin:4px 0;">'+(r.ok?'✅':'⚠️')+' <strong>'+escapeHtmlCampanha(r.d.nome)+'</strong> — '+(r.ok?'resumo enviado automaticamente pelo WhatsApp.':'não foi possível enviar automaticamente ('+escapeHtmlCampanha(r.erro)+').')+'</div>').join('')+
-      '<div class="hint" style="margin-top:6px;">O envio automático manda o resumo em texto. Pra mandar o <strong>arquivo PDF</strong> use os botões abaixo (no celular abre o compartilhar já com o PDF anexado — é só escolher a pessoa).</div>'+
+      '<div class="hint" style="margin-bottom:6px;">PDF gerado com os fiados de '+dataHoraBR(snap.geradoEm)+' — '+snap.linhas.length+' cliente(s), total '+fmtMoney(snap.total)+'.</div>'+
+      '<div class="hint" style="margin-top:6px;">Clique no botão de cada pessoa pra abrir o WhatsApp já com o texto pronto (no celular já abre o compartilhar com o PDF anexado — é só escolher a conversa).</div>'+
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'+
       '<button type="button" class="btn small ghost" id="btn-baixar-pdf-fiados">📥 Baixar PDF</button>'+
       dests.map((d,i)=>'<button type="button" class="btn small" data-pdf-fiados-whats="'+i+'" style="background:#25D366;">'+iconWhatsApp('#fff',13)+' PDF p/ '+escapeHtmlCampanha(d.nome.split(' ')[0])+'</button>').join('')+
@@ -13634,13 +13614,24 @@ function attachHandlers(){
   document.querySelectorAll('[data-editar-publico]').forEach(btn=>btn.onclick=()=>{editPublicoId=btn.dataset.editarPublico; renderAll();});
   document.querySelectorAll('[data-del-publico]').forEach(btn=>btn.onclick=async()=>{if(!confirm('Excluir este público salvo?'))return; const id=btn.dataset.delPublico; state.publicos=state.publicos.filter(p=>p.id!==id); await save('publicos'); renderAll();});
   // ---- Envio manual rápido ----
+  document.querySelectorAll('#rapido-emojis [data-emoji]').forEach(btn=>btn.onclick=()=>{
+    const ta=document.getElementById('rapido-mensagem'); if(!ta) return;
+    const inicio=ta.selectionStart??ta.value.length, fim=ta.selectionEnd??ta.value.length;
+    ta.value = ta.value.slice(0,inicio)+btn.dataset.emoji+ta.value.slice(fim);
+    ta.focus(); const pos=inicio+btn.dataset.emoji.length; ta.selectionStart=ta.selectionEnd=pos;
+  });
+  const btnTodosRapido=document.getElementById('btn-selecionar-todos-rapido');
+  if(btnTodosRapido) btnTodosRapido.onclick=()=>{
+    const sel=document.getElementById('rapido-clientes'); if(!sel) return;
+    [...sel.options].forEach(o=>{ o.selected=true; });
+  };
   const btnGerarRapido=document.getElementById('btn-gerar-envio-rapido');
   if(btnGerarRapido) btnGerarRapido.onclick=()=>{
     const msg=document.getElementById('rapido-mensagem').value.trim();
     const sel=[...document.getElementById('rapido-clientes').querySelectorAll('option:checked')].map(o=>o.value);
     rapidoSelecionados=sel;
     if(!msg){ alert('Escreva a mensagem antes de gerar os links.'); return; }
-    if(!sel.length){ alert('Selecione ao menos um cliente.'); return; }
+    if(!sel.length){ alert('Selecione ao menos um cliente (ou use "Selecionar toda a lista de clientes").'); return; }
     const destinatarios=state.clientes.filter(c=>sel.includes(c.id)&&c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
     rapidoResultado=tabelaEnvioManual(destinatarios,msg);
     document.getElementById('rapido-resultado').innerHTML=rapidoResultado;
@@ -17587,7 +17578,7 @@ function initAgenda(){
 
 /* ---------- INIT ---------- */
 async function iniciarConfirmacaoEntregaPublica(tipo, id){
-  document.body.innerHTML = '<div id="conf-entrega" style="max-width:520px;margin:0 auto;padding:18px;font-family:Arial,sans-serif;background:#fff;min-height:100vh;box-sizing:border-box;">Carregando entrega...</div>';
+  document.body.innerHTML = '<div id="conf-entrega" style="max-width:520px;margin:0 auto;padding:18px;font-family:Arial,sans-serif;background:#0b1220;color:#eef2f9;min-height:100vh;box-sizing:border-box;">Carregando entrega...</div>';
   const wrap = document.getElementById('conf-entrega');
   let registros, clientes, anexos, imagensStatus, temposEntrega, pendencias, acertos, entregadoresLista;
   const chaveRegistros = tipo==='venda' ? 'vendas' : 'agendamentos';
@@ -17763,6 +17754,16 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
     return !error;
   }
 
+  function nomeEntregadorPublico(){
+    const e = (entregadoresLista||[]).find(x=>x.id===entrega.entregadorId);
+    return e ? (e.nome||'') : '';
+  }
+  function iconeTrajetoBtn(){
+    const nome = nomeEntregadorPublico().toLowerCase();
+    if(nome.includes('sueli')) return '<img src="data:image/png;base64,'+ICONES_VEICULO_B64.carro.cinza+'" style="width:20px;height:20px;vertical-align:middle;margin-right:7px;">';
+    if(nome.includes('wellington')) return '<img src="data:image/png;base64,'+ICONES_VEICULO_B64.moto.azul+'" style="width:20px;height:20px;vertical-align:middle;margin-right:7px;">';
+    return '🚚 ';
+  }
   function render(){
     const concluida = entrega.jaConcluido;
     const podeChegar = entrega.notifSaiu && !concluida;
@@ -17772,38 +17773,38 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       (entrega.anexoContexto.vendaGrupoId && a.vendaGrupoId===entrega.anexoContexto.vendaGrupoId)
     );
     const anexosHistorico = entrega.cliente ? anexos.filter(a=>(a.cliente||'').toLowerCase()===entrega.cliente.toLowerCase() && !anexosDele.includes(a)) : [];
-    const thumbAnexo = a=>a.tipo==='video'?'<video src="'+a.dataUrl+'" controls style="width:90px;height:90px;border-radius:8px;"></video>':a.tipo==='localizacao'?'<a href="https://www.google.com/maps?q='+a.lat+','+a.lng+'" target="_blank" style="font-size:12px;">📍 local</a>':'<img src="'+a.dataUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">';
+    const thumbAnexo = a=>a.tipo==='video'?'<video src="'+a.dataUrl+'" controls style="width:90px;height:90px;border-radius:8px;"></video>':a.tipo==='localizacao'?'<a href="https://www.google.com/maps?q='+a.lat+','+a.lng+'" target="_blank" style="font-size:12px;color:#5BA3F5;">📍 local</a>':'<img src="'+a.dataUrl+'" style="width:90px;height:90px;object-fit:cover;border-radius:8px;">';
     const imagem3 = imagensStatus && imagensStatus.concluido ? '<img src="'+imagensStatus.concluido+'" style="width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin-top:10px;">' : '';
     wrap.innerHTML =
       '<div style="text-align:center;margin-bottom:18px;">'+
         '<div style="font-size:30px;">🚚</div>'+
-        '<h2 style="margin:4px 0;font-size:24px;">Passo a passo da entrega</h2>'+
-        '<div style="color:#666;font-size:14px;">Siga os 3 passos na ordem</div>'+
+        '<h2 style="margin:4px 0;font-size:24px;color:#eef2f9;">Passo a passo da entrega</h2>'+
+        '<div style="color:#93a1b8;font-size:14px;">Siga os 3 passos na ordem</div>'+
       '</div>'+
-      '<button type="button" id="btn-emergencia-entregador" style="width:100%;padding:12px;font-size:14px;font-weight:bold;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;cursor:pointer;margin-bottom:14px;">🚨 Problema na rota (pane, sem combustível, acidente...)</button>'+
-      '<div style="background:#f7f7f7;border-radius:14px;padding:15px;margin-bottom:16px;line-height:1.65;">'+
+      '<button type="button" id="btn-emergencia-entregador" style="width:100%;padding:12px;font-size:14px;font-weight:bold;background:#3b1420;color:#ff8a8a;border:1px solid #5c2330;border-radius:10px;cursor:pointer;margin-bottom:14px;">🚨 Problema na rota (pane, sem combustível, acidente...)</button>'+
+      '<div style="background:#141b2c;border-radius:14px;padding:15px;margin-bottom:16px;line-height:1.65;color:#eef2f9;">'+
         '<div><strong>👤 Cliente:</strong> '+escapeHtmlCampanha(entrega.cliente||'')+'</div>'+
         (endereco?'<div><strong>📍 Endereço:</strong> '+escapeHtmlCampanha(endereco)+'</div>':'')+
         '<div><strong>📦 Pedido:</strong> '+escapeHtmlCampanha(entrega.produtoResumo||'')+'</div>'+
         '<div style="margin-top:5px;font-weight:bold;">'+entrega.statusPagtoTexto+'</div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;gap:12px;">'+
-        '<div style="border:1px solid #dbe7f5;border-radius:14px;padding:12px;background:#f8fbff;">'+
+        '<div style="border:1px solid #23324f;border-radius:14px;padding:12px;background:#101827;color:#eef2f9;">'+
           '<div style="font-weight:bold;margin-bottom:8px;">1️⃣ SAÍDA PARA ENTREGA</div>'+
-          '<button id="btn-status-saiu" style="width:100%;padding:16px;font-size:16px;font-weight:bold;background:'+(entrega.notifSaiu?'#e8f5e9':'#1a73e8')+';color:'+(entrega.notifSaiu?'#188038':'#fff')+';border:none;border-radius:10px;cursor:'+(entrega.notifSaiu?'default':'pointer')+';" '+(entrega.notifSaiu?'disabled':'')+'>'+ (entrega.notifSaiu?'✅ Cliente avisado: saiu para entrega':'🚚 INICIAR TRAJETO') +'</button>'+
-          (entrega.notifSaiu?'<div style="font-size:12px;color:#188038;margin-top:7px;">Mensagem enviada ao cliente pelo WhatsApp.</div>':'')+
+          '<button id="btn-status-saiu" style="width:100%;padding:16px;font-size:16px;font-weight:bold;background:'+(entrega.notifSaiu?'#123524':'#1a73e8')+';color:'+(entrega.notifSaiu?'#4ade80':'#fff')+';border:none;border-radius:10px;cursor:'+(entrega.notifSaiu?'default':'pointer')+';" '+(entrega.notifSaiu?'disabled':'')+'>'+ (entrega.notifSaiu?'✅ Cliente avisado: saiu para entrega':iconeTrajetoBtn()+'INICIAR TRAJETO') +'</button>'+
+          (entrega.notifSaiu?'<div style="font-size:12px;color:#4ade80;margin-top:7px;">Mensagem enviada ao cliente pelo WhatsApp.</div>':'')+
         '</div>'+
-        '<div style="border:1px solid '+(podeChegar?'#f4d9a3':'#ddd')+';border-radius:14px;padding:12px;background:'+(podeChegar?'#fffaf0':'#fafafa')+';opacity:'+(entrega.notifSaiu||entrega.notifChegou?'1':'0.65')+';">'+
+        '<div style="border:1px solid '+(podeChegar?'#6b5220':'#2a2f3a')+';border-radius:14px;padding:12px;background:'+(podeChegar?'#241c0e':'#161a22')+';color:#eef2f9;opacity:'+(entrega.notifSaiu||entrega.notifChegou?'1':'0.65')+';">'+
           '<div style="font-weight:bold;margin-bottom:8px;">2️⃣ CHEGADA AO CLIENTE</div>'+
-          '<button id="btn-status-chegou" style="width:100%;padding:16px;font-size:16px;font-weight:bold;background:'+(entrega.notifChegou?'#e8f5e9':'#f5a623')+';color:'+(entrega.notifChegou?'#188038':'#fff')+';border:none;border-radius:10px;cursor:'+(podeChegar?'pointer':'not-allowed')+';" '+((!podeChegar||entrega.notifChegou)?'disabled':'')+'>'+ (entrega.notifChegou?'✅ Cliente avisado: chegamos':'📍 CHEGAMOS AO LOCAL') +'</button>'+
-          (entrega.notifChegou?'<div style="font-size:12px;color:#188038;margin-top:7px;">Mensagem enviada ao cliente pelo WhatsApp.</div>':'')+
+          '<button id="btn-status-chegou" style="width:100%;padding:16px;font-size:16px;font-weight:bold;background:'+(entrega.notifChegou?'#123524':'#f5a623')+';color:'+(entrega.notifChegou?'#4ade80':'#fff')+';border:none;border-radius:10px;cursor:'+(podeChegar?'pointer':'not-allowed')+';" '+((!podeChegar||entrega.notifChegou)?'disabled':'')+'>'+ (entrega.notifChegou?'✅ Cliente avisado: chegamos':'📍 CHEGAMOS AO LOCAL') +'</button>'+
+          (entrega.notifChegou?'<div style="font-size:12px;color:#4ade80;margin-top:7px;">Mensagem enviada ao cliente pelo WhatsApp.</div>':'')+
         '</div>'+
-        '<div style="border:1px solid '+(podeConcluir?'#bde5c5':'#ddd')+';border-radius:14px;padding:12px;background:'+(podeConcluir?'#f5fff7':'#fafafa')+';opacity:'+(podeConcluir||concluida?'1':'0.65')+';">'+
+        '<div style="border:1px solid '+(podeConcluir?'#1f4a30':'#2a2f3a')+';border-radius:14px;padding:12px;background:'+(podeConcluir?'#0f1f16':'#161a22')+';color:#eef2f9;opacity:'+(podeConcluir||concluida?'1':'0.65')+';">'+
           '<div style="font-weight:bold;margin-bottom:8px;">3️⃣ ENTREGA CONCLUÍDA</div>'+
-          (concluida ? '<div style="padding:14px;background:#e8f5e9;color:#188038;border-radius:10px;font-weight:bold;text-align:center;">✅ ENTREGA FINALIZADA<br><span style="font-size:12px;font-weight:normal;">Cliente recebeu a mensagem com o link de avaliação.</span></div>'+imagem3 : '<button id="btn-status-concluido" style="width:100%;padding:16px;font-size:16px;font-weight:bold;background:#25D366;color:#fff;border:none;border-radius:10px;cursor:'+(podeConcluir?'pointer':'not-allowed')+';" '+(!podeConcluir?'disabled':'')+'>✅ ENTREGUE</button>')+
+          (concluida ? '<div style="padding:14px;background:#123524;color:#4ade80;border-radius:10px;font-weight:bold;text-align:center;">✅ ENTREGA FINALIZADA<br><span style="font-size:12px;font-weight:normal;">Cliente recebeu a mensagem com o link de avaliação.</span></div>'+imagem3 : '<button id="btn-status-concluido" style="width:100%;padding:16px;font-size:16px;font-weight:bold;background:#25D366;color:#fff;border:none;border-radius:10px;cursor:'+(podeConcluir?'pointer':'not-allowed')+';" '+(!podeConcluir?'disabled':'')+'>✅ ENTREGUE</button>')+
         '</div>'+
       '</div>'+
-      (concluida ? '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;"><label style="display:block;margin-bottom:7px;font-weight:bold;">📷 Foto do comprovante da entrega</label><input type="file" id="input-foto-comprovante" accept="image/*" capture="environment" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;"></div>' : '<div style="margin-top:16px;font-size:12px;color:#777;text-align:center;">A foto do comprovante será liberada depois que a entrega for concluída.</div>')+
+      (concluida ? '<div style="margin-top:16px;border-top:1px solid #232838;padding-top:16px;color:#eef2f9;"><label style="display:block;margin-bottom:7px;font-weight:bold;">📷 Foto do comprovante da entrega</label><input type="file" id="input-foto-comprovante" accept="image/*" capture="environment" style="width:100%;padding:10px;border:1px solid #2a2f3a;border-radius:10px;background:#141b2c;color:#eef2f9;box-sizing:border-box;"></div>' : '<div style="margin-top:16px;font-size:12px;color:#93a1b8;text-align:center;">A foto do comprovante será liberada depois que a entrega for concluída.</div>')+
       (concluida ? (function(){
         const st = statusRecebimento();
         const dinheiro = isDinheiro();
@@ -17815,24 +17816,24 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
             ? '⏳ Falta levar esse dinheiro até o financeiro pessoalmente pra fechar o acerto — pagamento em dinheiro só conta como certo depois de entregue em mãos.'
             : '⏳ Você confirmou o recebimento — o financeiro já consegue conferir esse aí (Pix/cartão) à distância, sem precisar de você aí.'
         };
-        return '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;"><div style="font-weight:bold;margin-bottom:8px;">💵 Recebimento</div>'+
-          (st==='aguardaEntregador' ? '<button id="btn-recebi-dinheiro" style="width:100%;padding:14px;font-size:15px;font-weight:bold;background:#f5a623;color:#fff;border:none;border-radius:10px;">💰 Confirmar que recebi o pagamento ('+(entrega.pagamento||'na hora')+')</button><div style="font-size:11.5px;color:#888;margin-top:6px;">'+(dinheiro?'Depois de confirmar, leve o dinheiro até o financeiro pra fechar o acerto pessoalmente.':'Depois de confirmar, o financeiro já pode conferir à distância e fechar o acerto.')+'</div>' : '<div style="color:'+(st==='aguardaAcerto'?'#b45309':'#188038')+';font-size:13px;">'+textos[st]+'</div>')+
+        return '<div style="margin-top:16px;border-top:1px solid #232838;padding-top:16px;color:#eef2f9;"><div style="font-weight:bold;margin-bottom:8px;">💵 Recebimento</div>'+
+          (st==='aguardaEntregador' ? '<button id="btn-recebi-dinheiro" style="width:100%;padding:14px;font-size:15px;font-weight:bold;background:#f5a623;color:#fff;border:none;border-radius:10px;">💰 Confirmar que recebi o pagamento ('+(entrega.pagamento||'na hora')+')</button><div style="font-size:11.5px;color:#93a1b8;margin-top:6px;">'+(dinheiro?'Depois de confirmar, leve o dinheiro até o financeiro pra fechar o acerto pessoalmente.':'Depois de confirmar, o financeiro já pode conferir à distância e fechar o acerto.')+'</div>' : '<div style="color:'+(st==='aguardaAcerto'?'#fbbf24':'#4ade80')+';font-size:13px;">'+textos[st]+'</div>')+
         '</div>';
       })() : '')+
-      (concluida ? '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;"><div style="font-weight:bold;margin-bottom:8px;">🙋 Correu tudo certo, conforme combinado?</div>'+
+      (concluida ? '<div style="margin-top:16px;border-top:1px solid #232838;padding-top:16px;color:#eef2f9;"><div style="font-weight:bold;margin-bottom:8px;">🙋 Correu tudo certo, conforme combinado?</div>'+
         (entrega.atendimentoOk===undefined || entrega.atendimentoOk===null ?
           '<div style="display:flex;gap:8px;"><button id="btn-atend-ok" style="flex:1;padding:12px;background:#25D366;color:#fff;border:none;border-radius:10px;font-weight:bold;">✅ Sim</button><button id="btn-atend-problema" style="flex:1;padding:12px;background:#e53935;color:#fff;border:none;border-radius:10px;font-weight:bold;">⚠️ Teve problema</button></div>' :
-          '<div style="font-size:13px;color:'+(entrega.atendimentoOk?'#188038':'#c62828')+';">'+(entrega.atendimentoOk?'✅ Confirmado: tudo certo.':'⚠️ Problema sinalizado — financeiro vai conferir.')+'</div>')+
+          '<div style="font-size:13px;color:'+(entrega.atendimentoOk?'#4ade80':'#f87171')+';">'+(entrega.atendimentoOk?'✅ Confirmado: tudo certo.':'⚠️ Problema sinalizado — financeiro vai conferir.')+'</div>')+
         '</div>' : '')+
-      (anexosHistorico.length>0 ? '<div style="margin-top:14px;"><div style="font-weight:bold;font-size:13px;margin-bottom:6px;">🗂 Histórico de entregas anteriores desse cliente:</div><div style="display:flex;flex-wrap:wrap;gap:8px;">'+anexosHistorico.map(thumbAnexo).join('')+'</div></div>' : '')+
+      (anexosHistorico.length>0 ? '<div style="margin-top:14px;color:#eef2f9;"><div style="font-weight:bold;font-size:13px;margin-bottom:6px;">🗂 Histórico de entregas anteriores desse cliente:</div><div style="display:flex;flex-wrap:wrap;gap:8px;">'+anexosHistorico.map(thumbAnexo).join('')+'</div></div>' : '')+
       (anexosDele.length>0 ? '<div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;">'+anexosDele.map(thumbAnexo).join('')+'</div>' : '')+
-      '<div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;"><div style="font-weight:bold;margin-bottom:8px;">📎 Anexar foto, vídeo ou localização do local</div>'+
+      '<div style="margin-top:16px;border-top:1px solid #232838;padding-top:16px;color:#eef2f9;"><div style="font-weight:bold;margin-bottom:8px;">📎 Anexar foto, vídeo ou localização do local</div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
-        '<label class="btn-anexo-extra" style="flex:1;text-align:center;padding:10px;background:#eef3fb;border-radius:10px;font-size:13px;cursor:pointer;">📷 Foto<input type="file" id="input-anexo-foto" accept="image/*" style="display:none;"></label>'+
-        '<label class="btn-anexo-extra" style="flex:1;text-align:center;padding:10px;background:#eef3fb;border-radius:10px;font-size:13px;cursor:pointer;">🎥 Vídeo<input type="file" id="input-anexo-video" accept="video/*" style="display:none;"></label>'+
-        '<button type="button" id="btn-anexo-local" style="flex:1;padding:10px;background:#eef3fb;border:none;border-radius:10px;font-size:13px;">📍 Localização</button>'+
+        '<label class="btn-anexo-extra" style="flex:1;min-width:0;height:44px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;background:#141b2c;border:1px solid #23324f;color:#eef2f9;border-radius:10px;font-size:13px;cursor:pointer;">📷 Foto<input type="file" id="input-anexo-foto" accept="image/*" style="display:none;"></label>'+
+        '<label class="btn-anexo-extra" style="flex:1;min-width:0;height:44px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;background:#141b2c;border:1px solid #23324f;color:#eef2f9;border-radius:10px;font-size:13px;cursor:pointer;">🎥 Vídeo<input type="file" id="input-anexo-video" accept="video/*" style="display:none;"></label>'+
+        '<button type="button" id="btn-anexo-local" style="flex:1;min-width:0;height:44px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:#141b2c;border:1px solid #23324f;color:#eef2f9;border-radius:10px;font-size:13px;">📍 Localização</button>'+
         '</div></div>'+
-      '<div id="msg-conf" style="margin-top:14px;font-weight:bold;color:#188038;text-align:center;"></div>';
+      '<div id="msg-conf" style="margin-top:14px;font-weight:bold;color:#4ade80;text-align:center;"></div>';
 
     const btnSaiu = document.getElementById('btn-status-saiu');
     if(btnSaiu && !entrega.notifSaiu) btnSaiu.onclick = async()=>{
@@ -18120,49 +18121,49 @@ async function iniciarNPSPublico(tipo, id){
 }
 async function iniciarPesquisaManualPublica(){
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'max-width:480px;margin:40px auto;padding:24px;font-family:system-ui,sans-serif;';
-  document.body.innerHTML=''; document.body.appendChild(wrap);
+  wrap.style.cssText = 'max-width:480px;margin:0 auto;padding:24px;font-family:system-ui,sans-serif;min-height:100vh;box-sizing:border-box;background:#0b1220;color:#eef2f9;';
+  document.body.innerHTML=''; document.body.style.background='#0b1220'; document.body.appendChild(wrap);
   let notaEscolhida = null;
   const extras = { prazo:null, entregador:null, indicaria:null };
   const opinioes = { sugestao:{texto:'', tipo:'sugestao'}, melhoria:{texto:'', tipo:'sugestao'} };
   function simNaoGrupo(chave, pergunta){
-    return '<div style="margin-bottom:14px;"><div style="font-size:14px;margin-bottom:6px;">'+pergunta+'</div>'+
+    return '<div style="margin-bottom:14px;"><div style="font-size:14px;margin-bottom:6px;color:#eef2f9;">'+pergunta+'</div>'+
       '<div style="display:flex;gap:8px;">'+
       ['sim','nao'].map(v=>{
         const ativo = extras[chave]===(v==='sim');
-        return '<button type="button" data-extra="'+chave+'" data-valor="'+v+'" style="flex:1;padding:10px 0;border-radius:8px;border:2px solid '+(ativo?'#25D366':'#ddd')+';background:'+(ativo?'#25D366':'#fff')+';color:'+(ativo?'#fff':'#333')+';font-weight:bold;">'+(v==='sim'?'Sim':'Não')+'</button>';
+        return '<button type="button" data-extra="'+chave+'" data-valor="'+v+'" style="flex:1;padding:10px 0;border-radius:8px;border:2px solid '+(ativo?'#25D366':'#2a2f3a')+';background:'+(ativo?'#25D366':'#141b2c')+';color:'+(ativo?'#fff':'#eef2f9')+';font-weight:bold;">'+(v==='sim'?'Sim':'Não')+'</button>';
       }).join('')+
       '</div></div>';
   }
   function campoOpiniao(chave, placeholder){
-    return '<textarea data-opiniao-texto="'+chave+'" placeholder="'+placeholder+'" style="width:100%;min-height:50px;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:6px;">'+escapeHtmlCampanha(opinioes[chave].texto)+'</textarea>'+
+    return '<textarea data-opiniao-texto="'+chave+'" placeholder="'+placeholder+'" style="width:100%;min-height:50px;padding:10px;border:1px solid #2a2f3a;border-radius:10px;margin-bottom:6px;background:#141b2c;color:#eef2f9;box-sizing:border-box;">'+escapeHtmlCampanha(opinioes[chave].texto)+'</textarea>'+
       '<div style="display:flex;gap:8px;margin-bottom:14px;">'+
       ['sugestao','critica'].map(v=>{
         const ativo = opinioes[chave].tipo===v;
-        return '<button type="button" data-opiniao-tipo="'+chave+'" data-valor="'+v+'" style="flex:1;padding:8px 0;border-radius:8px;border:2px solid '+(ativo?'#25D366':'#ddd')+';background:'+(ativo?'#25D366':'#fff')+';color:'+(ativo?'#fff':'#333')+';font-weight:bold;font-size:13px;">'+(v==='critica'?'🔴 Crítica':'💡 Sugestão')+'</button>';
+        return '<button type="button" data-opiniao-tipo="'+chave+'" data-valor="'+v+'" style="flex:1;padding:8px 0;border-radius:8px;border:2px solid '+(ativo?'#25D366':'#2a2f3a')+';background:'+(ativo?'#25D366':'#141b2c')+';color:'+(ativo?'#fff':'#eef2f9')+';font-weight:bold;font-size:13px;">'+(v==='critica'?'🔴 Crítica':'💡 Sugestão')+'</button>';
       }).join('')+
       '</div>';
   }
   function render(){
     wrap.innerHTML =
-      '<div style="text-align:center;margin-bottom:18px;"><h2 style="margin:0;">Tom Gás</h2><div style="color:#777;font-size:13px;">Sua opinião é rápida e importante</div></div>'+
-      '<div style="text-align:center;font-weight:bold;font-size:16px;margin-bottom:16px;">De 0 a 10, o quanto você recomendaria a Tom Gás pra um amigo?</div>'+
+      '<div style="text-align:center;margin-bottom:18px;"><h2 style="margin:0;color:#eef2f9;">Tom Gás</h2><div style="color:#93a1b8;font-size:13px;">Sua opinião é rápida e importante</div></div>'+
+      '<div style="text-align:center;font-weight:bold;font-size:16px;margin-bottom:16px;color:#eef2f9;">De 0 a 10, o quanto você recomendaria a Tom Gás pra um amigo?</div>'+
       '<div id="pm-botoes" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:16px;">'+
-      Array.from({length:11},(_,n)=>'<button type="button" data-nota="'+n+'" style="padding:10px 0;border-radius:8px;border:2px solid '+(notaEscolhida===n?'#25D366':'#ddd')+';background:'+(notaEscolhida===n?'#25D366':'#fff')+';color:'+(notaEscolhida===n?'#fff':'#333')+';font-weight:bold;">'+n+'</button>').join('')+
+      Array.from({length:11},(_,n)=>'<button type="button" data-nota="'+n+'" style="padding:10px 0;border-radius:8px;border:2px solid '+(notaEscolhida===n?'#25D366':'#2a2f3a')+';background:'+(notaEscolhida===n?'#25D366':'#141b2c')+';color:'+(notaEscolhida===n?'#fff':'#eef2f9')+';font-weight:bold;">'+n+'</button>').join('')+
       '</div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:11px;color:#999;margin-top:-10px;margin-bottom:20px;"><span>0 = muito ruim</span><span>10 = excelente</span></div>'+
-      '<label style="font-size:13px;display:block;margin-bottom:4px;">Seu nome (opcional)</label>'+
-      '<input id="pm-nome" type="text" placeholder="Nome" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;box-sizing:border-box;">'+
-      '<label style="font-size:13px;display:block;margin-bottom:4px;">Seu telefone (opcional)</label>'+
-      '<input id="pm-telefone" type="text" placeholder="Telefone/WhatsApp" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;box-sizing:border-box;">'+
+      '<div style="display:flex;justify-content:space-between;font-size:11px;color:#93a1b8;margin-top:-10px;margin-bottom:20px;"><span>0 = muito ruim</span><span>10 = excelente</span></div>'+
+      '<label style="font-size:13px;display:block;margin-bottom:4px;color:#eef2f9;">Seu nome (opcional)</label>'+
+      '<input id="pm-nome" type="text" placeholder="Nome" style="width:100%;padding:10px;border:1px solid #2a2f3a;border-radius:10px;margin-bottom:14px;box-sizing:border-box;background:#141b2c;color:#eef2f9;">'+
+      '<label style="font-size:13px;display:block;margin-bottom:4px;color:#eef2f9;">Seu telefone (opcional)</label>'+
+      '<input id="pm-telefone" type="text" placeholder="Telefone/WhatsApp" style="width:100%;padding:10px;border:1px solid #2a2f3a;border-radius:10px;margin-bottom:14px;box-sizing:border-box;background:#141b2c;color:#eef2f9;">'+
       simNaoGrupo('prazo','O produto chegou no prazo combinado?')+
       simNaoGrupo('entregador','O entregador foi educado e cuidadoso?')+
       simNaoGrupo('indicaria','Indicaria a Tom Gás para amigos/vizinhos?')+
-      '<textarea id="pm-comentario" placeholder="Quer nos contar mais alguma coisa? (opcional)" style="width:100%;min-height:70px;padding:10px;border:1px solid #ddd;border-radius:10px;margin-bottom:14px;box-sizing:border-box;"></textarea>'+
+      '<textarea id="pm-comentario" placeholder="Quer nos contar mais alguma coisa? (opcional)" style="width:100%;min-height:70px;padding:10px;border:1px solid #2a2f3a;border-radius:10px;margin-bottom:14px;box-sizing:border-box;background:#141b2c;color:#eef2f9;"></textarea>'+
       campoOpiniao('sugestao','Alguma ideia de sugestão pra gente? (opcional)')+
       campoOpiniao('melhoria','Alguma melhoria que você gostaria de ver? (opcional)')+
       '<button id="pm-enviar" style="width:100%;padding:14px;font-size:15px;font-weight:bold;background:#25D366;color:#fff;border:none;border-radius:10px;" '+(notaEscolhida===null?'disabled':'')+'>Enviar</button>'+
-      '<div id="pm-msg" style="margin-top:12px;text-align:center;font-weight:bold;color:#188038;"></div>';
+      '<div id="pm-msg" style="margin-top:12px;text-align:center;font-weight:bold;color:#4ade80;"></div>';
     wrap.querySelectorAll('[data-nota]').forEach(btn=>btn.onclick=()=>{ notaEscolhida=Number(btn.dataset.nota); render(); });
     wrap.querySelectorAll('[data-extra]').forEach(btn=>btn.onclick=()=>{ extras[btn.dataset.extra]=(btn.dataset.valor==='sim'); render(); });
     wrap.querySelectorAll('[data-opiniao-texto]').forEach(ta=>ta.oninput=()=>{ opinioes[ta.dataset.opiniaoTexto].texto=ta.value; });
@@ -18196,7 +18197,7 @@ async function iniciarPesquisaManualPublica(){
           const { error:err3 } = await supabaseClient.from('app_data').upsert({chave:'pesquisaClientes',valor:pesquisas,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
           if(err3) throw err3;
         }
-        wrap.innerHTML = '<div style="text-align:center;padding:40px 10px;"><div style="font-size:40px;">🙏</div><h3>Muito obrigado!</h3><div style="color:#666;">Sua resposta foi registrada.</div></div>';
+        wrap.innerHTML = '<div style="text-align:center;padding:40px 10px;color:#eef2f9;"><div style="font-size:40px;">🙏</div><h3>Muito obrigado!</h3><div style="color:#93a1b8;">Sua resposta foi registrada.</div></div>';
       }catch(e){ btnEnviar.disabled=false; btnEnviar.textContent='Enviar'; alert('Não foi possível enviar. Tente novamente.'); }
     };
   }
