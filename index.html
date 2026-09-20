@@ -2657,13 +2657,55 @@ function viewEnvioRapido(){
   '<button type="button" class="btn small green" id="btn-gerar-envio-rapido" style="margin-top:10px;">✉️ Gerar links de envio</button>'+
   '<div id="rapido-resultado" style="margin-top:14px;">'+(rapidoResultado||'')+'</div>';
 }
-function tabelaEnvioManual(destinatarios, mensagem){
+function tabelaEnvioManual(destinatarios, mensagem, enviados){
   if(!destinatarios.length) return '<div class="empty">Nenhum cliente com telefone selecionado.</div>';
-  return '<div class="hint" style="margin-bottom:8px;">'+destinatarios.length+' cliente(s) na lista — clique em "abrir whats" um por um, confira o texto e mande.</div>'+
-  '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th></th></tr></thead><tbody>'+destinatarios.map(d=>{
+  enviados = enviados || new Set();
+  return '<div class="hint" style="margin-bottom:8px;">'+destinatarios.length+' cliente(s) na lista — use o botão guiado acima pra ir passando um por um, ou abra individualmente aqui.</div>'+
+  '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Status</th><th></th></tr></thead><tbody>'+destinatarios.map(d=>{
     const msg=aplicarPlaceholdersMensagem(mensagem,{nome:d.nome});
-    return '<tr><td>'+escapeHtmlCampanha(d.nome)+'</td><td>'+escapeHtmlCampanha(d.telefone)+'</td><td><a class="act-link" href="'+linkWhatsAppComTexto(d.telefone,msg)+'" target="_blank" rel="noopener">'+iconWhatsApp('#25D366',13)+' abrir whats</a></td></tr>';
+    const enviado=enviados.has(d.id);
+    return '<tr><td>'+escapeHtmlCampanha(d.nome)+'</td><td>'+escapeHtmlCampanha(d.telefone)+'</td><td>'+(enviado?'<span class="badge status-pago">enviado</span>':'<span class="badge status-receber">pendente</span>')+'</td><td><a class="act-link" href="'+linkWhatsAppComTexto(d.telefone,msg)+'" target="_blank" rel="noopener">'+iconWhatsApp('#25D366',13)+' abrir whats</a></td></tr>';
   }).join('')+'</tbody></table></div>';
+}
+/* ---- Envio guiado sequencial (WhatsApp não deixa mandar em massa sem a API paga — a pessoa
+   sempre precisa apertar "enviar" dentro do WhatsApp pra cada contato, por segurança contra spam.
+   Isso aqui reduz o trabalho ao máximo possível sem API: um botão só, você abre, confere,
+   aperta enviar no WhatsApp, volta e já está pronto o próximo — sem precisar caçar linha por
+   linha numa tabela.) ---- */
+let envioSeqDestinatarios=[], envioSeqMsg='', envioSeqIndex=0, envioSeqEnviados=new Set();
+function painelEnvioSequencialHtml(){
+  const total=envioSeqDestinatarios.length;
+  if(!total) return '';
+  if(envioSeqIndex>=total){
+    return '<div style="border:1px solid var(--border);border-radius:12px;padding:18px;text-align:center;margin-bottom:14px;background:var(--green-tint);">'+
+      '<div style="font-size:28px;">✅</div><div style="font-weight:700;margin-top:4px;">Pronto! Você passou pelos '+total+' contato(s).</div>'+
+      '<div class="hint" style="margin-top:4px;">'+envioSeqEnviados.size+' marcado(s) como enviado.</div></div>';
+  }
+  const d=envioSeqDestinatarios[envioSeqIndex];
+  const msg=aplicarPlaceholdersMensagem(envioSeqMsg,{nome:d.nome});
+  return '<div style="border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;">'+
+    '<div class="hint">Envio guiado — '+(envioSeqIndex+1)+' de '+total+'</div>'+
+    '<div style="font-weight:700;font-size:16px;margin:4px 0;">'+escapeHtmlCampanha(d.nome)+'</div>'+
+    '<div class="hint" style="margin-bottom:12px;">'+escapeHtmlCampanha(d.telefone)+'</div>'+
+    '<a id="btn-seq-abrir" href="'+linkWhatsAppComTexto(d.telefone,msg)+'" target="_blank" rel="noopener" style="display:block;padding:14px;font-size:15px;font-weight:700;text-decoration:none;background:var(--green);color:#fff;border-radius:8px;">'+iconWhatsApp('#fff',15)+' Abrir WhatsApp e mandar pra '+escapeHtmlCampanha((d.nome||'').split(' ')[0])+'</a>'+
+    '<div class="hint" style="margin-top:8px;">Toque, confira o texto no WhatsApp, aperte enviar lá e volte aqui — o próximo já fica pronto.</div>'+
+    '<button type="button" class="link-btn" id="btn-seq-pular" style="margin-top:6px;">pular este e ir pro próximo</button>'+
+  '</div>';
+}
+function renderResultadoRapido(){
+  rapidoResultado = painelEnvioSequencialHtml() + tabelaEnvioManual(envioSeqDestinatarios, envioSeqMsg, envioSeqEnviados);
+  const el=document.getElementById('rapido-resultado');
+  if(el){ el.innerHTML=rapidoResultado; wireResultadoRapido(); }
+}
+function avancarEnvioSequencial(){
+  if(envioSeqIndex<envioSeqDestinatarios.length){ envioSeqEnviados.add(envioSeqDestinatarios[envioSeqIndex].id); envioSeqIndex++; }
+  renderResultadoRapido();
+}
+function wireResultadoRapido(){
+  const btnAbrir=document.getElementById('btn-seq-abrir');
+  if(btnAbrir) btnAbrir.onclick=()=>{ setTimeout(avancarEnvioSequencial, 400); };
+  const btnPular=document.getElementById('btn-seq-pular');
+  if(btnPular) btnPular.onclick=()=>{ envioSeqIndex++; renderResultadoRapido(); };
 }
 async function enviarCampanhaAutomatica(campanha, destinatarios, btn){
   if(!campanha || !destinatarios.length){ alert('Não há destinatários para esta campanha.'); return; }
@@ -13685,9 +13727,10 @@ function attachHandlers(){
     if(!msg){ alert('Escreva a mensagem antes de gerar os links.'); return; }
     if(!rapidoSelecionados.length){ alert('Selecione ao menos um cliente (ou use "Marcar todos").'); return; }
     const destinatarios=state.clientes.filter(c=>rapidoSelecionados.includes(c.id)&&c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
-    rapidoResultado=tabelaEnvioManual(destinatarios,msg);
-    document.getElementById('rapido-resultado').innerHTML=rapidoResultado;
+    envioSeqDestinatarios=destinatarios; envioSeqMsg=msg; envioSeqIndex=0; envioSeqEnviados=new Set();
+    renderResultadoRapido();
   };
+  wireResultadoRapido();
   // ---- Rota do dia ----
   const selPontoPartida = document.getElementById('sel-ponto-partida');
   if(selPontoPartida) selPontoPartida.onchange = async()=>{
