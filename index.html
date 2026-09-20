@@ -1722,9 +1722,17 @@ async function verificarSessaoAposOcioso(){
     }
   }catch(e){ /* silencioso — checagem só de aviso preventivo, não deve travar o uso normal */ }
 }
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') verificarSessaoAposOcioso(); });
-window.addEventListener('focus', verificarSessaoAposOcioso);
-setInterval(()=>{ if(document.visibilityState==='visible') verificarSessaoAposOcioso(); }, 5*60*1000);
+// Esse aviso é só pro painel do dono/administrador, que exige login. As páginas públicas
+// (link de entrega, rastreio, NPS, pesquisa manual, dica) nunca têm sessão — são abertas
+// por clientes/entregadores sem fazer login nenhum — então checar sessão nelas sempre "falha"
+// e dispara um alerta de "sessão caducou" falso e confuso bem na hora que a pessoa tá
+// preenchendo ou enviando algo, podendo até atrapalhar o envio. Por isso só ativa nas
+// páginas do painel.
+if(!window.__ROTA_PUBLICA__){
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') verificarSessaoAposOcioso(); });
+  window.addEventListener('focus', verificarSessaoAposOcioso);
+  setInterval(()=>{ if(document.visibilityState==='visible') verificarSessaoAposOcioso(); }, 5*60*1000);
+}
 const VAPID_PUBLIC_KEY = "BJhtEhjv3z9JMW44Yg3JsfoGYR4lNcINkr1fRzNLxvx-jzxtErj7EwqIavO8LkwIFFETGSg2NGZKTQjWo-xXA1s";
 
 const CANAIS = ['Portaria','WhatsApp','Venda Ativa','Ligação','Hub','Google'];
@@ -2615,6 +2623,20 @@ function listaPublicosHtml(){
 
 /* ---- Envio manual rápido (poucas pessoas ou toda a lista, sem criar campanha) ---- */
 let rapidoSelecionados=[], rapidoResultado=null;
+function rapidoClienteItemHtml(c){
+  const marcado=rapidoSelecionados.includes(c.id);
+  const semWhats=!c.telefone;
+  return '<div class="chk-drawer-item'+(marcado?' done':'')+'" '+(semWhats?'':'data-rapido-cliente-item="'+c.id+'"')+
+    ' data-rapido-nome="'+escapeHtmlCampanha(normalizarBuscaWs(c.nome))+'"'+
+    (semWhats?' style="opacity:.45;cursor:not-allowed;"':'')+'>'+
+    '<span class="chk-dot">'+(marcado?'✓':'')+'</span>'+
+    '<span class="chk-label">'+escapeHtmlCampanha(c.nome)+(semWhats?' (sem whatsapp)':'')+'</span>'+
+  '</div>';
+}
+function rapidoClientesListaHtml(){
+  const lista=(state.clientes||[]).slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+  return lista.length ? lista.map(rapidoClienteItemHtml).join('') : '<div class="empty">Nenhum cliente cadastrado.</div>';
+}
 function viewEnvioRapido(){
   const totalComTel = (state.clientes||[]).filter(c=>c.telefone).length;
   return '<h3>Envio manual rápido</h3><div class="hint">Escreva uma mensagem e mande pra poucos clientes ou pra <strong>toda a sua lista de uma vez</strong> pelo WhatsApp — sem precisar criar campanha. Como ainda não temos a API paga do WhatsApp Business, o envio continua manual: o sistema abre a conversa de cada cliente já com o texto pronto, você só confere e aperta enviar. Emojis funcionam normalmente — digite pelo teclado do celular ou use os atalhos abaixo.</div>'+
@@ -2623,11 +2645,16 @@ function viewEnvioRapido(){
   '<textarea id="rapido-mensagem" rows="4" placeholder="Use {nome} para personalizar. Pode usar emojis 🙂">'+escapeHtmlCampanha(document.getElementById('rapido-mensagem')?.value||'')+'</textarea>'+
   '<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 4px;flex-wrap:wrap;gap:8px;">'+
     '<label style="margin:0;">Clientes</label>'+
-    '<button type="button" class="link-btn" id="btn-selecionar-todos-rapido">☑️ Selecionar toda a lista de clientes ('+totalComTel+' com WhatsApp)</button>'+
+    '<span id="rapido-contador" class="badge gas">'+rapidoSelecionados.length+' selecionado(s)</span>'+
   '</div>'+
-  '<select id="rapido-clientes" multiple size="8">'+clientesSelecionadosOptions(rapidoSelecionados)+'</select>'+
-  '<div class="hint">Ctrl/Cmd para selecionar vários, ou use o botão acima pra marcar todo mundo de uma vez.</div>'+
-  '<button type="button" class="btn small green" id="btn-gerar-envio-rapido">✉️ Gerar links de envio</button>'+
+  '<input type="text" id="rapido-busca-cliente" placeholder="Buscar cliente pelo nome..." autocomplete="off" style="width:100%;box-sizing:border-box;margin-bottom:8px;">'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">'+
+    '<button type="button" class="btn small ghost" id="btn-selecionar-todos-rapido">☑️ Marcar todos ('+totalComTel+' com whats)</button>'+
+    '<button type="button" class="btn small ghost" id="btn-limpar-selecao-rapido">✖️ Desmarcar todos</button>'+
+  '</div>'+
+  '<div id="rapido-clientes-lista" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:9px;padding:4px;">'+rapidoClientesListaHtml()+'</div>'+
+  '<div class="hint">Toque num cliente pra marcar/desmarcar. Marque só 1 ou 2 pra testar antes de mandar pra todo mundo.</div>'+
+  '<button type="button" class="btn small green" id="btn-gerar-envio-rapido" style="margin-top:10px;">✉️ Gerar links de envio</button>'+
   '<div id="rapido-resultado" style="margin-top:14px;">'+(rapidoResultado||'')+'</div>';
 }
 function tabelaEnvioManual(destinatarios, mensagem){
@@ -13616,23 +13643,48 @@ function attachHandlers(){
   // ---- Envio manual rápido ----
   document.querySelectorAll('#rapido-emojis [data-emoji]').forEach(btn=>btn.onclick=()=>{
     const ta=document.getElementById('rapido-mensagem'); if(!ta) return;
-    const inicio=ta.selectionStart??ta.value.length, fim=ta.selectionEnd??ta.value.length;
+    const inicio=ta.selectionStart||ta.value.length, fim=ta.selectionEnd||ta.value.length;
     ta.value = ta.value.slice(0,inicio)+btn.dataset.emoji+ta.value.slice(fim);
     ta.focus(); const pos=inicio+btn.dataset.emoji.length; ta.selectionStart=ta.selectionEnd=pos;
   });
+  function atualizarContadorRapido(){
+    const el=document.getElementById('rapido-contador'); if(el) el.textContent=rapidoSelecionados.length+' selecionado(s)';
+  }
+  document.querySelectorAll('#rapido-clientes-lista [data-rapido-cliente-item]').forEach(item=>{
+    item.onclick=()=>{
+      const id=item.dataset.rapidoClienteItem;
+      const idx=rapidoSelecionados.indexOf(id);
+      if(idx>=0){ rapidoSelecionados.splice(idx,1); item.classList.remove('done'); item.querySelector('.chk-dot').textContent=''; }
+      else { rapidoSelecionados.push(id); item.classList.add('done'); item.querySelector('.chk-dot').textContent='✓'; }
+      atualizarContadorRapido();
+    };
+  });
   const btnTodosRapido=document.getElementById('btn-selecionar-todos-rapido');
   if(btnTodosRapido) btnTodosRapido.onclick=()=>{
-    const sel=document.getElementById('rapido-clientes'); if(!sel) return;
-    [...sel.options].forEach(o=>{ o.selected=true; });
+    rapidoSelecionados=(state.clientes||[]).filter(c=>c.telefone).map(c=>c.id);
+    document.querySelectorAll('#rapido-clientes-lista [data-rapido-cliente-item]').forEach(item=>{ item.classList.add('done'); item.querySelector('.chk-dot').textContent='✓'; });
+    atualizarContadorRapido();
+  };
+  const btnLimparRapido=document.getElementById('btn-limpar-selecao-rapido');
+  if(btnLimparRapido) btnLimparRapido.onclick=()=>{
+    rapidoSelecionados=[];
+    document.querySelectorAll('#rapido-clientes-lista [data-rapido-cliente-item]').forEach(item=>{ item.classList.remove('done'); item.querySelector('.chk-dot').textContent=''; });
+    atualizarContadorRapido();
+  };
+  const buscaRapido=document.getElementById('rapido-busca-cliente');
+  if(buscaRapido) buscaRapido.oninput=()=>{
+    const termo=normalizarBuscaWs(buscaRapido.value.trim());
+    document.querySelectorAll('#rapido-clientes-lista > div').forEach(item=>{
+      const nome=item.dataset.rapidoNome||'';
+      item.style.display = (!termo || nome.includes(termo)) ? '' : 'none';
+    });
   };
   const btnGerarRapido=document.getElementById('btn-gerar-envio-rapido');
   if(btnGerarRapido) btnGerarRapido.onclick=()=>{
     const msg=document.getElementById('rapido-mensagem').value.trim();
-    const sel=[...document.getElementById('rapido-clientes').querySelectorAll('option:checked')].map(o=>o.value);
-    rapidoSelecionados=sel;
     if(!msg){ alert('Escreva a mensagem antes de gerar os links.'); return; }
-    if(!sel.length){ alert('Selecione ao menos um cliente (ou use "Selecionar toda a lista de clientes").'); return; }
-    const destinatarios=state.clientes.filter(c=>sel.includes(c.id)&&c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
+    if(!rapidoSelecionados.length){ alert('Selecione ao menos um cliente (ou use "Marcar todos").'); return; }
+    const destinatarios=state.clientes.filter(c=>rapidoSelecionados.includes(c.id)&&c.telefone).map(c=>({id:c.id,nome:c.nome,telefone:c.telefone}));
     rapidoResultado=tabelaEnvioManual(destinatarios,msg);
     document.getElementById('rapido-resultado').innerHTML=rapidoResultado;
   };
@@ -17577,7 +17629,17 @@ function initAgenda(){
 }
 
 /* ---------- INIT ---------- */
+// Aplica na aba o mesmo favicon configurado no painel (Configurações → Ícone da aba) também
+// nos links públicos (entrega, pesquisa, treinamentos) — não trava a página se falhar.
+async function aplicarFaviconPaginaPublica(){
+  try{
+    const { data } = await supabaseClient.from('app_data').select('valor').eq('chave','faviconUrl').maybeSingle();
+    const url = data && data.valor;
+    if(url){ const link = document.getElementById('favicon-link'); if(link) link.href = url; }
+  }catch(e){ /* segue sem favicon customizado */ }
+}
 async function iniciarConfirmacaoEntregaPublica(tipo, id){
+  aplicarFaviconPaginaPublica();
   document.body.innerHTML = '<div id="conf-entrega" style="max-width:520px;margin:0 auto;padding:18px;font-family:Arial,sans-serif;background:#0b1220;color:#eef2f9;min-height:100vh;box-sizing:border-box;">Carregando entrega...</div>';
   const wrap = document.getElementById('conf-entrega');
   let registros, clientes, anexos, imagensStatus, temposEntrega, pendencias, acertos, entregadoresLista;
@@ -17670,7 +17732,7 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
     }
     let mensagem = '';
     if(tipoAviso==='saiu') mensagem = 'Oi, '+primeiroNomeCliente+'! -> Seu pedido já saiu para entrega e está a caminho. Qualquer coisa é só chamar aqui!';
-    else if(tipoAviso==='chegou') mensagem = 'Chegamos aí, '+primeiroNomeCliente+'! Estamos na sua porta.';
+    else if(tipoAviso==='chegou') mensagem = 'Chegamos aí, '+primeiroNomeCliente+'! Estamos aqui no local de entrega.';
     else if(tipoAviso==='concluido'){
       const linkNps = location.origin+location.pathname+'?nps='+(entrega.anexoContexto.agendamentoId?('ag:'+entrega.anexoContexto.agendamentoId):('v:'+entrega.anexoContexto.vendaGrupoId));
       mensagem = 'Prontinho, '+primeiroNomeCliente+'! Sua entrega foi concluída — muito obrigado por comprar com a Tom Gás!\n\nDe 0 a 10, o quanto você indicaria a gente pra um amigo? Responde rapidinho aqui, leva 5 segundos:\n-> '+linkNps+'\n\nSe puder, deixa aquela avaliação rapidinha pra gente lá no Google também, ajuda muito o nosso trabalho! *****\n-> '+LINK_AVALIACAO_GOOGLE+'\n\nE de quebra, segue a gente lá no Instagram!\n-> '+LINK_INSTAGRAM;
@@ -17931,6 +17993,7 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
 }
 
 async function iniciarDicaPublica(id){
+  aplicarFaviconPaginaPublica();
   document.body.innerHTML = '<div id="dica-publica" style="max-width:560px;margin:0 auto;padding:20px;font-family:Arial,sans-serif;background:#0B1220;color:#E7ECF7;min-height:100vh;box-sizing:border-box;">Carregando...</div>';
   const wrap = document.getElementById('dica-publica');
   try{
@@ -18034,6 +18097,7 @@ async function iniciarRastreioPublico(entregadorId){
   render('');
 }
 async function iniciarNPSPublico(tipo, id){
+  aplicarFaviconPaginaPublica();
   const wrap = document.createElement('div');
   wrap.style.cssText = 'max-width:480px;margin:40px auto;padding:24px;font-family:system-ui,sans-serif;';
   document.body.innerHTML=''; document.body.appendChild(wrap);
@@ -18120,6 +18184,7 @@ async function iniciarNPSPublico(tipo, id){
   render();
 }
 async function iniciarPesquisaManualPublica(){
+  aplicarFaviconPaginaPublica();
   const wrap = document.createElement('div');
   wrap.style.cssText = 'max-width:480px;margin:0 auto;padding:24px;font-family:system-ui,sans-serif;min-height:100vh;box-sizing:border-box;background:#0b1220;color:#eef2f9;';
   document.body.innerHTML=''; document.body.style.background='#0b1220'; document.body.appendChild(wrap);
