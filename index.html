@@ -2,6 +2,64 @@
 <html lang="pt-BR">
 <head>
 <script>
+// FORÇA ATUALIZAÇÃO: roda antes de qualquer outra coisa. Compara a versão instalada
+// neste aparelho (guardada no localStorage) com a versão desta página. Se forem
+// diferentes (aparelho com versão antiga em cache, PC que nunca atualizou etc.), apaga
+// o Service Worker e todos os caches do site e recarrega a página com um parâmetro novo
+// na URL — isso obriga o navegador a buscar o arquivo de novo no servidor em vez de usar
+// uma cópia antiga guardada. Roda de novo em toda visita; só força o recarregamento
+// quando a versão realmente mudou, então não fica recarregando à toa.
+(function(){
+  try{
+    var VERSAO_ATUAL = "1.0_22_09_2026";
+    var CHAVE_VERSAO = 'tomgas_versao_instalada';
+    var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
+    var versaoSalva = null;
+    try{ versaoSalva = localStorage.getItem(CHAVE_VERSAO); }catch(e){}
+    if(versaoSalva === VERSAO_ATUAL) return;
+    var jaTentouNestaSessao = false;
+    try{ jaTentouNestaSessao = sessionStorage.getItem(CHAVE_TENTOU) === '1'; }catch(e){}
+    if(jaTentouNestaSessao){
+      // Já tentou recarregar nesta sessão e a versão continua diferente (pode ser que o
+      // servidor ainda não tenha publicado a atualização) — não insiste pra não travar o
+      // uso do sistema; só grava a versão salva pra não ficar tentando pra sempre.
+      try{ localStorage.setItem(CHAVE_VERSAO, VERSAO_ATUAL); }catch(e){}
+      return;
+    }
+    try{ sessionStorage.setItem(CHAVE_TENTOU, '1'); }catch(e){}
+    var jaRecarregou = false;
+    function recarregar(){
+      if(jaRecarregou) return; jaRecarregou = true;
+      try{ localStorage.setItem(CHAVE_VERSAO, VERSAO_ATUAL); }catch(e){}
+      try{
+        var url = new URL(location.href);
+        url.searchParams.set('_v', VERSAO_ATUAL.replace(/[^0-9a-zA-Z]/g,''));
+        url.searchParams.set('_t', Date.now().toString());
+        location.replace(url.toString());
+      }catch(e){ location.reload(); }
+    }
+    var limpezas = [];
+    try{
+      if('serviceWorker' in navigator){
+        limpezas.push(navigator.serviceWorker.getRegistrations().then(function(regs){
+          return Promise.all(regs.map(function(r){ return r.unregister(); }));
+        }));
+      }
+    }catch(e){}
+    try{
+      if('caches' in window){
+        limpezas.push(caches.keys().then(function(nomes){
+          return Promise.all(nomes.map(function(n){ return caches.delete(n); }));
+        }));
+      }
+    }catch(e){}
+    Promise.all(limpezas).then(recarregar).catch(recarregar);
+    // trava de segurança: se a limpeza travar por algum motivo, recarrega mesmo assim.
+    setTimeout(recarregar, 2500);
+  }catch(e){ try{ console.error('Erro na checagem de versão', e); }catch(e2){} }
+})();
+</script>
+<script>
 // Detecta cedo se essa é uma página PÚBLICA (link mandado pro entregador/cliente:
 // passo a passo da entrega, rastreio, NPS, pesquisa, dica). Essas páginas não usam
 // Excel/PDF/gráfico/calendário — só o painel do dono usa. Por isso não baixamos essas
@@ -21,6 +79,9 @@ if(!window.__ROTA_PUBLICA__){
 }
 </script>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sistema Tom Gás</title>
 <link rel="icon" id="favicon-link" href="data:,">
@@ -760,7 +821,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_20_09_2026";
+const APP_BUILD_HORARIO = "1.0_22_09_2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1091,40 +1152,40 @@ function initConferenciaBadge(){let b=document.getElementById('conferencia-badge
 // Lista única de todos os relatórios (usada tanto pela tela de Relatórios quanto pela busca do sistema).
 // Assim, todo relatório novo que for criado aqui já aparece automaticamente na busca, sem precisar cadastrar em dois lugares.
 const RELATORIOS_SUBTABS = [
-  {id:'vendas', label:'Vendas por período'},
-  {id:'meta', label:'Meta de Cargas P13'},
-  {id:'gestaocanal', label:'Gestão à Vista — Canal'},
-  {id:'gestaoentregador', label:'Gestão à Vista — Entregador'},
-  {id:'remuneracao', label:'Remuneração Variável'},
-  {id:'resumodia', label:'Resumo do Dia'},
-  {id:'ranking', label:'Ranking de Clientes'},
-  {id:'abc', label:'Curva ABC de Clientes'},
-  {id:'indicacoes', label:'Programa de Indicação'},
-  {id:'kpis', label:'Indicadores (KPIs)'},
-  {id:'pesquisa', label:'Pesquisa de Clientes'},
-  {id:'pesquisasmanuais', label:'Pesquisas Manuais'},
-  {id:'novosclientes', label:'Novos Clientes'},
-  {id:'painelacao', label:'Painel de Ação'},
-  {id:'esg', label:'Controle ESG'},
-  {id:'compararcampanhas', label:'Comparar Campanhas'},
-  {id:'itens', label:'Itens por categoria'},
-  {id:'porvasilhame', label:'Vendas por Vasilhame (conferência)'},
-  {id:'cruzamento', label:'Gasto x Venda (Cruzamento)'},
-  {id:'entregas', label:'Entregas por período'},
-  {id:'fretes', label:'Fretes por período'},
-  {id:'combustivelfrete', label:'Combustível x Frete'},
-  {id:'despesas', label:'Despesas por período'},
-  {id:'diastrabalho', label:'Dias de trabalho p/ pagar contas'},
-  {id:'custosfixosvar', label:'Saúde da empresa / Ponto de equilíbrio'},
-  {id:'veiculos', label:'Veículos'},
-  {id:'fiado', label:'Fiado / A receber'},
-  {id:'creditos', label:'Créditos em haver'},
-  {id:'comodatos', label:'Comodatos / Empréstimos'},
-  {id:'patrimonio', label:'Patrimônio real'},
-  {id:'notas', label:'Notas para o Bling'},
-  {id:'empresas', label:'Empresas conveniadas'},
-  {id:'reajuste', label:'Simulador de Reajuste'},
-  {id:'analises', label:'Análises e Gráficos'},
+  {id:'vendas', label:'🛒 Vendas por período'},
+  {id:'meta', label:'🎯 Meta de Cargas P13'},
+  {id:'gestaocanal', label:'📊 Gestão à Vista — Canal'},
+  {id:'gestaoentregador', label:'🛵 Gestão à Vista — Entregador'},
+  {id:'remuneracao', label:'💰 Remuneração Variável'},
+  {id:'resumodia', label:'📅 Resumo do Dia'},
+  {id:'ranking', label:'🏆 Ranking de Clientes'},
+  {id:'abc', label:'📈 Curva ABC de Clientes'},
+  {id:'indicacoes', label:'🤝 Programa de Indicação'},
+  {id:'kpis', label:'📌 Indicadores (KPIs)'},
+  {id:'pesquisa', label:'💬 Pesquisa de Clientes'},
+  {id:'pesquisasmanuais', label:'🔗 Pesquisas Manuais'},
+  {id:'novosclientes', label:'🆕 Novos Clientes'},
+  {id:'painelacao', label:'🚨 Painel de Ação'},
+  {id:'esg', label:'🌱 Controle ESG'},
+  {id:'compararcampanhas', label:'⚖️ Comparar Campanhas'},
+  {id:'itens', label:'📦 Itens por categoria'},
+  {id:'porvasilhame', label:'🛢️ Vendas por Vasilhame (conferência)'},
+  {id:'cruzamento', label:'🔀 Gasto x Venda (Cruzamento)'},
+  {id:'entregas', label:'🚚 Entregas por período'},
+  {id:'fretes', label:'🧾 Fretes por período'},
+  {id:'combustivelfrete', label:'⛽ Combustível x Frete'},
+  {id:'despesas', label:'💸 Despesas por período'},
+  {id:'diastrabalho', label:'📆 Dias de trabalho p/ pagar contas'},
+  {id:'custosfixosvar', label:'🩺 Saúde da empresa / Ponto de equilíbrio'},
+  {id:'veiculos', label:'🚗 Veículos'},
+  {id:'fiado', label:'📒 Fiado / A receber'},
+  {id:'creditos', label:'💳 Créditos em haver'},
+  {id:'comodatos', label:'🔁 Comodatos / Empréstimos'},
+  {id:'patrimonio', label:'🏠 Patrimônio real'},
+  {id:'notas', label:'📤 Notas para o Bling'},
+  {id:'empresas', label:'🏢 Empresas conveniadas'},
+  {id:'reajuste', label:'🏷️ Simulador de Reajuste'},
+  {id:'analises', label:'📉 Análises e Gráficos'},
 ];
 // Sinônimos extras por relatório, só pra melhorar a busca (não precisa existir um item pra cada relatório aqui).
 const RELATORIOS_KW_EXTRA = {
