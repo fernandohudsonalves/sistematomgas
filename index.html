@@ -1975,6 +1975,15 @@ function iconeVeiculoHtml(v, tamanho){
   return '<img src="data:image/png;base64,'+b64+'" width="'+larguraBase+'" style="vertical-align:middle;" alt="'+tipo+'">';
 }
 function iconeVeiculo(id){ const v=(state.veiculos||[]).find(x=>x.id===id); return v ? (iconeVeiculoHtml(v)+' '+v.nome) : ''; }
+// Atualiza qual botão do picker de veículo (lançamento manual de despesa) aparece marcado como
+// ativo, lendo o valor atual do campo escondido "veiculoId". Chamada tanto no clique de um botão
+// quanto ao preencher o formulário pra editar uma despesa já existente.
+function sincronizarPickerVeiculoDespesa(){
+  const inputEl = document.getElementById('input-veiculo-despesa-id');
+  const picker = document.getElementById('picker-veiculo-despesa');
+  if(!inputEl || !picker) return;
+  picker.querySelectorAll('[data-veiculo-op]').forEach(b=>b.classList.toggle('active', b.dataset.veiculoOp===(inputEl.value||'')));
+}
 function categoriasVeiculoDisponiveis(){ return state.categoriasDespesas.filter(cat=> categoriaParaceVeiculo(cat) || (state.categoriasVeiculoExtra||[]).includes(cat)); }
 
 const PESO_GAS_KG = {P5:5, P13:13, P20:20, P45:45};
@@ -2067,6 +2076,7 @@ let currentTab = 'dashboard';
 let relatorioSub = 'vendas';
 let estoqueSub = 'fisico';
 let resumoDiaData = null;
+let conferenciaLancamentosDia = null;
 let kpiMesSelecionado = null;
 let metaRelMesSelecionado = null;
 let gestaoCanalMesSelecionado = null;
@@ -2100,6 +2110,7 @@ function parseValorBR(str){
 }
 let despesaManualAberta = false;
 let vendaManualAberta = false;
+let conferenciaLancamentosAberta = true;
 let veiculoSelecionado = null, editManutencaoId = null, comprovantesSelecionadosVeiculo = [], comissaoMesSelecionado = null;
 let editKmId = null;
 let simuladorReajusteDe = null, simuladorReajusteAte = null, simuladorReajusteCategoria = null, simuladorReajusteValor = null;
@@ -2213,6 +2224,11 @@ function fmtDate(d){ const p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 // data errada (um dia à frente), o que gerava diferença entre "Vendas do dia" e os relatórios por
 // período quando alguém filtrava pelo dia certo depois.
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// Converte um timestamp (criadoEm) pra data local (aaaa-mm-dd), do mesmo jeito que todayStr() —
+// usado pra achar em que dia uma venda foi REALMENTE lançada no sistema, que pode ser diferente
+// da data da venda em si (venda retroativa, importação de planilha lançando vendas de dias
+// anteriores etc.). Nunca usa toISOString() aqui de propósito (isso é UTC, não horário local).
+function dataLocalDeTimestamp(ts){ const d=new Date(ts); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 // Corrige a data gravada errada por causa do bug (já corrigido) do fuso horário em todayStr() —
 // calculava em UTC, então perto das 21h-23h59 no horário de Brasília o sistema achava que já era
 // "o dia seguinte" e carimbava vendas/despesas/fiados/créditos lançados nesse horário com a data
@@ -6480,7 +6496,7 @@ async function salvarPlanilhaVendas(){
         id, criadoEm: Date.now(), grupoId, fiado_pago:false, frete: l.frete, entrega_status:'', estoqueBaixado:false, retirado:false, retiradoForma:'', retiradoEm:null,
         data: l.data, cliente: clienteResolvido, canal: l.canal, pagamento: l.pagamento, tipo_entrega: l.entrega||'Retirada', cupom: l.cupom, empresa: l.empresa, entrega_data:'', entrega_hora:'', obs: l.obs,
         categoria: l.categoria, produto, quantidade: l.qtd, valor_unit: l.valorUnit, valor_total: Math.round(l.qtd*l.valorUnit*100)/100, nota: l.nota,
-        vale_pendente: (l.pagamento==='Gás do povo' && l.valePendente), entregadorId: l.entregadorId||''
+        vale_pendente: (l.pagamento==='Gás do povo' && l.valePendente), entregadorId: l.entregadorId||'', origemLancamento:'planilha-manual'
       };
       // Venda retroativa marcada como "não baixar estoque": o estoque já tinha sido descontado antes
       // (lançamento original com data errada) — não desconta de novo, só registra a venda certinha.
@@ -6727,6 +6743,7 @@ function viewVendas(){
     (freteHoje>0 ? '<div class="hint">Esse total já é só o produto — o valor dos fretes (<strong>'+fmtMoney(freteHoje)+'</strong>) não entra aqui, fica separado.</div>' : '')+
     ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje, {compacta:true})+'</div></div>'+
+    relatorioConferenciaLancamentosHtml()+
     '<div class="card"><h2>Histórico de vendas</h2>'+
     '<div class="filtro-vendas-row">'+
     '<div class="filtro-vendas-busca"><label style="font-size:12px;font-weight:600;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por produto, categoria, cliente, empresa, canal, pagamento, entrega, nota, cupom, data, valor..."></div>'+
@@ -6915,6 +6932,62 @@ function vendasTable(list, opts){
         '<button class="del-link" title="Excluir" data-del-venda="'+v.id+'">🗑</button></td></tr>';
     }).join('')+'</tbody></table></div>';
 }
+/* Todas as vendas que o sistema efetivamente GRAVOU (criadoEm) num certo dia — não confundir com
+   "vendas do dia" (filtro por v.data), que é a data DA venda e pode ser retroativa. Isso serve pra
+   conferência: pega tudo que entrou no sistema naquele dia, não importa de onde (lançamento manual,
+   planilha em grade dentro do sistema, importação de Excel, ou gerado automaticamente ao
+   registrar/concluir uma entrega), pra bater um por um se algum valor saiu errado. */
+function vendasLancadasNoDia(data){
+  return (state.vendas||[]).filter(v=>v.criadoEm && dataLocalDeTimestamp(v.criadoEm)===data).sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
+}
+function origemLancamentoLabel(v){
+  const o = v.origemLancamento;
+  if(o==='excel') return '📥 Importação de planilha';
+  if(o==='agendamento') return '🚚 Entrega/agendamento';
+  if(o==='planilha-manual') return '🧮 Planilha em grade';
+  if(o==='manual') return '✍️ Manual';
+  // Vendas lançadas antes dessa marcação existir no sistema não têm origemLancamento — tenta
+  // adivinhar pela observação (nem sempre confiável, por isso o "(estimado)").
+  if((v.obs||'').indexOf('Importado de planilha')!==-1) return '📥 Importação de planilha (estimado)';
+  if((v.obs||'').indexOf('Gerada automaticamente')!==-1) return '🚚 Entrega/agendamento (estimado)';
+  return '❓ Não identificada';
+}
+function conferenciaLancamentosTabela(lista){
+  if(lista.length===0) return '<div class="empty">Nenhum lançamento registrado nesse dia.</div>';
+  return '<div class="table-wrap"><table><thead><tr><th>Lançado às</th><th>Data da venda</th><th>Produto</th><th>Cliente</th><th>Qtd</th><th>Valor unit.</th><th>Valor</th><th>Frete</th><th>Pagto</th><th>Origem</th><th>Observação</th><th></th></tr></thead><tbody>'+
+    lista.map(v=>{
+      const suspeita = (Number(v.valor_unit)||0)<=0 || (Number(v.valor_total)||0)<=0 || (Number(v.quantidade)||0)<=0;
+      const horaLanc = v.criadoEm ? new Date(v.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+      return '<tr'+(suspeita?' style="background:var(--danger-tint);"':'')+'>'+
+        '<td>'+horaLanc+'</td><td>'+fmtDate(v.data)+'</td><td>'+(v.produto||v.categoria||'—')+'</td><td>'+(v.cliente||'—')+'</td>'+
+        '<td style="text-align:center;">'+v.quantidade+'</td><td style="text-align:right;">'+fmtMoney(v.valor_unit)+'</td><td style="text-align:right;">'+fmtMoney(v.valor_total)+'</td>'+
+        '<td style="text-align:right;">'+(v.frete?fmtMoney(v.frete):'—')+'</td><td>'+(v.pagamento||'—')+'</td><td>'+origemLancamentoLabel(v)+'</td>'+
+        '<td title="'+escapeHtmlCampanha(v.obs||'')+'">'+(v.obs||'—')+(suspeita?' <strong style="color:var(--danger);">⚠ confira</strong>':'')+'</td>'+
+        '<td class="cel-acoes"><button class="act-link" title="Editar" data-edit-venda="'+v.id+'">✎</button></td>'+
+        '</tr>';
+    }).join('')+'</tbody></table></div>';
+}
+function relatorioConferenciaLancamentosHtml(){
+  const data = conferenciaLancamentosDia || todayStr();
+  const lista = vendasLancadasNoDia(data);
+  const totalProdutos = lista.reduce((s,v)=>s+(v.valor_total||0),0);
+  const totalFrete = lista.reduce((s,v)=>s+(v.frete||0),0);
+  const totalGeral = totalProdutos+totalFrete;
+  const porOrigem = {};
+  lista.forEach(v=>{ const l=origemLancamentoLabel(v); porOrigem[l]=(porOrigem[l]||0)+1; });
+  const resumoOrigem = Object.entries(porOrigem).map(([l,n])=>l+': '+n).join(' · ') || '—';
+  const suspeitas = lista.filter(v=>(Number(v.valor_unit)||0)<=0 || (Number(v.valor_total)||0)<=0 || (Number(v.quantidade)||0)<=0);
+  const avisoSuspeitas = suspeitas.length===0 ? '' :
+    '<div class="hint" style="margin-top:8px;color:var(--danger);font-weight:700;">⚠ '+suspeitas.length+' lançamento(s) com quantidade, valor unitário ou valor total zerado/negativo — já destacado(s) em vermelho na tabela abaixo.</div>';
+  return '<div class="card"><details id="details-conf-lancamentos"'+(conferenciaLancamentosAberta?' open':'')+'><summary><strong>🔍 Conferência de lançamentos do dia</strong></summary>'+
+    '<div class="hint" style="margin-top:8px;">Mostra TODAS as vendas que o sistema gravou (lançou) no dia escolhido — não importa a data da venda em si nem de onde veio (lançamento manual, planilha em grade, importação de Excel, ou gerada ao registrar/concluir uma entrega). Use pra conferir, um por um, se não entrou nada com valor errado.</div>'+
+    '<div style="margin-top:10px;"><label style="font-size:12px;font-weight:600;">Dia do lançamento</label><input type="date" id="conf-lanc-data" value="'+data+'" style="max-width:200px;display:block;"></div>'+
+    '<div style="margin-top:10px;">'+lista.length+' lançamento(s) — total produtos: <strong>'+fmtMoney(totalProdutos)+'</strong>'+(totalFrete>0?' + frete: <strong>'+fmtMoney(totalFrete)+'</strong> = <strong>'+fmtMoney(totalGeral)+'</strong>':'')+'</div>'+
+    '<div class="hint" style="margin-top:4px;">Por origem: '+resumoOrigem+'</div>'+
+    avisoSuspeitas+
+    '<div id="conf-lanc-tabela-wrap" style="margin-top:10px;">'+conferenciaLancamentosTabela(lista)+'</div>'+
+    '</details></div>';
+}
 
 /* Cada linha colada vira uma despesa: acha o valor (número no fim da linha), o resto é a
    descrição, e tenta adivinhar a categoria procurando o nome dela dentro da descrição — se não
@@ -7056,7 +7129,12 @@ function viewDespesas(){
     '<input type="text" id="nova-cat-despesa-input" placeholder="Nome da nova categoria">'+
     '<button type="button" class="btn small ghost" id="btn-add-cat-despesa">Adicionar</button></div></div>'+
     '<label>Descrição (opcional)</label><input type="text" name="descricao" placeholder="Ex: compra de vasilhames novos">'+
-    '<div id="wrap-veiculo-despesa" style="display:none;"><label>Qual veículo é essa despesa?</label><select name="veiculoId"><option value="">Não é de veículo</option>'+state.veiculos.map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></div>'+
+    '<div id="wrap-veiculo-despesa" style="display:none;"><label>Qual veículo é essa despesa?</label>'+
+    '<input type="hidden" name="veiculoId" id="input-veiculo-despesa-id" value="">'+
+    '<div class="subtabs" id="picker-veiculo-despesa">'+
+    '<button type="button" class="active" data-veiculo-op="">Não é de veículo</button>'+
+    state.veiculos.map(v=>'<button type="button" data-veiculo-op="'+v.id+'" style="display:inline-flex;align-items:center;gap:6px;">'+iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)+'</button>').join('')+
+    '</div></div>'+
     '<button type="submit" class="btn">'+(importTextoDespesasWizard && importTextoDespesasWizard.indice<importTextoDespesasWizard.blocos.length ? 'Confirmar despesa e ir pra próxima ('+(importTextoDespesasWizard.indice+1)+'/'+importTextoDespesasWizard.blocos.length+')' : 'Registrar despesa')+'</button></form></details></div>'+
     '<div class="card"><h2>Despesas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('despesas','Registre aqui os gastos do dia (compras, contas, manutenção). Assim como as vendas, a maior parte pode vir automaticamente pela importação da planilha Excel.')+
     '<div id="lista-despesas-hoje-wrap">'+despesasTable(despesasHoje)+'</div></div>'+
@@ -11391,6 +11469,10 @@ function attachHandlers(){
   const fv = document.getElementById('form-venda');
   const detalhesVendaManual = document.getElementById('details-venda-manual');
   if(detalhesVendaManual) detalhesVendaManual.ontoggle = ()=>{ vendaManualAberta = detalhesVendaManual.open; };
+  const detalhesConfLancamentos = document.getElementById('details-conf-lancamentos');
+  if(detalhesConfLancamentos) detalhesConfLancamentos.ontoggle = ()=>{ conferenciaLancamentosAberta = detalhesConfLancamentos.open; };
+  const inputConfLancData = document.getElementById('conf-lanc-data');
+  if(inputConfLancData) inputConfLancData.onchange = ()=>{ conferenciaLancamentosDia = inputConfLancData.value; renderAll(); };
   const chkCascoPend = document.getElementById('chk-casco-pendente');
   if(chkCascoPend) chkCascoPend.onchange = montarCascoPendenteItens;
   const chkRetiradaParcial = document.getElementById('chk-retirada-parcial');
@@ -11540,7 +11622,7 @@ function attachHandlers(){
             data:v.data, cliente:v.cliente, canal:canalExtra, pagamento:pagamentoExtra, tipo_entrega:v.tipo_entrega, cupom:v.cupom,
             empresa:v.empresa, entrega_data:v.entrega_data, entrega_hora:v.entrega_hora, obs:v.obs,
             categoria:catExtra, produto:prodExtra, quantidade:qtdExtra, valor_unit:vUnitExtra, valor_total: Math.round(qtdExtra*vUnitExtra*100)/100, nota: notaExtra,
-            naoBaixaEstoqueRetroativa: naoBaixarEditSubmit
+            naoBaixaEstoqueRetroativa: naoBaixarEditSubmit, origemLancamento:'manual'
           };
           state.vendas.push(novoItemDaVenda);
           if(!pendenteRetiradaEdit) ajustaEstoquePorVenda(catExtra, qtdExtra, false);
@@ -11612,7 +11694,7 @@ function attachHandlers(){
       const naoBaixarEstoqueNova = !!(chkNaoBaixarNovaVenda && chkNaoBaixarNovaVenda.checked);
       itens.forEach((item,idx)=>{
         const pendenteEsteItem = pendenteRetiradaNova || item.__faltaRetirarParcial || naoBaixarEstoqueNova;
-        const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':'', estoqueBaixado: !pendenteEsteItem, retirado:false, retiradoForma:'', retiradoEm:null}, camposComuns, item);
+        const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':'', estoqueBaixado: !pendenteEsteItem, retirado:false, retiradoForma:'', retiradoEm:null, origemLancamento:'manual'}, camposComuns, item);
         if(item.__faltaRetirarParcial){
           venda.tipo_entrega = 'Falta retirar';
           venda.vasilhameVazioPendenteDeixado = item.__vasilhameVazioDeixado;
@@ -11794,7 +11876,7 @@ function attachHandlers(){
       frete: 0, entrega_data:'', entrega_hora:'', entrega_status:'',
       obs: (f.get('obs')||'').trim() || 'Falta retirar — gás já vendido/recebido, ainda não retirado/entregue',
       estoqueBaixado: false, retirado:false, retiradoForma:'', retiradoEm:null,
-      vendaAnterior: true, vasilhameVazioPendenteDeixado: !!f.get('vasilhame_vazio_deixado')
+      vendaAnterior: true, vasilhameVazioPendenteDeixado: !!f.get('vasilhame_vazio_deixado'), origemLancamento:'manual'
     };
     const _vendasAntesFaltaRetirar = JSON.parse(JSON.stringify(state.vendas));
     state.vendas.push(venda);
@@ -12002,6 +12084,20 @@ function attachHandlers(){
     const wrapVeicDesp = document.getElementById('wrap-veiculo-despesa');
     const toggleVeicDesp = ()=>{ if(wrapVeicDesp) wrapVeicDesp.style.display = categoriaParaceVeiculo(selCatDesp.value) ? 'block' : 'none'; };
     if(selCatDesp){ selCatDesp.onchange = toggleVeicDesp; toggleVeicDesp(); }
+    // Picker de veículo com os ícones de verdade (mesmo desenho/cor do painel principal) em vez
+    // de um <select> nativo — <option> não consegue mostrar imagem, só texto, então as duas motos
+    // apareciam com o mesmo emoji genérico e pareciam "aleatórias". Clicar num botão marca ele
+    // como ativo e guarda o id no campo escondido "veiculoId" (é esse campo que o submit lê).
+    const inputVeicDespId = document.getElementById('input-veiculo-despesa-id');
+    const pickerVeicDesp = document.getElementById('picker-veiculo-despesa');
+    if(pickerVeicDesp && inputVeicDespId){
+      pickerVeicDesp.querySelectorAll('[data-veiculo-op]').forEach(btn=>{
+        btn.onclick = ()=>{
+          inputVeicDespId.value = btn.dataset.veiculoOp;
+          sincronizarPickerVeiculoDespesa();
+        };
+      });
+    }
   }
   if(fd) fd.onsubmit = async(e)=>{
     e.preventDefault();
@@ -12604,6 +12700,7 @@ function attachHandlers(){
       const wrapVeicEdit = document.getElementById('wrap-veiculo-despesa');
       if(wrapVeicEdit) wrapVeicEdit.style.display = categoriaParaceVeiculo(d.categoria) ? 'block' : 'none';
       if(fdEl.veiculoId) fdEl.veiculoId.value = d.veiculoId || '';
+      sincronizarPickerVeiculoDespesa();
       if(fdEl.conta) fdEl.conta.value = d.conta || '';
       fdEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       fdEl.scrollIntoView({behavior:'smooth'});
@@ -14616,7 +14713,7 @@ function attachHandlers(){
         tipo_entrega: f.get('tipo_entrega'), cupom:(f.get('cupom')||'').trim().toUpperCase(),
         empresa: empresaAg, entrega_data:'', entrega_hora:'', obs: 'Gerada automaticamente ao registrar a entrega.',
         categoria:item.categoria, produto:item.produto, quantidade:item.quantidade, valor_unit:item.valor_unit,
-        valor_total:item.valor_total, nota:item.nota, entregadorId: entregadorIdAg
+        valor_total:item.valor_total, nota:item.nota, entregadorId: entregadorIdAg, origemLancamento:'agendamento'
       };
       state.vendas.push(venda);
       if(naoBaixarEstoqueAg && !pendenteRetiradaAg){ venda.naoBaixaEstoqueRetroativa = true; }
@@ -14827,7 +14924,7 @@ function attachHandlers(){
         const venda = {
           id: idVenda, criadoEm: Date.now(), grupoId: idVenda, fiado_pago:false, frete: a.frete||0, entrega_status:'entregue', estoqueBaixado:false, retirado:false, retiradoForma:'', retiradoEm:null,
           data: a.data, cliente: a.cliente, canal:'', pagamento: a.pagamento||'Dinheiro', tipo_entrega: a.tipo_entrega||'Entrega a pé', cupom:'', empresa: a.empresa||'', entrega_data: a.data, entrega_hora: a.hora||'',
-          obs: 'Gerada automaticamente ao concluir a entrega agendada.', categoria: a.categoria, produto: a.produto, quantidade: qtd, valor_unit: valorUnit, valor_total: a.valor||0, nota: 'Não lança'
+          obs: 'Gerada automaticamente ao concluir a entrega agendada.', categoria: a.categoria, produto: a.produto, quantidade: qtd, valor_unit: valorUnit, valor_total: a.valor||0, nota: 'Não lança', origemLancamento:'agendamento'
         };
         if(!pendenteRetirada){ ajustaEstoquePorVenda(a.categoria, qtd, false); venda.estoqueBaixado = true; }
         state.vendas.push(venda);
@@ -16071,7 +16168,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           data, cliente, canal, categoria, produto, quantidade, valor_unit, valor_total,
           pagamento, nota, tipo_entrega, empresa, frete,
           entrega_data:'', entrega_hora:'', entrega_status:'', obs: obs || 'Importado de planilha',
-          estoqueBaixado: tipo_entrega !== 'Falta retirar', retirado:false, retiradoForma:'', retiradoEm:null
+          estoqueBaixado: tipo_entrega !== 'Falta retirar', retirado:false, retiradoForma:'', retiradoEm:null, origemLancamento:'excel'
         };
         const fpVenda = chaveVendaFingerprint(venda);
         if(fpVenda && fingerprintsVendas.has(fpVenda)){ duplicadas++; return; }
@@ -17067,7 +17164,7 @@ function renderCsvVendasMapping(){
         data, cliente, canal, categoria, produto, quantidade, valor_unit, valor_total,
         pagamento, nota:'Não lança', tipo_entrega, empresa, frete,
         entrega_data:'', entrega_hora:'', entrega_status:'', obs:'Importado de planilha',
-        estoqueBaixado: tipo_entrega !== 'Falta retirar', retirado:false, retiradoForma:'', retiradoEm:null
+        estoqueBaixado: tipo_entrega !== 'Falta retirar', retirado:false, retiradoForma:'', retiradoEm:null, origemLancamento:'excel'
       };
       state.vendas.push(venda);
       if(venda.estoqueBaixado) ajustaEstoquePorVenda(categoria, quantidade, false);
