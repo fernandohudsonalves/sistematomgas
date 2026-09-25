@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "1.0_22_09_2026";
+    var VERSAO_ATUAL = "1.4_25_09_2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -821,7 +821,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.0_22_09_2026";
+const APP_BUILD_HORARIO = "1.4_25_09_2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1152,40 +1152,41 @@ function initConferenciaBadge(){let b=document.getElementById('conferencia-badge
 // Lista única de todos os relatórios (usada tanto pela tela de Relatórios quanto pela busca do sistema).
 // Assim, todo relatório novo que for criado aqui já aparece automaticamente na busca, sem precisar cadastrar em dois lugares.
 const RELATORIOS_SUBTABS = [
-  {id:'vendas', label:'🛒 Vendas por período'},
+  {id:'vendas', label:'💰 Vendas por período'},
   {id:'meta', label:'🎯 Meta de Cargas P13'},
-  {id:'gestaocanal', label:'📊 Gestão à Vista — Canal'},
+  {id:'gestaocanal', label:'📋 Gestão à Vista — Canal'},
   {id:'gestaoentregador', label:'🛵 Gestão à Vista — Entregador'},
-  {id:'remuneracao', label:'💰 Remuneração Variável'},
-  {id:'resumodia', label:'📅 Resumo do Dia'},
+  {id:'remuneracao', label:'💵 Remuneração Variável'},
+  {id:'resumodia', label:'🗓️ Resumo do Dia'},
   {id:'ranking', label:'🏆 Ranking de Clientes'},
-  {id:'abc', label:'📈 Curva ABC de Clientes'},
+  {id:'abc', label:'📊 Curva ABC de Clientes'},
   {id:'indicacoes', label:'🤝 Programa de Indicação'},
   {id:'kpis', label:'📌 Indicadores (KPIs)'},
-  {id:'pesquisa', label:'💬 Pesquisa de Clientes'},
+  {id:'pesquisa', label:'📝 Pesquisa de Clientes'},
   {id:'pesquisasmanuais', label:'🔗 Pesquisas Manuais'},
   {id:'novosclientes', label:'🆕 Novos Clientes'},
+  {id:'clientesincompletos', label:'🧩 Cadastro Incompleto'},
   {id:'painelacao', label:'🚨 Painel de Ação'},
-  {id:'esg', label:'🌱 Controle ESG'},
-  {id:'compararcampanhas', label:'⚖️ Comparar Campanhas'},
+  {id:'esg', label:'♻️ Controle ESG'},
+  {id:'compararcampanhas', label:'📣 Comparar Campanhas'},
   {id:'itens', label:'📦 Itens por categoria'},
   {id:'porvasilhame', label:'🛢️ Vendas por Vasilhame (conferência)'},
   {id:'cruzamento', label:'🔀 Gasto x Venda (Cruzamento)'},
   {id:'entregas', label:'🚚 Entregas por período'},
-  {id:'fretes', label:'🧾 Fretes por período'},
+  {id:'fretes', label:'🛣️ Fretes por período'},
   {id:'combustivelfrete', label:'⛽ Combustível x Frete'},
   {id:'despesas', label:'💸 Despesas por período'},
-  {id:'diastrabalho', label:'📆 Dias de trabalho p/ pagar contas'},
-  {id:'custosfixosvar', label:'🩺 Saúde da empresa / Ponto de equilíbrio'},
+  {id:'diastrabalho', label:'⏳ Dias de trabalho p/ pagar contas'},
+  {id:'custosfixosvar', label:'⚖️ Saúde da empresa / Ponto de equilíbrio'},
   {id:'veiculos', label:'🚗 Veículos'},
   {id:'fiado', label:'📒 Fiado / A receber'},
   {id:'creditos', label:'💳 Créditos em haver'},
   {id:'comodatos', label:'🔁 Comodatos / Empréstimos'},
-  {id:'patrimonio', label:'🏠 Patrimônio real'},
-  {id:'notas', label:'📤 Notas para o Bling'},
+  {id:'patrimonio', label:'🏦 Patrimônio real'},
+  {id:'notas', label:'🧾 Notas para o Bling'},
   {id:'empresas', label:'🏢 Empresas conveniadas'},
-  {id:'reajuste', label:'🏷️ Simulador de Reajuste'},
-  {id:'analises', label:'📉 Análises e Gráficos'},
+  {id:'reajuste', label:'🎚️ Simulador de Reajuste'},
+  {id:'analises', label:'📈 Análises e Gráficos'},
 ];
 // Sinônimos extras por relatório, só pra melhorar a busca (não precisa existir um item pra cada relatório aqui).
 const RELATORIOS_KW_EXTRA = {
@@ -1407,7 +1408,7 @@ function initRecados(){
   fab.onclick=()=>{ panel.classList.toggle('open'); };
   document.getElementById('recado-fechar').onclick=()=>panel.classList.remove('open');
   const btnAdminToggle = document.getElementById('recado-admin-toggle');
-  if(btnAdminToggle) btnAdminToggle.onclick=(e)=>{ e.stopPropagation(); panel.classList.remove('open'); currentTab='config'; renderAll(); const alvo=document.getElementById('recados-admin-wrap'); if(alvo) alvo.scrollIntoView({behavior:'smooth'}); };
+  if(btnAdminToggle) btnAdminToggle.onclick=(e)=>{ e.stopPropagation(); panel.classList.remove('open'); currentTab='config'; configAberto.recados = true; renderAll(); const alvo=document.getElementById('recados-admin-wrap'); if(alvo) alvo.scrollIntoView({behavior:'smooth'}); };
   const inputData = document.getElementById('recado-novo-data');
   if(inputData){ const amanha=new Date(Date.now()+86400000); inputData.value = amanha.toISOString().slice(0,10); }
   document.getElementById('recado-salvar-novo').onclick = async()=>{
@@ -1443,11 +1444,11 @@ function viewRecadosAdmin(){
     ' <button type="button" class="act-link" data-recado-editar="'+r.id+'">✎ editar</button>'+
     ' <button type="button" class="del-link" data-recado-excluir="'+r.id+'">🗑 excluir</button></td></tr>').join('');
   return '<div class="config-group-title">Recados / Post-it</div>'+
-    '<div class="card" id="recados-admin-wrap"><h2>📌 Todos os recados</h2>'+
+    '<details class="card" id="recados-admin-wrap"'+(configAberto.recados?' open':'')+'><summary><h2 style="display:inline;margin:0;">📌 Todos os recados</h2></summary>'+
     '<div class="hint">Use o post-it flutuante (ícone 📌 no canto da tela) pra deixar avisos rápidos pro dia seguinte. Aqui embaixo fica o histórico completo, incluindo os já concluídos.</div>'+
     (todos.length===0 ? '<div class="empty" style="margin-top:10px;">Nenhum recado ainda.</div>' :
     '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Data</th><th>Recado</th><th>Status</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
-    '</div>';
+    '</details>';
 }
 function initFiadoFab(){
   const fab = document.getElementById('fiado-fab');
@@ -1975,15 +1976,6 @@ function iconeVeiculoHtml(v, tamanho){
   return '<img src="data:image/png;base64,'+b64+'" width="'+larguraBase+'" style="vertical-align:middle;" alt="'+tipo+'">';
 }
 function iconeVeiculo(id){ const v=(state.veiculos||[]).find(x=>x.id===id); return v ? (iconeVeiculoHtml(v)+' '+v.nome) : ''; }
-// Atualiza qual botão do picker de veículo (lançamento manual de despesa) aparece marcado como
-// ativo, lendo o valor atual do campo escondido "veiculoId". Chamada tanto no clique de um botão
-// quanto ao preencher o formulário pra editar uma despesa já existente.
-function sincronizarPickerVeiculoDespesa(){
-  const inputEl = document.getElementById('input-veiculo-despesa-id');
-  const picker = document.getElementById('picker-veiculo-despesa');
-  if(!inputEl || !picker) return;
-  picker.querySelectorAll('[data-veiculo-op]').forEach(b=>b.classList.toggle('active', b.dataset.veiculoOp===(inputEl.value||'')));
-}
 function categoriasVeiculoDisponiveis(){ return state.categoriasDespesas.filter(cat=> categoriaParaceVeiculo(cat) || (state.categoriasVeiculoExtra||[]).includes(cat)); }
 
 const PESO_GAS_KG = {P5:5, P13:13, P20:20, P45:45};
@@ -2076,7 +2068,6 @@ let currentTab = 'dashboard';
 let relatorioSub = 'vendas';
 let estoqueSub = 'fisico';
 let resumoDiaData = null;
-let conferenciaLancamentosDia = null;
 let kpiMesSelecionado = null;
 let metaRelMesSelecionado = null;
 let gestaoCanalMesSelecionado = null;
@@ -2085,6 +2076,8 @@ let diasTrabalhoQtdManual = {};
 let gestaoEntregadorMesSelecionado = null;
 let crmClienteSelecionado = null;
 let relatorioNovosClientesMes = null;
+let relatorioClientesIncompletosCampos = ['telefone','endereco'];
+let relatorioClientesIncompletosOrdem = 'nome';
 let calendarioCampanhaMes = null;
 let relEmpresaSel = '';
 let relEmpresaDe = '';
@@ -2110,14 +2103,24 @@ function parseValorBR(str){
 }
 let despesaManualAberta = false;
 let vendaManualAberta = false;
-let conferenciaLancamentosAberta = true;
 let veiculoSelecionado = null, editManutencaoId = null, comprovantesSelecionadosVeiculo = [], comissaoMesSelecionado = null;
 let editKmId = null;
 let simuladorReajusteDe = null, simuladorReajusteAte = null, simuladorReajusteCategoria = null, simuladorReajusteValor = null;
 let backupsListaAberta = false;
+// Controla quais cartões da tela de Configurações estão abertos/fechados — todos começam
+// fechados (minimizados), igual ao Lapidar, pra não confundir; a pessoa clica no título
+// pra abrir só o que precisa. Guardado aqui (e não só no atributo "open" do HTML) pra não
+// fechar sozinho toda vez que a tela é redesenhada depois de alguma ação.
+let configAberto = {};
+function cardConfig(chave, tituloHtml, conteudoHtml){
+  return '<details class="card" id="details-cfg-'+chave+'"'+(configAberto[chave]?' open':'')+'><summary><h2 style="display:inline;margin:0;">'+tituloHtml+'</h2></summary>'+conteudoHtml+'</details>';
+}
 let ultimoBackupAutomaticoOk = null;
 let ultimoBackupAutomaticoQuando = null;
 let clientesListaAberta = false;
+let clientesPagina = 1;
+let clientesPorPagina = 30;
+let clientesOrdemAZ = true;
 let csvDespesasRows = null, csvDespesasHeaders = null;
 let editDespesaId = null, editClienteId = null, editVendaId = null, editFiadoId = null, editConvenioId = null, editConvenioPagamentoId = null;
 let editEmpresaId = null, editAgendamentoId = null, pendingEditVendaId = null;
@@ -2224,11 +2227,6 @@ function fmtDate(d){ const p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 // data errada (um dia à frente), o que gerava diferença entre "Vendas do dia" e os relatórios por
 // período quando alguém filtrava pelo dia certo depois.
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-// Converte um timestamp (criadoEm) pra data local (aaaa-mm-dd), do mesmo jeito que todayStr() —
-// usado pra achar em que dia uma venda foi REALMENTE lançada no sistema, que pode ser diferente
-// da data da venda em si (venda retroativa, importação de planilha lançando vendas de dias
-// anteriores etc.). Nunca usa toISOString() aqui de propósito (isso é UTC, não horário local).
-function dataLocalDeTimestamp(ts){ const d=new Date(ts); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 // Corrige a data gravada errada por causa do bug (já corrigido) do fuso horário em todayStr() —
 // calculava em UTC, então perto das 21h-23h59 no horário de Brasília o sistema achava que já era
 // "o dia seguinte" e carimbava vendas/despesas/fiados/créditos lançados nesse horário com a data
@@ -3843,6 +3841,22 @@ function aoDigitarEmpresaVenda(){
     selPagamento.value = 'Convênio';
   }
 }
+// Roda a cada letra digitada no campo Cliente da venda avulsa. Existe porque em algumas vendas
+// (ex.: Fundifoz) a pessoa lançava pelo campo Cliente em vez do campo "Empresa conveniada" — a
+// venda ficava com pagamento Convênio mas sem o campo empresa preenchido, e por isso não entrava
+// no total de Empresas Conveniadas nem no relatório de convênio. Agora, se o nome digitado no
+// Cliente bater com uma empresa da lista EMPRESAS_CONVENIO_OBRIGATORIO, o campo Empresa conveniada
+// é preenchido e mostrado sozinho, e a forma de pagamento já vai pra Convênio.
+function aoDigitarClienteVenda(){
+  const clienteEl = document.getElementById('input-cliente-venda');
+  const empresaEl = document.getElementById('input-empresa-venda');
+  if(!clienteEl || !empresaEl) return;
+  const nomeBatido = EMPRESAS_CONVENIO_OBRIGATORIO.find(n=>chaveNormalizada(n)===chaveNormalizada(clienteEl.value));
+  if(nomeBatido && !empresaEl.value){
+    empresaEl.value = nomeBatido;
+    toggleEmpresaConvenioVenda();
+  }
+}
 function toggleDetalhesFaltaRetirarVenda(){
   const sel = document.getElementById('sel-tipo-entrega');
   const wrap = document.getElementById('detalhes-falta-retirar-venda');
@@ -5260,7 +5274,7 @@ function totalEmHaver(){
 }
 // ---------- Saldo devedor por empresa conveniada (mesma lógica do fiado, mas pra convênio) ----------
 function debitosDaEmpresa(empresa){
-  const vendas = state.vendas.filter(v=>v.empresa===empresa && v.pagamento==='Convênio').map(v=>({
+  const vendas = state.vendas.filter(v=>vendaContaParaEmpresa(v, empresa)).map(v=>({
     id:v.id, data:v.data, descricao:v.quantidade+'x '+(v.produto||v.categoria)+(v.cliente?' — '+v.cliente:''), valor:v.valor_total
   }));
   const lanc = (state.convenioLancamentos||[]).filter(c=>c.empresa===empresa).map(c=>({
@@ -5643,7 +5657,7 @@ function empresasTable(list){
   if(list.length===0) return '<div class="empty">Nenhuma empresa cadastrada ainda.</div>';
   return '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Responsável</th><th>Vínculos</th><th></th></tr></thead><tbody>'+
   list.map(e=>{
-    const qtdVendas = state.vendas.filter(v=>v.empresa===e.nome && v.pagamento==='Convênio').length;
+    const qtdVendas = state.vendas.filter(v=>vendaContaParaEmpresa(v, e.nome)).length;
     const qtdConvenio = (state.convenioLancamentos||[]).filter(c=>c.empresa===e.nome).length;
     const qtdAgendamentos = (state.agendamentos||[]).filter(a=>a.empresa===e.nome).length;
     const partes = [];
@@ -5780,6 +5794,18 @@ function resolverNomeEmpresa(texto){
 // envio do formulário — assim nenhuma venda dessas duas empresas fica de fora do relatório de
 // Empresas conveniadas por ter sido lançada com outra forma de pagamento por engano.
 const EMPRESAS_CONVENIO_OBRIGATORIO = ['Alvorada','Fundifoz'];
+// Decide se uma venda "pertence" a uma empresa conveniada pra fins de relatório/saldo. Não depende
+// só do campo "empresa" (que pode ficar em branco dependendo de como a venda foi lançada — manual,
+// importação de planilha, confirmação de entrega etc.) — também aceita quando o campo Cliente bate
+// com o nome da empresa (comparando sem diferenciar maiúsculas/acentos/espaços). Assim, qualquer
+// venda com forma de pagamento Convênio aparece em Empresas Conveniadas não importa como foi
+// lançada, mesmo que quem lançou tenha digitado o nome no campo errado.
+function vendaContaParaEmpresa(v, nomeEmpresa){
+  if(!v || v.pagamento!=='Convênio') return false;
+  const alvo = chaveNormalizada(nomeEmpresa);
+  if(!alvo) return false;
+  return chaveNormalizada(v.empresa||'')===alvo || chaveNormalizada(v.cliente||'')===alvo;
+}
 function empresaExigeConvenioObrigatorio(nomeEmpresa){
   const norm = chaveNormalizada(nomeEmpresa||'');
   if(!norm) return false;
@@ -6002,6 +6028,84 @@ function mesclarProdutosDuplicados(){
   state.produtos = manter;
   return removidos;
 }
+// Em todo o sistema, vendas/fiado/crédito/comodato/etc. não guardam um "id do cliente" — guardam
+// o NOME dele, texto puro. Por isso, ao mesclar um cliente duplicado no outro, é preciso trocar
+// o nome em cada uma dessas listas pelo nome do cadastro que vai permanecer, senão o histórico
+// fica "órfão" (apontando pra um nome que não existe mais no cadastro de Clientes).
+const CAMPOS_CLIENTE_POR_LISTA = {
+  vendas:'cliente', agendamentos:'cliente', fiados:'cliente', fiadoPagamentos:'cliente',
+  creditos:'cliente', comodatos:'nome', interacoesCliente:'cliente', tarefasCliente:'cliente',
+  pesquisaClientes:'cliente', npsRespostas:'cliente', respostasPesquisaManual:'cliente',
+  recompensasIndicacao:'indicador', envioCampanhaLog:'cliente'
+};
+function apenasDigitos(s){ return String(s||'').replace(/\D/g,''); }
+// Considera "o mesmo cliente" quando o nome (ignorando maiúsculas/acentos/espaços) E o telefone
+// (ignorando formatação) batem os dois — inclusive quando os dois estão em branco (ex.: contas
+// de empresa/concessionária cadastradas sem telefone, como "Sanepar"). Só o nome igual ou só o
+// telefone igual não entra aqui, pra não juntar duas pessoas diferentes por engano.
+function chaveClienteDuplicado(c){
+  return chaveNormalizada(c.nome||'')+'|'+apenasDigitos(c.telefone||'');
+}
+function encontrarGruposClientesDuplicados(){
+  const grupos = new Map();
+  (state.clientes||[]).forEach(function(c){
+    const chave = chaveClienteDuplicado(c);
+    if(!grupos.has(chave)) grupos.set(chave, []);
+    grupos.get(chave).push(c);
+  });
+  return Array.from(grupos.values()).filter(g=>g.length>1).sort((a,b)=>a[0].nome.localeCompare(b[0].nome,'pt-BR'));
+}
+// Junta cada grupo de clientes duplicados em um só. Sobrevive o cadastro mais antigo
+// (por "criadoEm"); os outros são apagados depois de: 1) emprestar pro sobrevivente qualquer
+// campo que ele tiver em branco (telefone, endereço, obs, etc.), 2) repontar pro nome do
+// sobrevivente todo o histórico que estava no nome do duplicado (vendas, fiado, crédito,
+// comodato, agendamento, interações, tarefas, pesquisas/NPS, indicações e campanhas), e
+// 3) atualizar o campo "indicado por" de quem tiver indicado o nome antigo. No final, roda a
+// mesma checagem de "vendas duplicadas" já existente, porque duas vendas que eram de cada
+// cliente duplicado podem ter virado idênticas depois da junção.
+async function mesclarClientesDuplicados(){
+  const grupos = encontrarGruposClientesDuplicados();
+  if(grupos.length===0){ alert('Nenhum cliente duplicado encontrado (mesmo nome e mesmo telefone).'); return; }
+  const totalRemover = grupos.reduce((s,g)=>s+(g.length-1),0);
+  if(!confirm('Isso vai unificar '+grupos.length+' grupo(s) de clientes duplicados, removendo '+totalRemover+' cadastro(s) repetido(s). O cadastro que ficar herda vendas, fiado, créditos, comodatos, agendamentos e todo o resto do histórico dos que forem removidos — e vendas que ficarem idênticas depois da junção são unificadas automaticamente. Essa ação não pode ser desfeita. Continuar?')) return;
+  const camposHerdar = ['telefone','endereco','complemento','obs','aniversario','apelidos','indicadoPor','botijaoReserva'];
+  const idsRemover = new Set();
+  grupos.forEach(function(g){
+    const ordenado = g.slice().sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
+    const sobrevivente = ordenado[0];
+    ordenado.slice(1).forEach(function(dup){
+      camposHerdar.forEach(function(campo){ if(!sobrevivente[campo] && dup[campo]) sobrevivente[campo] = dup[campo]; });
+      if(Array.isArray(dup.grupos) && dup.grupos.length){
+        sobrevivente.grupos = Array.from(new Set([].concat(sobrevivente.grupos||[], dup.grupos)));
+      }
+      if(dup.nome && dup.nome!==sobrevivente.nome){
+        Object.keys(CAMPOS_CLIENTE_POR_LISTA).forEach(function(lista){
+          const campo = CAMPOS_CLIENTE_POR_LISTA[lista];
+          (state[lista]||[]).forEach(function(item){ if(item[campo]===dup.nome) item[campo] = sobrevivente.nome; });
+        });
+        (state.clientes||[]).forEach(function(outro){ if(outro.indicadoPor===dup.nome) outro.indicadoPor = sobrevivente.nome; });
+      }
+      idsRemover.add(dup.id);
+    });
+  });
+  state.clientes = state.clientes.filter(c=>!idsRemover.has(c.id));
+  const gruposVendasDup = encontrarGruposVendasDuplicadas();
+  let vendasRemovidas = 0;
+  if(gruposVendasDup.length>0){
+    const idsVendaRemover = new Set();
+    gruposVendasDup.forEach(function(g){
+      const ordenadoV = g.slice().sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
+      ordenadoV.slice(1).forEach(function(v){ idsVendaRemover.add(v.id); });
+    });
+    state.vendas.forEach(function(v){ if(idsVendaRemover.has(v.id) && v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true); });
+    state.vendas = state.vendas.filter(v=>!idsVendaRemover.has(v.id));
+    vendasRemovidas = idsVendaRemover.size;
+  }
+  const chavesParaSalvar = Array.from(new Set(['clientes','vendas','estoque'].concat(Object.keys(CAMPOS_CLIENTE_POR_LISTA))));
+  for(const k of chavesParaSalvar){ await save(k); }
+  alert('Pronto! '+idsRemover.size+' cliente(s) duplicado(s) unificado(s)'+(vendasRemovidas>0?', e '+vendasRemovidas+' venda(s) que ficaram repetidas depois da junção também foram removidas (mantendo sempre a mais antiga)':'')+'.');
+  renderAll();
+}
 function categoriasSuspeitasDuplicarEstoque(){
   return categoriasNaoControladas().filter(function(cat){
     const c = chaveNormalizada(cat);
@@ -6022,8 +6126,20 @@ function viewLimpezaDuplicidades(){
       return '<label class="checkbox-item"><input type="checkbox" class="chk-cat-duplicada" value="'+c+'" checked> '+c+' <span class="hint">('+produtosDaCategoria(c).length+' produto(s))</span></label>';
     }).join('')+'</div>';
   const qtdProdutosNaoControlados = state.produtos.filter(p=>!CATEGORIAS_CONTROLADAS.includes(p.categoria)).length;
+  const gruposClientesDup = encontrarGruposClientesDuplicados();
+  const totalClientesExtras = gruposClientesDup.reduce((s,g)=>s+(g.length-1),0);
+  const linhasClientesDup = gruposClientesDup.slice(0,30).map(function(g){
+    return '<tr><td>'+g.map(c=>escapeHtmlCampanha(c.nome)).join(' + ')+'</td><td>'+escapeHtmlCampanha(g[0].telefone||'—')+'</td><td>'+g.length+' cadastros</td></tr>';
+  }).join('');
   return '<div class="card"><h2>Ferramentas avançadas</h2>'+
     '<div class="hint">Ações em massa no catálogo — alteram os dados salvos no Supabase e não podem ser desfeitas.</div>'+
+    '<details style="margin-top:10px;"><summary>Clientes duplicados'+(gruposClientesDup.length>0?' <span class="badge" style="background:var(--danger);">'+totalClientesExtras+'</span>':'')+'</summary>'+
+    '<div class="hint" style="margin-top:8px;">Considera duplicata quando nome e telefone são exatamente iguais (ignorando maiúsculas/acentos/formatação). Ao unificar, fica só 1 cadastro por grupo (o mais antigo) — ele herda telefone/endereço/observação/etc. que estiver em branco, e todo o histórico de vendas, fiado, crédito, comodato, agendamento e pesquisas dos removidos passa a apontar pra ele. Vendas que ficarem idênticas depois da junção são removidas automaticamente (mantendo a mais antiga).</div>'+
+    (gruposClientesDup.length===0 ? '<div class="empty" style="margin-top:8px;">Nenhum cliente duplicado encontrado.</div>' :
+      '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Cadastros</th><th>Telefone</th><th>Repetido</th></tr></thead><tbody>'+linhasClientesDup+'</tbody></table></div>'+
+      (gruposClientesDup.length>30?'<div class="hint" style="margin-top:6px;">Mostrando os 30 primeiros grupos de '+gruposClientesDup.length+'.</div>':'')+
+      '<button type="button" class="btn small" id="btn-unificar-clientes-duplicados" style="margin-top:10px;background:var(--danger);">Unificar '+totalClientesExtras+' cliente(s) duplicado(s) agora</button>')+
+    '</details>'+
     '<details style="margin-top:10px;" open><summary>Vendas duplicadas'+(gruposVendasDup.length>0?' <span class="badge" style="background:var(--danger);">'+totalVendasExtras+'</span>':'')+'</summary>'+
     '<div class="hint" style="margin-top:8px;">Considera duplicata quando data, cliente, categoria/produto, quantidade, valor unitário e forma de pagamento são iguais (ignorando maiúsculas/acentos) — do jeito que acontece quando a mesma planilha é importada duas vezes. Ao remover, fica só 1 venda de cada grupo (a mais antiga) e o estoque das duplicatas removidas é revertido automaticamente.</div>'+
     (gruposVendasDup.length===0 ? '<div class="empty" style="margin-top:8px;">Nenhuma venda duplicada encontrada.</div>' :
@@ -6496,7 +6612,7 @@ async function salvarPlanilhaVendas(){
         id, criadoEm: Date.now(), grupoId, fiado_pago:false, frete: l.frete, entrega_status:'', estoqueBaixado:false, retirado:false, retiradoForma:'', retiradoEm:null,
         data: l.data, cliente: clienteResolvido, canal: l.canal, pagamento: l.pagamento, tipo_entrega: l.entrega||'Retirada', cupom: l.cupom, empresa: l.empresa, entrega_data:'', entrega_hora:'', obs: l.obs,
         categoria: l.categoria, produto, quantidade: l.qtd, valor_unit: l.valorUnit, valor_total: Math.round(l.qtd*l.valorUnit*100)/100, nota: l.nota,
-        vale_pendente: (l.pagamento==='Gás do povo' && l.valePendente), entregadorId: l.entregadorId||'', origemLancamento:'planilha-manual'
+        vale_pendente: (l.pagamento==='Gás do povo' && l.valePendente), entregadorId: l.entregadorId||''
       };
       // Venda retroativa marcada como "não baixar estoque": o estoque já tinha sido descontado antes
       // (lançamento original com data errada) — não desconta de novo, só registra a venda certinha.
@@ -6642,7 +6758,7 @@ function viewVendas(){
     '<form id="form-venda">'+
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
-    '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
+    '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" id="input-cliente-venda" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
     '<button type="button" class="link-btn" id="btn-novo-cliente-venda">+ novo cliente</button></div>'+
     '<div><label>Canal <span class="req">*</span></label><select name="canal" required>'+opcoesComPlaceholder(CANAIS,'Selecione o canal')+'</select></div>'+
     '</div>'+
@@ -6743,7 +6859,6 @@ function viewVendas(){
     (freteHoje>0 ? '<div class="hint">Esse total já é só o produto — o valor dos fretes (<strong>'+fmtMoney(freteHoje)+'</strong>) não entra aqui, fica separado.</div>' : '')+
     ajudaHtml('vendas','Aqui ficam as vendas lançadas hoje. Na maioria dos dias você não precisa lançar nada aqui manualmente — as vendas do dia são importadas de uma vez pela planilha Excel, em Configurações > Importação diária. Use o lançamento manual só pra casos avulsos.')+
     '<div id="lista-vendas-hoje-wrap">'+vendasTable(vendasHoje, {compacta:true})+'</div></div>'+
-    relatorioConferenciaLancamentosHtml()+
     '<div class="card"><h2>Histórico de vendas</h2>'+
     '<div class="filtro-vendas-row">'+
     '<div class="filtro-vendas-busca"><label style="font-size:12px;font-weight:600;">Buscar</label><input type="text" id="busca-venda" class="searchbar" placeholder="Buscar por produto, categoria, cliente, empresa, canal, pagamento, entrega, nota, cupom, data, valor..."></div>'+
@@ -6932,62 +7047,6 @@ function vendasTable(list, opts){
         '<button class="del-link" title="Excluir" data-del-venda="'+v.id+'">🗑</button></td></tr>';
     }).join('')+'</tbody></table></div>';
 }
-/* Todas as vendas que o sistema efetivamente GRAVOU (criadoEm) num certo dia — não confundir com
-   "vendas do dia" (filtro por v.data), que é a data DA venda e pode ser retroativa. Isso serve pra
-   conferência: pega tudo que entrou no sistema naquele dia, não importa de onde (lançamento manual,
-   planilha em grade dentro do sistema, importação de Excel, ou gerado automaticamente ao
-   registrar/concluir uma entrega), pra bater um por um se algum valor saiu errado. */
-function vendasLancadasNoDia(data){
-  return (state.vendas||[]).filter(v=>v.criadoEm && dataLocalDeTimestamp(v.criadoEm)===data).sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
-}
-function origemLancamentoLabel(v){
-  const o = v.origemLancamento;
-  if(o==='excel') return '📥 Importação de planilha';
-  if(o==='agendamento') return '🚚 Entrega/agendamento';
-  if(o==='planilha-manual') return '🧮 Planilha em grade';
-  if(o==='manual') return '✍️ Manual';
-  // Vendas lançadas antes dessa marcação existir no sistema não têm origemLancamento — tenta
-  // adivinhar pela observação (nem sempre confiável, por isso o "(estimado)").
-  if((v.obs||'').indexOf('Importado de planilha')!==-1) return '📥 Importação de planilha (estimado)';
-  if((v.obs||'').indexOf('Gerada automaticamente')!==-1) return '🚚 Entrega/agendamento (estimado)';
-  return '❓ Não identificada';
-}
-function conferenciaLancamentosTabela(lista){
-  if(lista.length===0) return '<div class="empty">Nenhum lançamento registrado nesse dia.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Lançado às</th><th>Data da venda</th><th>Produto</th><th>Cliente</th><th>Qtd</th><th>Valor unit.</th><th>Valor</th><th>Frete</th><th>Pagto</th><th>Origem</th><th>Observação</th><th></th></tr></thead><tbody>'+
-    lista.map(v=>{
-      const suspeita = (Number(v.valor_unit)||0)<=0 || (Number(v.valor_total)||0)<=0 || (Number(v.quantidade)||0)<=0;
-      const horaLanc = v.criadoEm ? new Date(v.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
-      return '<tr'+(suspeita?' style="background:var(--danger-tint);"':'')+'>'+
-        '<td>'+horaLanc+'</td><td>'+fmtDate(v.data)+'</td><td>'+(v.produto||v.categoria||'—')+'</td><td>'+(v.cliente||'—')+'</td>'+
-        '<td style="text-align:center;">'+v.quantidade+'</td><td style="text-align:right;">'+fmtMoney(v.valor_unit)+'</td><td style="text-align:right;">'+fmtMoney(v.valor_total)+'</td>'+
-        '<td style="text-align:right;">'+(v.frete?fmtMoney(v.frete):'—')+'</td><td>'+(v.pagamento||'—')+'</td><td>'+origemLancamentoLabel(v)+'</td>'+
-        '<td title="'+escapeHtmlCampanha(v.obs||'')+'">'+(v.obs||'—')+(suspeita?' <strong style="color:var(--danger);">⚠ confira</strong>':'')+'</td>'+
-        '<td class="cel-acoes"><button class="act-link" title="Editar" data-edit-venda="'+v.id+'">✎</button></td>'+
-        '</tr>';
-    }).join('')+'</tbody></table></div>';
-}
-function relatorioConferenciaLancamentosHtml(){
-  const data = conferenciaLancamentosDia || todayStr();
-  const lista = vendasLancadasNoDia(data);
-  const totalProdutos = lista.reduce((s,v)=>s+(v.valor_total||0),0);
-  const totalFrete = lista.reduce((s,v)=>s+(v.frete||0),0);
-  const totalGeral = totalProdutos+totalFrete;
-  const porOrigem = {};
-  lista.forEach(v=>{ const l=origemLancamentoLabel(v); porOrigem[l]=(porOrigem[l]||0)+1; });
-  const resumoOrigem = Object.entries(porOrigem).map(([l,n])=>l+': '+n).join(' · ') || '—';
-  const suspeitas = lista.filter(v=>(Number(v.valor_unit)||0)<=0 || (Number(v.valor_total)||0)<=0 || (Number(v.quantidade)||0)<=0);
-  const avisoSuspeitas = suspeitas.length===0 ? '' :
-    '<div class="hint" style="margin-top:8px;color:var(--danger);font-weight:700;">⚠ '+suspeitas.length+' lançamento(s) com quantidade, valor unitário ou valor total zerado/negativo — já destacado(s) em vermelho na tabela abaixo.</div>';
-  return '<div class="card"><details id="details-conf-lancamentos"'+(conferenciaLancamentosAberta?' open':'')+'><summary><strong>🔍 Conferência de lançamentos do dia</strong></summary>'+
-    '<div class="hint" style="margin-top:8px;">Mostra TODAS as vendas que o sistema gravou (lançou) no dia escolhido — não importa a data da venda em si nem de onde veio (lançamento manual, planilha em grade, importação de Excel, ou gerada ao registrar/concluir uma entrega). Use pra conferir, um por um, se não entrou nada com valor errado.</div>'+
-    '<div style="margin-top:10px;"><label style="font-size:12px;font-weight:600;">Dia do lançamento</label><input type="date" id="conf-lanc-data" value="'+data+'" style="max-width:200px;display:block;"></div>'+
-    '<div style="margin-top:10px;">'+lista.length+' lançamento(s) — total produtos: <strong>'+fmtMoney(totalProdutos)+'</strong>'+(totalFrete>0?' + frete: <strong>'+fmtMoney(totalFrete)+'</strong> = <strong>'+fmtMoney(totalGeral)+'</strong>':'')+'</div>'+
-    '<div class="hint" style="margin-top:4px;">Por origem: '+resumoOrigem+'</div>'+
-    avisoSuspeitas+
-    '<div id="conf-lanc-tabela-wrap" style="margin-top:10px;">'+conferenciaLancamentosTabela(lista)+'</div>'+
-    '</details></div>';
-}
 
 /* Cada linha colada vira uma despesa: acha o valor (número no fim da linha), o resto é a
    descrição, e tenta adivinhar a categoria procurando o nome dela dentro da descrição — se não
@@ -7129,12 +7188,7 @@ function viewDespesas(){
     '<input type="text" id="nova-cat-despesa-input" placeholder="Nome da nova categoria">'+
     '<button type="button" class="btn small ghost" id="btn-add-cat-despesa">Adicionar</button></div></div>'+
     '<label>Descrição (opcional)</label><input type="text" name="descricao" placeholder="Ex: compra de vasilhames novos">'+
-    '<div id="wrap-veiculo-despesa" style="display:none;"><label>Qual veículo é essa despesa?</label>'+
-    '<input type="hidden" name="veiculoId" id="input-veiculo-despesa-id" value="">'+
-    '<div class="subtabs" id="picker-veiculo-despesa">'+
-    '<button type="button" class="active" data-veiculo-op="">Não é de veículo</button>'+
-    state.veiculos.map(v=>'<button type="button" data-veiculo-op="'+v.id+'" style="display:inline-flex;align-items:center;gap:6px;">'+iconeVeiculoHtml(v,16)+' '+escapeHtmlCampanha(v.nome)+'</button>').join('')+
-    '</div></div>'+
+    '<div id="wrap-veiculo-despesa" style="display:none;"><label>Qual veículo é essa despesa?</label><select name="veiculoId"><option value="">Não é de veículo</option>'+state.veiculos.map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></div>'+
     '<button type="submit" class="btn">'+(importTextoDespesasWizard && importTextoDespesasWizard.indice<importTextoDespesasWizard.blocos.length ? 'Confirmar despesa e ir pra próxima ('+(importTextoDespesasWizard.indice+1)+'/'+importTextoDespesasWizard.blocos.length+')' : 'Registrar despesa')+'</button></form></details></div>'+
     '<div class="card"><h2>Despesas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('despesas','Registre aqui os gastos do dia (compras, contas, manutenção). Assim como as vendas, a maior parte pode vir automaticamente pela importação da planilha Excel.')+
     '<div id="lista-despesas-hoje-wrap">'+despesasTable(despesasHoje)+'</div></div>'+
@@ -7569,8 +7623,27 @@ function badgeBotijaoReservaHtml(c){
 }
 function clientesTable(list){
   if(list.length===0) return '<div class="empty">Nenhum cliente cadastrado ainda.</div>';
-  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:11%;"><col style="width:7%;"><col style="width:7%;"><col style="width:7%;"><col style="width:5%;"><col style="width:10%;"><col style="width:7%;"><col style="width:6%;"><col style="width:6%;"><col style="width:5%;"><col style="width:9%;"><col style="width:14%;"></colgroup><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Apelidos</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Botijão Reserva</th><th>Indicado por</th><th>Anexos</th><th>Vínculos no sistema</th><th></th></tr></thead><tbody>'+
-  list.map(c=>{
+  const listaOrdenada = clientesOrdemAZ ? list.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR')) : list;
+  const total = listaOrdenada.length;
+  const totalPaginas = Math.max(1, Math.ceil(total/clientesPorPagina));
+  if(clientesPagina>totalPaginas) clientesPagina = totalPaginas;
+  if(clientesPagina<1) clientesPagina = 1;
+  const inicio = (clientesPagina-1)*clientesPorPagina;
+  const pageItems = listaOrdenada.slice(inicio, inicio+clientesPorPagina);
+  const botoesQtd = [30,50,100].map(n=>'<button type="button" class="btn small '+(clientesPorPagina===n?'':'ghost')+' btn-clientes-por-pagina" data-qtd="'+n+'" style="padding:4px 10px;">'+n+'</button>').join('');
+  const controlesHtml = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:10px;">'+
+    '<div style="display:flex;align-items:center;gap:6px;"><span class="hint">Mostrar:</span>'+botoesQtd+'</div>'+
+    '<button type="button" class="btn small ghost" id="btn-clientes-ordem-az">'+(clientesOrdemAZ?'🔤 Ordem: A→Z':'↕️ Ordem: Padrão')+'</button>'+
+    '<div style="display:flex;align-items:center;gap:6px;margin-left:auto;">'+
+    '<button type="button" class="btn small ghost" id="btn-clientes-pag-anterior" '+(clientesPagina<=1?'disabled':'')+'>‹ Anterior</button>'+
+    '<span class="hint">Página '+clientesPagina+' de '+totalPaginas+' ('+total+' clientes)</span>'+
+    '<button type="button" class="btn small ghost" id="btn-clientes-pag-proxima" '+(clientesPagina>=totalPaginas?'disabled':'')+'>Próxima ›</button>'+
+    '</div></div>'+
+    '<div style="position:fixed;left:14px;bottom:14px;z-index:600;background:var(--card,#fff);border-radius:14px;box-shadow:0 10px 26px rgba(0,0,0,.25);padding:8px 10px;display:flex;align-items:center;gap:6px;">'+
+    '<span style="font-size:11px;font-weight:700;color:var(--text2);">Mostrar:</span>'+botoesQtd+
+    '</div>';
+  const tabela = '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:11%;"><col style="width:7%;"><col style="width:7%;"><col style="width:7%;"><col style="width:5%;"><col style="width:10%;"><col style="width:7%;"><col style="width:6%;"><col style="width:6%;"><col style="width:5%;"><col style="width:9%;"><col style="width:14%;"></colgroup><thead><tr><th>Nome</th><th>Situação</th><th>Telefone/Whats</th><th>Apelidos</th><th>Grupos</th><th>Endereço</th><th>Complemento</th><th>Botijão Reserva</th><th>Indicado por</th><th>Anexos</th><th>Vínculos no sistema</th><th></th></tr></thead><tbody>'+
+  pageItems.map(c=>{
     const anexosCli = anexosDoContexto({cliente:c.nome});
     const linhaAnexos = anexoClienteAberto===c.nome ? '<tr><td colspan="12" style="background:var(--blue-tint);white-space:normal;overflow:visible;max-width:none;"><div style="padding:10px;">'+anexosGaleriaHtml(anexosCli)+'</div></td></tr>' : '';
     const cadastradoEmHtml = c.criadoEm ? '<div class=\"hint\" style=\"font-size:10px;margin-top:2px;\">cadastrado em '+fmtDate(new Date(c.criadoEm).toISOString().slice(0,10))+'</div>' : '';
@@ -7580,6 +7653,7 @@ function clientesTable(list){
     '<td>'+resumoVinculosClienteHtml(c.nome)+'</td>'+
     '<td class="cel-acoes">'+botaoWhatsApp(c.telefone, true)+'<button type="button" class="act-link" data-ir-crm-cliente="'+escapeHtmlCampanha(c.nome)+'" title="Abrir ficha no CRM">🤝</button><button class="act-link" data-edit-cliente="'+c.id+'" title="editar">✎</button><button class="del-link" data-del-cliente="'+c.id+'" title="excluir">🗑</button></td></tr>'+linhaAnexos;
   }).join('')+'</tbody></table></div>';
+  return controlesHtml + tabela;
 }
 
 /* ---------- ESTOQUE ---------- */
@@ -8214,7 +8288,7 @@ function cardUsuariosPermissoes(){
   const usuarios = state.usuariosSistema||[];
   const editando = usuarios.find(u=>u.id===editUsuarioId);
   const linhas = usuarios.map(u=>'<tr><td>'+escapeHtmlCampanha(u.nome||u.email)+'</td><td>'+escapeHtmlCampanha(u.email)+'</td><td>'+escapeHtmlCampanha(u.celular||'—')+'</td><td>'+(u.papel==='admin'?'👑 Administrador':'🔒 Restrito ('+(u.abasPermitidas||[]).length+' aba(s))')+'</td><td class="cel-acoes"><button class="act-link" data-editar-usuario="'+u.id+'">✎</button><button class="del-link" data-del-usuario="'+u.id+'">🗑</button></td></tr>').join('');
-  return '<div class="card"><h2>👥 Usuários e Permissões</h2>'+
+  return cardConfig('usuarios','👥 Usuários e Permissões',
     ajudaHtml('usuarios','Cadastre aqui o e-mail (e, se quiser, o celular) de cada pessoa que faz login no sistema e defina o que ela pode acessar. "Administrador" vê e mexe em tudo, sem restrição. "Restrito" só vê as abas que você marcar — as outras nem aparecem no menu dela. Importante: essa é uma trava de tela (esconde o que a pessoa não deve ver), não é uma trava de banco de dados nem mexe na senha de login de ninguém — é pensada pra organizar o acesso da equipe, não pra proteger contra alguém tentando burlar de propósito.')+
     '<form id="form-usuario-permissao" data-edit-id="'+(editando?editando.id:'')+'">'+
     '<div class="form-row"><div><label>Nome</label><input type="text" name="nome" value="'+escapeHtmlCampanha(editando?.nome||'')+'"></div>'+
@@ -8226,8 +8300,8 @@ function cardUsuariosPermissoes(){
     '<div class="hint" style="margin-top:4px;">Painel e Config sempre ficam visíveis pra qualquer usuário logado.</div></div>'+
     '<button type="submit" class="btn small" style="margin-top:14px;">'+(editando?'Salvar alterações':'Adicionar usuário')+'</button> '+(editando?'<button type="button" class="btn small ghost" id="btn-cancelar-usuario">Cancelar</button>':'')+
     '</form>'+
-    (usuarios.length?'<div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Celular</th><th>Nível</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="empty" style="margin-top:14px;">Nenhum usuário cadastrado ainda — enquanto a lista estiver vazia, qualquer pessoa que fizer login tem acesso total.</div>')+
-    '</div>';
+    (usuarios.length?'<div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Celular</th><th>Nível</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="empty" style="margin-top:14px;">Nenhum usuário cadastrado ainda — enquanto a lista estiver vazia, qualquer pessoa que fizer login tem acesso total.</div>')
+  );
 }
 function viewConfig(){
   const faviconPreview = state.faviconUrl ? '<img src="'+state.faviconUrl+'" alt="Favicon" style="width:32px;height:32px;border-radius:6px;border:1px solid var(--border);">' : '<span class="hint">Nenhum favicon definido (usando o padrão do navegador).</span>';
@@ -8240,97 +8314,98 @@ function viewConfig(){
   const comunicadosAtivos = state.comunicados.filter(c=>c.ativo!==false).length;
   return (usuarioAtualEhAdmin ? '<div class="config-group-title">Usuários e permissões</div>'+cardUsuariosPermissoes() : '')+
     '<div class="config-group-title">Geral</div>'+
-    '<div class="card"><h2>🎯 Meta de vendas</h2>'+
-    '<div class="hint">'+(metaMensalAtualCfg>0 ? 'Meta de '+nomeMes(mkAtual)+': '+arred1(metaMensalAtualCfg)+' cargas de P13.' : 'Nenhuma meta configurada para '+nomeMes(mkAtual)+' ainda.')+'</div>'+
-    '<button type="button" class="btn small ghost" id="btn-abrir-metas" style="margin-top:10px;">Abrir Meta</button>'+
-    '</div>'+
-    '<div class="card"><h2>🔔 Comunicados internos</h2>'+
-    '<div class="hint">'+comunicadosAtivos+' comunicado(s) ativo(s), aparecendo no banner da página inicial pra equipe.</div>'+
-    '<button type="button" class="btn small ghost" id="btn-abrir-comunicados" style="margin-top:10px;">Abrir Comunicados</button>'+
-    '</div>'+
-    '<div class="card"><h2>Ícone da aba (favicon)</h2>'+
-    '<div style="display:flex;align-items:center;gap:14px;">'+faviconPreview+
-    '<div><input type="file" id="favicon-file-input" accept="image/*"><div class="hint" style="margin-top:4px;">Imagem quadrada funciona melhor.</div></div></div>'+
-    '</div>'+
+    cardConfig('meta','🎯 Meta de vendas',
+      '<div class="hint">'+(metaMensalAtualCfg>0 ? 'Meta de '+nomeMes(mkAtual)+': '+arred1(metaMensalAtualCfg)+' cargas de P13.' : 'Nenhuma meta configurada para '+nomeMes(mkAtual)+' ainda.')+'</div>'+
+      '<button type="button" class="btn small ghost" id="btn-abrir-metas" style="margin-top:10px;">Abrir Meta</button>'
+    )+
+    cardConfig('comunicados','🔔 Comunicados internos',
+      '<div class="hint">'+comunicadosAtivos+' comunicado(s) ativo(s), aparecendo no banner da página inicial pra equipe.</div>'+
+      '<button type="button" class="btn small ghost" id="btn-abrir-comunicados" style="margin-top:10px;">Abrir Comunicados</button>'
+    )+
+    cardConfig('favicon','🖼️ Ícone da aba (favicon)',
+      '<div style="display:flex;align-items:center;gap:14px;">'+faviconPreview+
+      '<div><input type="file" id="favicon-file-input" accept="image/*"><div class="hint" style="margin-top:4px;">Imagem quadrada funciona melhor.</div></div></div>'
+    )+
     '<div class="config-group-title">App, notificações e mensagens</div>'+
-    '<div class="card"><h2>App no celular e notificações</h2>'+
-    '<div class="hint">Instale o sistema como app na tela inicial e receba avisos de novos agendamentos.</div>'+
-    '<details style="margin-top:8px;"><summary>Como instalar na tela inicial</summary>'+
-    '<div class="hint" style="margin-top:6px;">Chrome (Android): menu → "Adicionar à tela inicial". Safari (iPhone): Compartilhar → "Adicionar à Tela de Início". Atualiza sozinho, sem precisar reinstalar.</div></details>'+
-    '<div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><strong>Notificações:</strong> '+statusTxt+
-    (permissao==='granted' ? '<button type="button" class="btn small ghost" id="btn-testar-notificacao">Testar agora</button>' : '<button type="button" class="btn small" id="btn-ativar-notificacao">Ativar neste aparelho</button>')+
-    '</div>'+
-    (permissao==='granted' ? '<details style="margin-top:8px;"><summary>Não chegou nenhuma notificação?</summary><div class="hint" style="margin-top:6px;">Confira em <strong>Configurações do celular → Apps → Tom Gás (ou Chrome) → Notificações</strong> — é uma permissão separada da do navegador.</div></details>' : '')+
-    '</div>'+
-    '<div class="card"><h2>🧹 Limpar cache do site</h2>'+
-    '<div class="hint">Se depois de uma atualização o sistema continuar mostrando algo antigo mesmo dando F5, use este botão em vez de ir nas configurações do navegador — ele limpa só os dados guardados deste site (nada de outros sites é afetado): dados salvos localmente, o "service worker" que guarda o app pra funcionar offline, e os cookies deste domínio. Como isso inclui a sessão de login, você provavelmente vai precisar entrar de novo depois. A página recarrega sozinha, do zero.</div>'+
-    '<button type="button" class="btn small ghost" id="btn-limpar-cache-site" style="margin-top:10px;">Limpar cache deste site e recarregar</button>'+
-    '</div>'+
-    '<div class="card"><h2>⏰ Avisos programados (alarmes)</h2>'+
-    '<div class="hint">Alarmes que tocam num horário fixo do dia (som + mensagem na tela), pra quem estiver com o sistema aberto no aparelho.</div>'+
-    '<div id="lista-avisos-programados" style="margin-top:10px;">'+(state.avisosProgramados||[]).map(av=>
-      '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">'+
-      '<input type="checkbox" data-aviso-ativo="'+av.id+'" '+(av.ativo?'checked':'')+' title="Ativo">'+
-      '<input type="time" data-aviso-horario="'+av.id+'" value="'+(av.horario||'')+'" style="width:100px;">'+
-      '<input type="text" data-aviso-mensagem="'+av.id+'" value="'+av.mensagem.replace(/"/g,'&quot;')+'" style="flex:1;min-width:180px;">'+
-      '<div style="display:flex;gap:3px;">'+DIAS_SEMANA_LABEL.map((lbl,i)=>
-        '<label style="font-size:9px;text-align:center;color:var(--text2);"><input type="checkbox" data-aviso-dia="'+av.id+'" data-dia="'+i+'" '+((!Array.isArray(av.dias)||av.dias.includes(i))?'checked':'')+' style="width:14px;height:14px;display:block;margin:0 auto;"><br>'+lbl+'</label>'
+    cardConfig('appnotif','📱 App no celular e notificações',
+      '<div class="hint">Instale o sistema como app na tela inicial e receba avisos de novos agendamentos.</div>'+
+      '<details style="margin-top:8px;"><summary>Como instalar na tela inicial</summary>'+
+      '<div class="hint" style="margin-top:6px;">Chrome (Android): menu → "Adicionar à tela inicial". Safari (iPhone): Compartilhar → "Adicionar à Tela de Início". Atualiza sozinho, sem precisar reinstalar.</div></details>'+
+      '<div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><strong>Notificações:</strong> '+statusTxt+
+      (permissao==='granted' ? '<button type="button" class="btn small ghost" id="btn-testar-notificacao">Testar agora</button>' : '<button type="button" class="btn small" id="btn-ativar-notificacao">Ativar neste aparelho</button>')+
+      '</div>'+
+      (permissao==='granted' ? '<details style="margin-top:8px;"><summary>Não chegou nenhuma notificação?</summary><div class="hint" style="margin-top:6px;">Confira em <strong>Configurações do celular → Apps → Tom Gás (ou Chrome) → Notificações</strong> — é uma permissão separada da do navegador.</div></details>' : '')
+    )+
+    cardConfig('limparcache','🧹 Limpar cache do site',
+      '<div class="hint">Se depois de uma atualização o sistema continuar mostrando algo antigo mesmo dando F5, use este botão em vez de ir nas configurações do navegador — ele limpa só os dados guardados deste site (nada de outros sites é afetado): dados salvos localmente, o "service worker" que guarda o app pra funcionar offline, e os cookies deste domínio. Como isso inclui a sessão de login, você provavelmente vai precisar entrar de novo depois. A página recarrega sozinha, do zero.</div>'+
+      '<button type="button" class="btn small ghost" id="btn-limpar-cache-site" style="margin-top:10px;">Limpar cache deste site e recarregar</button>'
+    )+
+    cardConfig('avisosprogramados','⏰ Avisos programados (alarmes)',
+      '<div class="hint">Alarmes que tocam num horário fixo do dia (som + mensagem na tela), pra quem estiver com o sistema aberto no aparelho.</div>'+
+      '<div id="lista-avisos-programados" style="margin-top:10px;">'+(state.avisosProgramados||[]).map(av=>
+        '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">'+
+        '<input type="checkbox" data-aviso-ativo="'+av.id+'" '+(av.ativo?'checked':'')+' title="Ativo">'+
+        '<input type="time" data-aviso-horario="'+av.id+'" value="'+(av.horario||'')+'" style="width:100px;">'+
+        '<input type="text" data-aviso-mensagem="'+av.id+'" value="'+av.mensagem.replace(/"/g,'&quot;')+'" style="flex:1;min-width:180px;">'+
+        '<div style="display:flex;gap:3px;">'+DIAS_SEMANA_LABEL.map((lbl,i)=>
+          '<label style="font-size:9px;text-align:center;color:var(--text2);"><input type="checkbox" data-aviso-dia="'+av.id+'" data-dia="'+i+'" '+((!Array.isArray(av.dias)||av.dias.includes(i))?'checked':'')+' style="width:14px;height:14px;display:block;margin:0 auto;"><br>'+lbl+'</label>'
+        ).join('')+'</div>'+
+        '<button type="button" class="del-link" data-del-aviso="'+av.id+'">🗑</button></div>'
       ).join('')+'</div>'+
-      '<button type="button" class="del-link" data-del-aviso="'+av.id+'">🗑</button></div>'
-    ).join('')+'</div>'+
-    '<div class="hint" style="margin-top:6px;">Marque os dias da semana em que cada aviso deve repetir. Ex.: o fechamento de caixa toca de seg a sex às 19:30, sábado às 18:30 e domingo às 13:30.</div>'+
-    '<button type="button" class="btn small ghost" id="btn-novo-aviso" style="margin-top:10px;">+ Novo aviso</button>'+
-    '</div>'+
-    '<div class="card"><h2>📲 Avisos automáticos pro cliente (WhatsApp)</h2>'+
-    '<div class="hint">Suba aqui as imagens que vão junto com cada mensagem que o entregador manda pro cliente (pela tela de confirmação de entrega). Cada botão que ele clica manda a imagem + o texto automaticamente pelo WhatsApp do cliente.</div>'+
-    '<div style="display:flex;flex-direction:column;gap:16px;margin-top:12px;">'+
-    [
-      {chave:'saiu', label:'🚚 Pedido saiu para entrega'},
-      {chave:'chegou', label:'📍 Chegamos'},
-      {chave:'concluido', label:'✅ Entrega concluída (vai junto com o pedido de avaliação no Google)'}
-    ].map(x=>
-      '<div style="display:flex;align-items:center;gap:12px;">'+
-      (state.imagensStatusEntrega && state.imagensStatusEntrega[x.chave] ? '<img src="'+state.imagensStatusEntrega[x.chave]+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">' : '<div style="width:64px;height:64px;border-radius:8px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text2);text-align:center;">sem imagem</div>')+
-      '<div><div style="font-size:13px;margin-bottom:4px;">'+x.label+'</div><input type="file" accept="image/*" data-imagem-status-entrega="'+x.chave+'"></div>'+
+      '<div class="hint" style="margin-top:6px;">Marque os dias da semana em que cada aviso deve repetir. Ex.: o fechamento de caixa toca de seg a sex às 19:30, sábado às 18:30 e domingo às 13:30.</div>'+
+      '<button type="button" class="btn small ghost" id="btn-novo-aviso" style="margin-top:10px;">+ Novo aviso</button>'
+    )+
+    cardConfig('avisoscliente','📲 Avisos automáticos pro cliente (WhatsApp)',
+      '<div class="hint">Suba aqui as imagens que vão junto com cada mensagem que o entregador manda pro cliente (pela tela de confirmação de entrega). Cada botão que ele clica manda a imagem + o texto automaticamente pelo WhatsApp do cliente.</div>'+
+      '<div style="display:flex;flex-direction:column;gap:16px;margin-top:12px;">'+
+      [
+        {chave:'saiu', label:'🚚 Pedido saiu para entrega'},
+        {chave:'chegou', label:'📍 Chegamos'},
+        {chave:'concluido', label:'✅ Entrega concluída (vai junto com o pedido de avaliação no Google)'}
+      ].map(x=>
+        '<div style="display:flex;align-items:center;gap:12px;">'+
+        (state.imagensStatusEntrega && state.imagensStatusEntrega[x.chave] ? '<img src="'+state.imagensStatusEntrega[x.chave]+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">' : '<div style="width:64px;height:64px;border-radius:8px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text2);text-align:center;">sem imagem</div>')+
+        '<div><div style="font-size:13px;margin-bottom:4px;">'+x.label+'</div><input type="file" accept="image/*" data-imagem-status-entrega="'+x.chave+'"></div>'+
+        '</div>'
+      ).join('')+
       '</div>'
-    ).join('')+
-    '</div>'+
-    '</div>'+
+    )+
     '<div class="config-group-title">Dados e importação</div>'+
-    '<div class="card"><h2>Backup</h2>'+
-    '<div class="hint">Todo dia, na primeira vez que alguém abre o sistema, é feito um backup automático com o <strong>fechamento do dia anterior</strong> — guardado no próprio Supabase, mantendo os últimos 30. Você também pode clicar em "Fazer backup agora" quantas vezes quiser, na hora que quiser (por exemplo, ao fechar o caixa do dia) — cada um fica salvo com data <strong>e hora exatas</strong>, e também baixa um arquivo no seu aparelho.</div>'+
-    (ultimoBackupAutomaticoQuando ? ('<div class="hint" style="margin-top:6px;">Última tentativa de backup automático nesta sessão: '+(ultimoBackupAutomaticoOk?'✅ deu certo':'❌ falhou')+' às '+ultimoBackupAutomaticoQuando.toLocaleTimeString()+'.</div>') : '<div class="hint" style="margin-top:6px;">Ainda não rodou o backup automático nesta sessão — abra essa tela de novo depois de recarregar a página.</div>')+
-    '<div style="margin-top:10px;max-width:420px;"><label>Observação (opcional)</label><input type="text" id="input-obs-backup-manual" placeholder="Ex: backup feito antes de importar planilha"></div>'+
-    '<button type="button" class="btn small" id="btn-backup-manual" style="margin-top:10px;">Fazer backup agora</button>'+
-    '<details style="margin-top:18px;" id="details-lista-backups"'+(backupsListaAberta?' open':'')+'><summary><strong>Backups salvos</strong></summary>'+
-    '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
-    '</details>'+
-    '</div>'+
-    '<div class="card"><h2>📊 Importação diária (Excel)</h2>'+ajudaHtml('importacao','Suba aqui a planilha do modelo (abas Vendas, Despesas, Clientes, Produtos, ContasPagar e FechamentoCaixa) pra lançar o dia inteiro de uma vez. Se algum produto ou cliente da planilha não bater exatamente com o cadastro, o sistema pausa e pergunta se é algo já existente (com outra grafia) ou novo, numa telinha só, antes de importar de vez. Vendas com cliente identificado que baterem exatamente com uma venda já lançada (mesma data, cliente, produto, quantidade, valor e forma de pagamento) são ignoradas automaticamente pra não duplicar — então pode reimportar a mesma planilha com segurança, ou subir só a venda nova do fim do dia sem medo de duplicar o que já foi lançado antes.')+
-    '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong>, <strong>Produtos</strong>, <strong>ContasPagar</strong> e <strong>FechamentoCaixa</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos (incluindo gasto de veículo, se preencher a coluna Veículo); contas a pagar marcadas como "pago" já entram como despesa também; clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
-    '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e numere a venda (coluna <strong>Nº da Venda</strong>) OU marque "sim" na coluna <strong>Repete a venda da linha de cima?</strong> nas linhas seguintes — assim o sistema conta como uma venda só. Se deixar tudo em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, use a numeração ou o "Repete a venda".</div>'+
-    '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
-    '<div id="resumo-importacao-diaria"></div>'+
-    '<details style="margin-top:14px;"><summary style="color:var(--danger);"><strong>Zerar lançamentos de hoje</strong></summary>'+
-    '<div class="hint" style="margin-top:8px;">Enquanto a importação diária ainda não roda 100% certinha, use isto pra desfazer tudo que entrou hoje (de importação ou lançamento manual) e tentar de novo do zero: apaga as <strong>vendas de hoje</strong>, as <strong>despesas de hoje</strong> e as linhas de hoje das outras abas do arquivo — <strong>Contas a Pagar</strong> lançadas hoje e o <strong>Fechamento de Caixa</strong> de hoje. Não mexe no cadastro de Clientes nem no catálogo de Produtos — esses não são apagados. Datas de outros dias não são afetadas.</div>'+
-    '<button type="button" class="btn small ghost" id="btn-zerar-dia-importacao" style="margin-top:10px;color:var(--danger);border-color:var(--danger);">🗑️ Zerar vendas, despesas e contas de hoje</button>'+
-    '</details>'+
-    '</div>'+
+    cardConfig('backup','💾 Backup',
+      '<div class="hint">Todo dia, na primeira vez que alguém abre o sistema, é feito um backup automático com o <strong>fechamento do dia anterior</strong> — guardado no próprio Supabase, mantendo os últimos 30. Você também pode clicar em "Fazer backup agora" quantas vezes quiser, na hora que quiser (por exemplo, ao fechar o caixa do dia) — cada um fica salvo com data <strong>e hora exatas</strong>, e também baixa um arquivo no seu aparelho.</div>'+
+      (ultimoBackupAutomaticoQuando ? ('<div class="hint" style="margin-top:6px;">Última tentativa de backup automático nesta sessão: '+(ultimoBackupAutomaticoOk?'✅ deu certo':'❌ falhou')+' às '+ultimoBackupAutomaticoQuando.toLocaleTimeString()+'.</div>') : '<div class="hint" style="margin-top:6px;">Ainda não rodou o backup automático nesta sessão — abra essa tela de novo depois de recarregar a página.</div>')+
+      '<div style="margin-top:10px;max-width:420px;"><label>Observação (opcional)</label><input type="text" id="input-obs-backup-manual" placeholder="Ex: backup feito antes de importar planilha"></div>'+
+      '<button type="button" class="btn small" id="btn-backup-manual" style="margin-top:10px;">Fazer backup agora</button>'+
+      '<details style="margin-top:18px;" id="details-lista-backups"'+(backupsListaAberta?' open':'')+'><summary><strong>Backups salvos</strong></summary>'+
+      '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
+      '</details>'
+    )+
+    cardConfig('importacaodiaria','📊 Importação diária (Excel)',
+      ajudaHtml('importacao','Suba aqui a planilha do modelo (abas Vendas, Despesas, Clientes, Produtos, ContasPagar e FechamentoCaixa) pra lançar o dia inteiro de uma vez. Se algum produto ou cliente da planilha não bater exatamente com o cadastro, o sistema pausa e pergunta se é algo já existente (com outra grafia) ou novo, numa telinha só, antes de importar de vez. Vendas com cliente identificado que baterem exatamente com uma venda já lançada (mesma data, cliente, produto, quantidade, valor e forma de pagamento) são ignoradas automaticamente pra não duplicar — então pode reimportar a mesma planilha com segurança, ou subir só a venda nova do fim do dia sem medo de duplicar o que já foi lançado antes.')+
+      '<div class="hint">Baixe o <a href="#" id="link-baixar-modelo-diario">modelo em Excel</a> — já vem com as abas <strong>Vendas</strong>, <strong>Despesas</strong>, <strong>Clientes</strong>, <strong>Produtos</strong>, <strong>ContasPagar</strong> e <strong>FechamentoCaixa</strong>, com os mesmos campos do sistema. Preencha durante o dia e suba o mesmo arquivo aqui no fim do expediente: cada aba é lançada automaticamente no lugar certo — vendas descontam do estoque de gás/água e entram no fiado quando marcadas como "Marcou/Fiado"; quando marcadas como "Abateu", o sistema já desconta sozinho do crédito em haver do cliente e, se sobrar diferença, lança o restante de fiado; despesas viram lançamentos (incluindo gasto de veículo, se preencher a coluna Veículo); contas a pagar marcadas como "pago" já entram como despesa também; clientes e produtos novos entram no cadastro. Pode deixar em branco a aba que não for usar.</div>'+
+      '<div class="hint" style="margin-top:8px;"><strong>Ticket médio:</strong> se o cliente levar produtos de categorias diferentes (ex.: gás + água) numa mesma compra, lance cada produto numa linha da aba Vendas e numere a venda (coluna <strong>Nº da Venda</strong>) OU marque "sim" na coluna <strong>Repete a venda da linha de cima?</strong> nas linhas seguintes — assim o sistema conta como uma venda só. Se deixar tudo em branco mas preencher o nome do Cliente, o sistema tenta agrupar sozinho pelo cliente + data; em venda de balcão sem nome, use a numeração ou o "Repete a venda".</div>'+
+      '<input type="file" id="input-importacao-diaria" accept=".xlsx,.xls" style="margin-top:10px;">'+
+      '<div id="resumo-importacao-diaria"></div>'+
+      '<details style="margin-top:14px;"><summary style="color:var(--danger);"><strong>Zerar lançamentos de hoje</strong></summary>'+
+      '<div class="hint" style="margin-top:8px;">Enquanto a importação diária ainda não roda 100% certinha, use isto pra desfazer tudo que entrou hoje (de importação ou lançamento manual) e tentar de novo do zero: apaga as <strong>vendas de hoje</strong>, as <strong>despesas de hoje</strong> e as linhas de hoje das outras abas do arquivo — <strong>Contas a Pagar</strong> lançadas hoje e o <strong>Fechamento de Caixa</strong> de hoje. Não mexe no cadastro de Clientes nem no catálogo de Produtos — esses não são apagados. Datas de outros dias não são afetadas.</div>'+
+      '<button type="button" class="btn small ghost" id="btn-zerar-dia-importacao" style="margin-top:10px;color:var(--danger);border-color:var(--danger);">🗑️ Zerar vendas, despesas e contas de hoje</button>'+
+      '</details>'
+    )+
     '<div class="config-group-title">Avançado e segurança</div>'+
-    '<div class="card"><h2 style="color:var(--danger);">Ferramentas avançadas</h2>'+
-    '<details><summary>Zerar catálogo de produtos e categorias</summary>'+
-    '<div class="hint" style="margin-top:8px;">Use isto antes de importar um catálogo novo. Apaga todos os produtos e categorias cadastrados, <strong>mantendo apenas gás e água</strong>. Clientes e empresas não são afetados.</div>'+
-    '<button type="button" class="btn small ghost" id="btn-zerar-catalogo" style="margin-top:10px;">Zerar produtos e categorias (manter gás/água)</button>'+
-    '</details>'+
-    '<details style="margin-top:10px;"><summary>Excluir TUDO — inclusive gás e água — e começar do zero</summary>'+
-    '<div class="hint" style="margin-top:8px;">Apaga <strong>todas as categorias e produtos</strong>, inclusive os itens fixos de gás e água (eles voltam a aparecer depois, sem preço, prontos pra você recadastrar do seu jeito na aba "Categoria / Tipo da Categoria / Produto"). Isso <strong>não mexe nos números do Estoque</strong> (kg, cheio/vazio) — só na estrutura do catálogo.</div>'+
-    '<button type="button" class="btn small" id="btn-zerar-tudo-catalogo" style="background:var(--danger);margin-top:10px;">Excluir tudo e começar do zero</button>'+
-    '</details>'+
-    '<details style="margin-top:10px;"><summary>Zerar todos os lançamentos</summary>'+
-    '<div class="hint" style="margin-top:8px;">Apaga <strong>vendas, despesas, a receber, créditos, agendamentos e histórico de estoque</strong> (volta tudo a zero). Clientes, empresas e o catálogo de produtos são mantidos.</div>'+
-    '<button type="button" class="btn small" id="btn-zerar-dados" style="background:var(--danger);margin-top:10px;">Zerar todos os lançamentos</button>'+
-    '</details>'+
-    '</div>'+
+    cardConfig('avancado','<span style="color:var(--danger);">⚠️ Ferramentas avançadas</span>',
+      '<details><summary>Zerar catálogo de produtos e categorias</summary>'+
+      '<div class="hint" style="margin-top:8px;">Use isto antes de importar um catálogo novo. Apaga todos os produtos e categorias cadastrados, <strong>mantendo apenas gás e água</strong>. Clientes e empresas não são afetados.</div>'+
+      '<button type="button" class="btn small ghost" id="btn-zerar-catalogo" style="margin-top:10px;">Zerar produtos e categorias (manter gás/água)</button>'+
+      '</details>'+
+      '<details style="margin-top:10px;"><summary>Excluir TUDO — inclusive gás e água — e começar do zero</summary>'+
+      '<div class="hint" style="margin-top:8px;">Apaga <strong>todas as categorias e produtos</strong>, inclusive os itens fixos de gás e água (eles voltam a aparecer depois, sem preço, prontos pra você recadastrar do seu jeito na aba "Categoria / Tipo da Categoria / Produto"). Isso <strong>não mexe nos números do Estoque</strong> (kg, cheio/vazio) — só na estrutura do catálogo.</div>'+
+      '<button type="button" class="btn small" id="btn-zerar-tudo-catalogo" style="background:var(--danger);margin-top:10px;">Excluir tudo e começar do zero</button>'+
+      '</details>'+
+      '<details style="margin-top:10px;"><summary>Zerar todos os lançamentos</summary>'+
+      '<div class="hint" style="margin-top:8px;">Apaga <strong>vendas, despesas, a receber, créditos, agendamentos e histórico de estoque</strong> (volta tudo a zero). Clientes, empresas e o catálogo de produtos são mantidos.</div>'+
+      '<button type="button" class="btn small" id="btn-zerar-dados" style="background:var(--danger);margin-top:10px;">Zerar todos os lançamentos</button>'+
+      '</details>'
+    )+
     viewLapidarResumo()+
     viewRecadosAdmin()+
     viewLGPD()+
@@ -8358,7 +8433,7 @@ function viewLapidarResumo(){
     '</details></div>';
 }
 function viewLGPD(){
-  return '<div class="card"><h2>🔒 LGPD — Privacidade dos clientes</h2>'+
+  return cardConfig('lgpd','🔒 LGPD — Privacidade dos clientes',
     '<div class="hint">Documentos de referência para o cadastro de clientes e atendimento a pedidos de dados.</div>'+
     '<details style="margin-top:12px;"><summary><strong>Política de Privacidade</strong></summary><div class="hint" style="margin-top:8px;line-height:1.6;">'+
     'A Tom Gás coleta nome, telefone, endereço de entrega, histórico de compras e fiado, e localização aproximada quando usada para roteirização — com a finalidade de realizar entregas, cobrança e comunicação (WhatsApp) sobre pedidos, promoções e pesquisas de satisfação.<br><br>'+
@@ -8376,8 +8451,8 @@ function viewLGPD(){
     '<strong>4. Confirmar ao cliente</strong> — em até 15 dias corridos.<br>'+
     '<strong>5. Registrar</strong> — anotar data do pedido e da exclusão para eventual comprovação futura.'+
     '</div></details>'+
-    '<div class="hint" style="margin-top:12px;">📄 Versão completa em Word disponível para download separadamente, se precisar imprimir ou enviar por e-mail.</div>'+
-    '</div>';
+    '<div class="hint" style="margin-top:12px;">📄 Versão completa em Word disponível para download separadamente, se precisar imprimir ou enviar por e-mail.</div>'
+  );
 }
 function viewLogAtividades(){
   const lista = (state.logAtividades||[]).slice().reverse().slice(0,200);
@@ -8404,6 +8479,7 @@ function viewRelatorios(){
   else if(relatorioSub==='pesquisa') content = relatorioPesquisaClientes();
   else if(relatorioSub==='pesquisasmanuais') content = relatorioPesquisasManuais();
   else if(relatorioSub==='novosclientes') content = relatorioNovosClientes();
+  else if(relatorioSub==='clientesincompletos') content = relatorioClientesIncompletos();
   else if(relatorioSub==='painelacao') content = relatorioPainelAcao();
   else if(relatorioSub==='esg') content = relatorioESG();
   else if(relatorioSub==='compararcampanhas') content = relatorioCompararCampanhas();
@@ -9036,6 +9112,50 @@ function relatorioNovosClientes(){
     '<div class="card">'+
     (doMes.length===0 ? '<div class="empty">Nenhum cliente novo nesse mês.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Indicado por</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '</div>';
+}
+function relatorioClientesIncompletos(){
+  const CAMPOS_DISPONIVEIS = [
+    {campo:'telefone', label:'Telefone'},
+    {campo:'endereco', label:'Endereço'},
+    {campo:'complemento', label:'Complemento'},
+    {campo:'obs', label:'Observação'},
+    {campo:'aniversario', label:'Aniversário'},
+    {campo:'apelidos', label:'Apelidos'},
+    {campo:'indicadoPor', label:'Indicado por'}
+  ];
+  const camposChecados = (relatorioClientesIncompletosCampos&&relatorioClientesIncompletosCampos.length) ? relatorioClientesIncompletosCampos : ['telefone','endereco'];
+  const vazio = v=>{ if(Array.isArray(v)) return v.length===0; return !v || !String(v).trim(); };
+  let incompletos = (state.clientes||[]).filter(c=> camposChecados.some(campo=>vazio(c[campo])) );
+  incompletos = incompletos.slice().sort((a,b)=>{
+    if(relatorioClientesIncompletosOrdem==='criadoEm') return (a.criadoEm||0)-(b.criadoEm||0);
+    return (a.nome||'').localeCompare(b.nome||'','pt-BR');
+  });
+  const linhas = incompletos.map(c=>{
+    const faltando = CAMPOS_DISPONIVEIS.filter(cd=>camposChecados.includes(cd.campo) && vazio(c[cd.campo]));
+    const dataCad = c.criadoEm ? fmtDate(new Date(c.criadoEm).toISOString().slice(0,10)) : '—';
+    return '<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+dataCad+'</td>'+
+      '<td>'+faltando.map(f=>'<span class="badge" style="background:var(--danger);">'+f.label+'</span>').join(' ')+'</td></tr>';
+  }).join('');
+  const checkboxesHtml = CAMPOS_DISPONIVEIS.map(cd=>
+    '<label class="checkbox-item"><input type="checkbox" class="chk-campo-cliente-incompleto" value="'+cd.campo+'" '+(camposChecados.includes(cd.campo)?'checked':'')+'> '+cd.label+'</label>'
+  ).join('');
+  return '<div class="card"><h2>🧩 Clientes com Cadastro Incompleto</h2>'+
+    ajudaHtml('clientes-incompletos','Mostra todo cliente que está faltando pelo menos um dos campos marcados abaixo. Marque só os campos que importam pra você conferir (por padrão, Telefone e Endereço) e escolha se quer ver em ordem alfabética ou pela data em que o cliente foi cadastrado no sistema.')+
+    '<div style="margin-top:8px;"><strong>Campos a conferir:</strong><div class="cat-checklist" style="margin-top:6px;">'+checkboxesHtml+'</div></div>'+
+    '<div class="form-row" style="margin-top:14px;max-width:360px;"><div><label>Ordenar por</label>'+
+    '<select id="sel-ordem-clientes-incompletos">'+
+    '<option value="nome" '+(relatorioClientesIncompletosOrdem==='nome'?'selected':'')+'>Ordem alfabética (A→Z)</option>'+
+    '<option value="criadoEm" '+(relatorioClientesIncompletosOrdem==='criadoEm'?'selected':'')+'>Data de criação do cadastro (mais antigos primeiro)</option>'+
+    '</select></div></div>'+
+    '</div>'+
+    '<div class="card"><div class="grid cols2">'+
+    '<div class="metric"><div class="label">Cadastros incompletos</div><div class="value">'+incompletos.length+'</div></div>'+
+    '<div class="metric"><div class="label">Total de clientes</div><div class="value">'+(state.clientes||[]).length+'</div></div>'+
+    '</div></div>'+
+    '<div class="card">'+
+    (incompletos.length===0 ? '<div class="empty">Nenhum cliente faltando os campos marcados acima. 🎉</div>' :
+    '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Cadastrado em</th><th>Falta</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
 }
 function relatorioMeta(){
@@ -10469,7 +10589,7 @@ function renderRelatorioEmpresasResultado(){
     wrap.innerHTML = '<div class="empty">Selecione uma empresa acima (ou clique em "ver detalhes" na lista de saldo devedor) pra ver o histórico detalhado.</div>';
     return;
   }
-  const vendasEmpresa = state.vendas.filter(v=>v.data>=de && v.data<=ate && v.empresa===empresaSel && v.pagamento==='Convênio').sort((a,b)=>a.data.localeCompare(b.data));
+  const vendasEmpresa = state.vendas.filter(v=>v.data>=de && v.data<=ate && vendaContaParaEmpresa(v, empresaSel)).sort((a,b)=>a.data.localeCompare(b.data));
   const lancEmpresa = state.convenioLancamentos.filter(c=>c.empresa===empresaSel && c.data>=de && c.data<=ate).sort((a,b)=>a.data.localeCompare(b.data));
   const pagEmpresa = (state.convenioPagamentos||[]).filter(p=>p.empresa===empresaSel && p.data>=de && p.data<=ate).sort((a,b)=>a.data.localeCompare(b.data));
   const totalVendas = vendasEmpresa.reduce((s,v)=>s+v.valor_total,0);
@@ -10611,7 +10731,7 @@ function attachConvenioHandlers(){
     const novoSaldo = parseValorBR(f.get('saldoCorreto'));
     if(!f.get('saldoCorreto') || isNaN(novoSaldo)){ alert('Digite um valor válido, por exemplo 350,00'); return; }
     const de = relEmpresaDe, ate = relEmpresaAte;
-    const vendasEmp = state.vendas.filter(v=>v.data>=de && v.data<=ate && v.empresa===empresaSel && v.pagamento==='Convênio').reduce((s,v)=>s+v.valor_total,0);
+    const vendasEmp = state.vendas.filter(v=>v.data>=de && v.data<=ate && vendaContaParaEmpresa(v, empresaSel)).reduce((s,v)=>s+v.valor_total,0);
     const lancEmp = state.convenioLancamentos.filter(c=>c.empresa===empresaSel && c.data>=de && c.data<=ate).reduce((s,c)=>s+c.valor,0);
     const pagEmp = (state.convenioPagamentos||[]).filter(p=>p.empresa===empresaSel && p.data>=de && p.data<=ate).reduce((s,p)=>s+p.valor,0);
     const saldoAtual = vendasEmp + lancEmp - pagEmp;
@@ -11430,6 +11550,8 @@ function attachHandlers(){
 
   const btnRemoverVendasDuplicadas = document.getElementById('btn-remover-vendas-duplicadas');
   if(btnRemoverVendasDuplicadas) btnRemoverVendasDuplicadas.onclick = removerVendasDuplicadas;
+  const btnUnificarClientesDuplicados = document.getElementById('btn-unificar-clientes-duplicados');
+  if(btnUnificarClientesDuplicados) btnUnificarClientesDuplicados.onclick = mesclarClientesDuplicados;
   const btnUnificarDuplicados = document.getElementById('btn-unificar-duplicados');
   if(btnUnificarDuplicados) btnUnificarDuplicados.onclick = async ()=>{
     if(!confirm('Isso vai juntar categorias e produtos com nomes repetidos (ignorando maiúsculas, acentos e espaços). Não pode ser desfeito. Continuar?')) return;
@@ -11469,10 +11591,6 @@ function attachHandlers(){
   const fv = document.getElementById('form-venda');
   const detalhesVendaManual = document.getElementById('details-venda-manual');
   if(detalhesVendaManual) detalhesVendaManual.ontoggle = ()=>{ vendaManualAberta = detalhesVendaManual.open; };
-  const detalhesConfLancamentos = document.getElementById('details-conf-lancamentos');
-  if(detalhesConfLancamentos) detalhesConfLancamentos.ontoggle = ()=>{ conferenciaLancamentosAberta = detalhesConfLancamentos.open; };
-  const inputConfLancData = document.getElementById('conf-lanc-data');
-  if(inputConfLancData) inputConfLancData.onchange = ()=>{ conferenciaLancamentosDia = inputConfLancData.value; renderAll(); };
   const chkCascoPend = document.getElementById('chk-casco-pendente');
   if(chkCascoPend) chkCascoPend.onchange = montarCascoPendenteItens;
   const chkRetiradaParcial = document.getElementById('chk-retirada-parcial');
@@ -11622,7 +11740,7 @@ function attachHandlers(){
             data:v.data, cliente:v.cliente, canal:canalExtra, pagamento:pagamentoExtra, tipo_entrega:v.tipo_entrega, cupom:v.cupom,
             empresa:v.empresa, entrega_data:v.entrega_data, entrega_hora:v.entrega_hora, obs:v.obs,
             categoria:catExtra, produto:prodExtra, quantidade:qtdExtra, valor_unit:vUnitExtra, valor_total: Math.round(qtdExtra*vUnitExtra*100)/100, nota: notaExtra,
-            naoBaixaEstoqueRetroativa: naoBaixarEditSubmit, origemLancamento:'manual'
+            naoBaixaEstoqueRetroativa: naoBaixarEditSubmit
           };
           state.vendas.push(novoItemDaVenda);
           if(!pendenteRetiradaEdit) ajustaEstoquePorVenda(catExtra, qtdExtra, false);
@@ -11694,7 +11812,7 @@ function attachHandlers(){
       const naoBaixarEstoqueNova = !!(chkNaoBaixarNovaVenda && chkNaoBaixarNovaVenda.checked);
       itens.forEach((item,idx)=>{
         const pendenteEsteItem = pendenteRetiradaNova || item.__faltaRetirarParcial || naoBaixarEstoqueNova;
-        const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':'', estoqueBaixado: !pendenteEsteItem, retirado:false, retiradoForma:'', retiradoEm:null, origemLancamento:'manual'}, camposComuns, item);
+        const venda = Object.assign({id:uid(), criadoEm:Date.now(), grupoId, fiado_pago:false, frete: idx===0?freteTotal:0, entrega_status: camposComuns.entrega_hora?'pendente':'', estoqueBaixado: !pendenteEsteItem, retirado:false, retiradoForma:'', retiradoEm:null}, camposComuns, item);
         if(item.__faltaRetirarParcial){
           venda.tipo_entrega = 'Falta retirar';
           venda.vasilhameVazioPendenteDeixado = item.__vasilhameVazioDeixado;
@@ -11876,7 +11994,7 @@ function attachHandlers(){
       frete: 0, entrega_data:'', entrega_hora:'', entrega_status:'',
       obs: (f.get('obs')||'').trim() || 'Falta retirar — gás já vendido/recebido, ainda não retirado/entregue',
       estoqueBaixado: false, retirado:false, retiradoForma:'', retiradoEm:null,
-      vendaAnterior: true, vasilhameVazioPendenteDeixado: !!f.get('vasilhame_vazio_deixado'), origemLancamento:'manual'
+      vendaAnterior: true, vasilhameVazioPendenteDeixado: !!f.get('vasilhame_vazio_deixado')
     };
     const _vendasAntesFaltaRetirar = JSON.parse(JSON.stringify(state.vendas));
     state.vendas.push(venda);
@@ -11943,7 +12061,7 @@ function attachHandlers(){
   };
   if(fv && fv.quantidade) fv.quantidade.oninput = atualizarTotalCarrinho;
   if(fv && fv.valor_unit) fv.valor_unit.oninput = atualizarTotalCarrinho;
-  if(fv && fv.cliente) fv.cliente.oninput = atualizarBoxCreditoVenda;
+  if(fv && fv.cliente) fv.cliente.oninput = ()=>{ atualizarBoxCreditoVenda(); aoDigitarClienteVenda(); };
   const empresaVendaInput = document.getElementById('input-empresa-venda');
   if(empresaVendaInput) empresaVendaInput.oninput = aoDigitarEmpresaVenda;
   const selTipoEntrega = document.getElementById('sel-tipo-entrega');
@@ -12084,20 +12202,6 @@ function attachHandlers(){
     const wrapVeicDesp = document.getElementById('wrap-veiculo-despesa');
     const toggleVeicDesp = ()=>{ if(wrapVeicDesp) wrapVeicDesp.style.display = categoriaParaceVeiculo(selCatDesp.value) ? 'block' : 'none'; };
     if(selCatDesp){ selCatDesp.onchange = toggleVeicDesp; toggleVeicDesp(); }
-    // Picker de veículo com os ícones de verdade (mesmo desenho/cor do painel principal) em vez
-    // de um <select> nativo — <option> não consegue mostrar imagem, só texto, então as duas motos
-    // apareciam com o mesmo emoji genérico e pareciam "aleatórias". Clicar num botão marca ele
-    // como ativo e guarda o id no campo escondido "veiculoId" (é esse campo que o submit lê).
-    const inputVeicDespId = document.getElementById('input-veiculo-despesa-id');
-    const pickerVeicDesp = document.getElementById('picker-veiculo-despesa');
-    if(pickerVeicDesp && inputVeicDespId){
-      pickerVeicDesp.querySelectorAll('[data-veiculo-op]').forEach(btn=>{
-        btn.onclick = ()=>{
-          inputVeicDespId.value = btn.dataset.veiculoOp;
-          sincronizarPickerVeiculoDespesa();
-        };
-      });
-    }
   }
   if(fd) fd.onsubmit = async(e)=>{
     e.preventDefault();
@@ -12700,7 +12804,6 @@ function attachHandlers(){
       const wrapVeicEdit = document.getElementById('wrap-veiculo-despesa');
       if(wrapVeicEdit) wrapVeicEdit.style.display = categoriaParaceVeiculo(d.categoria) ? 'block' : 'none';
       if(fdEl.veiculoId) fdEl.veiculoId.value = d.veiculoId || '';
-      sincronizarPickerVeiculoDespesa();
       if(fdEl.conta) fdEl.conta.value = d.conta || '';
       fdEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       fdEl.scrollIntoView({behavior:'smooth'});
@@ -12889,6 +12992,32 @@ function attachHandlers(){
     });
   };
   const attachClienteRowHandlers = ()=>{
+    function clientesListaFiltradaAtual(){
+      const buscaEl = document.getElementById('busca-cliente');
+      const q = buscaEl ? buscaEl.value.toLowerCase().trim() : '';
+      if(!q) return state.clientes;
+      return state.clientes.filter(c=>{
+        const alvo = (c.nome+' '+(c.telefone||'')+' '+(c.endereco||'')+' '+(c.complemento||'')+' '+(c.apelidos||[]).join(' ')).toLowerCase();
+        return alvo.includes(q);
+      });
+    }
+    function rerenderClientesLista(){
+      const wrap = document.getElementById('lista-clientes-wrap');
+      if(!wrap) return;
+      wrap.innerHTML = clientesTable(clientesListaFiltradaAtual());
+      attachClienteRowHandlers();
+    }
+    document.querySelectorAll('.btn-clientes-por-pagina').forEach(btn=>btn.onclick=()=>{
+      clientesPorPagina = parseInt(btn.dataset.qtd,10);
+      clientesPagina = 1;
+      rerenderClientesLista();
+    });
+    const btnClientesOrdemAZ = document.getElementById('btn-clientes-ordem-az');
+    if(btnClientesOrdemAZ) btnClientesOrdemAZ.onclick = ()=>{ clientesOrdemAZ = !clientesOrdemAZ; clientesPagina = 1; rerenderClientesLista(); };
+    const btnClientesPagAnterior = document.getElementById('btn-clientes-pag-anterior');
+    if(btnClientesPagAnterior) btnClientesPagAnterior.onclick = ()=>{ clientesPagina--; rerenderClientesLista(); const det=document.getElementById('details-lista-clientes'); if(det) det.scrollIntoView({behavior:'smooth', block:'start'}); };
+    const btnClientesPagProxima = document.getElementById('btn-clientes-pag-proxima');
+    if(btnClientesPagProxima) btnClientesPagProxima.onclick = ()=>{ clientesPagina++; rerenderClientesLista(); const det=document.getElementById('details-lista-clientes'); if(det) det.scrollIntoView({behavior:'smooth', block:'start'}); };
     document.querySelectorAll('[data-edit-cliente]').forEach(btn=>btn.onclick=()=>{
       const c = state.clientes.find(x=>x.id===btn.dataset.editCliente);
       const fcEl = document.getElementById('form-cliente');
@@ -13263,6 +13392,7 @@ function attachHandlers(){
   if(detalhesClientes) detalhesClientes.ontoggle = ()=>{ clientesListaAberta = detalhesClientes.open; };
   if(busca) busca.oninput = ()=>{
     const q = busca.value.toLowerCase().trim();
+    clientesPagina = 1;
     const filtered = state.clientes.filter(c=>{
       const alvo = (c.nome+' '+(c.telefone||'')+' '+(c.endereco||'')+' '+(c.complemento||'')+' '+(c.apelidos||[]).join(' ')).toLowerCase();
       return alvo.includes(q);
@@ -14184,6 +14314,15 @@ function attachHandlers(){
   const inputMesRemuneracao = document.getElementById('input-mes-remuneracao'); if(inputMesRemuneracao) inputMesRemuneracao.onchange = ()=>{ comissaoMesSelecionado = inputMesRemuneracao.value; renderAll(); };
   document.querySelectorAll('[data-ir-acertos]').forEach(btn=>btn.onclick=()=>{ currentTab='acertos'; renderAll(); });
   const inputMesNovosClientes = document.getElementById('input-mes-novos-clientes'); if(inputMesNovosClientes) inputMesNovosClientes.onchange = ()=>{ relatorioNovosClientesMes = inputMesNovosClientes.value; renderAll(); };
+  document.querySelectorAll('.chk-campo-cliente-incompleto').forEach(chk=>{
+    chk.onchange = ()=>{
+      const marcados = Array.from(document.querySelectorAll('.chk-campo-cliente-incompleto:checked')).map(el=>el.value);
+      relatorioClientesIncompletosCampos = marcados;
+      renderAll();
+    };
+  });
+  const selOrdemClientesIncompletos = document.getElementById('sel-ordem-clientes-incompletos');
+  if(selOrdemClientesIncompletos) selOrdemClientesIncompletos.onchange = ()=>{ relatorioClientesIncompletosOrdem = selOrdemClientesIncompletos.value; renderAll(); };
   document.querySelectorAll('[data-recompensar-indicador]').forEach(btn=>btn.onclick=async()=>{
     const obs = prompt('O que você vai dar de recompensa pra '+btn.dataset.recompensarIndicador+'? (ex: 1 botijão grátis, desconto de R$10, etc)');
     if(obs===null) return;
@@ -14322,7 +14461,7 @@ function attachHandlers(){
         try{ lista = await carregarAnexosConvenio(empresaSel, monthKey(de)); }catch(err){ console.error(err); }
         ctx = {empresa:empresaSel, mes:monthKey(de), lista:lista||[]};
       }
-      const vendasEmpresa = state.vendas.filter(v=>v.data>=de && v.data<=ate && v.empresa===empresaSel && v.pagamento==='Convênio').sort((a,b)=>a.data.localeCompare(b.data));
+      const vendasEmpresa = state.vendas.filter(v=>v.data>=de && v.data<=ate && vendaContaParaEmpresa(v, empresaSel)).sort((a,b)=>a.data.localeCompare(b.data));
       const lancEmpresa = state.convenioLancamentos.filter(c=>c.empresa===empresaSel && c.data>=de && c.data<=ate).map(c=>({data:c.data, categoria:c.descricao||'Lançamento manual', cliente:'', valor_total:c.valor}));
       const itensConvenio = vendasEmpresa.concat(lancEmpresa).sort((a,b)=>a.data.localeCompare(b.data));
       const pagsConvenio = (state.convenioPagamentos||[]).filter(p=>p.empresa===empresaSel && p.data>=de && p.data<=ate).sort((a,b)=>a.data.localeCompare(b.data));
@@ -14713,7 +14852,7 @@ function attachHandlers(){
         tipo_entrega: f.get('tipo_entrega'), cupom:(f.get('cupom')||'').trim().toUpperCase(),
         empresa: empresaAg, entrega_data:'', entrega_hora:'', obs: 'Gerada automaticamente ao registrar a entrega.',
         categoria:item.categoria, produto:item.produto, quantidade:item.quantidade, valor_unit:item.valor_unit,
-        valor_total:item.valor_total, nota:item.nota, entregadorId: entregadorIdAg, origemLancamento:'agendamento'
+        valor_total:item.valor_total, nota:item.nota, entregadorId: entregadorIdAg
       };
       state.vendas.push(venda);
       if(naoBaixarEstoqueAg && !pendenteRetiradaAg){ venda.naoBaixaEstoqueRetroativa = true; }
@@ -14924,7 +15063,7 @@ function attachHandlers(){
         const venda = {
           id: idVenda, criadoEm: Date.now(), grupoId: idVenda, fiado_pago:false, frete: a.frete||0, entrega_status:'entregue', estoqueBaixado:false, retirado:false, retiradoForma:'', retiradoEm:null,
           data: a.data, cliente: a.cliente, canal:'', pagamento: a.pagamento||'Dinheiro', tipo_entrega: a.tipo_entrega||'Entrega a pé', cupom:'', empresa: a.empresa||'', entrega_data: a.data, entrega_hora: a.hora||'',
-          obs: 'Gerada automaticamente ao concluir a entrega agendada.', categoria: a.categoria, produto: a.produto, quantidade: qtd, valor_unit: valorUnit, valor_total: a.valor||0, nota: 'Não lança', origemLancamento:'agendamento'
+          obs: 'Gerada automaticamente ao concluir a entrega agendada.', categoria: a.categoria, produto: a.produto, quantidade: qtd, valor_unit: valorUnit, valor_total: a.valor||0, nota: 'Não lança'
         };
         if(!pendenteRetirada){ ajustaEstoquePorVenda(a.categoria, qtd, false); venda.estoqueBaixado = true; }
         state.vendas.push(venda);
@@ -15441,6 +15580,11 @@ function attachHandlers(){
   };
   const btnAbrirMetas = document.getElementById('btn-abrir-metas');
   if(btnAbrirMetas) btnAbrirMetas.onclick = ()=>{ currentTab = 'metas'; renderAll(); };
+  document.querySelectorAll('details[id^="details-cfg-"]').forEach(det=>{
+    det.ontoggle = ()=>{ configAberto[det.id.slice('details-cfg-'.length)] = det.open; };
+  });
+  const detRecadosAdmin = document.getElementById('recados-admin-wrap');
+  if(detRecadosAdmin && detRecadosAdmin.tagName==='DETAILS') detRecadosAdmin.ontoggle = ()=>{ configAberto.recados = detRecadosAdmin.open; };
   const btnVoltarMetas = document.getElementById('btn-voltar-metas');
   if(btnVoltarMetas) btnVoltarMetas.onclick = ()=>{ currentTab = 'config'; renderAll(); };
   const btnAbrirComunicados = document.getElementById('btn-abrir-comunicados');
@@ -16168,7 +16312,7 @@ async function continuarImportacaoDiaria(linhasVendas, linhasDespesas, linhasCli
           data, cliente, canal, categoria, produto, quantidade, valor_unit, valor_total,
           pagamento, nota, tipo_entrega, empresa, frete,
           entrega_data:'', entrega_hora:'', entrega_status:'', obs: obs || 'Importado de planilha',
-          estoqueBaixado: tipo_entrega !== 'Falta retirar', retirado:false, retiradoForma:'', retiradoEm:null, origemLancamento:'excel'
+          estoqueBaixado: tipo_entrega !== 'Falta retirar', retirado:false, retiradoForma:'', retiradoEm:null
         };
         const fpVenda = chaveVendaFingerprint(venda);
         if(fpVenda && fingerprintsVendas.has(fpVenda)){ duplicadas++; return; }
@@ -17164,7 +17308,7 @@ function renderCsvVendasMapping(){
         data, cliente, canal, categoria, produto, quantidade, valor_unit, valor_total,
         pagamento, nota:'Não lança', tipo_entrega, empresa, frete,
         entrega_data:'', entrega_hora:'', entrega_status:'', obs:'Importado de planilha',
-        estoqueBaixado: tipo_entrega !== 'Falta retirar', retirado:false, retiradoForma:'', retiradoEm:null, origemLancamento:'excel'
+        estoqueBaixado: tipo_entrega !== 'Falta retirar', retirado:false, retiradoForma:'', retiradoEm:null
       };
       state.vendas.push(venda);
       if(venda.estoqueBaixado) ajustaEstoquePorVenda(categoria, quantidade, false);
