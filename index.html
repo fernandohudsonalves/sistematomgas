@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "1.5_25_09_2026";
+    var VERSAO_ATUAL = "1.10_25_09_2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -623,14 +623,14 @@ html[data-theme="dark"] .tabela-vendas thead th, html[data-theme="natal"] .tabel
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
 #whats-fab{position:fixed;right:14px;bottom:14px;z-index:500;width:44px;height:44px;border-radius:50%;background:#25D366;border:none;box-shadow:0 4px 12px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
-#calc-fab{position:fixed;right:14px;bottom:230px;z-index:500;width:44px;height:44px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 4px 12px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:34px;line-height:1;padding:0;}
+#calc-fab{position:fixed;right:14px;bottom:392px;z-index:500;width:44px;height:44px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 4px 12px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:34px;line-height:1;padding:0;}
 #calc-fab:hover{transform:scale(1.06);}
 #calc-fab:active{transform:scale(.96);}
 #fiado-fab{position:fixed;right:14px;bottom:176px;z-index:500;width:44px;height:44px;border-radius:50%;background:#EA580C;border:none;box-shadow:0 4px 12px rgba(234,88,12,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:21px;line-height:1;padding:0;}
 #fiado-fab:hover{transform:scale(1.06);}
 #fiado-fab:active{transform:scale(.96);}
 #sim-venda-fab{position:fixed;right:14px;bottom:338px;z-index:500;width:38px;height:38px;border-radius:50%;background:#16A34A;border:none;box-shadow:0 4px 12px rgba(22,163,74,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:18px;line-height:1;padding:0;}
-#empresas-conv-fab{position:fixed;right:14px;bottom:392px;z-index:500;width:38px;height:38px;border-radius:50%;background:#7C3AED;border:none;box-shadow:0 4px 12px rgba(124,58,237,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:18px;line-height:1;padding:0;}
+#empresas-conv-fab{position:fixed;right:14px;bottom:230px;z-index:500;width:38px;height:38px;border-radius:50%;background:#7C3AED;border:none;box-shadow:0 4px 12px rgba(124,58,237,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:18px;line-height:1;padding:0;}
 #sim-venda-fab:hover{transform:scale(1.06);}
 #sim-venda-fab:active{transform:scale(.96);}
 #sim-venda-panel{position:fixed;right:14px;bottom:278px;z-index:2500;width:300px;max-height:50vh;overflow-y:auto;background:var(--card,#fff);color:var(--text,#222);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow-x:hidden;display:none;}
@@ -822,7 +822,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.5_25_09_2026";
+const APP_BUILD_HORARIO = "1.10_25_09_2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1007,11 +1007,25 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
   </div>
 </div>
 <button id="rota-fab" title="Gerar rota rápida">🗺️</button>
-<button id="empresas-conv-fab" title="Empresas Conveniadas">🏢</button>
 <button id="calc-fab" title="Calculadora">🖩</button>
 <button id="sim-venda-fab" title="Simular vendas do dia">🧮</button>
 <button id="fiado-fab" title="Marcou / Fiados">📒</button>
+<button id="empresas-conv-fab" title="Empresas Conveniadas">🏢</button>
 <button id="recado-fab" title="Recados / Post-it">📌<span id="recado-fab-badge"></span></button>
+<div id="icone-picker-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--card,#fff);border-radius:14px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <strong id="icone-picker-titulo">Escolher ícone</strong>
+      <button type="button" id="icone-picker-fechar" class="del-link">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+      <input type="text" id="icone-picker-manual" maxlength="8" placeholder="ou cole/digite qualquer emoji aqui" style="flex:1;">
+      <button type="button" class="btn small" id="icone-picker-usar-manual">Usar</button>
+    </div>
+    <div id="icone-picker-grade"></div>
+    <button type="button" class="btn small ghost" id="icone-picker-restaurar" style="margin-top:14px;">Restaurar ícone automático</button>
+  </div>
+</div>
 <div id="recado-panel">
   <div id="recado-head">📌 Recados <span style="display:flex;align-items:center;gap:4px;"><button type="button" id="recado-admin-toggle" title="Administrar todos os recados (editar/excluir)">📋</button><button type="button" id="recado-fechar">✕</button></span></div>
   <div id="recado-body">
@@ -1879,6 +1893,29 @@ Object.assign(ICONES_CATEGORIA, {
    e a planilha de importação. Subcategorias sem entrada aqui caem em "Outros" por padrão. */
 const CATEGORIAS_OUTRAS_GRUPO_PADRAO = {'Acessórios para Gás':'gas','Acessórios para Água':'agua'};
 const GRUPOS_PRODUTO = [{chave:'gas',label:'Gás'},{chave:'agua',label:'Água'},{chave:'outros',label:'Outros'}];
+const ICONES_GRUPO_PADRAO = {gas:'🔥',agua:'💧',outros:'📦'};
+// Ícone de uma categoria-mãe (Gás/Água/Outros). Se a pessoa tiver escolhido um ícone próprio na
+// tela de administração de ícones (Config), usa esse; senão cai no padrão.
+function iconeGrupo(chave){
+  const personalizado = state.iconesPersonalizados && state.iconesPersonalizados['grupo:'+chave];
+  return personalizado || ICONES_GRUPO_PADRAO[chave] || '📦';
+}
+// Escolhe um ícone pra mostrar junto do nome de uma categoria/subcategoria ou produto do
+// catálogo, olhando pra palavras-chave no nome (funciona tanto pros itens fixos — P13, P20,
+// Água 20L — quanto pra qualquer subcategoria/produto que a pessoa cadastrar depois, tipo
+// "Acessórios para Gás" ou um produto novo). Se nada bater, cai no ícone padrão da categoria
+// (Gás/Água/Outros).
+function iconeCatalogo(nome, grupo){
+  const personalizado = state.iconesPersonalizados && state.iconesPersonalizados['catalogo:'+chaveNormalizada(nome||'')];
+  if(personalizado) return personalizado;
+  const n = chaveNormalizada(nome||'');
+  if(/mangueira|regulador|valvula|registro|acessorio|adaptador|maçarico|macarico/.test(n)) return '🔧';
+  if(/agua|galao/.test(n)) return '💧';
+  if(/carga|botijao|cilindro|\bp8\b|\bp13\b|\bp20\b|\bp45\b|gas\b/.test(n)) return '🛢️';
+  if(grupo==='agua') return '💧';
+  if(grupo==='gas') return '🔥';
+  return '📦';
+}
 function labelGrupoProduto(g){ const info = GRUPOS_PRODUTO.find(x=>x.chave===g); return info ? info.label : 'Outros'; }
 function chaveGrupoProduto(label){ const info = GRUPOS_PRODUTO.find(x=>chaveNormalizada(x.label)===chaveNormalizada(String(label||''))); return info ? info.chave : 'outros'; }
 const CATEGORIAS_DESPESA_PADRAO = ['Fornecedor / Reposição','Transporte / Combustível','Salário','Aluguel','Manutenção','IPVA','Seguro do veículo','Peças / Pneus / Óleo','Energia Elétrica','Água / Saneamento','Desperdício / Descarte','Custos Fixos','Custos Variáveis','Outros'];
@@ -1905,18 +1942,25 @@ const ICONES_CATEGORIA_DESPESA = {
   'Scorpions Futsal':'⚽',
   'Táxi e Uber':'🚕','Taxi e Uber':'🚕','Táxi / Uber':'🚕','Taxi / Uber':'🚕','Táxi':'🚕','Taxi':'🚕','Uber':'🚕',
   'Orli Aromas':'🧴',
-  'Honorários Escritório de Contabilidade':'🧾','Honorários Escritório':'🧾','Honorários Contábeis':'🧾','Honorários Contabilidade':'🧾'
+  'Honorários Escritório de Contabilidade':'🧾','Honorários Escritório':'🧾','Honorários Contábeis':'🧾','Honorários Contabilidade':'🧾',
+  // Categorias que ainda estavam sem ícone (comparei com a lista real cadastrada hoje)
+  'Cartuchos e Tonners':'🖨️','Orli Produtos Aromas':'🧴','Custos Fixos':'📌','Custos Variáveis':'📊',
+  'Cargas de Água':'🚰','Veterinário':'🐾','Honorários Escritório Del Coli Contabilidade':'🧾',
+  'Peças e acessórios veículos':'🔩','Materiais de construção':'🧱','Gastos Paulo Mecânico Oficina':'🔧'
 };
 function iconeCategoriaDespesaHtml(cat){
-  const ic = ICONES_CATEGORIA_DESPESA[cat];
+  const ic = (state.iconesPersonalizados && state.iconesPersonalizados['despesa:'+cat]) || ICONES_CATEGORIA_DESPESA[cat];
   return ic ? '<span style="font-size:12px;margin-right:5px;">'+ic+'</span>' : '';
+}
+function iconeDespesa(cat){
+  return (state.iconesPersonalizados && state.iconesPersonalizados['despesa:'+cat]) || ICONES_CATEGORIA_DESPESA[cat] || '';
 }
 // Monta as <option> de uma lista de categorias de despesa com o ícone na frente do texto, mas
 // mantendo o value= igual ao nome puro da categoria (sem o ícone) — senão o formulário salvaria
 // a categoria com o emoji junto e quebraria a comparação em todo o resto do sistema.
 function optsCategoriaDespesaComIcone(lista, selecionada){
   return lista.map(function(cat){
-    const ic = ICONES_CATEGORIA_DESPESA[cat];
+    const ic = iconeDespesa(cat);
     return '<option value="'+escapeHtmlCampanha(cat)+'"'+(selecionada===cat?' selected':'')+'>'+(ic?ic+' ':'')+cat+'</option>';
   }).join('');
 }
@@ -2033,6 +2077,7 @@ let state = {
   estoqueLancamentos: [],
   categoriasProdutos: CATEGORIAS_PRODUTO_PADRAO.slice(),
   categoriasProdutosGrupo: Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO),
+  iconesPersonalizados: {},
   categoriasDespesas: CATEGORIAS_DESPESA_PADRAO.slice(),
   categoriasDespesasFixas: ['Aluguel','Salário'],
   gruposCruzamento: [],
@@ -4300,10 +4345,46 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','contasDespesaExtra','gruposCruzamento','fiados','fiadoPagamentos','fiadoDestinatarios','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas','dicasTreinamentos','categoriasDicas'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','contasDespesaExtra','gruposCruzamento','fiados','fiadoPagamentos','fiadoDestinatarios','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas','dicasTreinamentos','categoriasDicas','iconesPersonalizados'];
+// Modo de visualização: ative acrescentando ?demo=1 na URL do arquivo. Pula o login de
+// verdade e mostra a tela do sistema já preenchida com alguns dados de EXEMPLO (fictícios),
+// sem nunca ler nem gravar nada no Supabase real — só serve pra olhar o layout/as mudanças
+// visuais rapidamente, sem precisar digitar usuário e senha reais toda vez.
+const MODO_DEMO = new URLSearchParams(location.search).get('demo')==='1';
+function dadosAmostraDemo(){
+  const hoje = new Date().toISOString().slice(0,10);
+  return [
+    {chave:'clientes', valor:[
+      {id:'demo-cli-1', nome:'Maria Exemplo', telefone:'43999990001', endereco:'Rua das Amostras, 100', complemento:'', obs:'', grupos:['Clientes Ativos'], apelidos:[], criadoEm:Date.now()-90*86400000},
+      {id:'demo-cli-2', nome:'João da Silva (exemplo)', telefone:'43999990002', endereco:'Av. Demonstração, 250', complemento:'casa 2', obs:'', grupos:['Clientes Ativos'], apelidos:[], criadoEm:Date.now()-30*86400000}
+    ]},
+    {chave:'empresas', valor:[
+      {id:'demo-emp-1', nome:'Empresa Exemplo Ltda', telefone:'4333330000', endereco:'Distrito Industrial, 500', responsavel:'Ana Responsável'}
+    ]},
+    {chave:'categoriasProdutos', valor:['Carga de Gás P13','Carga de Gás P20','Carga de Gás P45','Água 20L']},
+    {chave:'produtos', valor:[
+      {id:'demo-prod-1', nome:'Carga de Gás P13', categoria:'Carga de Gás P13', preco:104},
+      {id:'demo-prod-2', nome:'Carga de Gás P45', categoria:'Carga de Gás P45', preco:397},
+      {id:'demo-prod-3', nome:'Água 20L', categoria:'Água 20L', preco:12}
+    ]},
+    {chave:'vendas', valor:[
+      {id:'demo-venda-1', data:hoje, cliente:'Maria Exemplo', empresa:'', categoria:'Carga de Gás P13', produto:'Carga de Gás P13', quantidade:1, valor_unit:104, valor_total:104, pagamento:'Dinheiro', criadoEm:Date.now()},
+      {id:'demo-venda-2', data:hoje, cliente:'', empresa:'Empresa Exemplo Ltda', categoria:'Carga de Gás P45', produto:'Carga de Gás P45', quantidade:1, valor_unit:397, valor_total:397, pagamento:'Convênio', criadoEm:Date.now()}
+    ]},
+    {chave:'estoque', valor:defaultEstoque()},
+    {chave:'comunicados', valor:[{id:'demo-com-1', texto:'👋 Isto é o modo de visualização — dados fictícios.', ativo:true}]},
+    {chave:'fiados', valor:[]},
+    {chave:'agendamentos', valor:[]}
+  ];
+}
 async function loadAll(){
   try{
-    const { data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS);
+    let data, error;
+    if(MODO_DEMO){
+      data = dadosAmostraDemo(); error = null;
+    } else {
+      ({ data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS));
+    }
     if(error) throw error;
     (data||[]).forEach(row=>{ state[row.chave] = row.valor; });
     if(!Array.isArray(state.categoriasClientes)) state.categoriasClientes=['Clientes Ativos','Amigos'];
@@ -4320,6 +4401,7 @@ async function loadAll(){
   if(!state.convenioPagamentos) state.convenioPagamentos = [];
   if(!state.vendasSeparadasIgnoradas) state.vendasSeparadasIgnoradas = [];
   if(!state.produtos) state.produtos = [];
+  if(!state.iconesPersonalizados || typeof state.iconesPersonalizados!=='object' || Array.isArray(state.iconesPersonalizados)) state.iconesPersonalizados = {};
   if(!state.precosControlados) state.precosControlados = {};
   if(!state.categoriasProdutosGrupo) state.categoriasProdutosGrupo = Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO);
   if(!state.checklistRotina) state.checklistRotina = [];
@@ -4583,6 +4665,7 @@ function mostrarToastSalvo(){
   toastSalvoTimer = setTimeout(()=>{ el.classList.remove('show'); }, 1600);
 }
 async function save(key){
+  if(MODO_DEMO) return true; // modo de visualização nunca grava nada de verdade no banco
   try{
     const { data, error } = await supabaseClient.from('app_data')
       .upsert({ chave:key, valor: state[key], atualizado_em: new Date().toISOString() }, { onConflict: 'chave' })
@@ -6193,10 +6276,10 @@ function viewGerenciarCategorias(){
   const fixosAgua = produtosFixosDoGrupo('agua');
   const linhaFixo = function(p){
     if(editProdutoFixoId===p.id){
-      return '<tr><td>'+p.nome+'</td><td><input type="number" id="input-edit-preco-fixo" min="0" step="0.01" value="'+Number(p.preco).toFixed(2)+'"></td>'+
+      return '<tr><td>'+iconeCatalogo(p.nome,'agua')+' '+p.nome+'</td><td><input type="number" id="input-edit-preco-fixo" min="0" step="0.01" value="'+Number(p.preco).toFixed(2)+'"></td>'+
         '<td><button class="act-link" data-save-preco-fixo="'+p.id+'">✓ salvar</button><button class="del-link" data-cancel-preco-fixo="'+p.id+'">cancelar</button></td></tr>';
     }
-    return '<tr><td>'+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td><td><button class="act-link" data-edit-preco-fixo="'+p.id+'">✎ editar preço</button></td></tr>';
+    return '<tr><td>'+iconeCatalogo(p.nome,'agua')+' '+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td><td><button class="act-link" data-edit-preco-fixo="'+p.id+'">✎ editar preço</button></td></tr>';
   };
   const tabelaFixo = function(lista){
     return lista.length===0 ? '<div class="hint">Nenhum item aqui ainda — use Vendas ou Agendamento uma vez que eles reaparecem prontos pra editar o preço.</div>' :
@@ -6204,12 +6287,12 @@ function viewGerenciarCategorias(){
   };
   const linhaFixoGas = function(p){
     if(editProdutoFixoId===p.id){
-      return '<tr><td>'+p.nome+'</td>'+
+      return '<tr><td>'+iconeCatalogo(p.nome,'gas')+' '+p.nome+'</td>'+
         '<td><input type="number" id="input-edit-preco-fixo" min="0" step="0.01" value="'+Number(p.preco).toFixed(2)+'"></td>'+
         '<td><input type="number" id="input-edit-preco-convenio-fixo" min="0" step="0.01" value="'+Number(p.precoConvenio||0).toFixed(2)+'" placeholder="0,00"></td>'+
         '<td><button class="act-link" data-save-preco-fixo="'+p.id+'">✓ salvar</button><button class="del-link" data-cancel-preco-fixo="'+p.id+'">cancelar</button></td></tr>';
     }
-    return '<tr><td>'+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td><td>'+(p.precoConvenio?fmtMoney(p.precoConvenio):'—')+'</td>'+
+    return '<tr><td>'+iconeCatalogo(p.nome,'gas')+' '+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td><td>'+(p.precoConvenio?fmtMoney(p.precoConvenio):'—')+'</td>'+
       '<td><button class="act-link" data-edit-preco-fixo="'+p.id+'">✎ editar preço</button></td></tr>';
   };
   const tabelaFixoGas = function(lista){
@@ -6218,18 +6301,19 @@ function viewGerenciarCategorias(){
   };
 
   const subs = categoriasNaoControladas();
-  function blocoSubDoGrupo(lista){
+  function blocoSubDoGrupo(lista, grupo){
     if(lista.length===0) return '';
     return lista.map(function(sub){
       const produtos = produtosDaCategoria(sub);
       const linhasProd = produtos.length===0 ? '<div class="hint" style="margin:6px 0;">Nenhum produto nessa subcategoria ainda.</div>' :
         '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th></th></tr></thead><tbody>'+
-        produtos.map(p=>'<tr><td>'+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td>'+
+        produtos.map(p=>'<tr><td>'+iconeCatalogo(p.nome,grupo)+' '+p.nome+'</td><td>'+fmtMoney(p.preco)+'</td>'+
           '<td><button class="act-link" data-edit-produto="'+p.id+'">✎ editar</button><button class="del-link" data-del-produto="'+p.id+'">🗑 excluir</button></td></tr>').join('')+
         '</tbody></table></div>';
+      const iconeSub = iconeCatalogo(sub, grupo);
       const cabecalho = editCategoriaProdutoNome===sub
-        ? '<input type="text" id="input-edit-cat-produto" value="'+sub+'" onclick="event.preventDefault()"> <button type="button" class="act-link" data-save-cat-produto="'+sub+'">✓ salvar</button><button type="button" class="del-link" data-cancel-cat-produto="'+sub+'">cancelar</button>'
-        : '<strong>'+sub+'</strong> <span class="hint">('+produtos.length+' produto(s))</span> <button type="button" class="act-link" data-edit-cat-produto="'+sub+'">✎ renomear</button><button type="button" class="del-link" data-del-cat-produto="'+sub+'">🗑 excluir</button>';
+        ? iconeSub+' <input type="text" id="input-edit-cat-produto" value="'+sub+'" onclick="event.preventDefault()"> <button type="button" class="act-link" data-save-cat-produto="'+sub+'">✓ salvar</button><button type="button" class="del-link" data-cancel-cat-produto="'+sub+'">cancelar</button>'
+        : iconeSub+' <strong>'+sub+'</strong> <span class="hint">('+produtos.length+' produto(s))</span> <button type="button" class="act-link" data-edit-cat-produto="'+sub+'">✎ renomear</button><button type="button" class="del-link" data-del-cat-produto="'+sub+'">🗑 excluir</button>';
       return '<details style="margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;"><summary>'+cabecalho+'</summary>'+
         '<div style="margin-top:8px;">'+linhasProd+'</div></details>';
     }).join('');
@@ -6237,20 +6321,20 @@ function viewGerenciarCategorias(){
   const subsGas = subcategoriasDoGrupo('gas');
   const subsAgua = subcategoriasDoGrupo('agua');
   const subsOutros = subcategoriasDoGrupo('outros');
-  const opcoesGrupo = '<option value="" selected disabled>Categoria (Gás/Água/Outros)</option>'+GRUPOS_PRODUTO.map(g=>'<option value="'+g.chave+'">'+g.label+'</option>').join('');
+  const opcoesGrupo = '<option value="" selected disabled>Categoria (Gás/Água/Outros)</option>'+GRUPOS_PRODUTO.map(g=>'<option value="'+g.chave+'">'+iconeGrupo(g.chave)+' '+g.label+'</option>').join('');
 
-  return '<div class="card"><h2>Categoria: Gás</h2>'+
+  return '<div class="card"><h2>'+iconeGrupo('gas')+' Categoria: Gás</h2>'+
     '<div class="hint">O "Preço convênio" é o valor cobrado das empresas conveniadas — deixe em branco (0,00) se esse produto não tiver preço diferenciado.</div>'+
     tabelaFixoGas(fixosGas)+
-    (blocoSubDoGrupo(subsGas)||'<div class="hint" style="margin-top:8px;">Nenhuma subcategoria extra de gás (ex.: acessórios) cadastrada ainda.</div>')+
+    (blocoSubDoGrupo(subsGas,'gas')||'<div class="hint" style="margin-top:8px;">Nenhuma subcategoria extra de gás (ex.: acessórios) cadastrada ainda.</div>')+
     '</div>'+
     viewSimulacaoPrecoGas()+
-    '<div class="card"><h2>Categoria: Água</h2>'+tabelaFixo(fixosAgua)+
-    (blocoSubDoGrupo(subsAgua)||'<div class="hint" style="margin-top:8px;">Nenhuma subcategoria extra de água (ex.: acessórios) cadastrada ainda.</div>')+
+    '<div class="card"><h2>'+iconeGrupo('agua')+' Categoria: Água</h2>'+tabelaFixo(fixosAgua)+
+    (blocoSubDoGrupo(subsAgua,'agua')||'<div class="hint" style="margin-top:8px;">Nenhuma subcategoria extra de água (ex.: acessórios) cadastrada ainda.</div>')+
     '</div>'+
-    '<div class="card"><h2>Categoria: Outros</h2>'+
+    '<div class="card"><h2>'+iconeGrupo('outros')+' Categoria: Outros</h2>'+
     '<div class="hint">Cada subcategoria funciona como o "tipo" que vem do Bling. Clique numa subcategoria pra ver, editar ou excluir os produtos dela.</div>'+
-    (blocoSubDoGrupo(subsOutros)||'<div class="empty" style="margin-top:8px;">Nenhuma subcategoria cadastrada ainda.</div>')+
+    (blocoSubDoGrupo(subsOutros,'outros')||'<div class="empty" style="margin-top:8px;">Nenhuma subcategoria cadastrada ainda.</div>')+
     '<h3 style="margin-top:16px;">Nova subcategoria</h3>'+
     '<div class="hint">Escolha em qual categoria (Gás, Água ou Outros) essa subcategoria deve aparecer — isso também organiza a planilha de importação.</div>'+
     '<div class="inline-add"><input type="text" id="nova-cat-produto-config-input" placeholder="Nome da subcategoria">'+
@@ -8305,6 +8389,110 @@ function cardUsuariosPermissoes(){
     (usuarios.length?'<div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Celular</th><th>Nível</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'<div class="empty" style="margin-top:14px;">Nenhum usuário cadastrado ainda — enquanto a lista estiver vazia, qualquer pessoa que fizer login tem acesso total.</div>')
   );
 }
+// Categorias de emojis mostradas no seletor da tela "Ícones do sistema" — uma seleção grande e
+// variada, cobrindo os temas mais comuns de uma distribuidora (gás, água, veículos, dinheiro,
+// ferramentas) e também opções genéricas. A pessoa também pode digitar/colar QUALQUER emoji no
+// campo de texto (inclusive usando o seletor de emoji do próprio celular/computador), não fica
+// limitado só a esta lista.
+const EMOJI_PICKER_GRUPOS = [
+  {titulo:'Gás / Energia', itens:['🔥','⛽','🛢️','💥','⚡','🔋','💡','🕯️','🌋','♨️']},
+  {titulo:'Água', itens:['💧','🚰','🌊','🧊','❄️','☔','🚿','🪣','💦','🫗']},
+  {titulo:'Casa / Contas', itens:['🏠','🏢','🏛️','📄','🧾','📋','📌','🔑','🚪','🪟','📁','🗂️']},
+  {titulo:'Dinheiro', itens:['💰','💵','💴','💶','💷','💳','🪙','📊','📈','📉','🧮']},
+  {titulo:'Veículos', itens:['🚚','🚛','🚗','🚕','🏍️','🛵','🚲','🛣️','🗺️','🛑']},
+  {titulo:'Ferramentas', itens:['🔧','🔨','🛠️','🪛','⚙️','🧰','🔩','🪚','🧱']},
+  {titulo:'Mercado / Limpeza', itens:['🛒','🍎','🥤','🍺','🥛','🍞','🥩','🧴','🧼','🧻','🧹']},
+  {titulo:'Pessoas / Serviços', itens:['👤','👥','🧑\u200d🔧','🧑\u200d💼','📞','📱','💬','🤝','🏥','💊']},
+  {titulo:'Animais', itens:['🐶','🐱','🐮','🐷','🐔','🐾']},
+  {titulo:'Símbolos', itens:['✅','❌','⭐','🎯','📦','🗑️','🏷️','🔒','🔓','📢','🎉','🧪','🌿','⚫','🍦','🎨','✂️','🧵','📐','🏆']}
+];
+// Tela de administração central de ícones: lista Grupos (Gás/Água/Outros), Categorias/produtos
+// e Categorias de despesa, cada um com o ícone atual e um botão pra trocar. As trocas ficam
+// salvas em state.iconesPersonalizados (chave "grupo:x" / "catalogo:x" / "despesa:x") e têm
+// prioridade sobre os ícones automáticos por palavra-chave em qualquer lugar do sistema.
+function linhaIconeAdmin(chaveOverride, nomeExibido, iconeAtual){
+  return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">'+
+    '<span style="font-size:18px;width:26px;text-align:center;">'+(iconeAtual||'—')+'</span>'+
+    '<span style="flex:1;">'+escapeHtmlCampanha(nomeExibido)+'</span>'+
+    '<button type="button" class="btn small ghost btn-trocar-icone" data-icone-chave="'+escapeHtmlCampanha(chaveOverride)+'" data-icone-nome="'+escapeHtmlCampanha(nomeExibido)+'">trocar ícone</button>'+
+    '</div>';
+}
+let iconesAdminAbertos = {grupos:true};
+function viewAdminIcones(){
+  const linhasGrupo = GRUPOS_PRODUTO.map(g=>linhaIconeAdmin('grupo:'+g.chave, g.label, iconeGrupo(g.chave))).join('');
+  const linhasCategoria = (state.categoriasProdutos||[]).slice().sort((a,b)=>a.localeCompare(b,'pt-BR'))
+    .map(cat=>linhaIconeAdmin('catalogo:'+chaveNormalizada(cat), cat, iconeCatalogo(cat, state.categoriasProdutosGrupo?.[cat]))).join('');
+  const linhasProduto = (state.produtos||[]).slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'))
+    .map(p=>linhaIconeAdmin('catalogo:'+chaveNormalizada(p.nome), p.nome, iconeCatalogo(p.nome, CATEGORIAS_ESTOQUE[p.categoria]?.grupo))).join('');
+  const linhasDespesa = (state.categoriasDespesas||[]).slice().sort((a,b)=>a.localeCompare(b,'pt-BR'))
+    .map(cat=>linhaIconeAdmin('despesa:'+cat, cat, iconeDespesa(cat))).join('');
+  return '<div class="hint">Troque o ícone de qualquer categoria ou produto do sistema. A escolha fica salva e vale em toda tela que mostrar esse item — inclusive nos relatórios.</div>'+
+    '<details id="icones-admin-grupos" style="margin-top:12px;"'+(iconesAdminAbertos.grupos?' open':'')+'><summary><strong>Grupos (Gás/Água/Outros)</strong></summary><div style="margin-top:6px;">'+linhasGrupo+'</div></details>'+
+    '<details id="icones-admin-categorias" style="margin-top:10px;"'+(iconesAdminAbertos.categorias?' open':'')+'><summary><strong>Categorias/itens de produto</strong> <span class="hint">('+(state.categoriasProdutos||[]).length+')</span></summary><div style="margin-top:6px;">'+(linhasCategoria||'<div class="hint">Nenhuma cadastrada.</div>')+'</div></details>'+
+    '<details id="icones-admin-produtos" style="margin-top:10px;"'+(iconesAdminAbertos.produtos?' open':'')+'><summary><strong>Produtos</strong> <span class="hint">('+(state.produtos||[]).length+')</span></summary><div style="margin-top:6px;max-height:340px;overflow-y:auto;">'+(linhasProduto||'<div class="hint">Nenhum cadastrado.</div>')+'</div></details>'+
+    '<details id="icones-admin-despesas" style="margin-top:10px;"'+(iconesAdminAbertos.despesas?' open':'')+'><summary><strong>Categorias de despesa</strong> <span class="hint">('+(state.categoriasDespesas||[]).length+')</span></summary><div style="margin-top:6px;">'+(linhasDespesa||'<div class="hint">Nenhuma cadastrada.</div>')+'</div></details>';
+}
+let iconePickerAlvo = null;
+function initIconePickerOverlay(){
+  const overlay = document.getElementById('icone-picker-overlay');
+  if(!overlay) return;
+  const grade = document.getElementById('icone-picker-grade');
+  grade.innerHTML = EMOJI_PICKER_GRUPOS.map(function(grupo){
+    return '<div style="margin-top:8px;"><div class="hint" style="margin-bottom:4px;">'+grupo.titulo+'</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:4px;">'+
+      grupo.itens.map(em=>'<button type="button" class="btn-emoji-picker" style="font-size:19px;width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;">'+em+'</button>').join('')+
+      '</div></div>';
+  }).join('');
+  // Delegação de evento: abre o seletor pra qualquer botão "trocar ícone" que existir na tela,
+  // mesmo depois de a tela ser redesenhada (renderAll troca todo o conteúdo de #app).
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest('.btn-trocar-icone');
+    if(btn){
+      iconePickerAlvo = btn.dataset.iconeChave;
+      document.getElementById('icone-picker-titulo').textContent = 'Ícone de: '+btn.dataset.iconeNome;
+      document.getElementById('icone-picker-manual').value = '';
+      overlay.style.display = 'flex';
+      return;
+    }
+    const btnEmoji = e.target.closest('.btn-emoji-picker');
+    if(btnEmoji && overlay.style.display!=='none'){
+      salvarIconePersonalizado(iconePickerAlvo, btnEmoji.textContent.trim());
+      return;
+    }
+    if(e.target===overlay) fecharIconePicker();
+  });
+  ['grupos','categorias','produtos','despesas'].forEach(function(nome){
+    document.addEventListener('toggle', function(e){
+      if(e.target && e.target.id==='icones-admin-'+nome) iconesAdminAbertos[nome] = e.target.open;
+    }, true);
+  });
+  document.getElementById('icone-picker-fechar').onclick = fecharIconePicker;
+  document.getElementById('icone-picker-usar-manual').onclick = ()=>{
+    const v = document.getElementById('icone-picker-manual').value.trim();
+    if(!v){ alert('Digite ou cole um emoji primeiro.'); return; }
+    salvarIconePersonalizado(iconePickerAlvo, v);
+  };
+  document.getElementById('icone-picker-restaurar').onclick = ()=>{
+    if(!iconePickerAlvo) return;
+    delete state.iconesPersonalizados[iconePickerAlvo];
+    save('iconesPersonalizados');
+    fecharIconePicker();
+    renderAll();
+  };
+}
+function fecharIconePicker(){
+  const overlay = document.getElementById('icone-picker-overlay');
+  if(overlay) overlay.style.display = 'none';
+  iconePickerAlvo = null;
+}
+async function salvarIconePersonalizado(chave, emoji){
+  if(!chave) return;
+  if(!state.iconesPersonalizados) state.iconesPersonalizados = {};
+  state.iconesPersonalizados[chave] = emoji;
+  await save('iconesPersonalizados');
+  fecharIconePicker();
+  renderAll();
+}
 function viewConfig(){
   const faviconPreview = state.faviconUrl ? '<img src="'+state.faviconUrl+'" alt="Favicon" style="width:32px;height:32px;border-radius:6px;border:1px solid var(--border);">' : '<span class="hint">Nenhum favicon definido (usando o padrão do navegador).</span>';
   const permissao = statusPermissaoNotificacao();
@@ -8328,6 +8516,7 @@ function viewConfig(){
       '<div style="display:flex;align-items:center;gap:14px;">'+faviconPreview+
       '<div><input type="file" id="favicon-file-input" accept="image/*"><div class="hint" style="margin-top:4px;">Imagem quadrada funciona melhor.</div></div></div>'
     )+
+    cardConfig('iconescat','🎨 Ícones do sistema', viewAdminIcones())+
     '<div class="config-group-title">App, notificações e mensagens</div>'+
     cardConfig('appnotif','📱 App no celular e notificações',
       '<div class="hint">Instale o sistema como app na tela inicial e receba avisos de novos agendamentos.</div>'+
@@ -8706,8 +8895,7 @@ function relatorioComodatos(){
     '<div><label>WhatsApp (opcional)</label><input type="tel" id="cmd-whatsapp" name="whatsapp" placeholder="Ex: 43999999999">'+
     '<div class="hint">Se o nome acima bater com um entregador cadastrado, o WhatsApp dele é preenchido sozinho. Pode editar ou digitar outro número.</div></div>'+
     '<div style="align-self:flex-end;"><button type="button" class="btn small ghost" id="cmd-copiar-obs">📋 Copiar observação p/ colar no WhatsApp</button></div></div>'+
-    '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;"><input type="checkbox" name="baixa_estoque" id="cmd-baixa-estoque" checked style="width:auto;"> Dar baixa/entrada automática no estoque</label>'+
-    '<div class="hint">Marcado: este lançamento também ajusta o estoque (cheio/vazio) do item na hora. Desmarque só se for um caso avulso que não deve mexer no estoque.</div>'+
+    '<div class="hint" style="margin-top:12px;">✅ Todo comodato ajusta o estoque físico automaticamente na hora: emprestar tira do estoque, receber de volta um casco/carga põe de volta — sem precisar marcar nada.</div>'+
     '<button type="submit" class="btn small">Lançar</button></form>'+
     '<h3 style="margin-top:16px;">Clientes me devendo (comodato emprestado)</h3>'+
     tabelaSaldosComodato('cliente','Cliente')+
@@ -13690,7 +13878,7 @@ function attachHandlers(){
       popularItensComodato(c.categoria, c.item);
       fcmEl.produto.value=c.produto; fcmEl.quantidade.value=c.quantidade; fcmEl.data.value=c.data; fcmEl.obs.value=c.obs||'';
       fcmEl.whatsapp.value = c.whatsapp||'';
-      fcmEl.querySelector('#cmd-baixa-estoque').checked = !!c.baixaEstoque;
+      // O ajuste de estoque agora é sempre automático (não existe mais a opção de desmarcar).
       fcmEl.querySelector('button[type=submit]').textContent='Salvar alterações';
       fcmEl.scrollIntoView({behavior:'smooth'});
     });
@@ -13746,7 +13934,10 @@ function attachHandlers(){
     e.preventDefault();
     const f = new FormData(formComodato);
     const quantidade = Number(f.get('quantidade'))||0;
-    const baixaEstoque = !!formComodato.querySelector('#cmd-baixa-estoque').checked;
+    // O ajuste de estoque a partir de um comodato deixou de ser opcional: emprestar sempre tira
+    // do estoque físico, e receber de volta (quantidade negativa) sempre põe de volta — é a
+    // realidade real do negócio, então não faz sentido dar a opção de deixar de fora.
+    const baixaEstoque = true;
     const dados = {direcao:f.get('direcao'), nome:f.get('nome'), categoria:f.get('categoria'), item:f.get('item'), produto:f.get('produto'), quantidade, data:f.get('data'), obs:f.get('obs')||'', whatsapp:f.get('whatsapp')||''};
     let c;
     if(editComodatoId){
@@ -17587,13 +17778,17 @@ async function afterLogin(){
   document.getElementById('app').style.display = 'flex';
   document.getElementById('main').innerHTML = '<div class="empty">Carregando...</div>';
   try{
-    const { data:{ user } } = await supabaseClient.auth.getUser();
-    if(user){
-      const meta = user.user_metadata || {};
-      usuarioAtualNome = meta.nome || meta.email_real || meta.usuario || meta.telefone || (user.email||'').split('@')[0] || 'Usuário';
-      usuarioAtualEmail = user.email || null;
-      usuarioAtualFoto = meta.foto || null;
-      usuarioAtualTelefonePerfil = meta.telefone_perfil || meta.telefone || '';
+    if(MODO_DEMO){
+      usuarioAtualNome = 'Visitante (demo)'; usuarioAtualEmail = null; usuarioAtualFoto = null; usuarioAtualTelefonePerfil = '';
+    } else {
+      const { data:{ user } } = await supabaseClient.auth.getUser();
+      if(user){
+        const meta = user.user_metadata || {};
+        usuarioAtualNome = meta.nome || meta.email_real || meta.usuario || meta.telefone || (user.email||'').split('@')[0] || 'Usuário';
+        usuarioAtualEmail = user.email || null;
+        usuarioAtualFoto = meta.foto || null;
+        usuarioAtualTelefonePerfil = meta.telefone_perfil || meta.telefone || '';
+      }
     }
   }catch(e){ console.error('Erro ao buscar usuário logado', e); }
   await loadAll();
@@ -17606,6 +17801,7 @@ async function afterLogin(){
   initChecklistHoverDrawer(); initEstoqueGasHoverDrawer(); initConferenciaBadge(); setInterval(initConferenciaBadge,1500); initNovoAgendamentoFab(); initBuscaSistema();
   initWhatsFab();
   initRotaFab();
+  initIconePickerOverlay();
   const empresasConvFab = document.getElementById('empresas-conv-fab');
   if(empresasConvFab && !empresasConvFab.dataset.bound){
     empresasConvFab.dataset.bound = '1';
@@ -18653,12 +18849,23 @@ async function init(){
   attachAuthHandlers();
   attachLogoInput();
   registerServiceWorker();
+  if(MODO_DEMO){
+    await afterLogin();
+    mostrarFaixaModoDemo();
+    return;
+  }
   const { data:{ session } } = await supabaseClient.auth.getSession();
   if(session){
     await afterLogin();
   } else {
     document.getElementById('auth-screen').style.display = 'flex';
   }
+}
+function mostrarFaixaModoDemo(){
+  const faixa = document.createElement('div');
+  faixa.textContent = '🔍 MODO DE VISUALIZAÇÃO — dados fictícios, nada aqui é lido ou salvo no banco de dados real';
+  faixa.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#7C3AED;color:#fff;text-align:center;font-weight:700;font-size:12px;padding:6px;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+  document.body.appendChild(faixa);
 }
 // Máscara de data brasileira (dia/mês/ano) pra todos os campos de data do sistema,
 // independente do idioma configurado no Windows/navegador. O campo original continua
