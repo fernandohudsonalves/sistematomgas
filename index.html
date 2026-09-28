@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "1.14_27_09_2026";
+    var VERSAO_ATUAL = "1.17_27_09_2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -623,7 +623,8 @@ html[data-theme="dark"] .tabela-vendas thead th, html[data-theme="natal"] .tabel
 .checklist-acoes .move-check{min-width:28px;padding:3px 6px}
 .import-conferencia-alert{margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;background:#fff7ed;border-radius:9px;color:#92400e}
 #whats-fab{position:fixed;right:14px;bottom:14px;z-index:500;width:44px;height:44px;border-radius:50%;background:#25D366;border:none;box-shadow:0 4px 12px rgba(37,211,102,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
-#calc-fab{position:fixed;right:14px;bottom:392px;z-index:500;width:44px;height:44px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 4px 12px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:34px;line-height:1;padding:0;}
+#calc-fab{position:fixed;right:14px;bottom:392px;z-index:500;width:38px;height:38px;border-radius:50%;background:#2563EB;border:none;box-shadow:0 4px 12px rgba(37,99,235,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;line-height:0;padding:0;}
+#calc-fab svg{width:26px;height:26px;display:block;}
 #calc-fab:hover{transform:scale(1.06);}
 #calc-fab:active{transform:scale(.96);}
 #fiado-fab{position:fixed;right:14px;bottom:176px;z-index:500;width:44px;height:44px;border-radius:50%;background:#EA580C;border:none;box-shadow:0 4px 12px rgba(234,88,12,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:21px;line-height:1;padding:0;}
@@ -822,7 +823,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.14_27_09_2026";
+const APP_BUILD_HORARIO = "1.17_27_09_2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1007,7 +1008,7 @@ document.getElementById('app').insertAdjacentHTML('beforeend',`
   </div>
 </div>
 <button id="rota-fab" title="Gerar rota rápida">🗺️</button>
-<button id="calc-fab" title="Calculadora">🖩</button>
+<button id="calc-fab" title="Calculadora"><svg viewBox="0 0 24 24" fill="#fff" fill-rule="evenodd" aria-hidden="true"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v4h10V4H7zM8.5 10.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm3.5 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm3.5 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM8.5 14.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm3.5 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm3.5 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6z"/></svg></button>
 <button id="sim-venda-fab" title="Simular vendas do dia">🧮</button>
 <button id="fiado-fab" title="Marcou / Fiados">📒</button>
 <button id="empresas-conv-fab" title="Empresas Conveniadas">🏢</button>
@@ -5284,8 +5285,8 @@ function viewDashboard(){
     '<div class="metric"><div class="label">Média de vendas por dia</div><div class="value">'+fmtMoney(mediaVendasDiaMes)+'</div></div>'+
     '</div></div>'+
     '<div class="card"><h2>Vendas do mês por categoria</h2><div class="grid cols4">'+
-    '<div class="metric"><div class="label" style="display:flex;align-items:center;gap:8px;">'+iconVasilhame(true,null,28,'P13')+'<span class="badge gas">Gás</span></div><div class="value">'+fmtMoney(gasMes)+'</div></div>'+
-    '<div class="metric"><div class="label" style="display:flex;align-items:center;gap:8px;">'+iconGota(true,null,28,'safira')+'<span class="badge agua">Água</span></div><div class="value">'+fmtMoney(aguaMes)+'</div></div>'+
+    '<div class="metric"><div class="label" style="display:flex;align-items:center;gap:8px;">'+iconVasilhame(true,null,23.8,'P13')+'<span class="badge gas">Gás</span></div><div class="value">'+fmtMoney(gasMes)+'</div></div>'+
+    '<div class="metric"><div class="label" style="display:flex;align-items:center;gap:8px;">'+iconGota(true,null,21,'safira')+'<span class="badge agua">Água</span></div><div class="value">'+fmtMoney(aguaMes)+'</div></div>'+
     '<div class="metric"><div class="label" style="display:flex;align-items:center;gap:8px;"><img src="data:image/png;base64,'+ICONE_OUTROS_B64+'" width="30" style="vertical-align:middle;" alt="">'+'<span class="badge outro">Outros produtos</span></div><div class="value">'+fmtMoney(outrosMes)+'</div></div>'+
     '</div></div>'+
     '<div class="card"><h2>Relatórios</h2>'+
@@ -6954,6 +6955,7 @@ function viewVendas(){
     '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
     '<div><label>Cupom usado (opcional)</label><input type="text" name="cupom" placeholder="Ex: TOMGAS10" style="text-transform:uppercase;"></div>'+
     '</div>'+
+    '<div class="form-row"><div><label>Valor a mais pago pelo cliente (R$) <span class="hint" style="font-weight:400;">opcional</span></label><input type="number" name="valor_a_mais" id="input-valor-a-mais" min="0" step="0.01" placeholder="0,00"><div class="hint">Se o cliente pagou mais do que a venda, o que passou vira crédito em haver dele e entra no caixa desta venda (na forma de pagamento escolhida). Precisa ter o cliente na venda e vale só pra venda nova.</div></div></div>'+
     '<div id="wrap-divisao-pagamento" class="item-venda-row" style="margin-top:10px;">'+
     '<label class="checkbox-item"><input type="checkbox" id="chk-dividir-pagamento"> Dividir esta venda em duas formas de pagamento</label>'+
     '<div class="hint">Serve tanto pra dois pagamentos reais na mesma venda (ex: Vale Gás/Gás do Povo pagou a carga e o cliente pagou o frete da entrega em Pix, Dinheiro ou Cartão) quanto pra quando só pagou uma parte agora — nesse caso, escolha "Fica de fiado (a receber)" na forma do restante e o sistema lança sozinho a diferença no fiado. Não use junto com "Abateu": pra usar o crédito em haver do cliente, essa opção já aparece automaticamente aqui embaixo quando ele tiver saldo.</div>'+
@@ -7177,7 +7179,7 @@ function vendasTable(list, opts){
       const lancadoEmTxt = v.criadoEm ? fmtDate(v.data)+' '+new Date(v.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
       return '<tr><td style="text-align:center;">'+bolinhaPagamentoHtml(v.pagamento, v.pagamentoSplit)+'</td><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+(v.naoBaixaEstoqueRetroativa ? ' <span class="badge" style="background:var(--amber-tint,#FEF3C7);color:var(--amber,#B45309);" title="Venda retroativa — não descontou do estoque">🔁 sem baixa</span>' : '')+'</td>'+
         '<td>'+(v.canal||'—')+'</td><td>'+(v.cliente||'—')+'</td><td>'+entrega+'</td><td style="text-align:right;">'+(v.frete?fmtMoney(v.frete):'—')+'</td><td>'+statusEntregaTxt+'</td><td style="text-align:center;">'+v.quantidade+'</td>'+
-        '<td style="text-align:right;">'+fmtMoney(v.valor_unit)+'</td><td style="text-align:right;">'+fmtMoney(v.valor_total)+'</td><td>'+pagtoTxt+'</td><td><span class="badge nota">'+v.nota+'</span></td>'+
+        '<td style="text-align:right;">'+fmtMoney(v.valor_unit)+'</td><td style="text-align:right;">'+fmtMoney(v.valor_total)+'</td><td>'+pagtoTxt+(v.creditoGerado?' <span class="badge" title="Cliente pagou a mais: '+fmtMoney(v.creditoGerado.valor)+' foi pra crédito em haver">+'+fmtMoney(v.creditoGerado.valor)+' em haver</span>':'')+'</td><td><span class="badge nota">'+v.nota+'</span></td>'+
         '<td>'+(v.empresa||'—')+'</td><td>'+(v.cupom||'—')+'</td><td title="'+escapeHtmlCampanha(v.obs||'')+'">'+(v.obs||'—')+'</td><td>'+lancadoEmTxt+'</td>'+
         '<td class="cel-acoes"><button class="act-link" title="Editar" data-edit-venda="'+v.id+'">✎</button>'+
         (TIPOS_ENTREGA_COM_ENTREGADOR.includes(v.tipo_entrega) ? '<button class="act-link" title="Reenviar link da entrega no WhatsApp" data-wa-venda="'+v.id+'">💬</button>' : '')+
@@ -7382,6 +7384,13 @@ function resumoCaixaDoDia(data, abertura){
   const porFormaPagamento = {};
   let totalVendas = 0;
   vendasDia.forEach(v=>{
+    // Valor a mais pago pelo cliente (foi pra crédito em haver): é dinheiro recebido hoje, então entra
+    // na forma de pagamento e no total — mesmo sem fazer parte do valor vendido.
+    if(v.creditoGerado && v.creditoGerado.valor>0.004){
+      const formaCred = v.creditoGerado.forma||'Outros';
+      porFormaPagamento[formaCred] = (porFormaPagamento[formaCred]||0)+v.creditoGerado.valor;
+      totalVendas += v.creditoGerado.valor;
+    }
     // Venda com pagamento dividido em duas formas: soma cada parte na sua própria forma (em vez
     // de jogar o valor inteiro no rótulo combinado tipo "Dinheiro + Fiado") — senão o dinheiro
     // realmente recebido nessa venda sumia da conferência de caixa.
@@ -11875,6 +11884,7 @@ function attachHandlers(){
     // precisar rastrear cada mudança feita ao longo da função (venda editada em memória, itens
     // extras criados, baixas/devoluções de estoque, etc.).
     const _vendasAntesSubmitVenda = JSON.parse(JSON.stringify(state.vendas));
+    let creditoNovoDaVenda = null; // crédito gerado por "valor a mais" — só é gravado depois que a venda for salva
     const _estoqueAntesSubmitVenda = JSON.parse(JSON.stringify(state.estoque));
     // Rede de segurança: garante que Alvorada/Fundifoz nunca sejam salvas com outra forma de
     // pagamento, mesmo que o JS de tela (aoDigitarEmpresaVenda) não tenha rodado por algum motivo.
@@ -12163,6 +12173,24 @@ function attachHandlers(){
           }
         }
       }
+      // ---- Valor a mais pago pelo cliente: vira crédito em haver E fica registrado na própria venda ----
+      // O dinheiro entra no caixa da venda (pela forma de pagamento escolhida) sem inflar o valor
+      // vendido — senão, quando o cliente usasse esse crédito depois ("Abateu"), a receita contaria duas vezes.
+      const valorAMais = Math.round((Number(f.get('valor_a_mais'))||0)*100)/100;
+      if(valorAMais>0.004){
+        const primeiraDoGrupoCred = state.vendas.find(v=>v.grupoId===grupoId);
+        const formaRecebidaCred = (primeiraDoGrupoCred && primeiraDoGrupoCred.pagamentoSplit) ? primeiraDoGrupoCred.pagamentoSplit.forma1 : camposComuns.pagamento;
+        if(!camposComuns.cliente){
+          alert('Pra lançar "valor a mais" como crédito em haver é preciso informar o cliente na venda. A venda foi salva, mas o valor a mais NÃO foi lançado.');
+        } else if(['Abateu','Marcou/Fiado','Convênio'].includes(formaRecebidaCred)){
+          alert('"Valor a mais" só vale quando o cliente pagou de verdade (dinheiro, Pix, cartão etc.). Com a forma "'+formaRecebidaCred+'" não entra dinheiro. A venda foi salva, mas o valor a mais NÃO foi lançado.');
+        } else if(primeiraDoGrupoCred){
+          creditoNovoDaVenda = {id:uid(), cliente:camposComuns.cliente, valor:valorAMais, data:camposComuns.data,
+            obs:'Valor a mais pago na venda de '+fmtMoney(totalVendaGeral), forma_pagamento:formaRecebidaCred, vendaGrupoId:grupoId};
+          state.creditos.push(creditoNovoDaVenda);
+          primeiraDoGrupoCred.creditoGerado = {valor:valorAMais, forma:formaRecebidaCred};
+        }
+      }
       const veioDeAgendamento = !!agendamentoParaConcluir;
       if(agendamentoParaConcluir){
         state.agendamentos = state.agendamentos.filter(x=>x.id!==agendamentoParaConcluir);
@@ -12233,7 +12261,17 @@ function attachHandlers(){
     if(empresaFormVenda) await garantirEmpresaCadastrada(empresaFormVenda);
     const okVendaFinalSalva = await save('vendas');
     const okEstoqueFinalSalvo = await save('estoque');
+    if(okVendaFinalSalva && okEstoqueFinalSalvo && creditoNovoDaVenda){
+      const okCreditoSalvo = await save('creditos');
+      if(!okCreditoSalvo){
+        state.creditos = state.creditos.filter(c=>c.id!==creditoNovoDaVenda.id);
+        state.vendas.forEach(v=>{ if(v.grupoId===creditoNovoDaVenda.vendaGrupoId) delete v.creditoGerado; });
+        await save('vendas');
+        alert('⚠️ A venda foi salva, mas o crédito em haver do "valor a mais" NÃO foi gravado. Lance o crédito manualmente em Créditos em haver.');
+      }
+    }
     if(!okVendaFinalSalva || !okEstoqueFinalSalvo){
+      if(creditoNovoDaVenda) state.creditos = state.creditos.filter(c=>c.id!==creditoNovoDaVenda.id);
       // Sem essa checagem, a tela seguia como se o lançamento (ou a edição) tivesse dado certo —
       // fechava/mantinha o formulário mostrando sucesso — mesmo com o save() tendo falhado no
       // Supabase (sessão expirada, RLS ou internet). A venda editada/lançada sumia (ou voltava
@@ -13021,9 +13059,10 @@ function attachHandlers(){
     document.querySelectorAll('[data-del-venda]').forEach(btn=>btn.onclick=async()=>{
       const id = btn.dataset.delVenda;
       const v = state.vendas.find(x=>x.id===id);
-      if(v && confirm('Excluir esta venda?'+(v.estoqueBaixado?' O estoque será revertido.':' (essa venda ainda não tinha descontado o estoque — nada a reverter)'))){
+      if(v && confirm('Excluir esta venda?'+(v.estoqueBaixado?' O estoque será revertido.':' (essa venda ainda não tinha descontado o estoque — nada a reverter)')+(v.creditoGerado?' O crédito em haver de '+fmtMoney(v.creditoGerado.valor)+' gerado por essa venda também será removido.':''))){
         if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
         state.vendas = state.vendas.filter(x=>x.id!==id);
+        if(v.creditoGerado){ state.creditos = state.creditos.filter(c=>c.vendaGrupoId!==v.grupoId); await save('creditos'); }
         await save('vendas'); await save('estoque');
         renderAll();
       }
