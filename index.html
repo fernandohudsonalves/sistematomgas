@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "1.20_27_09_2026";
+    var VERSAO_ATUAL = "1.22_27_09_2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -102,26 +102,25 @@ if(!window.__ROTA_PUBLICA__){
 }
 </script>
 <style>
-/* ===== Tela de carregamento animada (explosão em camadas do "meio botijão") ===== */
+/* ===== Tela de carregamento animada (camadas do "meio botijão" crescendo juntas) ===== */
 #tela-loading-animada {
   position:fixed; inset:0; z-index:100000; background:radial-gradient(ellipse at center, #0B1220 0%, #060a12 100%);
   display:flex; align-items:center; justify-content:center; flex-direction:column; gap:26px;
 }
-#tela-loading-animada .lb-burst { position:relative; width:240px; height:240px; animation:lb-boom 1.7s cubic-bezier(.22,1.4,.36,1) infinite; }
+#tela-loading-animada .lb-burst { position:relative; width:220px; height:220px; }
 #tela-loading-animada .lb-camada {
   position:absolute; inset:0; margin:auto;
   -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20710%20773%22%3E%3Cpath%20d%3D%22M0%2C0%20H710%20V441%20A355%2C332%200%200%201%200%2C441%20Z%22%20fill%3D%22black%22/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20710%20773%22%3E%3Cpath%20d%3D%22M0%2C0%20H710%20V441%20A355%2C332%200%200%201%200%2C441%20Z%22%20fill%3D%22black%22/%3E%3C/svg%3E");
   -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
   -webkit-mask-position:center; mask-position:center;
+  animation:lb-cresce 2.2s ease-in-out infinite;
 }
-@keyframes lb-boom {
-  0%   { transform:scale(.06) rotate(0deg);   opacity:0; }
-  12%  { opacity:1; }
-  22%  { transform:scale(1.14) rotate(10deg); opacity:1; }
-  32%  { transform:scale(.94) rotate(-4deg);  opacity:1; }
-  40%  { transform:scale(1.02) rotate(0deg);  opacity:1; }
-  78%  { transform:scale(1) rotate(0deg);     opacity:1; }
-  100% { transform:scale(.06) rotate(0deg);   opacity:0; }
+@keyframes lb-cresce {
+  0%   { transform:scale(.12); opacity:0; }
+  18%  { opacity:1; }
+  50%  { transform:scale(1); opacity:1; }
+  82%  { transform:scale(1); opacity:1; }
+  100% { transform:scale(.12); opacity:0; }
 }
 #tela-loading-animada .lb-texto { color:#8b98b8; font:600 13px Arial,sans-serif; letter-spacing:.5px; }
 #tela-loading-simples {
@@ -798,7 +797,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 </script>
 </head>
 <body>
-<div id="tela-loading-animada" style="display:none;"><div class="lb-burst"><div class="lb-camada" style="width:100%;height:100%;background:#0B2FE0;transform:rotate(0deg);"></div><div class="lb-camada" style="width:80%;height:80%;background:#fff;transform:rotate(22.5deg);"></div><div class="lb-camada" style="width:62%;height:62%;background:#22FF00;transform:rotate(0deg);"></div><div class="lb-camada" style="width:46%;height:46%;background:#00F0FF;transform:rotate(22.5deg);"></div><div class="lb-camada" style="width:30%;height:30%;background:#fff;transform:rotate(0deg);"></div></div><div class="lb-texto">Sistema Tom Gás</div></div>
+<div id="tela-loading-animada" style="display:none;"><div class="lb-burst"><div class="lb-camada" style="width:100%;height:100%;background:#fff;"></div><div class="lb-camada" style="width:80%;height:80%;background:#22FF00;"></div><div class="lb-camada" style="width:60%;height:60%;background:#00F0FF;"></div><div class="lb-camada" style="width:40%;height:40%;background:#0B2FE0;"></div></div><div class="lb-texto">Sistema Tom Gás</div></div>
 <div id="tela-loading-simples" style="display:none;">Carregando…</div>
 <div id="auth-screen" class="auth-wrap">
   <button id="auth-theme-toggle" title="Alternar modo escuro">🌙</button>
@@ -852,7 +851,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.20_27_09_2026";
+const APP_BUILD_HORARIO = "1.22_27_09_2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -10121,7 +10120,8 @@ function relatorioFiado(){
     '<div class="hint">Gera um PDF com todos os fiados em aberto <strong>no momento do clique</strong> e prepara o envio pelo WhatsApp para Fernando Hudson Alves e Sueli Correia de Oliveira — é só clicar em cada botão pra abrir a conversa já com o texto pronto e anexar o PDF.</div>'+
     '<button type="button" class="btn small" id="btn-enviar-listagem-fiados" style="margin-top:8px;">📄 Gerar PDF e preparar envio</button>'+
     '<div id="fiado-envio-status" style="margin-top:10px;"></div></div>'+
-    '<h3>Lançar fiado existente (sem precisar registrar uma venda)</h3>'+
+    '<h3>🔧 Ajuste — lançar fiado avulso (sem precisar registrar uma venda)</h3>'+
+    '<div class="hint">Use pra qualquer valor que o cliente ficou devendo mas que não é uma venda — por exemplo, um empréstimo em dinheiro. Fica no saldo do cliente igualzinho a um fiado normal.</div>'+
     '<form id="form-fiado"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-fiado" name="cliente" required>'+
     '<datalist id="lista-clientes-fiado">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist></div>'+
@@ -10967,7 +10967,7 @@ function renderRelatorioEmpresasResultado(){
     '</div><button type="submit" class="btn small">Corrigir saldo</button></form>'+
     '</div>'+
     (empresaObj && empresaObj.telefone ? '<div style="margin-bottom:14px;">'+botaoWhatsApp(empresaObj.telefone)+'</div>' : '<div class="hint" style="margin-bottom:14px;">Esta empresa não tem WhatsApp cadastrado — edite a empresa em "Cadastros → Empresas" para adicionar.</div>')+
-    '<h3>Lançar valor manualmente (sem gerar venda)</h3>'+
+    '<h3>🔧 Ajuste — lançar valor manualmente (sem gerar venda)</h3>'+
     '<div class="hint">Use para lançar um valor retroativo do convênio, sem precisar registrar uma venda como é feito no fiado.</div>'+
     '<form id="form-convenio" style="margin-top:8px;"><div class="form-row">'+
     '<div><label>Data</label><input type="date" name="data" value="'+de+'" required></div>'+
