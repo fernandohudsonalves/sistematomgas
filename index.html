@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "1.17_27_09_2026";
+    var VERSAO_ATUAL = "1.19_27_09_2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -102,6 +102,41 @@ if(!window.__ROTA_PUBLICA__){
 }
 </script>
 <style>
+/* ===== Tela de carregamento animada (explosão do "meio botijão") ===== */
+#tela-loading-animada {
+  position:fixed; inset:0; z-index:100000; background:radial-gradient(ellipse at center, #0B1220 0%, #060a12 100%);
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:22px;
+}
+#tela-loading-animada .lb-burst { position:relative; width:220px; height:220px; }
+#tela-loading-animada .lb-ray { position:absolute; inset:0; display:flex; align-items:flex-start; justify-content:center; }
+#tela-loading-animada .lb-shape {
+  width:34px; height:37px;
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20710%20773%22%3E%3Cpath%20d%3D%22M0%2C0%20H710%20V441%20A355%2C332%200%200%201%200%2C441%20Z%22%20fill%3D%22black%22/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20710%20773%22%3E%3Cpath%20d%3D%22M0%2C0%20H710%20V441%20A355%2C332%200%200%201%200%2C441%20Z%22%20fill%3D%22black%22/%3E%3C/svg%3E");
+  -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+  animation:lb-fly 1.6s cubic-bezier(.4,0,.2,1) infinite;
+}
+#tela-loading-animada .lb-centro {
+  position:absolute; top:50%; left:50%; width:26px; height:28px; margin:-14px 0 0 -13px;
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20710%20773%22%3E%3Cpath%20d%3D%22M0%2C0%20H710%20V441%20A355%2C332%200%200%201%200%2C441%20Z%22%20fill%3D%22black%22/%3E%3C/svg%3E"); mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20710%20773%22%3E%3Cpath%20d%3D%22M0%2C0%20H710%20V441%20A355%2C332%200%200%201%200%2C441%20Z%22%20fill%3D%22black%22/%3E%3C/svg%3E");
+  -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+  background:#fff; animation:lb-pulso 1.6s ease-in-out infinite;
+}
+@keyframes lb-fly {
+  0% { transform:translateY(0) scale(.15); opacity:0; }
+  18% { opacity:1; }
+  70% { transform:translateY(-92px) scale(1); opacity:1; }
+  100% { transform:translateY(-108px) scale(1.15); opacity:0; }
+}
+@keyframes lb-pulso {
+  0%,100% { transform:scale(.85); opacity:.7; }
+  50% { transform:scale(1.05); opacity:1; }
+}
+#tela-loading-animada .lb-texto { color:#8b98b8; font:600 13px Arial,sans-serif; letter-spacing:.5px; }
+#tela-loading-simples {
+  position:fixed; inset:0; z-index:100000; background:#0B1220; display:flex; align-items:center;
+  justify-content:center; color:#8b98b8; font:600 13px Arial,sans-serif;
+}
+
 :root{
   --royal:#1E3A8A;
   --royal-dark:#142A63;
@@ -771,6 +806,8 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 </script>
 </head>
 <body>
+<div id="tela-loading-animada" style="display:none;"><div class="lb-burst"><div class="lb-ray" style="transform:rotate(0deg);"><div class="lb-shape" style="background:#fff;animation-delay:0.0s;"></div></div><div class="lb-ray" style="transform:rotate(45deg);"><div class="lb-shape" style="background:#0B2FE0;animation-delay:0.09s;"></div></div><div class="lb-ray" style="transform:rotate(90deg);"><div class="lb-shape" style="background:#22FF00;animation-delay:0.18s;"></div></div><div class="lb-ray" style="transform:rotate(135deg);"><div class="lb-shape" style="background:#00F0FF;animation-delay:0.27s;"></div></div><div class="lb-ray" style="transform:rotate(180deg);"><div class="lb-shape" style="background:#fff;animation-delay:0.36s;"></div></div><div class="lb-ray" style="transform:rotate(225deg);"><div class="lb-shape" style="background:#0B2FE0;animation-delay:0.45s;"></div></div><div class="lb-ray" style="transform:rotate(270deg);"><div class="lb-shape" style="background:#22FF00;animation-delay:0.54s;"></div></div><div class="lb-ray" style="transform:rotate(315deg);"><div class="lb-shape" style="background:#00F0FF;animation-delay:0.63s;"></div></div><div class="lb-centro"></div></div><div class="lb-texto">Sistema Tom Gás</div></div>
+<div id="tela-loading-simples" style="display:none;">Carregando…</div>
 <div id="auth-screen" class="auth-wrap">
   <button id="auth-theme-toggle" title="Alternar modo escuro">🌙</button>
   <div class="auth-card">
@@ -823,7 +860,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.17_27_09_2026";
+const APP_BUILD_HORARIO = "1.19_27_09_2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -8596,6 +8633,10 @@ function viewConfig(){
       '<div><input type="file" id="favicon-file-input" accept="image/*"><div class="hint" style="margin-top:4px;">Imagem quadrada funciona melhor.</div></div></div>'
     )+
     cardConfig('iconescat','🎨 Ícones do sistema', viewAdminIcones())+
+    cardConfig('loadinganimado','🌀 Tela de carregamento animada',
+      '<div class="hint">Enquanto o sistema carrega os dados (ao entrar), mostra uma animação em vez de uma tela parada. É só visual — não afeta a velocidade de carregamento. A preferência fica salva neste aparelho.</div>'+
+      '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:normal;"><input type="checkbox" id="chk-loading-animado" '+(telaLoadingPreferida()?'checked':'')+'> Usar tela de carregamento animada</label>'
+    )+
     '<div class="config-group-title">App, notificações e mensagens</div>'+
     cardConfig('appnotif','📱 App no celular e notificações',
       '<div class="hint">Instale o sistema como app na tela inicial e receba avisos de novos agendamentos.</div>'+
@@ -9029,16 +9070,21 @@ function relatorioItens(){
   const produtosTodos = state.produtos.map(p=>p.nome).sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const grupoLabel = {gas:'Gás', agua:'Água', outros:'Outros'};
   const gruposHtml = ['gas','agua','outros'].map(g=>'<label class="checkbox-item"><input type="checkbox" class="ri-grupo" value="'+g+'"> '+grupoLabel[g]+'</label>').join('');
-  const tiposHtml = tipos.map(t=>'<label class="checkbox-item ri-tipo-item"><input type="checkbox" class="ri-tipo" value="'+t+'"> '+t+'</label>').join('');
-  const produtosHtml = produtosTodos.map(p=>'<label class="checkbox-item ri-produto-item"><input type="checkbox" class="ri-produto" value="'+p+'"> '+p+'</label>').join('');
+  const tiposHtml = tipos.map(t=>'<label class="checkbox-item ri-tipo-item" data-grupo="'+grupoDaSubcategoria(t)+'"><input type="checkbox" class="ri-tipo" value="'+t+'"> '+t+'</label>').join('');
+  const produtoCategoriaMap = {}; state.produtos.forEach(p=>{ produtoCategoriaMap[p.nome] = p.categoria; });
+  const produtosHtml = produtosTodos.map(p=>'<label class="checkbox-item ri-produto-item" data-categoria="'+escapeHtmlCampanha(produtoCategoriaMap[p]||'')+'"><input type="checkbox" class="ri-produto" value="'+p+'"> '+p+'</label>').join('');
   return '<h3>Período</h3><div class="form-row">'+
     '<div><label>De</label><input type="date" id="ri-de" value="'+firstOfMonth()+'"></div>'+
     '<div><label>Até</label><input type="date" id="ri-ate" value="'+todayStr()+'"></div>'+
     '</div>'+
     '<h3 style="margin-top:14px;">Categoria</h3><div class="cat-checklist">'+gruposHtml+'</div>'+
-    '<h3 style="margin-top:14px;">Tipo da Categoria <span class="hint">(vale só pra "Outros")</span></h3>'+
+    '<button type="button" class="btn small ghost" id="ri-aplicar-categoria" style="margin-top:8px;">Aplicar categoria</button>'+
+    '<div class="hint" style="margin-top:4px;">Marque a(s) categoria(s) (Gás/Água/Outros) e clique em "Aplicar categoria" — a lista de Tipo abaixo passa a mostrar só os tipos daquelas categorias, escondendo o resto.</div>'+
+    '<h3 style="margin-top:14px;">Tipo da Categoria</h3>'+
     '<input type="text" id="ri-busca-tipo" class="searchbar" placeholder="Buscar tipo...">'+
     '<div class="cat-checklist" id="ri-lista-tipos" style="margin-top:8px;max-height:180px;overflow:auto;">'+(tiposHtml||'<div class="hint">Nenhum tipo cadastrado.</div>')+'</div>'+
+    '<button type="button" class="btn small ghost" id="ri-aplicar-tipo" style="margin-top:8px;">Aplicar tipo</button>'+
+    '<div class="hint" style="margin-top:4px;">Marque o(s) tipo(s) e clique em "Aplicar tipo" — a lista de Produto abaixo passa a mostrar só os produtos daqueles tipos.</div>'+
     '<h3 style="margin-top:14px;">Produto</h3>'+
     '<input type="text" id="ri-busca-produto" class="searchbar" placeholder="Buscar produto...">'+
     '<div class="cat-checklist" id="ri-lista-produtos" style="margin-top:8px;max-height:180px;overflow:auto;">'+(produtosHtml||'<div class="hint">Nenhum produto cadastrado.</div>')+'</div>'+
@@ -10594,15 +10640,29 @@ function renderRelatorioItensResultado(){
     porCategoria[v.categoria].qtd += v.quantidade;
     porCategoria[v.categoria].valor += v.valor_total;
   });
+  const porProduto = {};
+  filtradas.forEach(v=>{
+    const chave = v.produto||'(sem produto)';
+    if(!porProduto[chave]) porProduto[chave] = {qtd:0, valor:0, categoria:v.categoria};
+    porProduto[chave].qtd += v.quantidade;
+    porProduto[chave].valor += v.valor_total;
+  });
   const linhas = Object.entries(porCategoria).sort((a,b)=>b[1].qtd-a[1].qtd);
+  const linhasProduto = Object.entries(porProduto).sort((a,b)=>b[1].qtd-a[1].qtd);
   wrap.innerHTML =
     '<div class="grid cols2" style="margin-bottom:12px;">'+
     '<div class="metric"><div class="label">Itens vendidos (seleção atual)</div><div class="value">'+totalQtd+'</div></div>'+
     '<div class="metric"><div class="label">Valor total</div><div class="value">'+fmtMoney(totalValor)+'</div></div>'+
     '</div>'+
     (linhas.length===0?'<div class="empty">Nenhuma venda encontrada para essas categorias no período.</div>':
+    '<h3>Por categoria (tipo)</h3>'+
     '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody>'+
     linhas.map(l=>'<tr><td>'+l[0]+'</td><td>'+l[1].qtd+'</td><td>'+fmtMoney(l[1].valor)+'</td></tr>').join('')+
+    '</tbody></table></div>'+
+    '<h3 style="margin-top:16px;">Por produto individual</h3>'+
+    '<div class="hint" style="margin-bottom:6px;">Mesmo total de cima, quebrado item por item — ex.: dentro de "Produtos de Limpeza" mostra quanto foi vendido de cada produto específico.</div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Categoria</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody>'+
+    linhasProduto.map(l=>'<tr><td>'+escapeHtmlCampanha(l[0])+'</td><td>'+escapeHtmlCampanha(l[1].categoria)+'</td><td>'+l[1].qtd+'</td><td>'+fmtMoney(l[1].valor)+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function renderRelatorioEntregasResultado(){
@@ -14637,6 +14697,10 @@ function attachHandlers(){
   });
   const selOrdemClientesIncompletos = document.getElementById('sel-ordem-clientes-incompletos');
   if(selOrdemClientesIncompletos) selOrdemClientesIncompletos.onchange = ()=>{ relatorioClientesIncompletosOrdem = selOrdemClientesIncompletos.value; renderAll(); };
+  const chkLoadingAnimado = document.getElementById('chk-loading-animado');
+  if(chkLoadingAnimado) chkLoadingAnimado.onchange = ()=>{
+    try{ localStorage.setItem('loading-animado', chkLoadingAnimado.checked ? '1' : '0'); }catch(e){}
+  };
   document.querySelectorAll('.chk-modulo-ativo').forEach(chk=>{
     chk.onchange = async()=>{
       if(!state.modulosAtivos) state.modulosAtivos = {};
@@ -14661,6 +14725,24 @@ function attachHandlers(){
     await save('recompensasIndicacao'); renderAll();
   });
   const riFiltrar = document.getElementById('ri-filtrar'); if(riFiltrar) riFiltrar.onclick = renderRelatorioItensResultado;
+  const riAplicarCategoria = document.getElementById('ri-aplicar-categoria');
+  if(riAplicarCategoria) riAplicarCategoria.onclick = ()=>{
+    const gruposMarcados = Array.from(document.querySelectorAll('.ri-grupo:checked')).map(c=>c.value);
+    document.querySelectorAll('.ri-tipo-item').forEach(l=>{
+      const mostra = gruposMarcados.length===0 || gruposMarcados.includes(l.dataset.grupo);
+      l.style.display = mostra ? 'flex' : 'none';
+      if(!mostra) l.querySelector('.ri-tipo').checked = false;
+    });
+  };
+  const riAplicarTipo = document.getElementById('ri-aplicar-tipo');
+  if(riAplicarTipo) riAplicarTipo.onclick = ()=>{
+    const tiposMarcados = Array.from(document.querySelectorAll('.ri-tipo:checked')).map(c=>c.value);
+    document.querySelectorAll('.ri-produto-item').forEach(l=>{
+      const mostra = tiposMarcados.length===0 || tiposMarcados.includes(l.dataset.categoria);
+      l.style.display = mostra ? 'flex' : 'none';
+      if(!mostra) l.querySelector('.ri-produto').checked = false;
+    });
+  };
   const pvFiltrar = document.getElementById('pv-filtrar'); if(pvFiltrar) pvFiltrar.onclick = renderRelatorioPorVasilhameResultado;
   const riMarcarTodas = document.getElementById('ri-marcar-todas');
   if(riMarcarTodas) riMarcarTodas.onclick = ()=>{ document.querySelectorAll('.ri-grupo').forEach(c=>c.checked=true); renderRelatorioItensResultado(); };
@@ -17894,8 +17976,25 @@ function atualizarSinoBadge(){
   if(ativos>0){ badge.textContent = ativos; badge.style.display = 'block'; }
   else { badge.style.display = 'none'; }
 }
+function telaLoadingPreferida(){
+  try{ return localStorage.getItem('loading-animado')!=='0'; }catch(e){ return true; }
+}
+function mostrarTelaLoading(){
+  const animada = telaLoadingPreferida();
+  const elAnim = document.getElementById('tela-loading-animada');
+  const elSimples = document.getElementById('tela-loading-simples');
+  if(elAnim) elAnim.style.display = animada ? 'flex' : 'none';
+  if(elSimples) elSimples.style.display = animada ? 'none' : 'flex';
+}
+function esconderTelaLoading(){
+  const elAnim = document.getElementById('tela-loading-animada');
+  const elSimples = document.getElementById('tela-loading-simples');
+  if(elAnim) elAnim.style.display = 'none';
+  if(elSimples) elSimples.style.display = 'none';
+}
 async function afterLogin(){
   document.getElementById('auth-screen').style.display = 'none';
+  mostrarTelaLoading();
   document.getElementById('app').style.display = 'flex';
   document.getElementById('main').innerHTML = '<div class="empty">Carregando...</div>';
   try{
@@ -17918,6 +18017,7 @@ async function afterLogin(){
   renderHeaderLogo();
   aplicarFavicon();
   renderAll();
+  esconderTelaLoading();
   initAgenda();
   initChecklistHoverDrawer(); initEstoqueGasHoverDrawer(); initConferenciaBadge(); setInterval(initConferenciaBadge,1500); initNovoAgendamentoFab(); initBuscaSistema();
   initWhatsFab();
