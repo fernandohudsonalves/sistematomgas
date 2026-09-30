@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "1.24_27_09_2026";
+    var VERSAO_ATUAL = "1.25_27_09_2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -102,23 +102,20 @@ if(!window.__ROTA_PUBLICA__){
 }
 </script>
 <style>
-/* ===== Tela de carregamento animada: zoom rápido do "meio botijão" cobrindo a tela e
-   voltando (encolhendo) já revelando o sistema por baixo — tudo em menos de 1s. ===== */
+/* ===== Tela de carregamento animada: zoom rápido do "meio botijão" — cresce, bate na
+   tela cheia e já volta na hora (sem pausa), revelando o sistema por baixo. Ciclo único
+   e fixo, não fica esperando o carregamento dos dados. ===== */
 #tela-loading-animada {
   position:fixed; inset:0; z-index:100000; background:#060a12; overflow:hidden;
   display:flex; align-items:center; justify-content:center;
 }
-#tela-loading-animada.lb-saindo { animation:lb-fundo-sai .38s cubic-bezier(.4,0,.2,1) forwards; }
-@keyframes lb-fundo-sai { 0%{opacity:1;} 100%{opacity:0;} }
+#tela-loading-animada.lb-tocando { animation:lb-fundo .68s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes lb-fundo { 0%{opacity:1;} 62%{opacity:1;} 100%{opacity:0;} }
 #tela-loading-animada .lb-burst { position:relative; width:30vmax; height:30vmax; transform:scale(.06); opacity:0; }
-#tela-loading-animada.lb-crescendo .lb-burst { animation:lb-cobre .5s cubic-bezier(.22,.61,.36,1) forwards; }
-#tela-loading-animada.lb-saindo .lb-burst { animation:lb-encolhe .38s cubic-bezier(.4,0,.2,1) forwards; }
-@keyframes lb-cobre {
+#tela-loading-animada.lb-tocando .lb-burst { animation:lb-zoom .68s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes lb-zoom {
   0%   { transform:scale(.06); opacity:1; }
-  100% { transform:scale(4.4); opacity:1; }
-}
-@keyframes lb-encolhe {
-  0%   { transform:scale(4.4); opacity:1; }
+  42%  { transform:scale(4.4); opacity:1; }
   100% { transform:scale(.06); opacity:0; }
 }
 #tela-loading-animada .lb-camada {
@@ -855,7 +852,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.24_27_09_2026";
+const APP_BUILD_HORARIO = "1.25_27_09_2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -17980,20 +17977,24 @@ function mostrarTelaLoading(){
   const elAnim = document.getElementById('tela-loading-animada');
   const elSimples = document.getElementById('tela-loading-simples');
   if(elAnim){
-    elAnim.style.display = animada ? 'flex' : 'none';
-    elAnim.classList.remove('lb-saindo','lb-crescendo');
-    void elAnim.offsetWidth; // força reflow pra reiniciar a animação do zero
-    elAnim.classList.add('lb-crescendo');
+    if(animada){
+      elAnim.style.display = 'flex';
+      elAnim.classList.remove('lb-tocando');
+      void elAnim.offsetWidth; // força reflow pra reiniciar a animação do zero
+      elAnim.classList.add('lb-tocando');
+      // Ciclo único e rápido (bate na tela cheia e já volta) — não espera o carregamento
+      // dos dados terminar, pra nunca ficar pausado esperando.
+      setTimeout(()=>{ elAnim.style.display = 'none'; elAnim.classList.remove('lb-tocando'); }, 700);
+    } else {
+      elAnim.style.display = 'none';
+    }
   }
   if(elSimples) elSimples.style.display = animada ? 'none' : 'flex';
 }
 function esconderTelaLoading(){
-  const elAnim = document.getElementById('tela-loading-animada');
+  // A versão animada já se esconde sozinha (ciclo rápido fixo); aqui só garante que a
+  // versão simples (sem animação) suma quando os dados realmente terminarem de carregar.
   const elSimples = document.getElementById('tela-loading-simples');
-  if(elAnim && elAnim.style.display!=='none'){
-    elAnim.classList.add('lb-saindo');
-    setTimeout(()=>{ elAnim.style.display = 'none'; elAnim.classList.remove('lb-crescendo','lb-saindo'); }, 390);
-  }
   if(elSimples) elSimples.style.display = 'none';
 }
 async function afterLogin(){
