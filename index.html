@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "1.26_27_09_2026";
+    var VERSAO_ATUAL = "1_01-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -111,7 +111,7 @@ if(!window.__ROTA_PUBLICA__){
 #tela-loading-animada.lb-saindo { animation:lb-fundo-sai .32s cubic-bezier(.4,0,.2,1) forwards; }
 @keyframes lb-fundo-sai { 0%{opacity:1;} 100%{opacity:0;} }
 #tela-loading-animada .lb-burst { position:relative; width:30vmax; height:30vmax; transform:scale(.06); opacity:0; }
-#tela-loading-animada.lb-crescendo .lb-burst { animation:lb-cobre .42s cubic-bezier(.22,.61,.36,1) forwards; }
+#tela-loading-animada.lb-crescendo .lb-burst { animation:lb-cobre .9s cubic-bezier(.22,.61,.36,1) forwards; }
 #tela-loading-animada.lb-saindo .lb-burst { animation:lb-encolhe .32s cubic-bezier(.4,0,.2,1) forwards; }
 @keyframes lb-cobre {
   0%   { transform:scale(.06); opacity:1; }
@@ -855,7 +855,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1.26_27_09_2026";
+const APP_BUILD_HORARIO = "1_01-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1227,6 +1227,7 @@ const RELATORIOS_SUBTABS = [
   {id:'despesas', label:'💸 Despesas por período', modulo:'nucleo'},
   {id:'diastrabalho', label:'⏳ Dias de trabalho p/ pagar contas', modulo:'financeiro'},
   {id:'custosfixosvar', label:'⚖️ Saúde da empresa / Ponto de equilíbrio', modulo:'financeiro'},
+  {id:'resultadomensal', label:'🔵🔴 Resultado Mês a Mês', modulo:'financeiro'},
   {id:'veiculos', label:'🚗 Veículos', modulo:'financeiro'},
   {id:'fiado', label:'📒 Fiado / A receber', modulo:'nucleo'},
   {id:'creditos', label:'💳 Créditos em haver', modulo:'nucleo'},
@@ -8800,6 +8801,7 @@ function viewRelatorios(){
   else if(relatorioSub==='despesas') content = relatorioDespesas();
   else if(relatorioSub==='diastrabalho') content = relatorioDiasTrabalho();
   else if(relatorioSub==='custosfixosvar') content = relatorioCustosFixosVariaveis();
+  else if(relatorioSub==='resultadomensal') content = relatorioResultadoMensal();
   else if(relatorioSub==='veiculos') content = relatorioVeiculos();
   else if(relatorioSub==='fiado') content = relatorioFiado();
   else if(relatorioSub==='creditos') content = relatorioCreditos();
@@ -9864,6 +9866,35 @@ function relatorioDespesas(){
     '<div><label>Até</label><input type="date" id="rd-ate" value="'+todayStr()+'"></div></div>'+
     '<button class="btn small ghost" id="rd-filtrar">Filtrar</button><div id="rd-resultado" style="margin-top:16px;"></div>';
 }
+function relatorioResultadoMensal(){
+  // Um mês entra na lista se teve venda OU despesa lançada nele.
+  const meses = new Set();
+  (state.vendas||[]).forEach(v=>{ if(v.data) meses.add(monthKey(v.data)); });
+  (state.despesas||[]).forEach(d=>{ if(d.data) meses.add(monthKey(d.data)); });
+  const mesesOrdenados = Array.from(meses).sort();
+  let qtdAzul = 0, qtdVermelho = 0;
+  const linhas = mesesOrdenados.map(function(mk){
+    const vendasMes = (state.vendas||[]).filter(v=>monthKey(v.data)===mk).reduce((s,v)=>s+v.valor_total,0);
+    const despesasMes = (state.despesas||[]).filter(d=>monthKey(d.data)===mk).reduce((s,d)=>s+d.valor,0);
+    const resultado = Math.round((vendasMes-despesasMes)*100)/100;
+    const positivo = resultado>=0;
+    if(positivo) qtdAzul++; else qtdVermelho++;
+    const cor = positivo ? '#2563EB' : '#DC2626';
+    const fundo = positivo ? 'rgba(37,99,235,.12)' : 'rgba(220,38,38,.12)';
+    return '<tr style="background:'+fundo+';"><td>'+nomeMes(mk)+'</td><td>'+fmtMoney(vendasMes)+'</td><td>'+fmtMoney(despesasMes)+'</td>'+
+      '<td style="color:'+cor+';font-weight:700;">'+(positivo?'🔵':'🔴')+' '+fmtMoney(resultado)+'</td></tr>';
+  }).join('');
+  return '<div class="card"><h2>🔵🔴 Resultado Mês a Mês</h2>'+
+    '<div class="hint">Resultado = vendas do mês menos despesas do mês. Mês em <strong style="color:#2563EB;">azul</strong> fechou no positivo; mês em <strong style="color:#DC2626;">vermelho</strong> fechou no negativo.</div>'+
+    '<div class="grid cols2" style="margin-top:12px;">'+
+    '<div class="metric"><div class="label">Meses no azul</div><div class="value" style="color:#2563EB;">'+qtdAzul+'</div></div>'+
+    '<div class="metric"><div class="label">Meses no vermelho</div><div class="value" style="color:#DC2626;">'+qtdVermelho+'</div></div>'+
+    '</div></div>'+
+    '<div class="card">'+
+    (mesesOrdenados.length===0?'<div class="empty">Nenhum mês com vendas ou despesas lançadas ainda.</div>':
+    '<div class="table-wrap"><table><thead><tr><th>Mês</th><th>Vendas</th><th>Despesas</th><th>Resultado</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    '</div>';
+}
 function relatorioCustosFixosVariaveis(){
   return '<h3>💰 Custos Fixos x Variáveis — Saúde da empresa</h3>'+
     '<div class="hint">Compara quanto foi gasto em Custo Fixo e Custo Variável (defina isso em Cadastros & Marketing > Cadastro de Despesas) contra o faturamento bruto do período, mostra o ponto de equilíbrio (quanto precisa vender pra cobrir tudo) e uma barra de saúde financeira.</div>'+
@@ -10859,8 +10890,16 @@ function renderRelatorioDespesasResultado(){
   const cardContas = '<div class="card" style="margin:12px 0;"><h3>💼 Gasto por conta (pró-labore)</h3>'+
     '<div class="metric neg" style="max-width:260px;margin-bottom:10px;"><div class="label">Total em contas pessoais no período</div><div class="value">'+fmtMoney(totalPessoal)+'</div></div>'+
     '<div class="table-wrap"><table><thead><tr><th>Conta</th><th>Valor</th></tr></thead><tbody>'+linhasConta+'</tbody></table></div></div>';
+  const porCategoria = {};
+  filtradas.forEach(d=>{ const c=d.categoria||'Sem categoria'; porCategoria[c]=(porCategoria[c]||0)+d.valor; });
+  const linhasCategoria = Object.entries(porCategoria).sort((a,b)=>b[1]-a[1])
+    .map(e=>'<tr><td>'+iconeCategoriaDespesaHtml(e[0])+e[0]+'</td><td>'+fmtMoney(e[1])+'</td><td>'+(total>0?((e[1]/total)*100).toFixed(1)+'%':'—')+'</td></tr>').join('');
+  const cardCategoria = '<div class="card" style="margin:12px 0;"><h3>📂 Despesas por categoria</h3>'+
+    (linhasCategoria?'<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Valor</th><th>% do total</th></tr></thead><tbody>'+linhasCategoria+'</tbody></table></div>':'<div class="empty">Nenhuma despesa no período.</div>')+
+    '</div>';
   document.getElementById('rd-resultado').innerHTML =
     '<div class="metric neg" style="max-width:260px;margin-bottom:12px;"><div class="label">Total no período</div><div class="value">'+fmtMoney(total)+'</div></div>'+
+    cardCategoria+
     cardContas+
     (filtradas.length===0?'<div class="empty">Nenhuma despesa encontrada.</div>':
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Conta</th><th>Valor</th></tr></thead><tbody>'+
