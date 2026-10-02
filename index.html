@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "1_01-10-2026";
+    var VERSAO_ATUAL = "4_01-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -102,24 +102,30 @@ if(!window.__ROTA_PUBLICA__){
 }
 </script>
 <style>
-/* ===== Tela de carregamento animada: cresce rápido, bate cobrindo a tela e SEGURA até
-   os dados terminarem de carregar — aí volta rápido, revelando o sistema. ===== */
+/* ===== Tela de carregamento animada: camadas do "meio botijão" pulsando (igual um coração)
+   enquanto os dados carregam; quando terminam, dá um zoom cobrindo a tela e volta rápido,
+   revelando o sistema. ===== */
 #tela-loading-animada {
   position:fixed; inset:0; z-index:100000; background:#060a12; overflow:hidden;
   display:flex; align-items:center; justify-content:center;
 }
-#tela-loading-animada.lb-saindo { animation:lb-fundo-sai .32s cubic-bezier(.4,0,.2,1) forwards; }
-@keyframes lb-fundo-sai { 0%{opacity:1;} 100%{opacity:0;} }
-#tela-loading-animada .lb-burst { position:relative; width:30vmax; height:30vmax; transform:scale(.06); opacity:0; }
-#tela-loading-animada.lb-crescendo .lb-burst { animation:lb-cobre .9s cubic-bezier(.22,.61,.36,1) forwards; }
-#tela-loading-animada.lb-saindo .lb-burst { animation:lb-encolhe .32s cubic-bezier(.4,0,.2,1) forwards; }
-@keyframes lb-cobre {
-  0%   { transform:scale(.06); opacity:1; }
-  100% { transform:scale(4.4); opacity:1; }
+#tela-loading-animada.lb-saindo { animation:lb-fundo-sai .62s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes lb-fundo-sai { 0%{opacity:1;} 55%{opacity:1;} 100%{opacity:0;} }
+#tela-loading-animada .lb-burst { position:relative; width:22vmax; height:22vmax; }
+#tela-loading-animada.lb-pulsando .lb-burst { animation:lb-coracao 1.15s ease-in-out infinite; }
+#tela-loading-animada.lb-saindo .lb-burst { animation:lb-zoom-sai .62s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes lb-coracao {
+  0%   { transform:scale(.88); }
+  18%  { transform:scale(1.08); }
+  33%  { transform:scale(.94); }
+  48%  { transform:scale(1.12); }
+  65%  { transform:scale(.88); }
+  100% { transform:scale(.88); }
 }
-@keyframes lb-encolhe {
-  0%   { transform:scale(4.4); opacity:1; }
-  100% { transform:scale(.06); opacity:0; }
+@keyframes lb-zoom-sai {
+  0%   { transform:scale(1); opacity:1; }
+  38%  { transform:scale(5.6); opacity:1; }
+  100% { transform:scale(.15); opacity:0; }
 }
 #tela-loading-animada .lb-camada {
   position:absolute; inset:0; margin:auto;
@@ -855,7 +861,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "1_01-10-2026";
+const APP_BUILD_HORARIO = "4_01-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1228,6 +1234,7 @@ const RELATORIOS_SUBTABS = [
   {id:'diastrabalho', label:'⏳ Dias de trabalho p/ pagar contas', modulo:'financeiro'},
   {id:'custosfixosvar', label:'⚖️ Saúde da empresa / Ponto de equilíbrio', modulo:'financeiro'},
   {id:'resultadomensal', label:'🔵🔴 Resultado Mês a Mês', modulo:'financeiro'},
+  {id:'vendidonomes', label:'🧾 Tudo que Vendeu no Mês', modulo:'nucleo'},
   {id:'veiculos', label:'🚗 Veículos', modulo:'financeiro'},
   {id:'fiado', label:'📒 Fiado / A receber', modulo:'nucleo'},
   {id:'creditos', label:'💳 Créditos em haver', modulo:'nucleo'},
@@ -2162,6 +2169,7 @@ let crmClienteSelecionado = null;
 let relatorioNovosClientesMes = null;
 let relatorioClientesIncompletosCampos = ['telefone','endereco'];
 let relatorioClientesIncompletosOrdem = 'nome';
+let relatorioVendidoNoMesSelecionado = null;
 let calendarioCampanhaMes = null;
 let relEmpresaSel = '';
 let relEmpresaDe = '';
@@ -8802,6 +8810,7 @@ function viewRelatorios(){
   else if(relatorioSub==='diastrabalho') content = relatorioDiasTrabalho();
   else if(relatorioSub==='custosfixosvar') content = relatorioCustosFixosVariaveis();
   else if(relatorioSub==='resultadomensal') content = relatorioResultadoMensal();
+  else if(relatorioSub==='vendidonomes') content = relatorioVendidoNoMes();
   else if(relatorioSub==='veiculos') content = relatorioVeiculos();
   else if(relatorioSub==='fiado') content = relatorioFiado();
   else if(relatorioSub==='creditos') content = relatorioCreditos();
@@ -8930,13 +8939,35 @@ function saldosComodato(direcao){
   });
   return Object.values(mapa).filter(x=>x.saldo!==0).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
 }
-function tabelaSaldosComodato(direcao, tituloColuna){
-  const linhas = saldosComodato(direcao);
+function tabelaSaldosComodato(direcao, tituloColuna, categoriaFiltro){
+  let linhas = saldosComodato(direcao);
+  if(categoriaFiltro) linhas = linhas.filter(l=>l.categoria===categoriaFiltro);
   if(linhas.length===0) return '<div class="empty">Nada em aberto.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>'+tituloColuna+'</th><th>Categoria / Item</th><th>Produto</th><th>Saldo</th></tr></thead><tbody>'+
+  return '<div class="table-wrap"><table><thead><tr><th>'+tituloColuna+'</th><th>Categoria / Item</th><th>Produto</th><th>Saldo</th><th></th></tr></thead><tbody>'+
     linhas.map(l=>'<tr><td>'+l.nome+'</td><td>'+l.categoria+' — '+itemComodatoLabel(l.categoria,l.item)+'</td><td>'+l.produto+'</td>'+
-    '<td>'+(l.saldo>0?'+':'')+l.saldo+'</td></tr>').join('')+
+    '<td>'+(l.saldo>0?'+':'')+l.saldo+'</td>'+
+    '<td class="cel-acoes"><button class="act-link" data-ajustar-saldo-comodato=\''+JSON.stringify({direcao,nome:l.nome,categoria:l.categoria,item:l.item,produto:l.produto,saldo:l.saldo}).replace(/'/g,'&#39;')+'\'">✎ editar</button>'+
+    '<button class="del-link" data-zerar-saldo-comodato=\''+JSON.stringify({direcao,nome:l.nome,categoria:l.categoria,item:l.item,produto:l.produto,saldo:l.saldo}).replace(/'/g,'&#39;')+'\'">🗑 zerar</button></td></tr>').join('')+
     '</tbody></table></div>';
+}
+// Cria um lançamento de AJUSTE de comodato levando o saldo de (nome+categoria+item+produto) pro
+// valor novo informado, e já aplica o efeito no estoque físico — mesma lógica do lançamento normal.
+async function ajustarSaldoComodato(direcao, nome, categoria, item, produto, saldoAtual, novoSaldo){
+  const delta = novoSaldo - saldoAtual;
+  if(delta===0) return;
+  const c = {id:uid(), direcao, nome, categoria, item, produto, quantidade:delta, data:todayStr(), obs:'Ajuste manual de saldo', whatsapp:''};
+  state.comodatos.push(c);
+  const lanc = efeitoEstoqueLancDeComodato(c);
+  if(lanc){
+    aplicarEfeitoEstoqueLanc(lanc, false);
+    state.estoqueLancamentos.push(lanc);
+    c.baixaEstoque = true;
+    c.estoqueLancId = lanc.id;
+  } else {
+    alert('Não foi possível identificar o item de estoque — o ajuste foi lançado, mas o estoque não mudou.');
+  }
+  await save('comodatos'); await save('estoque'); await save('estoqueLancamentos');
+  renderAll();
 }
 /* Soma o saldo de comodato em aberto (todos os nomes juntos) pra um item/estado específico.
    direcao='cliente' -> itens emprestados a clientes (ainda são nossos, só estão fora).
@@ -9015,10 +9046,14 @@ function relatorioComodatos(){
     '<div style="align-self:flex-end;"><button type="button" class="btn small ghost" id="cmd-copiar-obs">📋 Copiar observação p/ colar no WhatsApp</button></div></div>'+
     '<div class="hint" style="margin-top:12px;">✅ Todo comodato ajusta o estoque físico automaticamente na hora: emprestar tira do estoque, receber de volta um casco/carga põe de volta — sem precisar marcar nada.</div>'+
     '<button type="submit" class="btn small">Lançar</button></form>'+
-    '<h3 style="margin-top:16px;">Clientes me devendo (comodato emprestado)</h3>'+
-    tabelaSaldosComodato('cliente','Cliente')+
-    '<h3 style="margin-top:16px;">Eu devo ao atacadista</h3>'+
-    tabelaSaldosComodato('atacadista','Atacadista')+
+    '<h3 style="margin-top:16px;">🔥 Clientes me devendo — Gás</h3>'+
+    tabelaSaldosComodato('cliente','Cliente','Gás')+
+    '<h3 style="margin-top:16px;">💧 Clientes me devendo — Água</h3>'+
+    tabelaSaldosComodato('cliente','Cliente','Água')+
+    '<h3 style="margin-top:16px;">🔥 Eu devo ao atacadista — Gás</h3>'+
+    tabelaSaldosComodato('atacadista','Atacadista','Gás')+
+    '<h3 style="margin-top:16px;">💧 Eu devo ao atacadista — Água</h3>'+
+    tabelaSaldosComodato('atacadista','Atacadista','Água')+
     '<h3 style="margin-top:16px;">Todos os lançamentos</h3>'+
     '<input type="text" id="busca-comodato" class="searchbar" placeholder="Buscar por nome, categoria, item, produto ou observação...">'+
     '<div id="lista-comodatos-wrap">'+comodatosListaHtml()+'</div>';
@@ -9865,6 +9900,34 @@ function relatorioDespesas(){
     '<div><label>De</label><input type="date" id="rd-de" value="'+firstOfMonth()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rd-ate" value="'+todayStr()+'"></div></div>'+
     '<button class="btn small ghost" id="rd-filtrar">Filtrar</button><div id="rd-resultado" style="margin-top:16px;"></div>';
+}
+function relatorioVendidoNoMes(){
+  const mk = relatorioVendidoNoMesSelecionado || monthKey(todayStr());
+  const vendasMes = (state.vendas||[]).filter(v=>monthKey(v.data)===mk);
+  const porProduto = {};
+  vendasMes.forEach(v=>{
+    const chave = v.produto||'(sem produto)';
+    if(!porProduto[chave]) porProduto[chave] = {qtd:0, valor:0, categoria:v.categoria};
+    porProduto[chave].qtd += v.quantidade;
+    porProduto[chave].valor += v.valor_total;
+  });
+  const linhas = Object.entries(porProduto).sort((a,b)=>b[1].valor-a[1].valor);
+  const totalQtd = linhas.reduce((s,l)=>s+l[1].qtd,0);
+  const totalValor = linhas.reduce((s,l)=>s+l[1].valor,0);
+  return '<div class="card"><h2>🧾 Tudo que Vendeu no Mês</h2>'+
+    '<div class="hint">Todo item que saiu numa venda lançada no mês escolhido, com a quantidade e o valor total de cada um — sem precisar marcar categoria nem produto, já mostra tudo.</div>'+
+    '<div class="form-row" style="margin-top:10px;max-width:260px;"><div><label>Mês</label><input type="month" id="input-mes-vendido-no-mes" value="'+mk+'"></div></div>'+
+    '</div>'+
+    '<div class="card"><div class="grid cols2">'+
+    '<div class="metric"><div class="label">Itens vendidos no mês</div><div class="value">'+totalQtd+'</div></div>'+
+    '<div class="metric"><div class="label">Valor total do mês</div><div class="value">'+fmtMoney(totalValor)+'</div></div>'+
+    '</div></div>'+
+    '<div class="card">'+
+    (linhas.length===0?'<div class="empty">Nenhuma venda lançada em '+nomeMes(mk)+'.</div>':
+    '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Categoria</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody>'+
+    linhas.map(l=>'<tr><td>'+iconeCatalogo(l[0],state.categoriasProdutosGrupo?.[l[1].categoria])+' '+escapeHtmlCampanha(l[0])+'</td><td>'+escapeHtmlCampanha(l[1].categoria||'—')+'</td><td>'+l[1].qtd+'</td><td>'+fmtMoney(l[1].valor)+'</td></tr>').join('')+
+    '</tbody></table></div>')+
+    '</div>';
 }
 function relatorioResultadoMensal(){
   // Um mês entra na lista se teve venda OU despesa lançada nele.
@@ -14074,6 +14137,19 @@ function attachHandlers(){
   };
   if(cmdCategoria) cmdCategoria.onchange = ()=>popularItensComodato(cmdCategoria.value);
   function attachComodatoListaHandlers(){
+    document.querySelectorAll('[data-ajustar-saldo-comodato]').forEach(btn=>btn.onclick=()=>{
+      const info = JSON.parse(btn.dataset.ajustarSaldoComodato);
+      const novo = prompt('Saldo atual de '+info.nome+' — '+info.categoria+' / '+info.produto+': '+info.saldo+'\n\nDigite o novo saldo:', info.saldo);
+      if(novo===null) return;
+      const novoNum = Number(novo);
+      if(isNaN(novoNum)){ alert('Digite só um número.'); return; }
+      ajustarSaldoComodato(info.direcao, info.nome, info.categoria, info.item, info.produto, info.saldo, novoNum);
+    });
+    document.querySelectorAll('[data-zerar-saldo-comodato]').forEach(btn=>btn.onclick=()=>{
+      const info = JSON.parse(btn.dataset.zerarSaldoComodato);
+      if(!confirm('Zerar o saldo de '+info.nome+' — '+info.categoria+' / '+info.produto+' (atualmente '+info.saldo+')? Isso lança um ajuste levando o saldo a 0 e já corrige o estoque físico.')) return;
+      ajustarSaldoComodato(info.direcao, info.nome, info.categoria, info.item, info.produto, info.saldo, 0);
+    });
     document.querySelectorAll('[data-edit-comodato]').forEach(btn=>btn.onclick=()=>{
       const c = state.comodatos.find(x=>x.id===btn.dataset.editComodato);
       const fcmEl = document.getElementById('form-comodato');
@@ -14732,6 +14808,8 @@ function attachHandlers(){
   });
   const selOrdemClientesIncompletos = document.getElementById('sel-ordem-clientes-incompletos');
   if(selOrdemClientesIncompletos) selOrdemClientesIncompletos.onchange = ()=>{ relatorioClientesIncompletosOrdem = selOrdemClientesIncompletos.value; renderAll(); };
+  const inputMesVendidoNoMes = document.getElementById('input-mes-vendido-no-mes');
+  if(inputMesVendidoNoMes) inputMesVendidoNoMes.onchange = ()=>{ relatorioVendidoNoMesSelecionado = inputMesVendidoNoMes.value; renderAll(); };
   const chkLoadingAnimado = document.getElementById('chk-loading-animado');
   if(chkLoadingAnimado) chkLoadingAnimado.onchange = ()=>{
     try{ localStorage.setItem('loading-animado', chkLoadingAnimado.checked ? '1' : '0'); }catch(e){}
@@ -18020,19 +18098,22 @@ function mostrarTelaLoading(){
   const elSimples = document.getElementById('tela-loading-simples');
   if(elAnim){
     elAnim.style.display = animada ? 'flex' : 'none';
-    elAnim.classList.remove('lb-saindo','lb-crescendo');
+    elAnim.style.opacity = '1';
+    elAnim.classList.remove('lb-saindo','lb-pulsando');
     void elAnim.offsetWidth; // força reflow pra reiniciar a animação do zero
-    elAnim.classList.add('lb-crescendo'); // cresce e SEGURA cobrindo a tela (fill forwards)
+    elAnim.classList.add('lb-pulsando'); // pulsa (igual um coração) enquanto os dados carregam
   }
   if(elSimples) elSimples.style.display = animada ? 'none' : 'flex';
 }
 function esconderTelaLoading(){
-  // Chamado quando os dados terminam de carregar de verdade — aí sim volta, rápido.
+  // Chamado quando os dados terminam de carregar de verdade: dá o zoom cobrindo a tela e
+  // volta rápido, revelando o sistema por baixo.
   const elAnim = document.getElementById('tela-loading-animada');
   const elSimples = document.getElementById('tela-loading-simples');
   if(elAnim && elAnim.style.display!=='none'){
+    elAnim.classList.remove('lb-pulsando');
     elAnim.classList.add('lb-saindo');
-    setTimeout(()=>{ elAnim.style.display = 'none'; elAnim.classList.remove('lb-crescendo','lb-saindo'); }, 330);
+    setTimeout(()=>{ elAnim.style.display = 'none'; elAnim.classList.remove('lb-saindo'); }, 630);
   }
   if(elSimples) elSimples.style.display = 'none';
 }
