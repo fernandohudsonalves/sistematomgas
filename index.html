@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "4_01-10-2026";
+    var VERSAO_ATUAL = "6_01-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -861,7 +861,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "4_01-10-2026";
+const APP_BUILD_HORARIO = "6_01-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1856,6 +1856,27 @@ const VAPID_PUBLIC_KEY = "BJhtEhjv3z9JMW44Yg3JsfoGYR4lNcINkr1fRzNLxvx-jzxtErj7Ew
 
 const CANAIS = ['Portaria','WhatsApp','Venda Ativa','Ligação','Hub','Google'];
 const PAGAMENTOS = ['Dinheiro','Débito','Crédito','Convênio','Vale gás','Gás do povo','Pix','Abateu','Marcou/Fiado','Outros'];
+const ICONES_PAGAMENTO = {
+  'Dinheiro':'💵','Débito':'💳','Crédito':'💳','Convênio':'🏢','Vale gás':'🎫',
+  'Gás do povo':'🔥','Pix':'⚡','Abateu':'➖','Marcou/Fiado':'📒','Outros':'🔘'
+};
+function iconePagamento(p){ return ICONES_PAGAMENTO[p] || ''; }
+// Monta <option> de forma de pagamento com ícone no texto, mas o value continua o nome puro
+// (sem ícone) — senão quebraria toda comparação tipo pagamento==='Convênio' no resto do sistema.
+// Dentro de <select>, não dá pra colorir só uma palavra (option não renderiza HTML/estilo).
+function opcoesPagamentoComIcone(lista, texto){
+  return '<option value="" selected disabled>'+texto+'</option>'+lista.map(x=>{
+    const ic = iconePagamento(x);
+    return '<option value="'+x+'">'+(ic?ic+' ':'')+x+'</option>';
+  }).join('');
+}
+// Pra mostrar a forma de pagamento fora de um <select> (tabelas, badges) — aqui dá pra colorir.
+// "Gás do povo" sai com chama e no mesmo azul da bolinha usada pros fiados desse programa.
+function pagamentoComIconeHtml(p){
+  const ic = iconePagamento(p);
+  if(p==='Gás do povo') return '<span style="color:#00a8ff;font-weight:600;">'+ic+' '+p+'</span>';
+  return (ic?ic+' ':'')+p;
+}
 const NOTAS = ['Nota fiscal','Cupom não fiscal','Já lançado','Não lança'];
 const TIPOS_ENTREGA = ['Retirada','Falta retirar','Já retirou','Entrega a pé','Entrega de Celta','Entrega de moto','Entrega de Strada'];
 const DIAS_SEMANA_LABEL = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -3557,7 +3578,7 @@ function novoItemVendaRow(opts){
     '</div>'+
     '<div class="form-row" style="margin-top:6px;">'+
     '<div><label>Canal deste item</label><select class="iv-canal">'+opcoesComPlaceholder(CANAIS,'Mesmo canal acima')+'</select></div>'+
-    '<div><label>Forma de pagamento deste item</label><select class="iv-pagamento">'+opcoesComPlaceholder(PAGAMENTOS,'Mesma forma acima')+'</select></div>'+
+    '<div><label>Forma de pagamento deste item</label><select class="iv-pagamento">'+opcoesPagamentoComIcone(PAGAMENTOS,'Mesma forma acima')+'</select></div>'+
     '</div>'+
     '<div class="hint" style="margin-top:2px;">Deixe em branco pra usar o mesmo canal/forma de pagamento escolhidos no topo — só preencha se ESTE item específico veio de outro canal ou foi pago de outro jeito (ex: item 1 veio do Hub, item 2 foi uma venda ativa da entregadora).</div>';
   const catHiddenEl = div.querySelector('#'+catHiddenId);
@@ -6661,6 +6682,7 @@ function criarLinhaPlanilhaVenda(dataPadrao){
     '<td><select class="pv-nota" style="min-width:130px;"><option value="">Selecione</option>'+NOTAS.map(n=>'<option>'+n+'</option>').join('')+'</select></td>'+
     '<td><input type="text" class="pv-cupom" style="min-width:90px;"></td>'+
     '<td><input type="number" class="pv-frete" min="0" step="0.01" placeholder="0,00"></td>'+
+    '<td><input type="number" class="pv-valor-a-mais" min="0" step="0.01" placeholder="0,00"></td>'+
     '<td><input type="text" class="pv-empresa" list="dl-planilha-empresas" style="min-width:130px;"></td>'+
     '<td style="text-align:center;"><input type="checkbox" class="pv-vale-pendente" title="Vale do Gás do povo ainda não validado"></td>'+
     '<td style="text-align:center;"><input type="checkbox" class="pv-nao-baixar-estoque" title="Venda retroativa (lançada com data errada) — o estoque já foi descontado antes, não desconta de novo"></td>'+
@@ -6693,9 +6715,9 @@ function htmlPlanilhaVendas(hoje){
     '<col style="width:150px;"><col style="width:160px;"><col style="width:200px;"><col style="width:360px;"><col style="width:300px;">'+
     '<col style="width:140px;"><col style="width:80px;"><col style="width:120px;"><col style="width:160px;"><col style="width:160px;">'+
     '<col style="width:140px;"><col style="width:160px;"><col style="width:160px;"><col style="width:160px;"><col style="width:120px;">'+
-    '<col style="width:110px;"><col style="width:170px;"><col style="width:120px;"><col style="width:150px;"><col style="width:190px;"><col style="width:80px;">'+
+    '<col style="width:110px;"><col style="width:140px;"><col style="width:170px;"><col style="width:120px;"><col style="width:150px;"><col style="width:190px;"><col style="width:80px;">'+
     '</colgroup><thead><tr>'+
-    '<th>Data</th><th>Categoria</th><th>Tipo da categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Pagamento 2</th><th>R$ na 1ª forma</th><th>Entrega</th><th>Entregador</th><th>Nota</th><th>Cupom</th><th>Frete</th><th>Empresa conv.</th><th>Vale pendente</th><th title="Marque em vendas retroativas (lançamento feito com data errada) que já tinham descontado o estoque antes">Não baixar estoque</th><th>Obs</th><th></th>'+
+    '<th>Data</th><th>Categoria</th><th>Tipo da categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Pagamento 2</th><th>R$ na 1ª forma</th><th>Entrega</th><th>Entregador</th><th>Nota</th><th>Cupom</th><th>Frete</th><th title="Se o cliente pagou mais do que a venda, vira crédito em haver dele">Valor a mais</th><th>Empresa conv.</th><th>Vale pendente</th><th title="Marque em vendas retroativas (lançamento feito com data errada) que já tinham descontado o estoque antes">Não baixar estoque</th><th>Obs</th><th></th>'+
     '</tr></thead><tbody id="tbody-planilha-vendas"></tbody></table></div>'+
     '<datalist id="dl-planilha-clientes">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>'+
     '<datalist id="dl-planilha-empresas">'+state.empresas.map(e=>'<option value="'+escapeHtmlCampanha(e.nome)+'">').join('')+'</datalist>'+
@@ -6725,6 +6747,7 @@ async function salvarPlanilhaVendas(){
     const nota = g('.pv-nota').value;
     const cupom = g('.pv-cupom').value.trim().toUpperCase();
     const frete = Number(g('.pv-frete').value)||0;
+    const valorAMais = Math.round((Number(g('.pv-valor-a-mais').value)||0)*100)/100;
     const empresa = g('.pv-empresa').value.trim();
     const valePendente = g('.pv-vale-pendente').checked;
     const naoBaixarEstoque = g('.pv-nao-baixar-estoque').checked;
@@ -6743,7 +6766,7 @@ async function salvarPlanilhaVendas(){
       erros.push('Linha "'+(cliente||'(sem cliente)')+'" — Gás do povo: a forma de pagamento desse item precisa ser "Gás do povo".');
       continue;
     }
-    brutas.push({categoria, produtoLivre, cliente, data, canal, qtd, valorUnit, pagamento, pagamento2, valorForma1, entrega, entregadorId, nota, cupom, frete, empresa, valePendente, naoBaixarEstoque, obs});
+    brutas.push({categoria, produtoLivre, cliente, data, canal, qtd, valorUnit, pagamento, pagamento2, valorForma1, entrega, entregadorId, nota, cupom, frete, valorAMais, empresa, valePendente, naoBaixarEstoque, obs});
   }
   if(erros.length){ alert('Corrija antes de salvar:\n\n'+erros.join('\n')); return; }
   if(brutas.length===0){ alert('Nenhuma linha preenchida pra salvar.'); return; }
@@ -6802,6 +6825,26 @@ async function salvarPlanilhaVendas(){
       idsCriados.push(id);
       todosIdsCriados.push(id);
       totalVendasCriadas++;
+    }
+    // "Valor a mais": mesma regra do lançamento manual — vira crédito em haver do cliente e fica
+    // registrado na venda (não soma no valor vendido, pra não contar duas vezes quando o crédito
+    // for usado depois). Exige cliente e uma forma de pagamento onde dinheiro realmente entrou.
+    const valorAMaisGrupo = Math.round(grupo.itens.reduce((s,l)=>s+(l.valorAMais||0),0)*100)/100;
+    if(valorAMaisGrupo>0.004){
+      if(!clienteResolvido){
+        avisosAbate.push('Linha '+(primeiro.cliente||primeiro.categoria)+': "valor a mais" exige cliente informado — a venda foi salva, mas o valor a mais NÃO foi lançado.');
+      } else if(['Abateu','Marcou/Fiado','Convênio'].includes(primeiro.pagamento)){
+        avisosAbate.push('Linha de '+clienteResolvido+': "valor a mais" não vale com pagamento "'+primeiro.pagamento+'" (não entra dinheiro) — a venda foi salva, mas o valor a mais NÃO foi lançado.');
+      } else {
+        const totalVendaGrupo = Math.round(grupo.itens.reduce((s,l)=>s+l.qtd*l.valorUnit,0)*100)/100;
+        const novoCredito = {id:uid(), cliente:clienteResolvido, valor:valorAMaisGrupo, data:primeiro.data,
+          obs:'Valor a mais pago na venda de '+fmtMoney(totalVendaGrupo)+' — lançado em planilha', forma_pagamento:primeiro.pagamento, vendaGrupoId:grupoId};
+        state.creditos.push(novoCredito);
+        creditosIdsCriados.push(novoCredito.id);
+        creditosAlterados = true;
+        const primeiraVendaGrupo = state.vendas.find(v=>v.grupoId===grupoId);
+        if(primeiraVendaGrupo) primeiraVendaGrupo.creditoGerado = {valor:valorAMaisGrupo, forma:primeiro.pagamento};
+      }
     }
     // Dividir pagamento — só considera o que foi preenchido na 1ª linha do grupo, vale pra venda toda.
     if(primeiro.pagamento2){
@@ -6991,7 +7034,7 @@ function viewVendas(){
     '</div>'+
     '<h3 style="margin-top:20px;padding-top:14px;border-top:2px dashed var(--border);">💳 Pagamento e entrega <span class="hint" style="font-weight:400;text-transform:none;">(vale para a venda toda, com todos os itens acima)</span></h3>'+
     '<div class="form-row" style="margin-top:14px;">'+
-    '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select><div class="hint" id="hint-forma-pagamento">"Abateu" desconta automaticamente do crédito em haver do cliente selecionado, limitado ao saldo disponível — se o crédito não cobrir tudo, a diferença já entra como fiado (a receber) sozinha.</div>'+
+    '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento" required>'+opcoesPagamentoComIcone(PAGAMENTOS,'Selecione a forma de pagamento')+'</select><div class="hint" id="hint-forma-pagamento">"Abateu" desconta automaticamente do crédito em haver do cliente selecionado, limitado ao saldo disponível — se o crédito não cobrir tudo, a diferença já entra como fiado (a receber) sozinha.</div>'+
     '<div id="wrap-vale-pendente" style="display:none;margin-top:6px;"><label style="display:flex;align-items:center;gap:6px;font-weight:400;"><input type="checkbox" id="chk-vale-pendente" name="vale_pendente"> Vale ainda não foi validado/recebido (fica marcado como pendente até você confirmar)</label></div></div>'+
     '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
     '<div><label>Cupom usado (opcional)</label><input type="text" name="cupom" placeholder="Ex: TOMGAS10" style="text-transform:uppercase;"></div>'+
@@ -7029,7 +7072,7 @@ function viewVendas(){
     '<div class="form-row">'+
     '<div><label>Forma</label><select name="retirado_forma_edit" id="sel-forma-retirada-edit">'+opcoesComPlaceholder(['Ainda pendente','Cliente retirou','Entrega a pé'].concat((state.veiculos||[]).map(vc=>'Entrega de '+vc.nome)),'Selecione')+'</select></div>'+
     '<div><label>Frete cobrado (R$)</label><input type="number" id="input-frete-falta-retirar" name="frete_falta_retirar" min="0" step="0.01" placeholder="0,00"></div>'+
-    '<div id="wrap-forma-pagto-frete-falta-retirar" style="display:none;"><label>Forma de pagamento do frete</label><select name="frete_falta_retirar_forma">'+opcoesComPlaceholder(PAGAMENTOS,'Selecione')+'</select></div>'+
+    '<div id="wrap-forma-pagto-frete-falta-retirar" style="display:none;"><label>Forma de pagamento do frete</label><select name="frete_falta_retirar_forma">'+opcoesPagamentoComIcone(PAGAMENTOS,'Selecione')+'</select></div>'+
     '</div>'+
     '<label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:normal;"><input type="checkbox" id="chk-baixa-estoque-falta-retirar" checked> Dar baixa no estoque agora</label>'+
     '</div>'+
@@ -7086,7 +7129,7 @@ function pendenciasRetiradaTable(list){
         '<div class="form-row">'+
         '<div><label>Quem está retirando <span class="req">*</span></label><select id="sel-retirar-forma-'+v.id+'">'+opcoesComPlaceholder(opcoesForma,'Selecione')+'</select></div>'+
         '<div><label>Teve frete? Valor (R$)</label><input type="number" id="input-retirar-frete-'+v.id+'" min="0" step="0.01" placeholder="0,00"></div>'+
-        '<div id="wrap-retirar-frete-forma-'+v.id+'" style="display:none;"><label>Forma de pagamento do frete</label><select id="sel-retirar-frete-forma-'+v.id+'">'+opcoesComPlaceholder(PAGAMENTOS,'Selecione')+'</select></div>'+
+        '<div id="wrap-retirar-frete-forma-'+v.id+'" style="display:none;"><label>Forma de pagamento do frete</label><select id="sel-retirar-frete-forma-'+v.id+'">'+opcoesPagamentoComIcone(PAGAMENTOS,'Selecione')+'</select></div>'+
         '</div>'+
         '<label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:normal;"><input type="checkbox" id="chk-retirar-baixa-'+v.id+'" checked> Dar baixa no estoque agora</label>'+
         '<button type="button" class="btn small" style="margin-top:8px;" data-retirar-confirmar="'+v.id+'">✔ Confirmar retirada</button>'+
@@ -7106,7 +7149,7 @@ function pendenciasJaRetirouTable(list){
         '<button class="del-link" data-del-venda="'+v.id+'">🗑 excluir</button></td></tr>'+
         '<tr id="linha-jaretirou-'+v.id+'" style="display:none;"><td colspan="5" style="background:var(--card);color:var(--text);">'+
         '<div class="form-row">'+
-        '<div><label>Forma de pagamento recebida <span class="req">*</span></label><select id="sel-jaretirou-forma-'+v.id+'">'+opcoesComPlaceholder(PAGAMENTOS.filter(p=>p!=='Marcou/Fiado'),'Selecione')+'</select></div>'+
+        '<div><label>Forma de pagamento recebida <span class="req">*</span></label><select id="sel-jaretirou-forma-'+v.id+'">'+opcoesPagamentoComIcone(PAGAMENTOS.filter(p=>p!=='Marcou/Fiado'),'Selecione')+'</select></div>'+
         '</div>'+
         '<button type="button" class="btn small" style="margin-top:8px;" data-jaretirou-confirmar="'+v.id+'">✔ Confirmar recebimento</button>'+
         '</td></tr>';
@@ -7215,7 +7258,7 @@ function vendasTable(list, opts){
       const pendenteEntrega = (v.tipo_entrega==='Falta retirar' && !v.retirado) || (v.tipo_entrega==='Já retirou' && v.pagamento==='Marcou/Fiado');
       const entrega = entregaLabel(tipoEfetivo, v.entrega_hora, pendenteEntrega) + (foiResolvidaDeFaltaRetirar ? ' <span class="hint" style="font-size:10.5px;">(era Falta retirar)</span>' : '');
       const statusEntregaTxt = v.tipo_entrega==='Falta retirar' ? (v.retirado?'✔ Retirado':'Pendente') : (v.tipo_entrega==='Já retirou' ? (v.pagamento==='Marcou/Fiado'?'Pendente':'✔ Pago') : (v.entrega_hora ? (v.entrega_status==='entregue'?'✔ Entregue':'Pendente') : '—'));
-      const pagtoTxt = v.pagamento + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>')+
+      const pagtoTxt = pagamentoComIconeHtml(v.pagamento) + (v.pagamento==='Marcou/Fiado' ? ' <span class="badge status-receber" title="A receber">A receber</span>' : ' <span class="badge status-pago" title="Pago">Pago</span>')+
         (v.vale_pendente ? ' <span class="badge status-receber" title="Clique pra marcar como validado" data-marcar-vale-validado="'+v.id+'" style="cursor:pointer;">🎫 vale pendente</span>' : '');
       const lancadoEmTxt = v.criadoEm ? fmtDate(v.data)+' '+new Date(v.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
       return '<tr><td style="text-align:center;">'+bolinhaPagamentoHtml(v.pagamento, v.pagamentoSplit)+'</td><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td><span class="badge '+badgeClass+'" title="'+(info?info.grupo:'outro')+'">'+(info?info.grupo:'outro')+'</span> '+v.produto+(v.naoBaixaEstoqueRetroativa ? ' <span class="badge" style="background:var(--amber-tint,#FEF3C7);color:var(--amber,#B45309);" title="Venda retroativa — não descontou do estoque">🔁 sem baixa</span>' : '')+'</td>'+
@@ -8362,7 +8405,7 @@ function viewAgendamentos(){
     '</div>'+
     '<h3 style="margin-top:20px;padding-top:14px;border-top:2px dashed var(--border);">💳 Pagamento e entrega <span class="hint" style="font-weight:400;text-transform:none;">(vale para o pedido todo, com todos os itens acima)</span></h3>'+
     '<div class="form-row" style="margin-top:14px;">'+
-    '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento-ag" required>'+opcoesComPlaceholder(PAGAMENTOS,'Selecione a forma de pagamento')+'</select></div>'+
+    '<div><label>Forma de pagamento <span class="req">*</span></label><select name="pagamento" id="sel-forma-pagamento-ag" required>'+opcoesPagamentoComIcone(PAGAMENTOS,'Selecione a forma de pagamento')+'</select></div>'+
     '<div><label>Tipo de entrega <span class="req">*</span></label><select name="tipo_entrega" id="sel-tipo-entrega-ag" required>'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione o tipo de entrega')+'</select></div>'+
     '<div><label>Cupom usado (opcional)</label><input type="text" name="cupom" placeholder="Ex: TOMGAS10" style="text-transform:uppercase;"></div>'+
     '</div>'+
@@ -17727,7 +17770,7 @@ function renderCsvVendasMapping(){
     '<div class="form-row" style="max-width:620px;margin-top:10px;">'+
     '<div><label>Data padrão (linhas sem data)</label><input type="date" id="input-v-data-base" value="'+todayStr()+'"></div>'+
     '<div><label>Canal padrão (linhas sem canal)</label><select id="input-v-canal-base">'+opcoesComPlaceholder(CANAIS,'Selecione')+'</select></div>'+
-    '<div><label>Pagamento padrão (linhas sem forma de pagamento)</label><select id="input-v-pagamento-base">'+opcoesComPlaceholder(PAGAMENTOS,'Selecione')+'</select></div>'+
+    '<div><label>Pagamento padrão (linhas sem forma de pagamento)</label><select id="input-v-pagamento-base">'+opcoesPagamentoComIcone(PAGAMENTOS,'Selecione')+'</select></div>'+
     '<div><label>Entrega padrão (linhas sem tipo de entrega)</label><select id="input-v-entrega-base">'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione')+'</select></div>'+
     '</div>'+
     '<div class="csv-preview"><table><thead><tr>'+csvVendasHeaders.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead>'+
