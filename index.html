@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "6_01-10-2026";
+    var VERSAO_ATUAL = "8_01-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -861,7 +861,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "6_01-10-2026";
+const APP_BUILD_HORARIO = "8_01-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1235,6 +1235,7 @@ const RELATORIOS_SUBTABS = [
   {id:'custosfixosvar', label:'⚖️ Saúde da empresa / Ponto de equilíbrio', modulo:'financeiro'},
   {id:'resultadomensal', label:'🔵🔴 Resultado Mês a Mês', modulo:'financeiro'},
   {id:'vendidonomes', label:'🧾 Tudo que Vendeu no Mês', modulo:'nucleo'},
+  {id:'controlegeral', label:'📋 Controle Geral (Vendas+Fiado+Convênio)', modulo:'nucleo'},
   {id:'veiculos', label:'🚗 Veículos', modulo:'financeiro'},
   {id:'fiado', label:'📒 Fiado / A receber', modulo:'nucleo'},
   {id:'creditos', label:'💳 Créditos em haver', modulo:'nucleo'},
@@ -1872,9 +1873,11 @@ function opcoesPagamentoComIcone(lista, texto){
 }
 // Pra mostrar a forma de pagamento fora de um <select> (tabelas, badges) — aqui dá pra colorir.
 // "Gás do povo" sai com chama e no mesmo azul da bolinha usada pros fiados desse programa.
+const CORES_TEXTO_PAGAMENTO = {'Gás do povo':'#00a8ff','Vale gás':'#39FF14','Convênio':'#FFEB3B'};
 function pagamentoComIconeHtml(p){
   const ic = iconePagamento(p);
-  if(p==='Gás do povo') return '<span style="color:#00a8ff;font-weight:600;">'+ic+' '+p+'</span>';
+  const cor = CORES_TEXTO_PAGAMENTO[p];
+  if(cor) return '<span style="color:'+cor+';font-weight:600;">'+ic+' '+p+'</span>';
   return (ic?ic+' ':'')+p;
 }
 const NOTAS = ['Nota fiscal','Cupom não fiscal','Já lançado','Não lança'];
@@ -2191,6 +2194,8 @@ let relatorioNovosClientesMes = null;
 let relatorioClientesIncompletosCampos = ['telefone','endereco'];
 let relatorioClientesIncompletosOrdem = 'nome';
 let relatorioVendidoNoMesSelecionado = null;
+let relatorioControleGeralDe = null;
+let relatorioControleGeralAte = null;
 let calendarioCampanhaMes = null;
 let relEmpresaSel = '';
 let relEmpresaDe = '';
@@ -8854,6 +8859,7 @@ function viewRelatorios(){
   else if(relatorioSub==='custosfixosvar') content = relatorioCustosFixosVariaveis();
   else if(relatorioSub==='resultadomensal') content = relatorioResultadoMensal();
   else if(relatorioSub==='vendidonomes') content = relatorioVendidoNoMes();
+  else if(relatorioSub==='controlegeral') content = relatorioControleGeral();
   else if(relatorioSub==='veiculos') content = relatorioVeiculos();
   else if(relatorioSub==='fiado') content = relatorioFiado();
   else if(relatorioSub==='creditos') content = relatorioCreditos();
@@ -9943,6 +9949,41 @@ function relatorioDespesas(){
     '<div><label>De</label><input type="date" id="rd-de" value="'+firstOfMonth()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rd-ate" value="'+todayStr()+'"></div></div>'+
     '<button class="btn small ghost" id="rd-filtrar">Filtrar</button><div id="rd-resultado" style="margin-top:16px;"></div>';
+}
+function relatorioControleGeral(){
+  const de = relatorioControleGeralDe || todayStr();
+  const ate = relatorioControleGeralAte || todayStr();
+  const vendasP = (state.vendas||[]).filter(v=>v.data>=de && v.data<=ate);
+  const fiadosP = (state.fiados||[]).filter(f=>f.data>=de && f.data<=ate);
+  const convVendasP = vendasP.filter(v=>v.pagamento==='Convênio');
+  const convLancP = (state.convenioLancamentos||[]).filter(c=>c.data>=de && c.data<=ate);
+  const totalVendas = vendasP.reduce((s,v)=>s+v.valor_total,0);
+  const totalFiado = fiadosP.reduce((s,f)=>s+f.valor,0);
+  const totalConvenio = convVendasP.reduce((s,v)=>s+v.valor_total,0) + convLancP.reduce((s,c)=>s+c.valor,0);
+  const linhasVendas = vendasP.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(v=>
+    '<tr><td>'+fmtDate(v.data)+'</td><td>'+escapeHtmlCampanha(v.cliente||v.empresa||'—')+'</td><td>'+iconeCatalogo(v.produto,state.categoriasProdutosGrupo?.[v.categoria])+' '+escapeHtmlCampanha(v.produto)+'</td><td>'+v.quantidade+'</td><td>'+fmtMoney(v.valor_total)+'</td><td>'+pagamentoComIconeHtml(v.pagamento)+'</td></tr>').join('');
+  const linhasFiado = fiadosP.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(f=>
+    '<tr><td>'+fmtDate(f.data)+'</td><td>'+escapeHtmlCampanha(f.cliente)+'</td><td>'+fmtMoney(f.valor)+'</td><td>'+escapeHtmlCampanha(f.obs||(f.forma_pagamento?'':'🔧 Ajuste avulso')||'—')+'</td></tr>').join('');
+  const linhasConvenio = convVendasP.map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+escapeHtmlCampanha(v.empresa||v.cliente)+'</td><td>Venda: '+escapeHtmlCampanha(v.produto)+'</td><td>'+fmtMoney(v.valor_total)+'</td></tr>').join('')+
+    convLancP.map(c=>'<tr><td>'+fmtDate(c.data)+'</td><td>'+escapeHtmlCampanha(c.empresa)+'</td><td>Lançamento: '+escapeHtmlCampanha(c.descricao||'🔧 Ajuste')+'</td><td>'+fmtMoney(c.valor)+'</td></tr>').join('');
+  return '<div class="card"><h2>📋 Controle Geral (Vendas + Fiado + Convênio)</h2>'+
+    '<div class="hint">Visão geral de tudo que aconteceu no período: produto vendido, fiado lançado (venda ou ajuste avulso) e movimento de convênio — tudo junto, só pra conferência.</div>'+
+    '<div class="form-row" style="margin-top:10px;"><div><label>De</label><input type="date" id="input-cg-de" value="'+de+'"></div><div><label>Até</label><input type="date" id="input-cg-ate" value="'+ate+'"></div></div>'+
+    '</div>'+
+    '<div class="card"><div class="grid cols3">'+
+    '<div class="metric"><div class="label">💰 Vendas no período</div><div class="value">'+fmtMoney(totalVendas)+'</div></div>'+
+    '<div class="metric"><div class="label">📒 Fiado lançado no período</div><div class="value">'+fmtMoney(totalFiado)+'</div></div>'+
+    '<div class="metric"><div class="label">🏢 Convênio no período</div><div class="value">'+fmtMoney(totalConvenio)+'</div></div>'+
+    '</div></div>'+
+    '<div class="card"><h3>💰 Vendas ('+vendasP.length+')</h3>'+
+    (linhasVendas?'<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente/Empresa</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Pagamento</th></tr></thead><tbody>'+linhasVendas+'</tbody></table></div>':'<div class="empty">Nenhuma venda no período.</div>')+
+    '</div>'+
+    '<div class="card"><h3>📒 Fiados ('+fiadosP.length+')</h3>'+
+    (linhasFiado?'<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Valor</th><th>Obs</th></tr></thead><tbody>'+linhasFiado+'</tbody></table></div>':'<div class="empty">Nenhum fiado lançado no período.</div>')+
+    '</div>'+
+    '<div class="card"><h3>🏢 Convênios</h3>'+
+    (linhasConvenio?'<div class="table-wrap"><table><thead><tr><th>Data</th><th>Empresa</th><th>Origem</th><th>Valor</th></tr></thead><tbody>'+linhasConvenio+'</tbody></table></div>':'<div class="empty">Nenhum movimento de convênio no período.</div>')+
+    '</div>';
 }
 function relatorioVendidoNoMes(){
   const mk = relatorioVendidoNoMesSelecionado || monthKey(todayStr());
@@ -14853,6 +14894,10 @@ function attachHandlers(){
   if(selOrdemClientesIncompletos) selOrdemClientesIncompletos.onchange = ()=>{ relatorioClientesIncompletosOrdem = selOrdemClientesIncompletos.value; renderAll(); };
   const inputMesVendidoNoMes = document.getElementById('input-mes-vendido-no-mes');
   if(inputMesVendidoNoMes) inputMesVendidoNoMes.onchange = ()=>{ relatorioVendidoNoMesSelecionado = inputMesVendidoNoMes.value; renderAll(); };
+  const inputCgDe = document.getElementById('input-cg-de');
+  if(inputCgDe) inputCgDe.onchange = ()=>{ relatorioControleGeralDe = inputCgDe.value; renderAll(); };
+  const inputCgAte = document.getElementById('input-cg-ate');
+  if(inputCgAte) inputCgAte.onchange = ()=>{ relatorioControleGeralAte = inputCgAte.value; renderAll(); };
   const chkLoadingAnimado = document.getElementById('chk-loading-animado');
   if(chkLoadingAnimado) chkLoadingAnimado.onchange = ()=>{
     try{ localStorage.setItem('loading-animado', chkLoadingAnimado.checked ? '1' : '0'); }catch(e){}
