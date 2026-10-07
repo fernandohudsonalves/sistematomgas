@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "8_01-10-2026";
+    var VERSAO_ATUAL = "9_10-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -861,7 +861,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "8_01-10-2026";
+const APP_BUILD_HORARIO = "9_10-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -3674,6 +3674,37 @@ function popularSelectProdutoFixo(selectId, grupo, root){
   const produtos = produtosFixosDoGrupo(grupo);
   sel.innerHTML = '<option value="" selected disabled>Selecione o produto</option>'+
     produtos.map(p=>'<option value="'+p.nome+'" data-preco="'+p.preco+'">'+p.nome+' — '+fmtMoney(p.preco)+'</option>').join('');
+}
+// Os 15 produtos com maior quantidade vendida no histórico inteiro — usado nos atalhos
+// "Itens mais vendidos" dos formulários de venda, pra agilizar o preenchimento.
+function produtosMaisVendidos(limite){
+  const porProduto = {};
+  (state.vendas||[]).forEach(v=>{
+    if(!v.produto) return;
+    if(!porProduto[v.produto]) porProduto[v.produto] = {nome:v.produto, categoria:v.categoria, qtd:0};
+    porProduto[v.produto].qtd += (v.quantidade||0);
+    porProduto[v.produto].categoria = v.categoria; // fica com a categoria da venda mais recente
+  });
+  return Object.values(porProduto).sort((a,b)=>b.qtd-a.qtd).slice(0, limite||15);
+}
+// Caixinha de atalhos com os itens mais vendidos. Clicar em um já preenche Categoria, Tipo da
+// categoria e Produto no seletor indicado (continua dando pra mudar tudo depois, à mão).
+function htmlItensMaisVendidosBox(boxId){
+  const itens = produtosMaisVendidos(15);
+  if(itens.length===0) return '';
+  return '<div id="'+boxId+'" style="margin-bottom:10px;">'+
+    '<label>⭐ Itens mais vendidos <span class="hint" style="font-weight:400;">clique pra preencher categoria/tipo/produto — depois é só conferir e mudar se precisar</span></label>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">'+
+    itens.map(p=>'<button type="button" class="btn small ghost btn-item-rapido" data-produto="'+escapeHtmlCampanha(p.nome)+'" data-categoria="'+escapeHtmlCampanha(p.categoria||'')+'">'+escapeHtmlCampanha(p.nome)+'</button>').join('')+
+    '</div></div>';
+}
+// Liga os botões de atalho de dentro de "root" ao controle (ctrl) devolvido por
+// wireSeletorCategoria daquele mesmo formulário/linha.
+function wireItensMaisVendidos(root, ctrl){
+  if(!root || !ctrl) return;
+  root.querySelectorAll('.btn-item-rapido').forEach(btn=>{
+    btn.onclick = ()=>{ ctrl.setValor(btn.dataset.categoria, btn.dataset.produto); };
+  });
 }
 function htmlSeletorCategoria(p){
   return '<input type="hidden" id="'+p.categoriaHiddenId+'" name="categoria"'+(p.required?' required':'')+'>'+
@@ -6695,7 +6726,7 @@ function criarLinhaPlanilhaVenda(dataPadrao){
     '<td><button type="button" class="del-link pv-remover-linha" title="Remover linha">🗑</button></td>';
   const produtoLivreInput = tr.querySelector('.iv-produto-livre');
   const valorUnitInput = tr.querySelector('.pv-valor');
-  wireSeletorCategoria({
+  tr._seletorCtrl = wireSeletorCategoria({
     root:tr, grupoId, etiquetaWrapId, etiquetaId, produtoWrapId, produtoId:produtoSelId,
     categoriaHiddenId:catHiddenId, manualWrapId:manualId, produtoLivreEl:produtoLivreInput, valorUnitEl:valorUnitInput
   });
@@ -6715,6 +6746,7 @@ function criarLinhaPlanilhaVenda(dataPadrao){
 function htmlPlanilhaVendas(hoje){
   return '<div class="card"><details id="details-planilha-vendas">'+
     '<summary><strong>🧮 Lançar vendas em planilha (estilo Excel)</strong></summary>'+
+    htmlItensMaisVendidosBox('box-mais-vendidos-planilha')+
     '<div class="hint" style="margin-top:8px;">Preencha uma linha por item, célula por célula, igual uma planilha. <strong>Cliente repetido em linhas seguidas vira uma única venda com vários itens</strong> (igual no "colar texto"). Escolha a Categoria (Gás/Água/Outros) — em "Outros" aparece o Tipo da categoria (com um botão "+" pra cadastrar um tipo novo na hora) e depois o Produto, com "Outro (digitar manualmente)" no fim da lista pra quando não achar. Em Gás/Água o Produto já é a própria carga/vasilhame escolhido, sem precisar de Tipo. Pra dividir o pagamento em duas formas, preencha "Pagamento 2" e "R$ na 1ª forma" <strong>só na primeira linha do cliente</strong> — vale pra venda toda. Quando a Entrega escolhida for de verdade (a pé/Celta/moto/Strada), escolha o Entregador — ao salvar, o sistema já manda o link da entrega pra ele no WhatsApp automaticamente (e esse mesmo link fica disponível pra reenviar depois no Histórico, caso ele esqueça qual é a entrega). Nada é lançado até clicar em "Salvar todas as linhas".</div>'+
     '<div class="table-wrap"><table class="tabela-planilha-vendas" style="min-width:3390px;"><colgroup>'+
     '<col style="width:150px;"><col style="width:160px;"><col style="width:200px;"><col style="width:360px;"><col style="width:300px;">'+
@@ -7003,6 +7035,7 @@ function viewVendas(){
     '<div class="item-venda-row iv-item-principal">'+
     '<div class="iv-numero-item" style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--muted,#666);margin-bottom:6px;">Item 1</div>'+
     '<div class="form-row">'+
+    htmlItensMaisVendidosBox('box-mais-vendidos-venda')+
     htmlSeletorCategoria({categoriaHiddenId:'sel-categoria', grupoId:'sel-grupo', etiquetaWrapId:'wrap-etiqueta', etiquetaId:'sel-etiqueta', required:true})+
     '<div id="wrap-produto" style="display:none;"><label>Produto <span class="req">*</span></label><select id="sel-produto-catalogo"></select>'+
     '<div id="wrap-produto-manual" style="display:none;margin-top:8px;"><label>Nome do produto (digite) <span class="req">*</span></label><input type="text" name="produto_livre" placeholder="Nome do item"></div></div>'+
@@ -8392,6 +8425,7 @@ function viewAgendamentos(){
     '<div class="item-venda-row iv-item-principal-ag">'+
     '<div class="iv-numero-item" style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--muted,#666);margin-bottom:6px;">Item 1</div>'+
     '<div class="form-row">'+
+    htmlItensMaisVendidosBox('box-mais-vendidos-ag')+
     htmlSeletorCategoria({categoriaHiddenId:'sel-categoria-ag', grupoId:'sel-grupo-ag', etiquetaWrapId:'wrap-etiqueta-ag', etiquetaId:'sel-etiqueta-ag', required:true})+
     '<div id="wrap-produto-ag" style="display:none;"><label>Produto <span class="req">*</span></label><select id="sel-produto-catalogo-ag"></select>'+
     '<div id="wrap-produto-manual-ag" style="display:none;margin-top:8px;"><label>Nome do produto (digite) <span class="req">*</span></label><input type="text" id="ag-produto-livre" name="produto_livre" placeholder="Nome do item"></div></div>'+
@@ -11930,6 +11964,7 @@ function attachHandlers(){
     produtoLivreEl: document.querySelector('input[name="produto_livre"]'),
     valorUnitEl: document.querySelector('input[name="valor_unit"]')
   });
+  wireItensMaisVendidos(document.getElementById('box-mais-vendidos-venda'), seletorVendaMain);
   const fvPre = document.getElementById('form-venda');
   const btnNovaCatProduto = document.getElementById('btn-nova-cat-produto');
   if(btnNovaCatProduto) btnNovaCatProduto.onclick = ()=>{ document.getElementById('nova-cat-produto-wrap').style.display='block'; };
@@ -12581,6 +12616,16 @@ function attachHandlers(){
   };
   const tbodyPlanilha = document.getElementById('tbody-planilha-vendas');
   if(tbodyPlanilha && tbodyPlanilha.children.length===0) tbodyPlanilha.appendChild(criarLinhaPlanilhaVenda(todayStr()));
+  document.querySelectorAll('#box-mais-vendidos-planilha .btn-item-rapido').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(!tbodyPlanilha) return;
+      const dataUltima = tbodyPlanilha.querySelector('tr:last-child .pv-data');
+      const novaLinha = criarLinhaPlanilhaVenda(dataUltima ? dataUltima.value : todayStr());
+      tbodyPlanilha.appendChild(novaLinha);
+      if(novaLinha._seletorCtrl) novaLinha._seletorCtrl.setValor(btn.dataset.categoria, btn.dataset.produto);
+      novaLinha.scrollIntoView({behavior:'smooth', block:'center'});
+    };
+  });
   const btnPlanilhaAddLinha = document.getElementById('btn-planilha-add-linha');
   if(btnPlanilhaAddLinha) btnPlanilhaAddLinha.onclick = ()=>{
     const dataUltima = tbodyPlanilha.querySelector('tr:last-child .pv-data');
@@ -15570,6 +15615,7 @@ function attachHandlers(){
     manualWrapId:'wrap-produto-manual-ag', produtoLivreEl: document.getElementById('ag-produto-livre'),
     valorUnitEl: agValorUnitInput, onProdutoChange: atualizarTotalCarrinhoAgendamento
   });
+  wireItensMaisVendidos(document.getElementById('box-mais-vendidos-ag'), seletorAgendamento);
   const btnAddItemAg = document.getElementById('btn-add-item-ag');
   if(btnAddItemAg) btnAddItemAg.onclick = ()=>{
     document.getElementById('itens-extra-lista-ag').appendChild(novoItemAgendamentoRow());
