@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "9_10-10-2026";
+    var VERSAO_ATUAL = "10_10-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -861,7 +861,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "9_10-10-2026";
+const APP_BUILD_HORARIO = "10_10-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -3692,19 +3692,23 @@ function produtosMaisVendidos(limite){
 function htmlItensMaisVendidosBox(boxId){
   const itens = produtosMaisVendidos(15);
   if(itens.length===0) return '';
-  return '<div id="'+boxId+'" style="margin-bottom:10px;">'+
-    '<label>⭐ Itens mais vendidos <span class="hint" style="font-weight:400;">clique pra preencher categoria/tipo/produto — depois é só conferir e mudar se precisar</span></label>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">'+
-    itens.map(p=>'<button type="button" class="btn small ghost btn-item-rapido" data-produto="'+escapeHtmlCampanha(p.nome)+'" data-categoria="'+escapeHtmlCampanha(p.categoria||'')+'">'+escapeHtmlCampanha(p.nome)+'</button>').join('')+
-    '</div></div>';
+  return '<div id="'+boxId+'" style="margin-bottom:10px;max-width:360px;">'+
+    '<label>⭐ Itens mais vendidos <span class="hint" style="font-weight:400;">escolha pra preencher categoria/tipo/produto — depois é só conferir e mudar se precisar</span></label>'+
+    '<select class="sel-item-rapido"><option value="" selected disabled>Escolher um item mais vendido...</option>'+
+    itens.map(p=>'<option value="'+escapeHtmlCampanha(p.nome)+'" data-categoria="'+escapeHtmlCampanha(p.categoria||'')+'">'+escapeHtmlCampanha(p.nome)+'</option>').join('')+
+    '</select></div>';
 }
-// Liga os botões de atalho de dentro de "root" ao controle (ctrl) devolvido por
+// Liga o seletor de atalho de dentro de "root" ao controle (ctrl) devolvido por
 // wireSeletorCategoria daquele mesmo formulário/linha.
 function wireItensMaisVendidos(root, ctrl){
   if(!root || !ctrl) return;
-  root.querySelectorAll('.btn-item-rapido').forEach(btn=>{
-    btn.onclick = ()=>{ ctrl.setValor(btn.dataset.categoria, btn.dataset.produto); };
-  });
+  const sel = root.querySelector('.sel-item-rapido');
+  if(!sel) return;
+  sel.onchange = ()=>{
+    const op = sel.selectedOptions[0];
+    ctrl.setValor(op.dataset.categoria, op.value);
+    sel.selectedIndex = 0;
+  };
 }
 function htmlSeletorCategoria(p){
   return '<input type="hidden" id="'+p.categoriaHiddenId+'" name="categoria"'+(p.required?' required':'')+'>'+
@@ -12616,16 +12620,17 @@ function attachHandlers(){
   };
   const tbodyPlanilha = document.getElementById('tbody-planilha-vendas');
   if(tbodyPlanilha && tbodyPlanilha.children.length===0) tbodyPlanilha.appendChild(criarLinhaPlanilhaVenda(todayStr()));
-  document.querySelectorAll('#box-mais-vendidos-planilha .btn-item-rapido').forEach(btn=>{
-    btn.onclick = ()=>{
-      if(!tbodyPlanilha) return;
-      const dataUltima = tbodyPlanilha.querySelector('tr:last-child .pv-data');
-      const novaLinha = criarLinhaPlanilhaVenda(dataUltima ? dataUltima.value : todayStr());
-      tbodyPlanilha.appendChild(novaLinha);
-      if(novaLinha._seletorCtrl) novaLinha._seletorCtrl.setValor(btn.dataset.categoria, btn.dataset.produto);
-      novaLinha.scrollIntoView({behavior:'smooth', block:'center'});
-    };
-  });
+  const selMaisVendidosPlanilha = document.querySelector('#box-mais-vendidos-planilha .sel-item-rapido');
+  if(selMaisVendidosPlanilha) selMaisVendidosPlanilha.onchange = ()=>{
+    if(!tbodyPlanilha) return;
+    const op = selMaisVendidosPlanilha.selectedOptions[0];
+    const dataUltima = tbodyPlanilha.querySelector('tr:last-child .pv-data');
+    const novaLinha = criarLinhaPlanilhaVenda(dataUltima ? dataUltima.value : todayStr());
+    tbodyPlanilha.appendChild(novaLinha);
+    if(novaLinha._seletorCtrl) novaLinha._seletorCtrl.setValor(op.dataset.categoria, op.value);
+    novaLinha.scrollIntoView({behavior:'smooth', block:'center'});
+    selMaisVendidosPlanilha.selectedIndex = 0;
+  };
   const btnPlanilhaAddLinha = document.getElementById('btn-planilha-add-linha');
   if(btnPlanilhaAddLinha) btnPlanilhaAddLinha.onclick = ()=>{
     const dataUltima = tbodyPlanilha.querySelector('tr:last-child .pv-data');
