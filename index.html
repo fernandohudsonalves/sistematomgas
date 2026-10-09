@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "10_10-10-2026";
+    var VERSAO_ATUAL = "15_10-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -485,6 +485,11 @@ table td:last-child{min-width:180px;}
 .perfil-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px;}
 .searchbar{margin-bottom:12px;}
 .hint{font-size:12px;color:var(--text3);margin-top:4px;}
+/* Títulos dos avisos "Falta retirar" / "Já retirou" do Painel: brancos no tema escuro, mas no
+   tema claro ficam da mesma cor do texto de explicação logo abaixo (.hint). */
+.titulo-pendencia-painel{color:#fff;}
+html:not([data-theme="dark"]):not([data-theme="natal"]) .titulo-pendencia-painel{color:var(--text3);}
+
 .config-group-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:26px 0 10px;padding-top:14px;border-top:1px solid var(--border);}
 .config-group-title:first-child{margin-top:0;padding-top:0;border-top:none;}
 .subtabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
@@ -663,11 +668,11 @@ html[data-theme="dark"] .tabela-vendas thead th, html[data-theme="natal"] .tabel
 #calc-fab svg{width:26px;height:26px;display:block;}
 #calc-fab:hover{transform:scale(1.06);}
 #calc-fab:active{transform:scale(.96);}
-#fiado-fab{position:fixed;right:14px;bottom:176px;z-index:500;width:44px;height:44px;border-radius:50%;background:#EA580C;border:none;box-shadow:0 4px 12px rgba(234,88,12,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:21px;line-height:1;padding:0;}
+#fiado-fab{position:fixed;right:14px;bottom:176px;z-index:500;width:44px;height:44px;border-radius:50%;background:#B266FF;border:none;box-shadow:0 4px 12px rgba(178,102,255,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:21px;line-height:1;padding:0;}
 #fiado-fab:hover{transform:scale(1.06);}
 #fiado-fab:active{transform:scale(.96);}
 #sim-venda-fab{position:fixed;right:14px;bottom:338px;z-index:500;width:38px;height:38px;border-radius:50%;background:#16A34A;border:none;box-shadow:0 4px 12px rgba(22,163,74,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:18px;line-height:1;padding:0;}
-#empresas-conv-fab{position:fixed;right:14px;bottom:230px;z-index:500;width:38px;height:38px;border-radius:50%;background:#7C3AED;border:none;box-shadow:0 4px 12px rgba(124,58,237,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:18px;line-height:1;padding:0;}
+#empresas-conv-fab{position:fixed;right:14px;bottom:230px;z-index:500;width:38px;height:38px;border-radius:50%;background:#FFEB3B;border:none;box-shadow:0 4px 12px rgba(255,235,59,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:18px;line-height:1;padding:0;}
 #sim-venda-fab:hover{transform:scale(1.06);}
 #sim-venda-fab:active{transform:scale(.96);}
 #sim-venda-panel{position:fixed;right:14px;bottom:278px;z-index:2500;width:300px;max-height:50vh;overflow-y:auto;background:var(--card,#fff);color:var(--text,#222);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow-x:hidden;display:none;}
@@ -861,7 +866,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "10_10-10-2026";
+const APP_BUILD_HORARIO = "15_10-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -3367,7 +3372,7 @@ function viewRotaDoDia(){
     '<div class="hint">Escolha um cliente cadastrado pra já puxar o endereço dele, ou preencha manualmente pra outro motivo (ex: buscar ovos, ir ao mecânico).</div>'+
     '<form id="form-parada-extra"><div class="form-row">'+
     '<div><label>Cliente cadastrado (opcional)</label><input type="text" list="datalist-clientes-rota" id="input-cliente-parada" placeholder="Buscar cliente...">'+
-    '<datalist id="datalist-clientes-rota">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist></div>'+
+    '<datalist id="datalist-clientes-rota">'+clientesAZ().map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist></div>'+
     '<div><label>Nome / motivo <span class="req">*</span></label><input type="text" name="nome" placeholder="Ex: Buscar ovos no sítio" value="'+(paradaEditando?escapeHtmlCampanha(paradaEditando.nome):'')+'" required></div>'+
     '</div><div class="form-row">'+
     '<div><label>Endereço <span class="req">*</span></label><input type="text" name="endereco" placeholder="Ex: Rua Tal, 123 - Bairro" value="'+(paradaEditando?escapeHtmlCampanha(paradaEditando.endereco):'')+'" required></div>'+
@@ -3649,6 +3654,46 @@ function obterContextoUltimoItemVenda(){
   if(grupoEl.value==='outros' && (!etiquetaEl || !etiquetaEl.value)) return null;
   return { grupo: grupoEl.value, etiqueta: grupoEl.value==='outros' ? etiquetaEl.value : null };
 }
+// Clientes em ordem alfabética (sem mexer na ordem original do cadastro) e janela de busca
+// com lista, usada nos campos Cliente e Produto das vendas.
+function clientesAZ(){ return (state.clientes||[]).slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR')); }
+function abrirBuscaLista(titulo, itens, aoEscolher){
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(8,14,30,.55);display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = '<div class="card" style="width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;margin:0;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">'+escapeHtmlCampanha(titulo)+'</h2><button type="button" class="btn small ghost" data-fechar>✕</button></div>'+
+    '<input type="text" class="searchbar" placeholder="Digite pra filtrar..." style="margin-top:10px;">'+
+    '<div class="bl-lista" style="overflow:auto;margin-top:8px;flex:1;"></div></div>';
+  document.body.appendChild(ov);
+  const input = ov.querySelector('input'), lista = ov.querySelector('.bl-lista');
+  const ordenados = itens.slice().sort((a,b)=>a.valor.localeCompare(b.valor,'pt-BR'));
+  const norm = t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const desenhar = ()=>{
+    const q = norm(input.value);
+    const f = ordenados.filter(i=>!q || norm(i.valor+' '+(i.sub||'')).includes(q));
+    lista.innerHTML = f.length ? f.map((i,k)=>'<div class="act-link" data-i="'+k+'" style="display:block;padding:9px 6px;border-bottom:1px solid var(--border,#eee);cursor:pointer;"><strong>'+escapeHtmlCampanha(i.valor)+'</strong>'+(i.sub?'<div class="hint" style="margin:0;">'+escapeHtmlCampanha(i.sub)+'</div>':'')+'</div>').join('') : '<div class="empty">Nada encontrado.</div>';
+    lista._f = f;
+  };
+  const fechar = ()=>ov.remove();
+  input.oninput = desenhar;
+  ov.onclick = e=>{
+    if(e.target===ov || e.target.closest('[data-fechar]')) return fechar();
+    const el = e.target.closest('[data-i]');
+    if(el){ const it = lista._f[+el.dataset.i]; fechar(); aoEscolher(it); }
+  };
+  desenhar(); input.focus();
+}
+document.addEventListener('click', e=>{
+  const b = e.target.closest('.btn-buscar-cliente');
+  if(!b) return;
+  const alvo = document.getElementById(b.dataset.alvo);
+  if(!alvo) return;
+  abrirBuscaLista('Escolher cliente', clientesAZ().map(c=>({valor:c.nome, sub:[c.telefone,c.endereco].filter(Boolean).join(' · ')})), it=>{
+    alvo.value = it.valor;
+    alvo.dispatchEvent(new Event('input',{bubbles:true}));
+    alvo.dispatchEvent(new Event('change',{bubbles:true}));
+  });
+});
 function atualizarDatalistProdutos(categoria, datalistId){
   const dl = document.getElementById(datalistId);
   if(!dl) return;
@@ -3691,17 +3736,22 @@ function produtosMaisVendidos(limite){
 // categoria e Produto no seletor indicado (continua dando pra mudar tudo depois, à mão).
 function htmlItensMaisVendidosBox(boxId){
   const itens = produtosMaisVendidos(15);
-  if(itens.length===0) return '';
-  return '<div id="'+boxId+'" style="margin-bottom:10px;max-width:360px;">'+
-    '<label>⭐ Itens mais vendidos <span class="hint" style="font-weight:400;">escolha pra preencher categoria/tipo/produto — depois é só conferir e mudar se precisar</span></label>'+
-    '<select class="sel-item-rapido"><option value="" selected disabled>Escolher um item mais vendido...</option>'+
+  const btnBusca = '<button type="button" class="link-btn btn-buscar-produto">🔍 buscar produto na lista</button>';
+  if(itens.length===0) return '<div id="'+boxId+'">'+btnBusca+'</div>';
+  return '<div id="'+boxId+'">'+
+    '<label>⭐ Itens mais vendidos</label>'+
+    '<select class="sel-item-rapido" title="Escolha um item pra preencher categoria, tipo e produto de uma vez — depois é só conferir e mudar se precisar"><option value="" selected disabled>Selecione</option>'+
     itens.map(p=>'<option value="'+escapeHtmlCampanha(p.nome)+'" data-categoria="'+escapeHtmlCampanha(p.categoria||'')+'">'+escapeHtmlCampanha(p.nome)+'</option>').join('')+
-    '</select></div>';
+    '</select>'+btnBusca+'</div>';
 }
 // Liga o seletor de atalho de dentro de "root" ao controle (ctrl) devolvido por
 // wireSeletorCategoria daquele mesmo formulário/linha.
 function wireItensMaisVendidos(root, ctrl){
   if(!root || !ctrl) return;
+  const btnB = root.querySelector('.btn-buscar-produto');
+  if(btnB) btnB.onclick = ()=>abrirBuscaLista('Escolher produto',
+    (state.produtos||[]).filter(p=>p.nome).map(p=>({valor:p.nome, sub:(p.categoria||'')+(p.preco!=null?' · '+fmtMoney(p.preco):''), categoria:p.categoria})),
+    it=>ctrl.setValor(it.categoria, it.valor));
   const sel = root.querySelector('.sel-item-rapido');
   if(!sel) return;
   sel.onchange = ()=>{
@@ -5368,9 +5418,9 @@ function viewDashboard(){
   return comunicadosBannerHtml()+
     (alertasEstoque.length>0 ? '<div class="card" style="border-left:4px solid var(--danger);cursor:pointer;" data-ir-relatorio-estoque="1"><h2 style="color:var(--danger);">⚠️ Estoque baixo — '+alertasEstoque.length+' item(ns)</h2>'+
       '<div class="hint">'+alertasEstoque.map(al=>al.label+' ('+al.atual+'/'+al.min+')').join(' · ')+' — toque para ver na aba Estoque.</div></div>' : '')+
-    '<div class="card" style="border-left:4px solid '+(pendenciasRetiradaDash.length>0?'var(--warning,#f59e0b)':'var(--border)')+';cursor:pointer;" data-ir-falta-retirar="1"><h2 style="color:#fff;">Falta retirar'+(pendenciasRetiradaDash.length>0?' — '+pendenciasRetiradaDash.length+' pendência(s)':'')+'</h2>'+
+    '<div class="card" style="border-left:4px solid '+(pendenciasRetiradaDash.length>0?'var(--warning,#f59e0b)':'var(--border)')+';cursor:pointer;" data-ir-falta-retirar="1"><h2 class="titulo-pendencia-painel">Falta retirar'+(pendenciasRetiradaDash.length>0?' — '+pendenciasRetiradaDash.length+' pendência(s)':'')+'</h2>'+
       '<div class="hint">'+(pendenciasRetiradaDash.length>0?'Gás já vendido/recebido que ainda falta o cliente retirar ou vocês entregarem.':'Nenhuma pendência agora.')+' Toque para abrir.</div></div>'+
-    (pendenciasJaRetirouDash.length>0 ? '<div class="card" style="border-left:4px solid var(--danger,#DC2626);cursor:pointer;" data-ir-falta-retirar="1"><h2 style="color:#fff;">🔴 Já retirou — '+pendenciasJaRetirouDash.length+' pendência(s)</h2>'+
+    (pendenciasJaRetirouDash.length>0 ? '<div class="card" style="border-left:4px solid var(--danger,#DC2626);cursor:pointer;" data-ir-falta-retirar="1"><h2 class="titulo-pendencia-painel">🔴 Já retirou — '+pendenciasJaRetirouDash.length+' pendência(s)</h2>'+
       '<div class="hint">Cliente já levou o item, ainda falta pagar. Toque para ver na tela de Falta retirar / Já retirou.</div></div>' : '')+
     metaCardDashboardHtml()+googleCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div>'+(freteVendasHoje>0?'<div class="hint" style="font-size:10px;">sem contar frete ('+fmtMoney(freteVendasHoje)+')</div>':'')+'</div>'+
@@ -5954,10 +6004,10 @@ async function mesclarEmpresas(idsSelecionados, nomeFinalTexto){
 }
 /* ---------- PRODUTOS ---------- */
 function categoriasNaoControladas(){
-  return state.categoriasProdutos.filter(c=>!isControlada(c));
+  return state.categoriasProdutos.filter(c=>!isControlada(c)).sort((a,b)=>String(a).localeCompare(String(b),'pt-BR'));
 }
 function produtosDaCategoria(categoria){
-  return state.produtos.filter(p=>p.categoria===categoria).sort((a,b)=>a.nome.localeCompare(b.nome));
+  return state.produtos.filter(p=>p.categoria===categoria).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
 }
 function grupoDaSubcategoria(cat){
   return (state.categoriasProdutosGrupo && state.categoriasProdutosGrupo[cat]) || 'outros';
@@ -6760,7 +6810,7 @@ function htmlPlanilhaVendas(hoje){
     '</colgroup><thead><tr>'+
     '<th>Data</th><th>Categoria</th><th>Tipo da categoria</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Qtd</th><th>Valor unit.</th><th>Pagamento</th><th>Pagamento 2</th><th>R$ na 1ª forma</th><th>Entrega</th><th>Entregador</th><th>Nota</th><th>Cupom</th><th>Frete</th><th title="Se o cliente pagou mais do que a venda, vira crédito em haver dele">Valor a mais</th><th>Empresa conv.</th><th>Vale pendente</th><th title="Marque em vendas retroativas (lançamento feito com data errada) que já tinham descontado o estoque antes">Não baixar estoque</th><th>Obs</th><th></th>'+
     '</tr></thead><tbody id="tbody-planilha-vendas"></tbody></table></div>'+
-    '<datalist id="dl-planilha-clientes">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>'+
+    '<datalist id="dl-planilha-clientes">'+clientesAZ().map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>'+
     '<datalist id="dl-planilha-empresas">'+state.empresas.map(e=>'<option value="'+escapeHtmlCampanha(e.nome)+'">').join('')+'</datalist>'+
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">'+
     '<button type="button" class="btn small ghost" id="btn-planilha-add-linha">+ Nova linha</button>'+
@@ -6970,7 +7020,7 @@ function viewVendas(){
   const vendasHoje = state.vendas.filter(v=>v.data===hoje).sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
   const totalHoje = vendasHoje.reduce((s,v)=>s+v.valor_total,0);
   const freteHoje = vendasHoje.reduce((s,v)=>s+(v.frete||0),0);
-  const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
+  const clienteOpts = clientesAZ().map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
   const gruposVendasDupTopo = encontrarGruposVendasDuplicadas();
   const totalVendasExtrasTopo = gruposVendasDupTopo.reduce((s,g)=>s+(g.length-1),0);
@@ -7023,6 +7073,7 @@ function viewVendas(){
     '<div class="form-row">'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" id="input-cliente-venda" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
+    '<button type="button" class="link-btn btn-buscar-cliente" data-alvo="input-cliente-venda">🔍 buscar na lista</button> '+
     '<button type="button" class="link-btn" id="btn-novo-cliente-venda">+ novo cliente</button></div>'+
     '<div><label>Canal <span class="req">*</span></label><select name="canal" required>'+opcoesComPlaceholder(CANAIS,'Selecione o canal')+'</select></div>'+
     '</div>'+
@@ -7199,7 +7250,7 @@ function pendenciasJaRetirouTable(list){
 }
 function viewFaltaRetirar(){
   const hoje = todayStr();
-  const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
+  const clienteOpts = clientesAZ().map(c=>'<option value="'+c.nome+'">').join('');
   const pendenciasRetirada = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado).sort((a,b)=>b.criadoEm-a.criadoEm);
   const pendenciasJaRetirou = state.vendas.filter(v=>v.tipo_entrega==='Já retirou' && v.pagamento==='Marcou/Fiado').sort((a,b)=>b.criadoEm-a.criadoEm);
   return '<div class="card"><h2>Falta retirar</h2>'+ajudaHtml('falta-retirar','Use esta tela pra gás que já foi vendido/recebido (às vezes de antes do sistema novo, às vezes é só alguém que aproveitou o preço e vai retirar quando o gás dela acabar) mas que ainda falta o cliente retirar ou vocês entregarem. Clique em "✎ editar" em cada pendência pra informar a forma de retirada/entrega, se teve frete e se deve dar baixa no estoque agora — até resolver, o produto continua reservado, sem descontar do estoque disponível, e sem contar como uma venda nova nas métricas. Também dá pra editar os dados do lançamento em si (cliente, quantidade, etc.) ou excluir, se precisar.')+'</div>'+
@@ -7849,7 +7900,7 @@ function renomearClienteEmTudo(nomeOriginal, nomeFinal){
 function alertaClientesNaoCadastradosHtml(){
   const pendentes = clientesNaoCadastrados();
   if(pendentes.length===0) return '';
-  const datalistClientesPendentes = '<datalist id="dl-clientes-pendentes">'+state.clientes.map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>';
+  const datalistClientesPendentes = '<datalist id="dl-clientes-pendentes">'+clientesAZ().map(c=>'<option value="'+escapeHtmlCampanha(c.nome)+'">').join('')+'</datalist>';
   return '<div class="card" style="border-left:4px solid var(--danger,#DC2626);">'+
     '<h2 style="margin:0;">⚠ Nomes em vendas/fiado sem cadastro completo ('+pendentes.length+')</h2>'+
     '<div class="hint">Esses nomes foram digitados numa venda ou num lançamento de fiado antes da correção, mas não têm cadastro em Clientes — foi o que aconteceu com a Orli. <strong>Corrija o nome no campo</strong> se tiver erro de digitação, ou comece a digitar pra ver se essa pessoa já está cadastrada com outro nome. Ao clicar em "confirmar": se o nome bater com um cliente que já existe, a venda/fiado é vinculada a esse cadastro (não cria duplicado); se for realmente um nome novo, cria o cadastro.</div>'+
@@ -8412,7 +8463,8 @@ function viewAgendamentos(){
   return '<div class="card"><h2>Nova entrega</h2>'+ajudaHtml('agendamentos','Registre aqui uma entrega, escolhendo o entregador e se ele já pagou ou vai cobrar na entrega. Ao salvar, o sistema já gera a venda completa sozinho (com baixa no estoque, igual ao lançamento manual em Vendas) e abre o WhatsApp com a mensagem prontinha pro entregador, incluindo o link do mapa e um link pra ele marcar \'entreguei\' + tirar foto do comprovante — não precisa mais relançar essa entrega na planilha do fim do dia. Dá pra incluir mais de um item na mesma entrega (botão "+ Incluir item") e dividir o pagamento em duas formas, igual já funciona em Vendas. Marque "Entrega agendada" só quando precisar reservar um horário certo (ex: agenda hoje pra entregar amanhã); do contrário ela entra como entrega normal, sem horário fixo.')+
     '<form id="form-agendamento"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-ag" name="cliente" id="ag-cliente-input" required>'+
-    '<datalist id="lista-clientes-ag">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist>'+
+    '<datalist id="lista-clientes-ag">'+clientesAZ().map(c=>'<option value="'+c.nome+'">').join('')+'</datalist>'+
+    '<button type="button" class="link-btn btn-buscar-cliente" data-alvo="ag-cliente-input">🔍 buscar na lista</button>'+
     '<div class="hint" id="ag-endereco-preview" style="margin-top:4px;"></div></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" id="ag-data-input" name="data" value="'+hoje+'" required></div>'+
     '<div><label>Canal <span class="req">*</span></label><select name="canal" required>'+opcoesComPlaceholder(CANAIS,'Selecione o canal')+'</select></div>'+
@@ -8923,7 +8975,7 @@ function relatorioCreditos(){
     '<div class="hint">Use valor positivo quando o cliente ficar com crédito (ex: pagou a mais numa compra — informe a forma de pagamento). Use valor negativo quando ele usar esse crédito numa compra futura (aí não tem forma de pagamento, é só abatimento).</div>'+
     '<form id="form-credito"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-credito" name="cliente" required>'+
-    '<datalist id="lista-clientes-credito">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist></div>'+
+    '<datalist id="lista-clientes-credito">'+clientesAZ().map(c=>'<option value="'+c.nome+'">').join('')+'</datalist></div>'+
     '<div><label>Valor (R$) <span class="req">*</span></label><input type="number" step="0.01" name="valor" required></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+todayStr()+'" required></div>'+
     '<div><label>Forma de pagamento</label><select name="forma_pagamento"><option value="">— não se aplica —</option>'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado'&&p!=='Abateu').map(p=>'<option>'+p+'</option>').join('')+'</select></div></div>'+
@@ -9118,7 +9170,7 @@ function relatorioComodatos(){
     '<option value="atacadista">Eu devo ao atacadista (peguei carga a mais dele)</option>'+
     '</select></div>'+
     '<div><label>Nome <span class="req">*</span></label><input list="lista-nomes-comodato" name="nome" required placeholder="Cliente ou nome do atacadista">'+
-    '<datalist id="lista-nomes-comodato">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+(state.entregadores||[]).map(en=>'<option value="'+en.nome+'">').join('')+(state.fornecedoresGas||[]).map(fo=>'<option value="'+fo.nome+'">').join('')+'</datalist></div></div>'+
+    '<datalist id="lista-nomes-comodato">'+clientesAZ().map(c=>'<option value="'+c.nome+'">').join('')+(state.entregadores||[]).map(en=>'<option value="'+en.nome+'">').join('')+(state.fornecedoresGas||[]).map(fo=>'<option value="'+fo.nome+'">').join('')+'</datalist></div></div>'+
     '<div class="form-row">'+
     '<div><label>Categoria <span class="req">*</span></label><select id="cmd-categoria" name="categoria" required>'+opcoesComPlaceholder(['Gás','Água'],'Selecione')+'</select></div>'+
     '<div><label>Item da categoria <span class="req">*</span></label><select id="cmd-item" name="item" required><option value="" selected disabled>Selecione a categoria primeiro</option></select></div>'+
@@ -9471,7 +9523,7 @@ function relatorioPesquisasManuais(){
   const linkPesquisa = location.origin+location.pathname+'?pesquisamanual=1';
   const totalRespostas = lista.length;
   const mediaNota = totalRespostas ? (lista.reduce((s,r)=>s+(Number(r.nota)||0),0)/totalRespostas) : null;
-  const clienteOpts = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
+  const clienteOpts = clientesAZ().map(c=>'<option value="'+c.nome+'">').join('');
   const hoje = todayStr();
   const simNaoTxt = v=> v==='sim'?'✅':(v==='nao'?'❌':'—');
   const optsSimNao = (val)=>'<option value="">—</option><option value="sim"'+(val==='sim'?' selected':'')+'>Sim</option><option value="nao"'+(val==='nao'?' selected':'')+'>Não</option>';
@@ -10344,7 +10396,7 @@ function relatorioFiado(){
     '<div class="hint">Use pra qualquer valor que o cliente ficou devendo mas que não é uma venda — por exemplo, um empréstimo em dinheiro. Fica no saldo do cliente igualzinho a um fiado normal.</div>'+
     '<form id="form-fiado"><div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-fiado" name="cliente" required>'+
-    '<datalist id="lista-clientes-fiado">'+state.clientes.map(c=>'<option value="'+c.nome+'">').join('')+'</datalist></div>'+
+    '<datalist id="lista-clientes-fiado">'+clientesAZ().map(c=>'<option value="'+c.nome+'">').join('')+'</datalist></div>'+
     '<div><label>Valor (R$) <span class="req">*</span></label><input type="number" step="0.01" min="0" name="valor" required></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+todayStr()+'" required></div></div>'+
     '<label>Descrição</label><input type="text" name="descricao" placeholder="Ex: saldo de fiado anterior ao sistema">'+
@@ -12709,7 +12761,7 @@ function attachHandlers(){
     // manual) — a tela de Vendas também tem o formulário "Lançar venda de dia anterior"
     // logo abaixo, com o seu próprio datalist, que antes ficava com a lista velha até
     // recarregar a página inteira.
-    const opcoesClientesAtualizadas = state.clientes.map(c=>'<option value="'+c.nome+'">').join('');
+    const opcoesClientesAtualizadas = clientesAZ().map(c=>'<option value="'+c.nome+'">').join('');
     document.querySelectorAll('datalist[id^="lista-clientes"]').forEach(dl=>{ dl.innerHTML = opcoesClientesAtualizadas; });
     atualizarBoxCreditoVenda();
   };
