@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "v01_10-10-2026";
+    var VERSAO_ATUAL = "v07_10-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -602,6 +602,7 @@ html[data-theme="dark"] .tabela-vendas thead th, html[data-theme="natal"] .tabel
 .lc-card:hover{box-shadow:0 4px 14px rgba(30,58,138,.1);}
 .lc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
 .lc-top strong{font-size:14px;color:var(--royal-dark);}
+html[data-theme="dark"] .lc-top strong, html[data-theme="natal"] .lc-top strong{color:var(--text,#E7ECF7);}
 .lc-msg{font-size:12.5px;color:var(--text2);margin:7px 0;line-height:1.4;}
 .lc-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--text3);}
 .lc-acoes{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;}
@@ -866,7 +867,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "v01_10-10-2026";
+const APP_BUILD_HORARIO = "v07_10-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1320,6 +1321,7 @@ function initBuscaSistema(){
   function chaveBusca(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
   function irParaDado(tipo, valor){
     input.value=''; resDiv.style.display='none';
+    if(tipo==='cliente' && moduloAtivo('crm') && abaPermitida('crm')){ currentTab='crm'; crmClienteSelecionado=valor; renderAll(); return; }
     if(tipo==='cliente'){ currentTab='cadastros'; cadastroSub='clientes'; }
     else if(tipo==='empresa'){ currentTab='cadastros'; cadastroSub='empresas'; }
     else if(tipo==='produto'){ currentTab='cadastros'; cadastroSub='produtos'; }
@@ -1346,7 +1348,7 @@ function initBuscaSistema(){
       });
     }
     const achadosDados = [];
-    (state.clientes||[]).forEach(c=>{ if(achadosDados.length<6 && chaveBusca((c.nome||'')+' '+(c.telefone||'')+' '+(c.endereco||'')+' '+((c.apelidos||[]).join(' '))).includes(termo)) achadosDados.push({label:'👤 Cliente: '+c.nome, tipo:'cliente', valor:c.nome}); });
+    (state.clientes||[]).forEach(c=>{ if(achadosDados.length<6 && chaveBusca((c.nome||'')+' '+(c.telefone||'')+' '+(c.endereco||'')+' '+((c.enderecosExtras||[]).map(e=>(e.rotulo||'')+' '+(e.endereco||'')).join(' '))+' '+((c.apelidos||[]).join(' '))).includes(termo)) achadosDados.push({label:'👤 Cliente: '+c.nome, tipo:'cliente', valor:c.nome}); });
     (state.empresas||[]).forEach(e=>{ if(achadosDados.length<8 && chaveBusca(e.nome||'').includes(termo)) achadosDados.push({label:'🏢 Empresa conveniada: '+e.nome, tipo:'empresa', valor:e.nome}); });
     (state.produtos||[]).forEach(p=>{ if(achadosDados.length<10 && chaveBusca(p.nome||'').includes(termo)) achadosDados.push({label:'📦 Produto: '+p.nome, tipo:'produto', valor:p.nome}); });
     (state.entregadores||[]).forEach(en=>{ if(achadosDados.length<11 && chaveBusca(en.nome||'').includes(termo)) achadosDados.push({label:'🛵 Entregador: '+en.nome, tipo:'entregador', valor:en.nome}); });
@@ -4673,13 +4675,26 @@ function dadosAmostraDemo(){
     {chave:'agendamentos', valor:[]}
   ];
 }
+// Itens pesados (a logo animada tem ~1 MB) carregam em segundo plano depois que o sistema já abriu,
+// pra não atrasar a abertura. Também ficam de fora dos backups (que ficavam ~1 MB maiores por causa deles).
+const CHAVES_CARGA_TARDIA = ['logoUrl'];
+let cargaTardiaConcluida = MODO_DEMO;
+async function carregarChavesTardias(){
+  if(MODO_DEMO) return;
+  try{
+    const { data } = await supabaseClient.from('app_data').select('chave,valor').in('chave', CHAVES_CARGA_TARDIA);
+    (data||[]).forEach(row=>{ state[row.chave] = row.valor; });
+  }catch(e){ console.error('Erro ao carregar itens pesados', e); }
+  cargaTardiaConcluida = true;
+  renderHeaderLogo();
+}
 async function loadAll(){
   try{
     let data, error;
     if(MODO_DEMO){
       data = dadosAmostraDemo(); error = null;
     } else {
-      ({ data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS));
+      ({ data, error } = await supabaseClient.from('app_data').select('chave,valor').in('chave', APP_DATA_KEYS.filter(k=>!CHAVES_CARGA_TARDIA.includes(k))));
     }
     if(error) throw error;
     (data||[]).forEach(row=>{ state[row.chave] = row.valor; });
@@ -4974,15 +4989,39 @@ document.addEventListener('submit', e=>{
 // de apagá-los. Exclusões feitas aqui continuam valendo (o id já era conhecido).
 const CHAVES_MESCLAR_NOVOS = ['vendas','despesas','clientes','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','convenioLancamentos','convenioPagamentos','estoqueLancamentos','dicasTreinamentos','contasPagar'];
 const _idsConhecidos = {};
+const _snapshots = {}; // key -> {id: json do registro como o banco tinha na última sincronização}
 function registrarIdsConhecidos(key){
-  if(Array.isArray(state[key])) _idsConhecidos[key] = new Set(state[key].map(x=>x&&x.id).filter(Boolean));
+  if(!Array.isArray(state[key])) return;
+  _idsConhecidos[key] = new Set(state[key].map(x=>x&&x.id).filter(Boolean));
+  const snap = {};
+  state[key].forEach(x=>{ if(x && x.id) snap[x.id] = JSON.stringify(x); });
+  _snapshots[key] = snap;
 }
+function nomeRegistroConflito(x){ return String(x.cliente||x.nome||x.titulo||x.descricao||x.id).slice(0,40)+(x.data?' ('+x.data+')':''); }
 async function mesclarNovosDoBanco(key){
   if(!CHAVES_MESCLAR_NOVOS.includes(key) || !_idsConhecidos[key] || !Array.isArray(state[key])) return;
   try{
     const { data } = await supabaseClient.from('app_data').select('valor').eq('chave', key).maybeSingle();
     const remoto = data && Array.isArray(data.valor) ? data.valor : [];
     const locais = new Set(state[key].map(x=>x&&x.id));
+    // Conflito de edição: o mesmo registro foi alterado aqui E em outro computador desde a última sincronização.
+    const snap = _snapshots[key] || {};
+    const conflitos = [];
+    state[key].forEach((loc,i)=>{
+      if(!loc || !loc.id || snap[loc.id]===undefined) return;
+      const rem = remoto.find(r=>r && r.id===loc.id);
+      if(!rem) return;
+      const jl = JSON.stringify(loc), jr = JSON.stringify(rem);
+      if(jl!==snap[loc.id] && jr!==snap[loc.id] && jl!==jr) conflitos.push({i, rem});
+    });
+    if(conflitos.length){
+      const lista = conflitos.slice(0,6).map(c=>'• '+nomeRegistroConflito(c.rem)).join('\n')+(conflitos.length>6?'\n• ... e mais '+(conflitos.length-6):'');
+      const sobrescrever = confirm('⚠️ Conflito de edição\n\nEstes registros foram alterados em OUTRO computador enquanto você também mexia neles:\n\n'+lista+'\n\nOK = salvar a SUA versão (a do outro computador será substituída)\nCancelar = manter a versão do OUTRO computador (as suas alterações nesses registros serão descartadas)');
+      if(!sobrescrever){
+        conflitos.forEach(c=>{ state[key][c.i] = c.rem; });
+        agendarRenderRemoto();
+      }
+    }
     const novos = remoto.filter(x=>x && x.id && !_idsConhecidos[key].has(x.id) && !locais.has(x.id));
     if(novos.length){ state[key] = state[key].concat(novos); console.info('Trouxe '+novos.length+' registro(s) novo(s) de "'+key+'" criados em outro lugar.'); }
   }catch(e){ /* sem rede/permissão: segue o fluxo normal de salvar */ }
@@ -5022,7 +5061,7 @@ function diaAnteriorStr(dataStr){
 }
 function montarSnapshotBackup(){
   const dados = {};
-  APP_DATA_KEYS.forEach(function(k){ dados[k] = state[k]; });
+  APP_DATA_KEYS.forEach(function(k){ if(!CHAVES_CARGA_TARDIA.includes(k)) dados[k] = state[k]; });
   return dados;
 }
 const MODELO_XLSX_B64 = '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';
@@ -5101,6 +5140,83 @@ async function rodarBackupAutomaticoSeNecessario(){
     mostrarAvisoFlutuante('⚠️ O backup automático de hoje falhou. Vá em Configurações > Backups e clique em "Fazer backup agora".');
   }
 }
+// ---- Restauração guiada: devolve só registros específicos de um backup (sem substituir tudo) ----
+async function abrirRestauracaoGuiada(chaveBackup){
+  const linha = (await supabaseClient.from('app_data').select('valor').eq('chave',chaveBackup).maybeSingle()).data;
+  const dados = linha && linha.valor && linha.valor.dados;
+  if(!dados){ alert('Esse backup não tem o formato de backup completo, então não dá para restaurar registros dele aqui.'); return; }
+  const chaves = Object.keys(dados).filter(k=>Array.isArray(dados[k]) && dados[k].length && dados[k][0] && typeof dados[k][0]==='object' && 'id' in dados[k][0] && Array.isArray(state[k]));
+  if(!chaves.length){ alert('Nenhuma lista de registros encontrada nesse backup.'); return; }
+  const dataStr = chaveBackup.replace('backup:','').split('T')[0];
+  const rotulo = k=>(LABEL_AREA_LOG[k]||k);
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(8,14,30,.6);display:flex;align-items:center;justify-content:center;padding:12px;';
+  ov.innerHTML = '<div class="card" style="width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;margin:0;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><h2 style="margin:0;">↺ Restaurar registros do backup de '+fmtDate(dataStr)+'</h2><button type="button" class="btn small ghost" data-fechar>✕</button></div>'+
+    '<div class="hint">Escolha o que voltar. Nada é substituído por inteiro: só os registros que você marcar. Antes de restaurar, o sistema faz um backup do estado atual.</div>'+
+    '<div class="form-row" style="margin-top:8px;">'+
+    '<div><label>O que restaurar</label><select class="rg-chave">'+chaves.map(k=>'<option value="'+k+'">'+escapeHtmlCampanha(rotulo(k))+'</option>').join('')+'</select></div>'+
+    '<div><label>Mostrar</label><select class="rg-modo"><option value="faltando">Só o que está FALTANDO hoje</option><option value="diferente">Faltando ou DIFERENTE de hoje</option></select></div>'+
+    '<div><label>De (data)</label><input type="date" class="rg-de"></div><div><label>Até (data)</label><input type="date" class="rg-ate"></div>'+
+    '<div><label>Buscar</label><input type="text" class="rg-busca" placeholder="Nome, produto..."></div></div>'+
+    '<div class="rg-lista" style="overflow:auto;margin-top:8px;flex:1;min-height:120px;"></div>'+
+    '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;"><button type="button" class="btn small ghost rg-todos">Marcar todos</button><span class="hint rg-contagem"></span><button type="button" class="btn rg-restaurar" style="margin-left:auto;">Restaurar selecionados</button></div></div>';
+  document.body.appendChild(ov);
+  const q = sel=>ov.querySelector(sel);
+  let visiveis = [];
+  const resumo = r=>{
+    const partes = [];
+    if(r.data) partes.push(fmtDate(r.data));
+    const nome = r.cliente||r.nome||r.titulo||r.descricao; if(nome) partes.push(nome);
+    if(r.produto||r.categoria) partes.push(r.produto||r.categoria);
+    const v = r.valor_total!=null?r.valor_total:(r.valor!=null?r.valor:null); if(v!=null && !isNaN(v)) partes.push(fmtMoney(Number(v)));
+    return partes.join(' · ') || String(r.id);
+  };
+  const desenhar = ()=>{
+    const k = q('.rg-chave').value, modo = q('.rg-modo').value, de = q('.rg-de').value, ate = q('.rg-ate').value, busca = q('.rg-busca').value.trim().toLowerCase();
+    const atuais = {}; state[k].forEach(x=>{ if(x && x.id) atuais[x.id] = x; });
+    visiveis = [];
+    dados[k].forEach(r=>{
+      if(!r || !r.id) return;
+      const atual = atuais[r.id];
+      let status = null, campos = [];
+      if(!atual) status = 'faltando';
+      else if(modo==='diferente' && JSON.stringify(atual)!==JSON.stringify(r)){ status = 'diferente'; campos = Object.keys(r).filter(c=>JSON.stringify(r[c])!==JSON.stringify(atual[c])); }
+      if(!status) return;
+      if(de && r.data && r.data<de) return;
+      if(ate && r.data && r.data>ate) return;
+      if(busca && !JSON.stringify(r).toLowerCase().includes(busca)) return;
+      visiveis.push({r, status, campos});
+    });
+    const mostrar = visiveis.slice(0,200);
+    q('.rg-lista').innerHTML = mostrar.length ? '<table><thead><tr><th></th><th>Situação</th><th>Registro</th></tr></thead><tbody>'+mostrar.map((v,i)=>
+      '<tr><td><input type="checkbox" class="rg-chk" data-i="'+i+'" style="width:auto;"></td><td>'+(v.status==='faltando'?'<span class="badge status-receber">faltando hoje</span>':'<span class="badge gas">diferente</span>')+'</td><td>'+escapeHtmlCampanha(resumo(v.r))+
+      (v.campos.length?'<div class="hint" style="margin:0;">muda: '+escapeHtmlCampanha(v.campos.slice(0,6).join(', '))+'</div>':'')+'</td></tr>').join('')+'</tbody></table>'+(visiveis.length>200?'<div class="hint">Mostrando 200 de '+visiveis.length+' — use os filtros de data/busca pra afinar.</div>':'') : '<div class="empty">Nada para restaurar com esses filtros.</div>';
+    q('.rg-contagem').textContent = visiveis.length+' registro(s) encontrado(s)';
+  };
+  ['.rg-chave','.rg-modo','.rg-de','.rg-ate'].forEach(sel=>q(sel).onchange = desenhar);
+  q('.rg-busca').oninput = desenhar;
+  q('.rg-todos').onclick = ()=>{ const cks = ov.querySelectorAll('.rg-chk'); const marcar = Array.from(cks).some(c=>!c.checked); cks.forEach(c=>c.checked = marcar); };
+  ov.onclick = e=>{ if(e.target===ov || e.target.closest('[data-fechar]')) ov.remove(); };
+  q('.rg-restaurar').onclick = async ()=>{
+    const escolhidos = Array.from(ov.querySelectorAll('.rg-chk:checked')).map(c=>visiveis[+c.dataset.i]);
+    if(!escolhidos.length){ alert('Marque pelo menos um registro.'); return; }
+    const k = q('.rg-chave').value;
+    if(!confirm('Restaurar '+escolhidos.length+' registro(s) de "'+rotulo(k)+'" a partir do backup de '+fmtDate(dataStr)+'?\n\nOs que estão "diferentes" voltam à versão do backup. Antes disso o sistema guarda um backup do estado atual.')) return;
+    await criarBackup('manual', 'Antes de restaurar registros do backup de '+fmtDate(dataStr));
+    let novos = 0, trocados = 0;
+    escolhidos.forEach(({r,status})=>{
+      const copia = JSON.parse(JSON.stringify(r));
+      const idx = state[k].findIndex(x=>x && x.id===r.id);
+      if(idx>=0){ state[k][idx] = copia; trocados++; } else { state[k].push(copia); novos++; }
+    });
+    const ok = await save(k);
+    ov.remove();
+    if(ok) alert('Pronto! '+novos+' registro(s) devolvido(s) e '+trocados+' substituído(s) pela versão do backup.');
+    renderAll();
+  };
+  desenhar();
+}
 async function renderListaBackups(){
   const container = document.getElementById('lista-backups');
   if(!container) return;
@@ -5116,9 +5232,11 @@ async function renderListaBackups(){
         const tipo = row.valor && row.valor.tipo==='manual' ? 'Manual' : 'Automático';
         const obs = row.valor && row.valor.observacao ? row.valor.observacao : '—';
         return '<tr><td>'+fmtDate(dataStr)+'</td><td>'+horaStr+'</td><td>'+tipo+'</td><td>'+obs+'</td>'+
-          '<td><button class="act-link" data-baixar-backup="'+row.chave+'">⬇ baixar</button>'+
+          '<td><button class="act-link" data-restaurar-registros="'+row.chave+'" title="Escolher só alguns registros pra devolver">🧩 restaurar registros</button>'+
+          '<button class="act-link" data-baixar-backup="'+row.chave+'">⬇ baixar</button>'+
           '<button class="del-link" data-restaurar-backup="'+row.chave+'">↺ restaurar</button></td></tr>';
       }).join('')+'</tbody></table></div>';
+    container.querySelectorAll('[data-restaurar-registros]').forEach(btn=>btn.onclick=()=>abrirRestauracaoGuiada(btn.dataset.restaurarRegistros));
     container.querySelectorAll('[data-baixar-backup]').forEach(btn=>btn.onclick=async()=>{
       const chave = btn.dataset.baixarBackup;
       const linha = (await supabaseClient.from('app_data').select('valor').eq('chave',chave).single()).data;
@@ -5282,6 +5400,8 @@ function renderHeaderLogo(){
   const box = document.getElementById('logo-box');
   if(state.logoUrl){
     box.innerHTML = '<img src="'+state.logoUrl+'" alt="Logo (clique para trocar)" id="logo-img" title="Clique para trocar a logo" style="max-height:40px;max-width:150px;display:block;cursor:pointer;">';
+  } else if(!cargaTardiaConcluida){
+    box.innerHTML = ''; // logo ainda carregando em segundo plano — não mostra "+ Adicionar logo" por engano
   } else {
     box.innerHTML = '<button class="link-btn" id="btn-add-logo" style="color:#fff;">+ Adicionar logo</button>';
   }
@@ -5388,11 +5508,11 @@ function viewDicasTreinamentos(){
   const cardsLista = filtradas.length===0 ? '<div class="empty">Nenhuma dica cadastrada'+(dicaCategoriaFiltro?' nessa categoria':'')+' ainda.</div>' :
     '<div class="lc-grid">'+filtradas.map(d=>{
       const linkPublico = location.origin+location.pathname+'?dica='+d.id;
-      return '<div class="lc-card"><div class="lc-top"><strong>'+iconesDica(d)+' '+escapeHtmlCampanha(d.titulo)+'</strong><span class="badge roxo">'+escapeHtmlCampanha(d.categoria||'Outros')+'</span></div>'+
+      return '<div class="lc-card" style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;"><div style="flex:1;min-width:230px;"><div class="lc-top"><strong>'+iconesDica(d)+' '+escapeHtmlCampanha(d.titulo)+'</strong><span class="badge roxo">'+escapeHtmlCampanha(d.categoria||'Outros')+'</span></div>'+
         (d.conteudoTexto ? '<div class="lc-msg">'+escapeHtmlCampanha(d.conteudoTexto.slice(0,140))+((d.conteudoTexto||'').length>140?'…':'')+'</div>' : '')+
-        '<div class="lc-meta">'+(d.publico?'🔓 Link para clientes disponível':'🔒 Uso interno (sem link para clientes)')+'</div>'+
-        '<div class="lc-acoes">'+
-        (d.publico ? ('<button type="button" class="act-link" data-copiar-link-dica="'+linkPublico+'">🔗 copiar link</button><a class="act-link" href="'+linkPublico+'" target="_blank" rel="noopener">👁️ ver como cliente</a>') : '')+
+        '<div class="lc-meta">'+(d.publico?'🔓 Aberto para clientes (link público)':'🔗 Link para equipe/entregador')+'</div></div>'+
+        '<div class="lc-acoes" style="display:grid;grid-template-columns:auto auto;gap:6px;margin-top:0;align-self:center;">'+
+        '<button type="button" class="act-link" data-copiar-link-dica="'+linkPublico+'">🔗 copiar link</button><a class="act-link" href="'+linkPublico+'" target="_blank" rel="noopener">👁️ ver</a>'+
         '<button type="button" class="act-link" data-edit-dica="'+d.id+'">✎ editar</button>'+
         '<button type="button" class="del-link" data-del-dica="'+d.id+'">🗑 excluir</button>'+
         '</div>'+
@@ -5414,7 +5534,7 @@ function viewDicasTreinamentos(){
     '<div id="campo-dica-link" style="margin-top:8px;"><label>Link</label><input type="url" name="linkUrl" value="'+(editando?escapeHtmlCampanha(editando.linkUrl||''):'')+'" placeholder="https://..."></div>'+
     '<div id="campo-dica-arquivo" style="margin-top:8px;"><label>Arquivo (PDF ou Word, até 8 MB)</label><input type="file" id="input-dica-arquivo" accept=".pdf,.doc,.docx">'+
     '<div id="preview-dica-arquivo" style="margin-top:6px;">'+(editando&&editando.arquivoNome?('<span class="hint">Arquivo atual: '+escapeHtmlCampanha(editando.arquivoNome)+'</span> <button type="button" class="del-link" data-remover-dica-arquivo="1">🗑 remover arquivo</button>'):'')+'</div></div>'+
-    '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;"><input type="checkbox" name="publico" style="width:auto;" '+(editando&&editando.publico?'checked':'')+'> Gerar link público para enviar aos clientes (sem precisar de login)</label>'+
+    '<label style="display:flex;align-items:center;gap:8px;margin-top:12px;"><input type="checkbox" name="publico" style="width:auto;" '+(editando&&editando.publico?'checked':'')+'> Aberto para clientes (o link da equipe/entregador existe sempre; marque se também vai enviar aos clientes)</label>'+
     '<button type="submit" class="btn small" style="margin-top:12px;">'+(editando?'Salvar alterações':'Salvar')+'</button>'+
     (editando?' <button type="button" class="btn small ghost" id="btn-cancelar-dica">Cancelar</button>':'')+
     '</form></div>'+
@@ -7782,6 +7902,22 @@ function viewContasPagar(){
     '<div id="lista-contaspagar-wrap">'+contasPagarTable(lista)+'</div>'+
     '</div>';
 }
+// Conferência de caixa: compara o que o sistema espera com o que foi conferido (gaveta, app do Pix, maquininha).
+function htmlDiferencasCaixa(resumo, dinheiro, pix, cartao){
+  const linhas = [
+    ['💵 Dinheiro (gaveta)', resumo.dinheiroEsperado, dinheiro],
+    ['⚡ Pix (app do banco)', resumo.porFormaPagamento['Pix']||0, pix],
+    ['💳 Cartão (maquininha: débito + crédito)', (resumo.porFormaPagamento['Débito']||0)+(resumo.porFormaPagamento['Crédito']||0), cartao]
+  ].filter(l=>l[2]!==null && !isNaN(l[2]));
+  if(!linhas.length) return '<div class="hint">Preencha o que contou/conferiu pra ver a diferença na hora.</div>';
+  return '<div class="table-wrap"><table><thead><tr><th>Conferência</th><th>Sistema espera</th><th>Você conferiu</th><th>Diferença</th></tr></thead><tbody>'+
+    linhas.map(l=>{
+      const dif = Math.round((l[2]-l[1])*100)/100;
+      const ok = Math.abs(dif)<0.01;
+      return '<tr><td>'+l[0]+'</td><td>'+fmtMoney(l[1])+'</td><td>'+fmtMoney(l[2])+'</td><td style="font-weight:700;color:'+(ok?'var(--green)':(dif<0?'var(--danger)':'var(--amber,#b45309)'))+';">'+(ok?'✅ bateu':((dif>0?'+':'')+fmtMoney(dif)+(dif<0?' (faltando)':' (sobrando)')))+'</td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+function lerValorOpcionalBR(v){ const t = String(v==null?'':v).trim(); if(!t) return null; const n = parseValorBR(t); return isNaN(n) ? null : n; }
 function viewFechamentoCaixa(){
   const editando = editFechamentoId ? state.fechamentosCaixa.find(x=>x.id===editFechamentoId) : null;
   const hoje = todayStr();
@@ -7811,6 +7947,9 @@ function viewFechamentoCaixa(){
     '<div class="hint">💵 Dinheiro esperado no caixa (abertura + vendas em dinheiro − despesas em dinheiro): <strong>'+fmtMoney(resumo.dinheiroEsperado)+'</strong></div>'+
     '</div>'+
     '<label style="margin-top:10px;">Dinheiro contado no caixa (no fim do dia)</label><input type="text" inputmode="decimal" name="dinheiroContado" placeholder="0,00" value="'+(editando?Number(editando.dinheiroContado).toFixed(2).replace('.',','):'')+'" required>'+
+    '<div class="form-row"><div><label>Pix conferido no app do banco (opcional)</label><input type="text" inputmode="decimal" name="pixConferido" placeholder="0,00" value="'+(editando&&editando.pixConferido!=null?Number(editando.pixConferido).toFixed(2).replace('.',','):'')+'"></div>'+
+    '<div><label>Cartão conferido na maquininha (opcional)</label><input type="text" inputmode="decimal" name="cartaoConferido" placeholder="0,00" value="'+(editando&&editando.cartaoConferido!=null?Number(editando.cartaoConferido).toFixed(2).replace('.',','):'')+'"></div></div>'+
+    '<div id="diferencas-caixa-ao-vivo" style="margin:8px 0;"></div>'+
     '<label>Observação</label><textarea name="observacao" rows="2" placeholder="Ex: faltou troco, sobrou de gorjeta, etc">'+(editando?(editando.observacao||''):'')+'</textarea>'+
     '<button type="submit" class="btn" style="margin-top:10px;">'+(editando?'Salvar alterações':'Fechar caixa do dia')+'</button>'+
     (editando?' <button type="button" class="link-btn" id="btn-cancelar-fechamento">cancelar edição</button>':'')+
@@ -9994,6 +10133,7 @@ function crmFichaCliente(nome){
     '<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">'+
     '<div><h2 style="margin:0;">'+escapeHtmlCampanha(nome)+' '+etiquetaFrequenciaClienteHtml(nome)+'</h2>'+
     '<div class="hint" style="margin-top:4px;">'+(c&&c.telefone?escapeHtmlCampanha(c.telefone):'sem telefone')+' · '+(c&&c.endereco?escapeHtmlCampanha(c.endereco)+(c.complemento?' — '+escapeHtmlCampanha(c.complemento):''):'sem endereço')+'</div>'+
+    ((c&&(c.enderecosExtras||[]).length) ? '<div class="hint" style="margin-top:2px;">'+c.enderecosExtras.map(e=>'📍 '+escapeHtmlCampanha((e.rotulo||'Outro')+': '+[e.endereco,e.complemento].filter(Boolean).join(' — '))).join('<br>')+'</div>' : '')+
     (c&&c.indicadoPor?'<div class="hint">Indicado por: '+escapeHtmlCampanha(c.indicadoPor)+'</div>':'')+
     (c&&c.aniversario?'<div class="hint">🎂 Aniversário: '+fmtDate(c.aniversario)+'</div>':'')+
     ((c&&gruposClienteDoCliente(c).length)?'<div style="margin-top:4px;">'+gruposClienteDoCliente(c).map(g=>'<span class="pill">'+escapeHtmlCampanha(g)+'</span>').join(' ')+'</div>':'')+
@@ -10586,12 +10726,35 @@ function fiadoPorClienteHtml(filtro){
     '<td class="cel-acoes">'+
     '<button class="act-link" title="Ver extrato / gerar PDF" data-ver-extrato="'+encodeURIComponent(l.nome)+'">📄</button>'+
     '<button class="act-link" title="'+(telefoneDoCliente(l.nome)?'Enviar o PDF do extrato pelo WhatsApp':'Cadastre o telefone do cliente para habilitar')+'" style="background:var(--green-tint);color:var(--green);" data-enviar-extrato-whats="'+encodeURIComponent(l.nome)+'">'+iconWhatsApp('#25D366',13)+'</button>'+
+    '<button class="act-link" title="'+(telefoneDoCliente(l.nome)?'Cobrar pelo WhatsApp (resumo com os fiados mais antigos primeiro)':'Cadastre o telefone do cliente para habilitar')+'" style="background:var(--green-tint);color:var(--green);" data-cobrar-fiado-whats="'+encodeURIComponent(l.nome)+'">💬 cobrar</button>'+
     '<button class="act-link" title="Registrar pagamento" data-registrar-pagamento="'+encodeURIComponent(l.nome)+'">💵</button>'+
     '<button class="act-link" title="Corrigir nome do cliente (lançou fiado pro cliente errado)" data-editar-cliente-fiado="'+encodeURIComponent(l.nome)+'">✎</button>'+
     '</td></tr>';
     }).join('')+
     '</tbody></table></div>');
 }
+// Mensagem de cobrança de fiado: lançamentos do mais antigo pro mais novo, pagamentos já feitos e saldo.
+function mensagemCobrancaFiado(nome){
+  const debitos = debitosDoCliente(nome); // já vem do mais antigo pro mais novo
+  const pagos = pagamentosDoCliente(nome).reduce((s,p)=>s+p.valor,0);
+  const saldo = saldoDoCliente(nome);
+  const primeiro = (nome||'').trim().split(/\s+/)[0] || '';
+  const mostrar = debitos.slice(0,15);
+  return 'Olá, '+primeiro+'! Aqui é da Tom Gás 😊\nPassando pra lembrar do seu saldo em aberto:\n\n'+
+    mostrar.map(d=>'• '+fmtDate(d.data)+' — '+d.descricao+' — '+fmtMoney(d.valor)).join('\n')+
+    (debitos.length>mostrar.length ? '\n• ... e mais '+(debitos.length-mostrar.length)+' lançamento(s)' : '')+
+    (pagos>0.004 ? '\n\nPagamentos já feitos: '+fmtMoney(pagos) : '')+
+    '\n\n💰 Total a pagar: '+fmtMoney(saldo)+
+    '\n\nQual o melhor dia pra acertarmos? Obrigado!';
+}
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-cobrar-fiado-whats]'); if(!b) return;
+  const nome = decodeURIComponent(b.dataset.cobrarFiadoWhats);
+  const tel = telefoneDoCliente(nome);
+  if(!tel){ alert('Cadastre o telefone do cliente pra poder cobrar pelo WhatsApp.'); return; }
+  const url = linkWhatsAppComTexto(tel, mensagemCobrancaFiado(nome));
+  if(url) window.open(url, '_blank', 'noopener');
+});
 function diasFiadoAtrasado(cliente){
   const debitos = debitosDoCliente(cliente).slice().sort((a,b)=>a.data.localeCompare(b.data));
   if(debitos.length===0) return 0;
@@ -13753,9 +13916,15 @@ function attachHandlers(){
     };
     if(inputDataCaixa) inputDataCaixa.onchange = ()=>{
       if(inputAberturaCaixa) inputAberturaCaixa.value = Number(sugerirAberturaCaixa(inputDataCaixa.value)).toFixed(2).replace('.',',');
-      recalcularResumoCaixa();
+      recalcularResumoCaixa(); atualizarDiferencasCaixa();
     };
-    if(inputAberturaCaixa) inputAberturaCaixa.oninput = recalcularResumoCaixa;
+    if(inputAberturaCaixa) inputAberturaCaixa.oninput = ()=>{ recalcularResumoCaixa(); atualizarDiferencasCaixa(); };
+    const atualizarDiferencasCaixa = ()=>{
+      const box = document.getElementById('diferencas-caixa-ao-vivo'); if(!box || !formCaixa) return;
+      const resumo = resumoCaixaDoDia(inputDataCaixa.value, parseValorBR(inputAberturaCaixa.value)||0);
+      box.innerHTML = htmlDiferencasCaixa(resumo, lerValorOpcionalBR(formCaixa.dinheiroContado.value), lerValorOpcionalBR(formCaixa.pixConferido.value), lerValorOpcionalBR(formCaixa.cartaoConferido.value));
+    };
+    if(formCaixa){ ['dinheiroContado','pixConferido','cartaoConferido'].forEach(n=>{ formCaixa[n].oninput = atualizarDiferencasCaixa; }); atualizarDiferencasCaixa(); }
     if(formCaixa) formCaixa.onsubmit = async(e)=>{
       e.preventDefault();
       const f = new FormData(formCaixa);
@@ -13765,7 +13934,7 @@ function attachHandlers(){
       const data = f.get('data');
       const resumo = resumoCaixaDoDia(data, abertura);
       const editId = formCaixa.dataset.editid;
-      const dados = {data, abertura, totalVendas:resumo.totalVendas, totalDespesas:resumo.totalDespesas, dinheiroEsperado:resumo.dinheiroEsperado, dinheiroContado, observacao:f.get('observacao')||''};
+      const dados = {data, abertura, totalVendas:resumo.totalVendas, totalDespesas:resumo.totalDespesas, dinheiroEsperado:resumo.dinheiroEsperado, dinheiroContado, pixConferido:lerValorOpcionalBR(f.get('pixConferido')), cartaoConferido:lerValorOpcionalBR(f.get('cartaoConferido')), pixEsperado:resumo.porFormaPagamento['Pix']||0, cartaoEsperado:(resumo.porFormaPagamento['Débito']||0)+(resumo.porFormaPagamento['Crédito']||0), observacao:f.get('observacao')||''};
       if(editId){
         const fc = state.fechamentosCaixa.find(x=>x.id===editId);
         if(fc) Object.assign(fc, dados);
@@ -18476,6 +18645,7 @@ async function afterLogin(){
   aplicarFavicon();
   renderAll();
   esconderTelaLoading();
+  carregarChavesTardias();
   initAgenda();
   initChecklistHoverDrawer(); initEstoqueGasHoverDrawer(); initConferenciaBadge(); setInterval(initConferenciaBadge,1500); initNovoAgendamentoFab(); initBuscaSistema();
   initWhatsFab();
@@ -18497,6 +18667,7 @@ async function afterLogin(){
   initRecados();
   rodarBackupAutomaticoSeNecessario();
   iniciarNotificacoesRealtime();
+  iniciarSincronizacaoRealtime();
   atualizarBadgeApp();
   atualizarSinoBadge();
   if(statusPermissaoNotificacao()==='granted') inscreverPush();
@@ -18615,6 +18786,56 @@ function notificarLocal(titulo, corpo){
     try{ new Notification(titulo, options); }catch(e){ console.error('Notificação falhou', e); }
   }
 }
+// ---- Sincronização automática entre computadores ----
+// Quando outro aparelho salva uma dessas listas, esta tela recebe a versão nova sozinha, sem F5.
+// Registros novos que só existem aqui (ainda não salvos) são preservados; a tela só é redesenhada
+// quando você não está digitando, pra nunca atrapalhar um lançamento em andamento.
+const CHAVES_SYNC_REALTIME = ['clientes','fiados','fiadoPagamentos','creditos','comodatos','convenioLancamentos','convenioPagamentos','estoque','estoqueLancamentos','despesas','empresas','produtos','contasPagar'];
+let _renderRemotoTimer = null;
+function agendarRenderRemoto(){
+  clearTimeout(_renderRemotoTimer);
+  _renderRemotoTimer = setTimeout(function tentar(){
+    const a = document.activeElement;
+    const digitando = a && (a.tagName==='INPUT' || a.tagName==='TEXTAREA' || a.tagName==='SELECT' || a.isContentEditable);
+    if(digitando){ _renderRemotoTimer = setTimeout(tentar, 4000); return; }
+    try{ renderAll(); }catch(e){ console.error('Erro ao redesenhar após atualização remota', e); }
+  }, 800);
+}
+async function aplicarAtualizacaoRemota(key, payload){
+  let remoto = payload && payload.new ? payload.new.valor : undefined;
+  if(remoto===undefined){ // payload grande demais: busca direto
+    try{ const { data } = await supabaseClient.from('app_data').select('valor').eq('chave', key).maybeSingle(); remoto = data ? data.valor : undefined; }catch(_){ return; }
+  }
+  if(remoto===undefined || remoto===null) return;
+  if(JSON.stringify(remoto) === JSON.stringify(state[key])) return; // eco do que eu mesmo salvei
+  if(Array.isArray(remoto) && Array.isArray(state[key]) && _idsConhecidos[key]){
+    const idsRemotos = new Set(remoto.map(x=>x&&x.id));
+    const soAqui = state[key].filter(x=>x && x.id && !idsRemotos.has(x.id) && !_idsConhecidos[key].has(x.id));
+    const snapK = _snapshots[key] || {};
+    const locaisPorId = {}; state[key].forEach(x=>{ if(x && x.id) locaisPorId[x.id]=x; });
+    // se esta tela está editando (ainda sem salvar) um registro, mantém a edição daqui — o conflito é tratado ao salvar
+    const mesclado = remoto.map(r=>{ const l = r && locaisPorId[r.id]; return (l && snapK[l.id]!==undefined && JSON.stringify(l)!==snapK[l.id]) ? l : r; });
+    state[key] = mesclado.concat(soAqui);
+    const snapAtual = _snapshots[key]; registrarIdsConhecidos(key);
+    mesclado.forEach(x=>{ if(x && x.id && snapAtual && locaisPorId[x.id] && x===locaisPorId[x.id]) _snapshots[key][x.id] = snapAtual[x.id]; });
+    agendarRenderRemoto();
+    return;
+  } else {
+    state[key] = remoto;
+  }
+  registrarIdsConhecidos(key);
+  agendarRenderRemoto();
+}
+function iniciarSincronizacaoRealtime(){
+  if(MODO_DEMO) return;
+  try{
+    let canal = supabaseClient.channel('app_data_sync');
+    CHAVES_SYNC_REALTIME.forEach(k=>{
+      canal = canal.on('postgres_changes', { event:'UPDATE', schema:'public', table:'app_data', filter:'chave=eq.'+k }, p=>aplicarAtualizacaoRemota(k, p));
+    });
+    canal.subscribe();
+  }catch(e){ console.error('Erro ao iniciar sincronização em tempo real', e); }
+}
 function iniciarNotificacoesRealtime(){
   try{
     supabaseClient.channel('app_data_mudancas')
@@ -18625,9 +18846,8 @@ function iniciarNotificacoesRealtime(){
         novos.forEach(a=>{
           notificarLocal('Novo agendamento de entrega', (a.cliente||'Cliente')+' — '+(a.hora||'')+(a.data?' ('+fmtDate(a.data)+')':''));
         });
-        state.agendamentos = novoValor;
+        aplicarAtualizacaoRemota('agendamentos', payload);
         atualizarBadgeApp();
-        if(currentTab==='agendamentos' || currentTab==='dashboard') renderAll();
       })
       .on('postgres_changes', { event:'UPDATE', schema:'public', table:'app_data', filter:'chave=eq.vendas' }, (payload)=>{
         const novoValor = payload.new && payload.new.valor ? payload.new.valor : [];
@@ -18636,8 +18856,7 @@ function iniciarNotificacoesRealtime(){
         novos.forEach(v=>{
           notificarLocal('Nova entrega registrada', (v.cliente||'Cliente')+' — '+v.produto+' às '+v.entrega_hora);
         });
-        state.vendas = novoValor;
-        if(currentTab==='vendas' || currentTab==='dashboard') renderAll();
+        aplicarAtualizacaoRemota('vendas', payload);
       })
       .subscribe();
   }catch(e){ console.error('Erro ao iniciar notificações em tempo real', e); }
@@ -19243,7 +19462,7 @@ async function iniciarDicaPublica(id){
     const { data, error } = await supabaseClient.from('app_data').select('valor').eq('chave','dicasTreinamentos');
     if(error) throw error;
     const lista = (data && data[0] && data[0].valor) || [];
-    const dica = lista.find(d=>d.id===id && d.publico);
+    const dica = lista.find(d=>d.id===id);
     if(!dica){ wrap.innerHTML = '<h2>Conteúdo não encontrado</h2><p>Esse link pode estar errado, ou o conteúdo não está mais disponível publicamente.</p>'; return; }
     function embedVideo(link){
       if(!link) return '';
