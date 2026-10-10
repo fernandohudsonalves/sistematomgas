@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "v07_10-10-2026";
+    var VERSAO_ATUAL = "v08_10-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -867,7 +867,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "v07_10-10-2026";
+const APP_BUILD_HORARIO = "v08_10-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -3841,13 +3841,14 @@ function produtosMaisVendidos(limite){
 // categoria e Produto no seletor indicado (continua dando pra mudar tudo depois, à mão).
 function htmlItensMaisVendidosBox(boxId){
   const itens = produtosMaisVendidos(15);
-  const btnBusca = '<button type="button" class="link-btn btn-buscar-produto">🔍 buscar produto na lista</button>';
-  if(itens.length===0) return '<div id="'+boxId+'">'+btnBusca+'</div>';
+  // o botão de busca fica na linha do título (e não embaixo do campo) pra não desalinhar com Categoria/Quantidade/Valor
+  const btnBusca = '<button type="button" class="link-btn btn-buscar-produto" style="margin-left:8px;font-size:11px;padding:0;line-height:1;">🔍 buscar</button>';
+  if(itens.length===0) return '<div id="'+boxId+'"><label>Produto'+btnBusca+'</label></div>';
   return '<div id="'+boxId+'">'+
-    '<label>⭐ Itens mais vendidos</label>'+
+    '<label>⭐ Itens mais vendidos'+btnBusca+'</label>'+
     '<select class="sel-item-rapido" title="Escolha um item pra preencher categoria, tipo e produto de uma vez — depois é só conferir e mudar se precisar"><option value="" selected disabled>Selecione</option>'+
     itens.map(p=>'<option value="'+escapeHtmlCampanha(p.nome)+'" data-categoria="'+escapeHtmlCampanha(p.categoria||'')+'">'+escapeHtmlCampanha(p.nome)+'</option>').join('')+
-    '</select>'+btnBusca+'</div>';
+    '</select></div>';
 }
 // Liga o seletor de atalho de dentro de "root" ao controle (ctrl) devolvido por
 // wireSeletorCategoria daquele mesmo formulário/linha.
