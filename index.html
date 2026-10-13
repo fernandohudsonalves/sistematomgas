@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "v09_13-10-2026";
+    var VERSAO_ATUAL = "v13_13-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -631,7 +631,7 @@ html[data-theme="dark"] .lc-top strong, html[data-theme="natal"] .lc-top strong{
 .ag-item .ag-titulo{font-weight:700;font-size:12px;}
 .ag-item .ag-meta{color:#666;font-size:10.5px;margin:2px 0;white-space:normal;}
 .ag-item .ag-acoes button{width:auto;font-size:11px;margin-right:6px;background:none;border:none;color:#1E3A8A;cursor:pointer;padding:0;}
-#checklist-hover-drawer{position:fixed;left:0;top:110px;width:260px;max-height:calc(100vh - 300px);background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(255,255,255,.99));backdrop-filter:blur(10px);border:1px solid rgba(30,58,138,.08);border-left:none;box-shadow:0 16px 40px rgba(16,32,62,.18);border-radius:0 18px 18px 0;transform:translateX(calc(-100% + 6px));transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:9998;overflow:hidden;display:flex;flex-direction:column;}
+#checklist-hover-drawer{position:fixed;left:0;top:110px;width:260px;max-height:min(calc(100vh - 300px),320px);background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(255,255,255,.99));backdrop-filter:blur(10px);border:1px solid rgba(30,58,138,.08);border-left:none;box-shadow:0 16px 40px rgba(16,32,62,.18);border-radius:0 18px 18px 0;transform:translateX(calc(-100% + 6px));transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:9998;overflow:hidden;display:flex;flex-direction:column;}
 #checklist-hover-drawer:hover,#checklist-hover-drawer.open{transform:translateX(0);}
 #checklist-hover-tab{position:absolute;right:-38px;top:16px;background:linear-gradient(135deg,var(--royal-light),var(--royal));color:#fff;padding:10px 8px;border-radius:0 12px 12px 0;writing-mode:vertical-rl;font-weight:700;font-size:11px;letter-spacing:.4px;box-shadow:3px 4px 14px rgba(20,42,99,.35);display:flex;align-items:center;gap:6px;}
 #checklist-hover-tab .chk-tab-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.5);flex-shrink:0;}
@@ -880,7 +880,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "v09_13-10-2026";
+const APP_BUILD_HORARIO = "v13_13-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -927,7 +927,7 @@ const AUTH_APP_HTML = `
       <button id="menu-toggle" title="Abrir menu" aria-label="Abrir menu">☰</button>
       <div class="dot"></div>
       <h1>Sistema Tom Gás</h1>
-      <span class="pill" style="margin-left:8px;background:rgba(255,255,255,.15);color:#fff;font-size:10px;" title="Versão do sistema">v${APP_BUILD_HORARIO}</span>
+      <span class="pill" style="margin-left:8px;background:rgba(255,255,255,.15);color:#fff;font-size:10px;" title="Versão do sistema">${APP_BUILD_HORARIO.replace(/^v(\d+)_(\d\d)-(\d\d)-(\d{4})$/,'v$1 · $2/$3/$4')}</span>
     </div>
     <div id="busca-sistema-wrap" style="position:relative;flex:1;max-width:260px;margin:0 12px;">
       <input type="text" id="busca-sistema-input" placeholder="🔎 Buscar no sistema (ex: nps, estoque)" style="width:100%;padding:8px 12px;border-radius:8px;border:none;font-size:13px;">
@@ -2243,6 +2243,56 @@ function defaultEstoqueMinimo(){
     agua: { dfonte:0, safira:0 }
   };
 }
+const KG_GAS = {P5:5,P13:13,P20:20,P45:45};
+let metaVolumeAno = null;
+function kgDeCargas(c){ return Object.keys(KG_GAS).reduce((t,k)=>t+(Number(c&&c[k])||0)*KG_GAS[k],0); }
+function cargasCompradasMes(mk){
+  const r = {P5:0,P13:0,P20:0,P45:0};
+  (state.estoqueLancamentos||[]).forEach(l=>{
+    if(l.tipo==='Gás' && l.estado==='Cheio' && l.direcao==='entrada' && KG_GAS[l.itemChave] && (l.data||'').slice(0,7)===mk && !String(l.motivo||'').startsWith('Comodato')) r[l.itemChave] += Number(l.quantidade)||0;
+  });
+  return r;
+}
+function baseMetaVolume(ano, mes){
+  const b = state.metaVolume && state.metaVolume.base && state.metaVolume.base[String(ano-1)];
+  return b ? b[String(mes)] : null;
+}
+function metaVolumeMes(mk){
+  const [a,m] = mk.split('-').map(Number);
+  const b = baseMetaVolume(a,m); const baseKg = kgDeCargas(b);
+  if(baseKg<=0) return null;
+  const pct = Number(state.metaVolume.pct)||0;
+  return {baseKg, metaKg: baseKg*(1+pct/100), pct};
+}
+function mesesSemBaseMetaVolume(ano){
+  const r = []; for(let m=1;m<=12;m++) if(kgDeCargas(baseMetaVolume(ano,m))<=0) r.push(m); return r;
+}
+function fmtKgVol(kg){ return Math.round(kg).toLocaleString('pt-BR')+' kg (≈ '+(kg/13).toLocaleString('pt-BR',{maximumFractionDigits:1})+' P13)'; }
+function metaVolumeCardDashboardHtml(){
+  const mk = todayStr().slice(0,7), ano = Number(mk.slice(0,4));
+  const mv = metaVolumeMes(mk);
+  const faltam = mesesSemBaseMetaVolume(ano);
+  if(!mv){
+    return '<div class="card" style="border-left:4px solid var(--warning,#f59e0b);cursor:pointer;" data-ir-relatorio-estoque="1"><h2>📦 Meta volume (compras de carga)</h2><div class="hint">Falta preencher as compras de '+(ano-1)+' deste mês ('+faltam.length+' mês(es) sem dados). Toque para preencher na aba Estoque.</div></div>';
+  }
+  const comp = kgDeCargas(cargasCompradasMes(mk)), pct = Math.min(100, Math.round(comp/mv.metaKg*100)), falta = Math.max(0, mv.metaKg-comp);
+  const bateu = comp>=mv.metaKg;
+  const fim = new Date(ano, Number(mk.slice(5,7)), 0).getDate(), restantes = Math.max(0, fim - Number(todayStr().slice(8,10)));
+  return '<div class="card" style="border-left:4px solid '+(bateu?'var(--green,#16A34A)':'var(--royal,#1E3A8A)')+';cursor:pointer;" data-ir-relatorio-estoque="1"><h2>📦 Meta volume — compras de carga</h2>'+
+    '<div style="font-size:13px;">Comprado: <strong>'+fmtKgVol(comp)+'</strong> de <strong>'+fmtKgVol(mv.metaKg)+'</strong> (+'+mv.pct+'% sobre '+(ano-1)+')</div>'+
+    '<div style="height:10px;background:var(--border,#e5e7eb);border-radius:6px;margin:6px 0;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:'+(bateu?'var(--green,#16A34A)':'var(--royal,#1E3A8A)')+';"></div></div>'+
+    '<div class="hint">'+(bateu?'✅ Meta volume batida!':'Faltam '+fmtKgVol(falta)+' · '+restantes+' dia(s) restantes no mês.')+(faltam.length?' · ⚠️ '+faltam.length+' mês(es) de '+(ano-1)+' sem dados.':'')+'</div></div>';
+}
+function pedidosEstoqueAbertos(){
+  const mapa = {};
+  (state.estoqueLancamentos||[]).forEach(l=>{
+    if(!l.pedido || l.estado!=='Cheio' || l.direcao!=='entrada') return;
+    const k = l.pedido; if(!mapa[k]) mapa[k] = {pedido:l.pedido, itens:{}};
+    const ik = l.tipo+'|'+l.itemChave; const it = mapa[k].itens[ik] || (mapa[k].itens[ik] = {item:l.item, recebido:0, pedido:0});
+    it.recebido += Number(l.quantidade)||0; it.pedido = Math.max(it.pedido, Number(l.pedidoQtd)||0);
+  });
+  return Object.values(mapa).filter(p=>Object.values(p.itens).some(i=>i.pedido>i.recebido));
+}
 function itensAbaixoDoMinimo(){
   if(!state.estoqueMinimo) return [];
   const alertas = [];
@@ -2289,6 +2339,7 @@ let state = {
   oficinasManutencao: [],
   veiculoKm: [],
   lapidarItens: {},
+  metaVolume: {pct:10, base:{}},
   recados: [],
   veiculos: [
     {id:'v1', nome:'Moto Cinza', tipo:'moto', cor:'Cinza', icone:'🏍️', corIcone:'#6b7280'},
@@ -4770,7 +4821,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','contasDespesaExtra','gruposCruzamento','fiados','fiadoPagamentos','fiadoDestinatarios','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas','dicasTreinamentos','horariosEspeciais','categoriasDicas','iconesPersonalizados','modulosAtivos'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','contasDespesaExtra','gruposCruzamento','fiados','fiadoPagamentos','fiadoDestinatarios','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas','dicasTreinamentos','horariosEspeciais','metaVolume','categoriasDicas','iconesPersonalizados','modulosAtivos'];
 // Modo de visualização: ative acrescentando ?demo=1 na URL do arquivo. Pula o login de
 // verdade e mostra a tela do sistema já preenchida com alguns dados de EXEMPLO (fictícios),
 // sem nunca ler nem gravar nada no Supabase real — só serve pra olhar o layout/as mudanças
@@ -4951,6 +5002,8 @@ async function loadAll(){
   if(!state.comodatos) state.comodatos = [];
   if(!state.comunicados) state.comunicados = [];
   if(!state.metas) state.metas = {};
+  if(!state.metaVolume || typeof state.metaVolume!=='object' || Array.isArray(state.metaVolume)) state.metaVolume = {pct:10, base:{}};
+  if(!state.metaVolume.base || typeof state.metaVolume.base!=='object') state.metaVolume.base = {};
   if(!state.estoqueMinimo) state.estoqueMinimo = defaultEstoqueMinimo();
   if(!state.paradasRota) state.paradasRota = [];
   if(!Array.isArray(state.pontosPartida)) state.pontosPartida = [];
@@ -4992,6 +5045,8 @@ async function loadAll(){
   if(!Array.isArray(state.tarefasCliente)) state.tarefasCliente = [];
   if(!state.lapidarItens['relatorio-crm']) state.lapidarItens['relatorio-crm'] = {marcado:true, descricao:'CRM — ficha completa de cada cliente (histórico de compras, fiado, crédito, comodato, NPS, indicações e anexos), com histórico de interações (ligação, WhatsApp, visita etc.) e follow-ups/lembretes de contato pendentes.'};
   if(!state.lapidarItens['relatorio-remuneracao']) state.lapidarItens['relatorio-remuneracao'] = {marcado:true, descricao:'Programa de remuneração variável / bonificação dos entregadores: comissão calculada por entrega (valor fixo ou % do frete) e progresso da meta de vendas do mês de cada um, configurados em Rotas → Entregadores.'};
+  if(!state.lapidarItens['cadastros']) state.lapidarItens['cadastros'] = {marcado:true, descricao:'Cadastro de clientes — nome, telefones, endereços (com endereços extras como casa de parente), grupos, convênio e observações, com busca e ordem alfabética.'};
+  if(!state.lapidarItens['historico-compras-cliente']) state.lapidarItens['historico-compras-cliente'] = {marcado:true, descricao:'Histórico de compras do cliente — tudo que cada cliente já comprou (produtos, valores, datas, fiado e forma de pagamento) na ficha do CRM.'};
   if(!Array.isArray(state.recados)) state.recados = [];
   if(!Array.isArray(state.logAtividades)) state.logAtividades = [];
   if(!Array.isArray(state.fechamentosCaixa)) state.fechamentosCaixa = [];
@@ -5819,7 +5874,7 @@ function viewDashboard(){
       '<div class="hint">'+(pendenciasRetiradaDash.length>0?'Gás já vendido/recebido que ainda falta o cliente retirar ou vocês entregarem.':'Nenhuma pendência agora.')+' Toque para abrir.</div></div>'+
     (pendenciasJaRetirouDash.length>0 ? '<div class="card" style="border-left:4px solid var(--danger,#DC2626);cursor:pointer;" data-ir-falta-retirar="1"><h2 class="titulo-pendencia-painel">🔴 Já retirou — '+pendenciasJaRetirouDash.length+' pendência(s)</h2>'+
       '<div class="hint">Cliente já levou o item, ainda falta pagar. Toque para ver na tela de Falta retirar / Já retirou.</div></div>' : '')+
-    metaCardDashboardHtml()+googleCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
+    metaCardDashboardHtml()+metaVolumeCardDashboardHtml()+googleCardDashboardHtml()+'<div class="card"><h2>Hoje — '+fmtDate(hoje)+'</h2><div class="grid cols2">'+
     '<div class="metric"><div class="label">Vendas do dia</div><div class="value">'+fmtMoney(totalVendasHoje)+'</div>'+(freteVendasHoje>0?'<div class="hint" style="font-size:10px;">sem contar frete ('+fmtMoney(freteVendasHoje)+')</div>':'')+'</div>'+
     '<div class="metric neg"><div class="label">Despesas do dia</div><div class="value">'+fmtMoney(totalDespesasHoje)+'</div></div>'+
     '</div></div>'+
@@ -8264,6 +8319,7 @@ function ajudaHtml(id, texto){
     lapidarHtml(id);
 }
 function lapidarHtml(id){
+  return ''; // botão 💎 removido da tela: os itens do Lapidar agora são definidos pelo código/Config
   const item = (state.lapidarItens||{})[id] || {marcado:false, descricao:''};
   const badge = item.marcado ? '<span class="lapidar-badge" title="'+escapeHtmlCampanha(item.descricao||'')+'">💎 Lapidar</span>' : '';
   return badge+
@@ -8528,11 +8584,30 @@ function movimentacoesEstoqueTable(lista){
   return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:50%;"><col style="width:24%;"><col style="width:26%;"></colgroup><thead><tr><th>Item</th><th>Mov. / Por</th><th></th></tr></thead><tbody>'+
   lista.map(l=>{
     const tituloItem = l.item+' — '+l.estado+' ('+l.tipo+') · '+fmtDate(l.data)+(l.motivo?' · '+l.motivo:'');
-    return '<tr><td title="'+escapeHtmlCampanha(tituloItem)+'">'+l.item+' — '+l.estado+' <span class="hint">('+l.tipo+')</span><br><span class="hint" style="font-size:10px;">'+fmtDate(l.data)+(l.motivo?' · '+l.motivo:'')+'</span></td>'+
+    return '<tr><td title="'+escapeHtmlCampanha(tituloItem)+'">'+l.item+' — '+l.estado+' <span class="hint">('+l.tipo+')</span><br><span class="hint" style="font-size:10px;">'+fmtDate(l.data)+(l.pedido?' · Pedido '+escapeHtmlCampanha(l.pedido):'')+(l.motivo?' · '+l.motivo:'')+'</span></td>'+
     '<td>'+(l.direcao==='entrada'?'<span class="badge pago">+'+l.quantidade+'</span>':'<span class="badge fiado">-'+l.quantidade+'</span>')+'<br><span class="hint" style="font-size:10px;">'+l.usuario+'</span></td>'+
     '<td class="cel-acoes"><button class="act-link" data-edit-mov-estoque="'+l.id+'" title="editar">✎</button><button class="del-link" data-del-mov-estoque="'+l.id+'" title="excluir">🗑</button>'+
     '</td></tr>';
   }).join('')+'</tbody></table></div>';
+}
+function metaVolumeEstoqueHtml(){
+  const hoje = todayStr(); if(!metaVolumeAno) metaVolumeAno = Number(hoje.slice(0,4));
+  const ano = metaVolumeAno, mv = state.metaVolume;
+  const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const faltam = mesesSemBaseMetaVolume(ano);
+  const linhasBase = nomes.map((n,i)=>{ const m=i+1, b=baseMetaVolume(ano,m)||{};
+    return '<tr><td>'+n+'/'+(ano-1)+'</td>'+['P5','P13','P20','P45'].map(t=>'<td><input type="number" min="0" step="1" name="b_'+m+'_'+t+'" value="'+(b[t]||'')+'" style="width:64px;"></td>').join('')+'<td class="hint">'+(kgDeCargas(b)>0?Math.round(kgDeCargas(b)).toLocaleString('pt-BR')+' kg':'⚠️ vazio')+'</td></tr>'; }).join('');
+  const linhasMeta = nomes.map((n,i)=>{ const m=i+1, mk=ano+'-'+String(m).padStart(2,'0'), meta=metaVolumeMes(mk), comp=kgDeCargas(cargasCompradasMes(mk));
+    if(!meta) return '<tr><td>'+n+'/'+ano+'</td><td colspan="4" class="hint">Sem dados de '+(ano-1)+' para calcular a meta</td></tr>';
+    const bateu = comp>=meta.metaKg;
+    return '<tr><td>'+n+'/'+ano+'</td><td>'+Math.round(meta.baseKg).toLocaleString('pt-BR')+'</td><td>'+Math.round(meta.metaKg).toLocaleString('pt-BR')+'</td><td>'+Math.round(comp).toLocaleString('pt-BR')+'</td><td style="font-weight:700;color:'+(bateu?'var(--green,#16A34A)':'var(--text)')+';">'+(bateu?'✅ batida':Math.round(comp/meta.metaKg*100)+'% · faltam '+Math.round(meta.metaKg-comp).toLocaleString('pt-BR')+' kg')+'</td></tr>'; }).join('');
+  return '<div class="hint">Conta só as <strong>entradas de carga (gás cheio)</strong> lançadas aqui no estoque, somadas em peso (P5=5kg, P13=13kg, P20=20kg, P45=45kg). A meta de cada mês = compras do mesmo mês do ano anterior + o percentual abaixo.</div>'+
+    (faltam.length ? '<div class="import-conferencia-alert">⚠ Faltam as compras de '+(ano-1)+' em '+faltam.length+' mês(es). Sem isso a meta desses meses não é calculada.</div>' : '')+
+    '<form id="form-meta-volume"><div class="form-row"><div><label>Ano da meta</label><select id="mv-ano">'+[ano-1,ano,ano+1].map(a=>'<option value="'+a+'"'+(a===ano?' selected':'')+'>'+a+'</option>').join('')+'</select></div>'+
+    '<div><label>Aumento exigido (%)</label><input type="number" name="pct" min="0" step="0.5" value="'+(Number(mv.pct)||0)+'"></div></div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Compras de '+(ano-1)+' (unidades)</th><th>P5</th><th>P13</th><th>P20</th><th>P45</th><th>Total</th></tr></thead><tbody>'+linhasBase+'</tbody></table></div>'+
+    '<button type="submit" class="btn small" style="margin-top:8px;">Salvar meta volume</button></form>'+
+    '<div class="table-wrap" style="margin-top:12px;"><table><thead><tr><th>Mês '+ano+'</th><th>Base kg</th><th>Meta kg</th><th>Comprado kg</th><th>Situação</th></tr></thead><tbody>'+linhasMeta+'</tbody></table></div>';
 }
 function viewEstoque(){
   const g = state.estoque.gas, a = state.estoque.agua;
@@ -8581,6 +8656,8 @@ function viewEstoque(){
     '<div><label>Mín. Água D\'Fonte cheio</label><input type="number" min="0" step="1" name="min_agua_dfonte" value="'+((min.agua&&min.agua.dfonte)||0)+'"></div>'+
     '<div><label>Mín. Água Safira cheio</label><input type="number" min="0" step="1" name="min_agua_safira" value="'+((min.agua&&min.agua.safira)||0)+'"></div>'+
     '</div><button type="submit" class="btn small">Salvar mínimos</button></form></div>'+
+    '<div class="card"><h2>📦 Meta volume (compras de carga)</h2>'+metaVolumeEstoqueHtml()+'</div>'+
+    (function(){ const ab = pedidosEstoqueAbertos(); return ab.length ? '<div class="card"><h2>📋 Pedidos com entrega parcial</h2>'+ab.map(p=>'<div style="padding:4px 0;border-bottom:1px solid var(--border);"><strong>Pedido '+escapeHtmlCampanha(p.pedido)+'</strong>: '+Object.values(p.itens).map(i=>escapeHtmlCampanha(i.item)+' '+i.recebido+(i.pedido?' de '+i.pedido+(i.pedido>i.recebido?' (faltam '+(i.pedido-i.recebido)+')':' ✓'):'')).join(' · ')+'</div>').join('')+'</div>' : ''; })()+
     '<div class="card"><h2>Lançar movimentação de estoque</h2>'+
     '<div class="hint">Use isto quando o fornecedor trouxer carga nova, ou pra registrar qualquer entrada/saída — fica no histórico com data, quantidade e quem lançou.</div>'+
     '<div class="import-conferencia-alert">⚠ Esse lançamento aqui é sempre manual e direto — não tem ligação com nenhuma venda. Se o estoque errado veio de uma venda lançada no produto errado, primeiro edite a venda em Vendas (ela já corrige o estoque sozinho, devolvendo o errado e descontando o certo). Só lance aqui pra fechar uma diferença que sobrou depois disso, ou pra ajustes que não vêm de venda nenhuma (perda, quebra, contagem física).</div>'+
@@ -8592,7 +8669,14 @@ function viewEstoque(){
     '<div><label>Quantidade <span class="req">*</span></label><input type="number" name="quantidade" min="1" step="1" placeholder="Ex: 20" required></div>'+
     '<div><label>Movimento <span class="req">*</span></label><select name="direcao" required>'+opcoesComPlaceholder(['Entrada (+)','Saída (-)'],'Selecione')+'</select></div>'+
     '<div><label>Motivo (opcional)</label><input type="text" name="motivo" placeholder="Ex: chegada do fornecedor"></div>'+
+    '<div><label>Data do lançamento</label><input type="date" name="data_mov" value="'+todayStr()+'" max="'+todayStr()+'"></div>'+
     '</div>'+
+    '<div class="form-row">'+
+    '<div><label>Nº do pedido (opcional)</label><input type="text" name="pedido" placeholder="Ex: 4587"></div>'+
+    '<div><label>Qtd. total pedida deste item (opcional)</label><input type="number" name="pedido_qtd" min="0" step="1" placeholder="Ex: 30"></div>'+
+    '</div>'+
+    '<div id="mov-extras"></div>'+
+    '<button type="button" class="btn small ghost" id="mov-add-item" style="margin-top:6px;">➕ Adicionar outro item do mesmo pedido</button>'+
     '<div id="mov-troca-vazios-wrap" style="display:none;margin-top:8px;padding:10px 12px;background:var(--blue-tint);border-radius:8px;">'+
     '<div id="mov-vazios-devolvidos-campo"><label>Vasilhames vazios devolvidos ao fornecedor agora</label>'+
     '<input type="number" id="mov-vazios-devolvidos" name="vazios_devolvidos" min="0" step="1" placeholder="Ex: 15"></div>'+
@@ -9292,6 +9376,7 @@ function viewConfig(){
 }
 function lapidarDestino(id){
   if(id==='relatorio-crm') return {tab:'crm'};
+  if(id==='historico-compras-cliente') return {tab:'crm'};
   if(id.indexOf('relatorio-')===0) return {tab:'relatorios', sub:id.slice(10)};
   if(id==='falta-retirar') return {tab:'faltaretirar'};
   if(id==='novos-clientes') return {tab:'relatorios', sub:'novosclientes'};
@@ -9306,7 +9391,7 @@ function viewLapidarResumo(){
   }).join('');
   return '<div class="config-group-title">Lapidar</div>'+
     '<div class="card"><details><summary><strong>💎 Itens marcados como Lapidar ('+itens.length+')</strong></summary>'+
-    '<div class="hint" style="margin-top:8px;">Clique no ícone 💎 ao lado do título de qualquer seção do sistema pra marcar essa área como um item do Lapidar e escrever uma descrição explicando o que ela faz — útil pra apresentar o sistema pra futuros clientes. Clique num item da lista abaixo pra ir direto até ele.</div>'+
+    '<div class="hint" style="margin-top:8px;">Áreas do sistema marcadas pra apresentar a futuros clientes. Clique num item da lista abaixo pra ir direto até ele.</div>'+
     (itens.length===0 ? '<div class="empty" style="margin-top:10px;">Nenhum item marcado como Lapidar ainda.</div>' :
     '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Área do sistema</th><th>Descrição</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</details></div>';
@@ -9514,6 +9599,16 @@ function tabelaSaldosComodato(direcao, tituloColuna, categoriaFiltro){
     '<td class="cel-acoes"><button class="act-link" data-ajustar-saldo-comodato=\''+JSON.stringify({direcao,nome:l.nome,categoria:l.categoria,item:l.item,produto:l.produto,saldo:l.saldo}).replace(/'/g,'&#39;')+'\'">✎ editar</button>'+
     '<button class="del-link" data-zerar-saldo-comodato=\''+JSON.stringify({direcao,nome:l.nome,categoria:l.categoria,item:l.item,produto:l.produto,saldo:l.saldo}).replace(/'/g,'&#39;')+'\'">🗑 zerar</button></td></tr>').join('')+
     '</tbody></table></div>';
+}
+function aplicarEfeitoEstoqueLanc(lanc, reverter){
+  const grupoEstoque = lanc.tipo==='Gás' ? state.estoque.gas : state.estoque.agua;
+  const chave = lanc.itemChave || lanc.item;
+  if(!grupoEstoque[chave]) return;
+  const chaveEstado = lanc.estado==='Cheio' ? 'cheio' : 'vazio';
+  const atual = grupoEstoque[chave][chaveEstado] || 0;
+  const direcaoEfetiva = reverter ? (lanc.direcao==='entrada'?'saida':'entrada') : lanc.direcao;
+  const novoValor = direcaoEfetiva==='entrada' ? atual+lanc.quantidade : Math.max(0, atual-lanc.quantidade);
+  grupoEstoque[chave][chaveEstado] = novoValor;
 }
 // Cria um lançamento de AJUSTE de comodato levando o saldo de (nome+categoria+item+produto) pro
 // valor novo informado, e já aplica o efeito no estoque físico — mesma lógica do lançamento normal.
@@ -13417,16 +13512,6 @@ function attachHandlers(){
 
   const ITENS_GAS_MOV = ['P5','P13','P20','P45'];
   const ITENS_AGUA_MOV = [["Água D'Fonte",'dfonte'],['Água Safira','safira']];
-  function aplicarEfeitoEstoqueLanc(lanc, reverter){
-    const grupoEstoque = lanc.tipo==='Gás' ? state.estoque.gas : state.estoque.agua;
-    const chave = lanc.itemChave || lanc.item;
-    if(!grupoEstoque[chave]) return;
-    const chaveEstado = lanc.estado==='Cheio' ? 'cheio' : 'vazio';
-    const atual = grupoEstoque[chave][chaveEstado] || 0;
-    const direcaoEfetiva = reverter ? (lanc.direcao==='entrada'?'saida':'entrada') : lanc.direcao;
-    const novoValor = direcaoEfetiva==='entrada' ? atual+lanc.quantidade : Math.max(0, atual-lanc.quantidade);
-    grupoEstoque[chave][chaveEstado] = novoValor;
-  }
   const movTipo = document.getElementById('mov-tipo');
   const movItem = document.getElementById('mov-item');
   const popularItensMov = (tipo, valorSelecionado)=>{
@@ -13480,11 +13565,42 @@ function attachHandlers(){
     }
   }
   if(feMov){
+    const btnAddItem = document.getElementById('mov-add-item');
+    if(btnAddItem) btnAddItem.onclick = ()=>{
+      const row = document.createElement('div');
+      row.className = 'mov-extra-row form-row';
+      row.style.cssText = 'margin-top:6px;padding:8px;border:1px dashed var(--border);border-radius:8px;';
+      row.innerHTML = '<div><label>Tipo</label><select class="mx-tipo">'+opcoesComPlaceholder(['Gás','Água'],'Selecione')+'</select></div>'+
+        '<div><label>Item</label><select class="mx-item"><option value="" selected disabled>Selecione o tipo</option></select></div>'+
+        '<div><label>Estado</label><select class="mx-estado">'+opcoesComPlaceholder(['Cheio','Vazio'],'Selecione')+'</select></div>'+
+        '<div><label>Quantidade</label><input type="number" class="mx-qtd" min="1" step="1"></div>'+
+        '<div><label>Qtd. pedida (opc.)</label><input type="number" class="mx-pedqtd" min="0" step="1"></div>'+
+        '<div><label>Vazios devolvidos (opc.)</label><input type="number" class="mx-vaz" min="0" step="1"></div>'+
+        '<div><label>&nbsp;</label><button type="button" class="btn small ghost mx-rem">✕ remover</button></div>';
+      row.querySelector('.mx-tipo').onchange = (ev)=>{
+        const t = ev.target.value, it = row.querySelector('.mx-item');
+        it.innerHTML = '<option value="" selected disabled>Selecione o item</option>'+(t==='Gás' ? ITENS_GAS_MOV.map(x=>'<option value="'+x+'">'+x+'</option>') : ITENS_AGUA_MOV.map(p=>'<option value="'+p[1]+'">'+p[0]+'</option>')).join('');
+      };
+      row.querySelector('.mx-rem').onclick = ()=>row.remove();
+      document.getElementById('mov-extras').appendChild(row);
+    };
     if(movEstadoSel) movEstadoSel.addEventListener('change', atualizarTrocaVazios);
     if(movDirecaoSel) movDirecaoSel.addEventListener('change', atualizarTrocaVazios);
     feMov.quantidade.addEventListener('input', atualizarPreviewDevendo);
     if(movVaziosInput) movVaziosInput.addEventListener('input', atualizarPreviewDevendo);
   }
+  const mvAnoSel = document.getElementById('mv-ano');
+  if(mvAnoSel) mvAnoSel.onchange = ()=>{ metaVolumeAno = Number(mvAnoSel.value); renderAll(); };
+  const feMV = document.getElementById('form-meta-volume');
+  if(feMV) feMV.onsubmit = async(e)=>{
+    e.preventDefault();
+    const f = new FormData(feMV), ano = metaVolumeAno || Number(todayStr().slice(0,4));
+    const base = {};
+    for(let m=1;m<=12;m++){ const o = {}; ['P5','P13','P20','P45'].forEach(t=>{ o[t] = Math.max(0, Number(f.get('b_'+m+'_'+t))||0); }); base[String(m)] = o; }
+    state.metaVolume.pct = Math.max(0, Number(f.get('pct'))||0);
+    state.metaVolume.base[String(ano-1)] = base;
+    if(await save('metaVolume')) renderAll();
+  };
   const feMin = document.getElementById('form-estoque-minimo');
   if(feMin) feMin.onsubmit = async(e)=>{
     e.preventDefault();
@@ -13502,6 +13618,8 @@ function attachHandlers(){
     const tipo = f.get('tipo'), itemChave = f.get('item'), estado = f.get('estado'), direcaoTxt = f.get('direcao');
     const quantidade = Number(f.get('quantidade'))||0;
     if(quantidade<=0) return;
+    const dataMov = f.get('data_mov') || todayStr();
+    const pedido = (f.get('pedido')||'').trim(), pedidoQtdMain = Number(f.get('pedido_qtd'))||0;
     const direcao = direcaoTxt.startsWith('Entrada') ? 'entrada' : 'saida';
     const grupoEstoque = tipo==='Gás' ? state.estoque.gas : state.estoque.agua;
     if(!grupoEstoque[itemChave]){ alert('Item inválido.'); return; }
@@ -13511,53 +13629,62 @@ function attachHandlers(){
       if(lancAntigo){
         aplicarEfeitoEstoqueLanc(lancAntigo, true);
         lancAntigo.tipo=tipo; lancAntigo.item=itemLabel; lancAntigo.itemChave=itemChave; lancAntigo.estado=estado;
-        lancAntigo.direcao=direcao; lancAntigo.quantidade=quantidade; lancAntigo.motivo=f.get('motivo')||'';
+        lancAntigo.direcao=direcao; lancAntigo.quantidade=quantidade; lancAntigo.motivo=f.get('motivo')||''; lancAntigo.data=dataMov; lancAntigo.pedido=pedido; lancAntigo.pedidoQtd=pedidoQtdMain;
         aplicarEfeitoEstoqueLanc(lancAntigo, false);
       }
       editEstoqueMovId = null;
       feMov.querySelector('button[type=submit]').textContent = 'Lançar movimentação';
     } else {
-      const novoLanc = {
-        id: uid(), criadoEm: Date.now(), data: todayStr(), tipo, item: itemLabel, itemChave, estado,
-        direcao, quantidade, motivo: f.get('motivo')||'', usuario: usuarioAtualNome
-      };
-      aplicarEfeitoEstoqueLanc(novoLanc, false);
-      state.estoqueLancamentos.push(novoLanc);
-      if(estado==='Cheio' && direcao==='entrada'){
-        // Não limita mais os vazios devolvidos à quantidade recebida agora — dá pra devolver mais
-        // (quitando vazios que já deviam de antes) ou menos (sobra como dívida nova) do fornecedor.
-        const vaziosDevolvidos = Math.max(0, Number(f.get('vazios_devolvidos'))||0);
-        if(vaziosDevolvidos>0){
-          const lancVazio = {
-            id: uid(), criadoEm: Date.now(), data: todayStr(), tipo, item: itemLabel, itemChave, estado:'Vazio',
-            direcao:'saida', quantidade: vaziosDevolvidos, motivo:'Devolução de vazio na troca por carga cheia', usuario: usuarioAtualNome
-          };
-          aplicarEfeitoEstoqueLanc(lancVazio, false);
-          state.estoqueLancamentos.push(lancVazio);
+      const itensNovos = [{tipo, itemChave, estado, quantidade, pedidoQtd:pedidoQtdMain, vaziosDev:Math.max(0, Number(f.get('vazios_devolvidos'))||0)}];
+      let extraInvalido = false;
+      feMov.querySelectorAll('.mov-extra-row').forEach(r=>{
+        const t=r.querySelector('.mx-tipo').value, ic=r.querySelector('.mx-item').value, es=r.querySelector('.mx-estado').value, q=Number(r.querySelector('.mx-qtd').value)||0;
+        if(!t && !ic && !es && !q) return;
+        if(!t || !ic || !es || q<=0){ extraInvalido = true; return; }
+        itensNovos.push({tipo:t, itemChave:ic, estado:es, quantidade:q, pedidoQtd:Number(r.querySelector('.mx-pedqtd').value)||0, vaziosDev:Math.max(0, Number(r.querySelector('.mx-vaz').value)||0)});
+      });
+      if(extraInvalido){ alert('Preencha tipo, item, estado e quantidade em todos os itens extras (ou apague a linha).'); return; }
+      for(const it of itensNovos){
+        const lbl = it.tipo==='Gás' ? it.itemChave : (ITENS_AGUA_MOV.find(p=>p[1]===it.itemChave)||[it.itemChave])[0];
+        const novoLanc = {
+          id: uid(), criadoEm: Date.now(), data: dataMov, tipo: it.tipo, item: lbl, itemChave: it.itemChave, estado: it.estado,
+          direcao, quantidade: it.quantidade, motivo: f.get('motivo')||'', usuario: usuarioAtualNome
+        };
+        if(pedido){ novoLanc.pedido = pedido; if(it.pedidoQtd>0) novoLanc.pedidoQtd = it.pedidoQtd; }
+        aplicarEfeitoEstoqueLanc(novoLanc, false);
+        state.estoqueLancamentos.push(novoLanc);
+        const nomeFornecedorMov = f.get('fornecedor') || (state.fornecedoresGas && state.fornecedoresGas[0] && state.fornecedoresGas[0].nome) || 'Toninho';
+        if(it.estado==='Cheio' && direcao==='entrada'){
+          const vaziosDevolvidos = it.vaziosDev;
+          if(vaziosDevolvidos>0){
+            const lancVazio = {
+              id: uid(), criadoEm: Date.now(), data: dataMov, tipo: it.tipo, item: lbl, itemChave: it.itemChave, estado:'Vazio',
+              direcao:'saida', quantidade: vaziosDevolvidos, motivo:'Devolução de vazio na troca por carga cheia', usuario: usuarioAtualNome
+            };
+            if(pedido) lancVazio.pedido = pedido;
+            aplicarEfeitoEstoqueLanc(lancVazio, false);
+            state.estoqueLancamentos.push(lancVazio);
+          }
+          // "devendo" pode ficar negativo quando devolve mais vazios do que recebeu agora — abatimento da dívida antiga.
+          const devendo = it.quantidade - vaziosDevolvidos;
+          if(devendo!==0){
+            state.comodatos.push({
+              id: uid(), direcao:'atacadista', nome: nomeFornecedorMov, categoria: it.tipo, item: it.itemChave, produto:'Vasilhame vazio',
+              quantidade: devendo, data: dataMov,
+              obs: devendo>0
+                ? 'Gerado automaticamente na entrada de '+it.quantidade+' '+lbl+' cheio(s)'
+                : 'Abatimento automático: devolveu '+vaziosDevolvidos+' vazios na entrada de '+it.quantidade+' '+lbl+' cheio(s) (quitando '+Math.abs(devendo)+' de dívida antiga)'
+            });
+          }
         }
-        // "devendo" pode ficar negativo quando devolve mais vazios do que recebeu agora — nesse
-        // caso é um abatimento da dívida antiga com o fornecedor, não uma dívida nova.
-        const devendo = quantidade - vaziosDevolvidos;
-        if(devendo!==0){
-          const nomeFornecedorMov = f.get('fornecedor') || (state.fornecedoresGas && state.fornecedoresGas[0] && state.fornecedoresGas[0].nome) || 'Toninho';
+        // Devolução avulsa de vazio ao fornecedor, sem carga cheia nova junto: abate a dívida na hora.
+        if(it.estado==='Vazio' && direcao==='saida'){
           state.comodatos.push({
-            id: uid(), direcao:'atacadista', nome: nomeFornecedorMov, categoria: tipo, item: itemChave, produto:'Vasilhame vazio',
-            quantidade: devendo, data: todayStr(),
-            obs: devendo>0
-              ? 'Gerado automaticamente na entrada de '+quantidade+' '+itemLabel+' cheio(s)'
-              : 'Abatimento automático: devolveu '+vaziosDevolvidos+' vazios na entrada de '+quantidade+' '+itemLabel+' cheio(s) (quitando '+Math.abs(devendo)+' de dívida antiga)'
+            id: uid(), direcao:'atacadista', nome: nomeFornecedorMov, categoria: it.tipo, item: it.itemChave, produto:'Vasilhame vazio',
+            quantidade: -it.quantidade, data: dataMov,
+            obs: 'Abatimento automático: devolução avulsa de '+it.quantidade+' '+lbl+' vazio(s), sem carga nova junto'
           });
         }
-      }
-      // Devolução avulsa de vazio ao fornecedor, sem carga cheia nova junto (ex: só foi lá deixar
-      // vasilhame vazio que devia de antes). Abate a dívida na hora, mesmo sem uma entrada nova.
-      if(estado==='Vazio' && direcao==='saida'){
-        const nomeFornecedorMov = f.get('fornecedor') || (state.fornecedoresGas && state.fornecedoresGas[0] && state.fornecedoresGas[0].nome) || 'Toninho';
-        state.comodatos.push({
-          id: uid(), direcao:'atacadista', nome: nomeFornecedorMov, categoria: tipo, item: itemChave, produto:'Vasilhame vazio',
-          quantidade: -quantidade, data: todayStr(),
-          obs: 'Abatimento automático: devolução avulsa de '+quantidade+' '+itemLabel+' vazio(s), sem carga nova junto'
-        });
       }
     }
     await save('estoque');
@@ -13589,6 +13716,9 @@ function attachHandlers(){
       feMov.quantidade.value = l.quantidade;
       feMov.direcao.value = l.direcao==='entrada' ? 'Entrada (+)' : 'Saída (-)';
       feMov.motivo.value = l.motivo||'';
+      if(feMov.data_mov) feMov.data_mov.value = l.data || todayStr();
+      if(feMov.pedido) feMov.pedido.value = l.pedido || '';
+      if(feMov.pedido_qtd) feMov.pedido_qtd.value = l.pedidoQtd || '';
       feMov.querySelector('button[type=submit]').textContent = 'Salvar alterações';
       feMov.scrollIntoView({behavior:'smooth'});
     });
@@ -13613,7 +13743,7 @@ function attachHandlers(){
     if(de) base = base.filter(l=>l.data>=de);
     if(ate) base = base.filter(l=>l.data<=ate);
     if(!de && !ate) base = base.slice(0,80);
-    if(q) base = base.filter(l=>((l.item||'')+' '+(l.motivo||'')+' '+(l.usuario||'')).toLowerCase().includes(q));
+    if(q) base = base.filter(l=>((l.item||'')+' '+(l.motivo||'')+' '+(l.usuario||'')+' '+(l.pedido||'')).toLowerCase().includes(q));
     document.getElementById('lista-mov-estoque-wrap').innerHTML = movimentacoesEstoqueTable(base);
     attachMovEstoqueRowHandlers();
   }
@@ -18938,7 +19068,7 @@ function notificarLocal(titulo, corpo){
 // Quando outro aparelho salva uma dessas listas, esta tela recebe a versão nova sozinha, sem F5.
 // Registros novos que só existem aqui (ainda não salvos) são preservados; a tela só é redesenhada
 // quando você não está digitando, pra nunca atrapalhar um lançamento em andamento.
-const CHAVES_SYNC_REALTIME = ['clientes','fiados','fiadoPagamentos','creditos','comodatos','convenioLancamentos','convenioPagamentos','estoque','estoqueLancamentos','despesas','empresas','produtos','contasPagar','horariosEspeciais'];
+const CHAVES_SYNC_REALTIME = ['metaVolume','clientes','fiados','fiadoPagamentos','creditos','comodatos','convenioLancamentos','convenioPagamentos','estoque','estoqueLancamentos','despesas','empresas','produtos','contasPagar','horariosEspeciais'];
 let _renderRemotoTimer = null;
 function agendarRenderRemoto(){
   clearTimeout(_renderRemotoTimer);
