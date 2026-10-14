@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "v26_14-10-2026";
+    var VERSAO_ATUAL = "v27_14-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -298,6 +298,14 @@ details.card .pill{font-size:11px;font-weight:600;}
 .grid.cols2{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
 .grid.cols4{grid-template-columns:repeat(auto-fit,minmax(148px,1fr));}
 
+.pg-vale{color:#1fb800;font-weight:600;}.pg-gdp{color:#0089d6;font-weight:600;}.pg-cred{color:#dc2626;font-weight:600;}.pg-deb{color:#1E3A8A;font-weight:600;}.pg-conv{color:#a68a00;font-weight:600;}.pg-fiado{color:#8b3df0;font-weight:600;}.pg-abat{color:#a67c00;font-weight:600;}
+html[data-theme="dark"] .pg-vale, html[data-theme="natal"] .pg-vale{color:#39FF14;}
+html[data-theme="dark"] .pg-gdp, html[data-theme="natal"] .pg-gdp{color:#00a8ff;}
+html[data-theme="dark"] .pg-cred, html[data-theme="natal"] .pg-cred{color:#FF4D4D;}
+html[data-theme="dark"] .pg-deb, html[data-theme="natal"] .pg-deb{color:#3B6BFF;}
+html[data-theme="dark"] .pg-conv, html[data-theme="natal"] .pg-conv{color:#FFEB3B;}
+html[data-theme="dark"] .pg-fiado, html[data-theme="natal"] .pg-fiado{color:#B266FF;}
+html[data-theme="dark"] .pg-abat, html[data-theme="natal"] .pg-abat{color:#e9c46a;}
 .metric{background:var(--blue-tint);border-radius:var(--radius);padding:14px 16px;border-left:4px solid var(--royal);display:flex;flex-direction:column;justify-content:flex-start;min-height:58px;}
 .metric.metric-link{cursor:pointer;transition:filter .15s,transform .1s;}
 .metric.metric-link:hover{filter:brightness(0.96);}
@@ -885,7 +893,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "v26_14-10-2026";
+const APP_BUILD_HORARIO = "v27_14-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -2004,13 +2012,13 @@ function iconePagamento(p){ return ICONES_PAGAMENTO[p] || ''; }
 // Monta <option> de forma de pagamento com ícone no texto, mas o value continua o nome puro
 // (sem ícone) — senão quebraria toda comparação tipo pagamento==='Convênio' no resto do sistema.
 // Dentro de <select>, não dá pra colorir só uma palavra (option não renderiza HTML/estilo).
-// Dentro do <select> só dá pra pintar o fundo/cor da linha inteira (não só a palavra): [fundo, texto].
-const FUNDO_OPTION_PAGAMENTO = {'Vale gás':['#39FF14','#000'],'Gás do povo':['#00a8ff','#fff'],'Crédito':['#EF4444','#fff'],'Débito':['#1E3A8A','#fff'],'Convênio':['#FFEB3B','#000'],'Marcou/Fiado':['#B266FF','#fff'],'Abateu':['#e9c46a','#000']};
+// Dentro do <select> a cor vai no texto da opção (classe pg-*, definida no CSS com variação pro tema claro/escuro).
+const CLASSE_OPTION_PAGAMENTO = {'Vale gás':'pg-vale','Gás do povo':'pg-gdp','Crédito':'pg-cred','Débito':'pg-deb','Convênio':'pg-conv','Marcou/Fiado':'pg-fiado','Abateu':'pg-abat'};
 function opcoesPagamentoComIcone(lista, texto){
   return '<option value="" selected disabled>'+texto+'</option>'+lista.map(x=>{
     const ic = iconePagamento(x);
-    const fundo = FUNDO_OPTION_PAGAMENTO[x];
-    return '<option value="'+x+'"'+(fundo?' style="background:'+fundo[0]+';color:'+fundo[1]+';"':'')+'>'+(ic?ic+' ':'')+x+'</option>';
+    const cls = CLASSE_OPTION_PAGAMENTO[x];
+    return '<option value="'+x+'"'+(cls?' class="'+cls+'"':'')+'>'+(ic?ic+' ':'')+x+'</option>';
   }).join('');
 }
 // Pra mostrar a forma de pagamento fora de um <select> (tabelas, badges) — aqui dá pra colorir.
