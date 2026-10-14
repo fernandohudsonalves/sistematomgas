@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "v21_14-10-2026";
+    var VERSAO_ATUAL = "v23_14-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -688,6 +688,10 @@ html[data-theme="dark"] .lc-top strong, html[data-theme="natal"] .lc-top strong{
 .sim-venda-item button{flex:0 0 auto;background:none;border:none;color:var(--danger,#DC2626);cursor:pointer;font-size:15px;}
 #recado-fab{position:fixed;right:14px;bottom:284px;z-index:500;width:38px;height:38px;border-radius:50%;background:#F5B800;border:none;box-shadow:0 4px 12px rgba(245,184,0,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;}
 #recado-fab-badge{position:absolute;top:-4px;right:-4px;background:#DC2626;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 5px;display:none;}
+.card-colapsavel > h2{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;}
+.card-colapsavel > h2::before{content:'▸';font-size:.9em;}
+.card-colapsavel.aberto > h2::before{content:'▾';}
+.card-colapsavel:not(.aberto) > :not(h2){display:none !important;}
 #cal-fab{position:fixed;right:14px;bottom:446px;z-index:500;width:38px;height:38px;border-radius:50%;background:#0EA5E9;border:none;box-shadow:0 4px 12px rgba(14,165,233,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;font-size:18px;line-height:1;padding:0;}
 #cal-fab:hover{transform:scale(1.06);}
 #cal-panel{position:fixed;right:60px;bottom:120px;z-index:2500;width:min(360px,94vw);max-height:80vh;overflow-y:auto;background:var(--card,#fff);color:var(--text,#222);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);display:none;}
@@ -880,7 +884,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "v21_14-10-2026";
+const APP_BUILD_HORARIO = "v23_14-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -2007,7 +2011,7 @@ function opcoesPagamentoComIcone(lista, texto){
 }
 // Pra mostrar a forma de pagamento fora de um <select> (tabelas, badges) — aqui dá pra colorir.
 // "Gás do povo" sai com chama e no mesmo azul da bolinha usada pros fiados desse programa.
-const CORES_TEXTO_PAGAMENTO = {'Gás do povo':'#00a8ff','Vale gás':'#39FF14','Convênio':'#FFEB3B'};
+const CORES_TEXTO_PAGAMENTO = {'Gás do povo':'#00a8ff','Vale gás':'#39FF14','Convênio':'#FFEB3B','Crédito':'#EF4444','Débito':'#1E3A8A'};
 function pagamentoComIconeHtml(p){
   const ic = iconePagamento(p);
   const cor = CORES_TEXTO_PAGAMENTO[p];
@@ -2109,6 +2113,21 @@ function iconeCatalogo(nome, grupo){
   if(personalizado) return personalizado;
   const n = chaveNormalizada(nome||'');
   if(/mangueira|regulador|valvula|registro|acessorio|adaptador|maçarico|macarico/.test(n)) return '🔧';
+  if(/ovo/.test(n)) return '🥚';
+  if(/cerveja|skol|brahma|heineken|antarctica|itaipava|amstel|budweiser/.test(n)) return '🍺';
+  if(/coca|refri|guarana|fanta|sprite|pepsi|suco|energetico/.test(n)) return '🥤';
+  if(/arroz/.test(n)) return '🍚';
+  if(/feijao/.test(n)) return '🫘';
+  if(/macarrao|espaguete/.test(n)) return '🍝';
+  if(/carvao/.test(n)) return '⚫';
+  if(/gelo/.test(n)) return '🧊';
+  if(/pao|bisnaga/.test(n)) return '🍞';
+  if(/leite/.test(n)) return '🥛';
+  if(/acucar/.test(n)) return '🧂';
+  if(/cafe/.test(n)) return '☕';
+  if(/oleo/.test(n)) return '🫒';
+  if(/biscoito|bolacha|salgadinho/.test(n)) return '🍪';
+  if(/chocolate|bombom/.test(n)) return '🍫';
   if(/agua|galao/.test(n)) return '💧';
   if(/carga|botijao|cilindro|\bp8\b|\bp13\b|\bp20\b|\bp45\b|gas\b/.test(n)) return '🛢️';
   if(grupo==='agua') return '💧';
@@ -2286,11 +2305,6 @@ function kgAgendadoMes(mk){
     .reduce((t,p)=>t+Object.values(p.itens).reduce((a,i)=>a+(KG_GAS[i.item]?Math.max(0,i.pedido-i.recebido)*KG_GAS[i.item]:0),0),0);
 }
 // Quanto falta comprar pra bater a meta volume, quanto já está pedido e não entregue, e o ritmo diário sugerido.
-function planoComprasMetaVolume(faltaKg, restantes, mk){
-  const pendKg = kgAgendadoMes(mk);
-  const aComprar = Math.max(0, faltaKg-pendKg), dias = Math.max(1, restantes+1);
-  return {pendKg, aComprar, porDiaKg: aComprar/dias, dias};
-}
 function metaVolumeCardDashboardHtml(){
   const mk = todayStr().slice(0,7), ano = Number(mk.slice(0,4)), mesN = Number(mk.slice(5,7));
   const mv = metaVolumeMes(mk);
@@ -2299,17 +2313,16 @@ function metaVolumeCardDashboardHtml(){
   }
   const comp = kgDeCargas(cargasCompradasMes(mk)), agend = kgAgendadoMes(mk);
   const pct = Math.min(100, Math.round(comp/mv.metaKg*100)), pctAg = Math.min(100-pct, Math.round(agend/mv.metaKg*100));
-  const bateu = comp>=mv.metaKg, previsto = comp+agend>=mv.metaKg, falta = Math.max(0, mv.metaKg-comp), faltaPedir = Math.max(0, mv.metaKg-comp-agend);
+  const bateu = comp>=mv.metaKg, previsto = comp+agend>=mv.metaKg, falta = Math.max(0, mv.metaKg-comp);
   const fim = new Date(ano, mesN, 0).getDate(), restantes = Math.max(0, fim - Number(todayStr().slice(8,10)));
-  const pl = planoComprasMetaVolume(falta, restantes, mk);
   const cor = bateu?'var(--green,#16A34A)':'var(--royal,#1E3A8A)';
   const faltam = mesesSemBaseMetaVolume(ano);
   return '<div class="card" style="border-left:4px solid '+cor+';cursor:pointer;" data-ir-relatorio-estoque="1"><h2>📦 Meta volume — compras de carga</h2>'+
     '<div style="font-size:13px;">Comprado: <strong>'+fmtKgVol(comp)+'</strong> de <strong>'+fmtKgVol(mv.metaKg, mv.metaP13)+'</strong> (+'+mv.pct+'% sobre '+(ano-1)+')</div>'+
     '<div style="height:10px;background:var(--border,#e5e7eb);border-radius:6px;margin:6px 0;overflow:hidden;display:flex;"><div style="width:'+pct+'%;background:'+cor+';"></div><div style="width:'+pctAg+'%;background:#93C5FD;"></div></div>'+
     '<div class="hint">'+(bateu?'✅ Meta volume batida!':
-      'Faltam '+fmtKgVol(falta)+' · '+restantes+' dia(s) restantes no mês.<br>'+
-      '🚚 Agendado para chegar: '+fmtKgVol(agend)+(previsto?' — com o que está agendado a meta fecha ✅':'<br>🛒 Ainda falta pedir '+fmtKgVol(faltaPedir)+' — cerca de '+(pl.porDiaKg/13).toLocaleString('pt-BR',{maximumFractionDigits:1})+' P13 por dia até o fim do mês.'))+
+      'Falta chegar '+fmtKgVol(falta)+' para bater a meta · '+restantes+' dia(s) restantes — cerca de '+(falta/Math.max(1,restantes+1)/13).toLocaleString('pt-BR',{maximumFractionDigits:1})+' P13 por dia.'+
+      (agend>0?'<br>🚚 Agendado para chegar: '+fmtKgVol(agend)+(previsto?' — fecha a meta ✅':''):''))+
     (faltam.length?'<br>⚠️ '+faltam.length+' mês(es) de '+(ano-1)+' sem dados.':'')+'</div></div>';
 }
 function pedidosEstoqueAbertos(){
@@ -7899,6 +7912,8 @@ const LEGENDA_PAGAMENTOS = [
   {pagamento:'Abateu', cor:'#e9c46a'},
   {pagamento:'Vale gás', cor:'#39FF14'},
   {pagamento:'Gás do povo', cor:'#00a8ff'},
+  {pagamento:'Crédito', cor:'#EF4444'},
+  {pagamento:'Débito', cor:'#1E3A8A'},
   {pagamento:'Marcou/Fiado', cor:'#B266FF'}
 ];
 function corBolinhaPagamento(pagamento){
@@ -8279,7 +8294,7 @@ function viewFechamentoCaixa(){
   const aberturaForm = editando ? editando.abertura : sugerirAberturaCaixa(dataForm);
   const resumo = resumoCaixaDoDia(dataForm, aberturaForm);
   const linhasForma = Object.keys(resumo.porFormaPagamento).map(p=>
-    '<tr><td>'+p+'</td><td>'+fmtMoney(resumo.porFormaPagamento[p])+'</td></tr>'
+    '<tr><td>'+pagamentoComIconeHtml(p)+'</td><td>'+fmtMoney(resumo.porFormaPagamento[p])+'</td></tr>'
   ).join('') || '<tr><td colspan="2">Nenhuma venda nesse dia.</td></tr>';
   const historico = state.fechamentosCaixa.slice().sort((a,b)=>b.data.localeCompare(a.data));
   const linhasHist = historico.map(fc=>{
@@ -8752,7 +8767,7 @@ function metaVolumeEstoqueHtml(){
   const linhasMeta = nomes.map((n,i)=>{ const m=i+1, mk=ano+'-'+String(m).padStart(2,'0'), meta=metaVolumeMes(mk), comp=kgDeCargas(cargasCompradasMes(mk)), ag=kgAgendadoMes(mk);
     if(!meta) return '<tr><td>'+n+'/'+ano+'</td><td colspan="4" class="hint">Sem dados de '+(ano-1)+' para calcular a meta'+(comp>0?' · comprado: '+fmtKgVol(comp):'')+'</td></tr>';
     const bateu = comp>=meta.metaKg, prev = comp+ag>=meta.metaKg;
-    return '<tr><td>'+n+'/'+ano+'</td><td>'+fmtKgVol(meta.baseKg,meta.baseP13)+'</td><td>'+fmtKgVol(meta.metaKg,meta.metaP13)+'</td><td>'+fmtKgVol(comp)+(ag>0?'<br><span class="hint">+ agendado '+fmtKgVol(ag)+'</span>':'')+'</td><td style="font-weight:700;color:'+(bateu?'var(--green,#16A34A)':'var(--text)')+';">'+(bateu?'✅ batida':(prev?'🚚 fecha com o agendado':Math.round(comp/meta.metaKg*100)+'% · faltam '+fmtKgVol(meta.metaKg-comp-ag)))+'</td></tr>'; }).join('');
+    return '<tr><td>'+n+'/'+ano+'</td><td>'+fmtKgVol(meta.baseKg,meta.baseP13)+'</td><td>'+fmtKgVol(meta.metaKg,meta.metaP13)+'</td><td>'+fmtKgVol(comp)+(ag>0?'<br><span class="hint">+ agendado '+fmtKgVol(ag)+'</span>':'')+'</td><td style="font-weight:700;color:'+(bateu?'var(--green,#16A34A)':'var(--text)')+';">'+(bateu?'✅ batida':(prev?'🚚 fecha com o agendado':Math.round(comp/meta.metaKg*100)+'% · faltam '+fmtKgVol(meta.metaKg-comp)))+'</td></tr>'; }).join('');
   const agendados = (state.pedidosCarga||[]).slice().sort((a,b)=>(a.dataPrevista||'').localeCompare(b.dataPrevista||''));
   const listaAg = agendados.map(pc=>'<div style="padding:3px 0;border-bottom:1px solid var(--border);font-size:13px;">Pedido <strong>'+escapeHtmlCampanha(pc.pedido)+'</strong> · previsto '+(pc.dataPrevista?fmtDate(pc.dataPrevista):'sem data')+' · '+Object.keys(KG_GAS).filter(t=>Number(pc.itens&&pc.itens[t])>0).map(t=>t+': '+pc.itens[t]).join(', ')+' <button type="button" class="del-link" data-del-pedido-carga="'+pc.id+'" title="remover pedido agendado">🗑</button></div>').join('');
   return '<div class="hint">Conta só as <strong>entradas de carga (gás cheio)</strong> lançadas aqui no estoque. A empresa mede em <strong>toneladas</strong> e em <strong>P13</strong>: aqui aparecem os dois (P5, P20 e P45 entram pelo peso, convertido em P13 dividindo por 13 kg). A meta de cada mês = volume do mesmo mês do ano anterior + o percentual abaixo.</div>'+
@@ -8769,6 +8784,13 @@ function metaVolumeEstoqueHtml(){
     '<button type="submit" class="btn small">Agendar pedido</button></form>'+
     (listaAg?'<div style="margin-top:8px;"><strong>Pedidos agendados</strong>'+listaAg+'</div>':'');
 }
+let estoqueCardsAbertos = new Set();
+function cardEst(k){ return '<div class="card card-colapsavel'+(estoqueCardsAbertos.has(k)?' aberto':'')+'" data-card-est="'+k+'">'; }
+document.addEventListener('click', e=>{
+  const h = e.target.closest('.card-colapsavel > h2'); if(!h) return;
+  const card = h.parentElement, k = card.dataset.cardEst; card.classList.toggle('aberto');
+  if(card.classList.contains('aberto')) estoqueCardsAbertos.add(k); else estoqueCardsAbertos.delete(k);
+});
 function viewEstoque(){
   const g = state.estoque.gas, a = state.estoque.agua;
   const min = state.estoqueMinimo || defaultEstoqueMinimo();
@@ -8806,9 +8828,9 @@ function viewEstoque(){
       '<div class="table-wrap"><table><thead><tr><th>Item</th><th>Cheio atual</th><th>Mínimo configurado</th></tr></thead><tbody>'+
       alertas.map(al=>'<tr><td>'+al.label+'</td><td style="color:var(--danger);font-weight:700;">'+al.atual+'</td><td>'+al.min+'</td></tr>').join('')+
       '</tbody></table></div></div>' : '')+
-    '<div class="card"><h2>Estoque — Gás</h2>'+ajudaHtml('estoque','O estoque desconta sozinho quando uma venda é lançada (manual ou por planilha) e some junto quando você registra uma movimentação de entrada/saída aqui embaixo. Configure o \'Estoque mínimo\' pra receber alerta antes de faltar produto.')+'<div class="grid cols4">'+gasBoxes+'</div></div>'+
-    '<div class="card"><h2>Estoque — Água</h2><div class="grid cols4">'+aguaBoxes+'</div></div>'+
-    '<div class="card"><h2>Estoque mínimo (alertas)</h2>'+
+    cardEst('gas')+'<h2>Estoque — Gás</h2>'+ajudaHtml('estoque','O estoque desconta sozinho quando uma venda é lançada (manual ou por planilha) e some junto quando você registra uma movimentação de entrada/saída aqui embaixo. Configure o \'Estoque mínimo\' pra receber alerta antes de faltar produto.')+'<div class="grid cols4">'+gasBoxes+'</div></div>'+
+    cardEst('agua')+'<h2>Estoque — Água</h2><div class="grid cols4">'+aguaBoxes+'</div></div>'+
+    cardEst('minimo')+'<h2>Estoque mínimo (alertas)</h2>'+
     '<div class="hint">Defina a partir de quantos cheios de cada item o sistema deve avisar que está acabando. Deixe 0 pra não avisar sobre aquele item.</div>'+
     '<form id="form-estoque-minimo"><div class="form-row">'+
     ['P5','P13','P20','P45'].map(t=>'<div><label>Mín. '+t+' cheio</label><input type="number" min="0" step="1" name="min_gas_'+t+'" value="'+((min.gas&&min.gas[t])||0)+'"></div>').join('')+
@@ -8816,9 +8838,9 @@ function viewEstoque(){
     '<div><label>Mín. Água D\'Fonte cheio</label><input type="number" min="0" step="1" name="min_agua_dfonte" value="'+((min.agua&&min.agua.dfonte)||0)+'"></div>'+
     '<div><label>Mín. Água Safira cheio</label><input type="number" min="0" step="1" name="min_agua_safira" value="'+((min.agua&&min.agua.safira)||0)+'"></div>'+
     '</div><button type="submit" class="btn small">Salvar mínimos</button></form></div>'+
-    '<div class="card"><h2>📦 Meta volume (compras de carga)</h2>'+metaVolumeEstoqueHtml()+'</div>'+
-    (function(){ const ab = pedidosEstoqueAbertos(); return ab.length ? '<div class="card"><h2>📋 Pedidos com entrega parcial</h2>'+ab.map(p=>'<div style="padding:4px 0;border-bottom:1px solid var(--border);"><strong>Pedido '+escapeHtmlCampanha(p.pedido)+'</strong>: '+Object.values(p.itens).map(i=>escapeHtmlCampanha(i.item)+' '+i.recebido+(i.pedido?' de '+i.pedido+(i.pedido>i.recebido?' (faltam '+(i.pedido-i.recebido)+')':' ✓'):'')).join(' · ')+'</div>').join('')+'</div>' : ''; })()+
-    '<div class="card"><h2>Lançar movimentação de estoque</h2>'+
+    cardEst('meta')+'<h2>📦 Meta volume (compras de carga)</h2>'+metaVolumeEstoqueHtml()+'</div>'+
+    (function(){ const ab = pedidosEstoqueAbertos(); return ab.length ? cardEst('pedidos')+'<h2>📋 Pedidos com entrega parcial</h2>'+ab.map(p=>'<div style="padding:4px 0;border-bottom:1px solid var(--border);"><strong>Pedido '+escapeHtmlCampanha(p.pedido)+'</strong>: '+Object.values(p.itens).map(i=>escapeHtmlCampanha(i.item)+' '+i.recebido+(i.pedido?' de '+i.pedido+(i.pedido>i.recebido?' (faltam '+(i.pedido-i.recebido)+')':' ✓'):'')).join(' · ')+'</div>').join('')+'</div>' : ''; })()+
+    cardEst('lancar')+'<h2>Lançar movimentação de estoque</h2>'+
     '<div class="hint">Use isto quando o fornecedor trouxer carga nova, ou pra registrar qualquer entrada/saída — fica no histórico com data, quantidade e quem lançou.</div>'+
     '<div class="import-conferencia-alert">⚠ Esse lançamento aqui é sempre manual e direto — não tem ligação com nenhuma venda. Se o estoque errado veio de uma venda lançada no produto errado, primeiro edite a venda em Vendas (ela já corrige o estoque sozinho, devolvendo o errado e descontando o certo). Só lance aqui pra fechar uma diferença que sobrou depois disso, ou pra ajustes que não vêm de venda nenhuma (perda, quebra, contagem física).</div>'+
     '<form id="form-estoque-mov"><div class="form-row">'+
@@ -8844,7 +8866,7 @@ function viewEstoque(){
     '<div class="hint" id="mov-devendo-preview" style="margin-top:4px;">Toda entrada de carga cheia costuma exigir devolver a mesma quantidade de vazio pro fornecedor. Preencha aqui só o que você realmente devolveu agora — a diferença fica registrada como dívida de vazio com o fornecedor.</div>'+
     '</div>'+
     '<button type="submit" class="btn">Lançar movimentação</button></form></div>'+
-    '<div class="card"><h2>Histórico de movimentações</h2>'+
+    cardEst('historico')+'<h2>Histórico de movimentações</h2>'+
     '<div class="form-row">'+
     '<div><label>De</label><input type="date" id="mov-filtro-de"></div>'+
     '<div><label>Até</label><input type="date" id="mov-filtro-ate"></div>'+
@@ -8854,7 +8876,7 @@ function viewEstoque(){
     '<div id="lista-mov-estoque-wrap">'+movimentacoesEstoqueTable(state.estoqueLancamentos.slice().sort((a,b)=>b.criadoEm-a.criadoEm).slice(0,80))+'</div>'+
     '<div class="hint" style="margin-top:8px;">Sem filtro mostra as 80 mais recentes. Use o período ou a busca pra procurar movimentações mais antigas.</div>'+
     '</div>'+
-    '<div class="card"><h2>Ajustar estoque manualmente</h2>'+
+    cardEst('ajustar')+'<h2>Ajustar estoque manualmente</h2>'+
     '<div class="hint">Use isto só pra corrigir uma contagem errada — não fica no histórico de movimentações. Para lançar chegada de fornecedor, use "Lançar movimentação" acima.</div>'+
     '<form id="form-estoque"><h3>Gás</h3><div class="form-row">'+gasInputs+'</div>'+
     '<h3>Água</h3><div class="form-row">'+
@@ -14419,7 +14441,7 @@ function attachHandlers(){
     const inputAberturaCaixa = document.getElementById('input-fechamento-abertura');
     const recalcularResumoCaixa = ()=>{
       const resumo = resumoCaixaDoDia(inputDataCaixa.value, parseValorBR(inputAberturaCaixa.value));
-      const linhasForma = Object.keys(resumo.porFormaPagamento).map(p=>'<tr><td>'+p+'</td><td>'+fmtMoney(resumo.porFormaPagamento[p])+'</td></tr>').join('') || '<tr><td colspan="2">Nenhuma venda nesse dia.</td></tr>';
+      const linhasForma = Object.keys(resumo.porFormaPagamento).map(p=>'<tr><td>'+pagamentoComIconeHtml(p)+'</td><td>'+fmtMoney(resumo.porFormaPagamento[p])+'</td></tr>').join('') || '<tr><td colspan="2">Nenhuma venda nesse dia.</td></tr>';
       document.getElementById('resumo-fechamento-caixa').innerHTML =
         '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Forma de pagamento</th><th>Total recebido</th></tr></thead><tbody>'+linhasForma+'</tbody></table></div>'+
         '<div class="hint" style="margin-top:8px;">Total de entradas (fiado e convênio só contam quando pagos): <strong>'+fmtMoney(resumo.totalVendas)+'</strong> · Despesas pagas hoje: <strong>'+fmtMoney(resumo.totalDespesas)+'</strong></div>'+
