@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "v23_14-10-2026";
+    var VERSAO_ATUAL = "v25_14-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -184,6 +184,7 @@ html[data-theme="dark"], html[data-theme="natal"]{
   --purple-tint:#241C3D;
 }
 html[data-theme="dark"] body, html[data-theme="natal"] body{background:var(--bg);}
+html[data-theme="dark"] .aviso-prazo, html[data-theme="natal"] .aviso-prazo{color:#fff !important;}
 html[data-theme="dark"] input, html[data-theme="dark"] select, html[data-theme="dark"] textarea, html[data-theme="natal"] input, html[data-theme="natal"] select, html[data-theme="natal"] textarea{background:var(--card);border-color:var(--border);color:var(--text);}
 html[data-theme="dark"] .badge.outro, html[data-theme="natal"] .badge.outro{background:#2A2245;color:#C4B0FA;}
 html[data-theme="dark"] .ajuda-conteudo, html[data-theme="natal"] .ajuda-conteudo{background:#2E260F;border-color:#8a6d00;color:var(--text2);}
@@ -297,7 +298,7 @@ details.card .pill{font-size:11px;font-weight:600;}
 .grid.cols2{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
 .grid.cols4{grid-template-columns:repeat(auto-fit,minmax(148px,1fr));}
 
-.metric{background:var(--blue-tint);border-radius:var(--radius);padding:14px 16px;border-left:4px solid var(--royal);display:flex;flex-direction:column;justify-content:center;min-height:58px;}
+.metric{background:var(--blue-tint);border-radius:var(--radius);padding:14px 16px;border-left:4px solid var(--royal);display:flex;flex-direction:column;justify-content:flex-start;min-height:58px;}
 .metric.metric-link{cursor:pointer;transition:filter .15s,transform .1s;}
 .metric.metric-link:hover{filter:brightness(0.96);}
 .metric.metric-link:active{transform:scale(0.98);}
@@ -884,7 +885,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "v23_14-10-2026";
+const APP_BUILD_HORARIO = "v25_14-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1994,10 +1995,10 @@ if(!window.__ROTA_PUBLICA__){
 const VAPID_PUBLIC_KEY = "BJhtEhjv3z9JMW44Yg3JsfoGYR4lNcINkr1fRzNLxvx-jzxtErj7EwqIavO8LkwIFFETGSg2NGZKTQjWo-xXA1s";
 
 const CANAIS = ['Portaria','WhatsApp','Venda Ativa','Ligação','Hub','Google'];
-const PAGAMENTOS = ['Dinheiro','Débito','Crédito','Convênio','Vale gás','Gás do povo','Pix','Abateu','Marcou/Fiado','Outros'];
+const PAGAMENTOS = ['Dinheiro','Débito','Crédito','Convênio','Vale gás','Gás do povo','Pix','Boleto bancário','Abateu','Marcou/Fiado','Outros'];
 const ICONES_PAGAMENTO = {
   'Dinheiro':'💵','Débito':'💳','Crédito':'💳','Convênio':'🏢','Vale gás':'🎫',
-  'Gás do povo':'🔥','Pix':'⚡','Abateu':'➖','Marcou/Fiado':'📒','Outros':'🔘'
+  'Gás do povo':'🔥','Pix':'⚡','Boleto bancário':'🧾','Abateu':'➖','Marcou/Fiado':'📒','Outros':'🔘'
 };
 function iconePagamento(p){ return ICONES_PAGAMENTO[p] || ''; }
 // Monta <option> de forma de pagamento com ícone no texto, mas o value continua o nome puro
@@ -6086,7 +6087,7 @@ function aPrazoDasVendas(lista){
 // Linha de aviso: quanto do total vendido ainda é "valor hipotético" a receber.
 function avisoAPrazoHtml(lista, pequeno){
   const r = aPrazoDasVendas(lista); if(r.total<=0.004) return '';
-  return '<div class="hint" style="'+(pequeno?'font-size:10px;':'margin-top:4px;')+'color:#7C3AED;">⏳ Inclui '+fmtMoney(r.total)+' a prazo'+(r.fiado>0&&r.conv>0?' (fiado '+fmtMoney(r.fiado)+' + convênio '+fmtMoney(r.conv)+')':(r.fiado>0?' (fiado)':' (convênio)'))+' — só entra no caixa quando pagarem</div>';
+  return '<div class="hint aviso-prazo" style="'+(pequeno?'font-size:10px;':'margin-top:4px;')+'color:#7C3AED;">⏳ Inclui '+fmtMoney(r.total)+' a prazo'+(r.fiado>0&&r.conv>0?' (fiado '+fmtMoney(r.fiado)+' + convênio '+fmtMoney(r.conv)+')':(r.fiado>0?' (fiado)':' (convênio)'))+' — só entra no caixa quando pagarem</div>';
 }
 // Clientes com fiado em aberto sem nenhuma movimentação (compra no fiado ou pagamento) há mais de `dias` dias.
 function fiadosParados(dias){
@@ -6739,6 +6740,7 @@ const PALAVRAS_PAGAMENTO_TEXTO_LIVRE = [
   [/cr[eé]dito/i, 'Crédito'],
   [/abateu/i, 'Abateu'],
   [/pix/i, 'Pix'],
+  [/boleto/i, 'Boleto bancário'],
   [/dinheiro/i, 'Dinheiro'],
   [/marcou|fiado/i, 'Marcou/Fiado']
 ];
