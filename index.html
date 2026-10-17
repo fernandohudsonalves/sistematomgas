@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "v27_14-10-2026";
+    var VERSAO_ATUAL = "v34_17-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -306,6 +306,12 @@ html[data-theme="dark"] .pg-deb, html[data-theme="natal"] .pg-deb{color:#3B6BFF;
 html[data-theme="dark"] .pg-conv, html[data-theme="natal"] .pg-conv{color:#FFEB3B;}
 html[data-theme="dark"] .pg-fiado, html[data-theme="natal"] .pg-fiado{color:#B266FF;}
 html[data-theme="dark"] .pg-abat, html[data-theme="natal"] .pg-abat{color:#e9c46a;}
+.rev-inp{width:100%;min-width:130px;padding:3px 6px !important;margin:0 !important;font-size:13px;}
+.rev-falta{border:2px solid #DC2626 !important;background:rgba(220,38,38,.14) !important;color:#DC2626 !important;font-weight:600;}
+.rev-falta::placeholder{color:#DC2626;opacity:.9;font-weight:600;}
+.rev-sim td:first-child{border-left:4px solid #f59e0b;}
+.rev-head td{background:rgba(245,158,11,.16);font-size:13px;}
+.tab-compacta th,.tab-compacta td{padding:3px 8px !important;line-height:1.2;}
 .metric{background:var(--blue-tint);border-radius:var(--radius);padding:14px 16px;border-left:4px solid var(--royal);display:flex;flex-direction:column;justify-content:flex-start;min-height:58px;}
 .metric.metric-link{cursor:pointer;transition:filter .15s,transform .1s;}
 .metric.metric-link:hover{filter:brightness(0.96);}
@@ -893,7 +899,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "v27_14-10-2026";
+const APP_BUILD_HORARIO = "v34_17-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -1258,7 +1264,7 @@ const RELATORIOS_SUBTABS = [
   {id:'pesquisa', label:'📝 Pesquisa de Clientes', modulo:'crm'},
   {id:'pesquisasmanuais', label:'🔗 Pesquisas Manuais', modulo:'crm'},
   {id:'novosclientes', label:'🆕 Novos Clientes', modulo:'crm'},
-  {id:'clientesincompletos', label:'🧩 Cadastro Incompleto', modulo:'nucleo'},
+  {id:'clientesincompletos', label:'🧩 Revisão de Cadastros', modulo:'nucleo'},
   {id:'painelacao', label:'🚨 Painel de Ação', modulo:'relatoriosgerenciais'},
   {id:'esg', label:'♻️ Controle ESG', modulo:'relatoriosgerenciais'},
   {id:'compararcampanhas', label:'📣 Comparar Campanhas', modulo:'crm'},
@@ -2014,6 +2020,10 @@ function iconePagamento(p){ return ICONES_PAGAMENTO[p] || ''; }
 // Dentro de <select>, não dá pra colorir só uma palavra (option não renderiza HTML/estilo).
 // Dentro do <select> a cor vai no texto da opção (classe pg-*, definida no CSS com variação pro tema claro/escuro).
 const CLASSE_OPTION_PAGAMENTO = {'Vale gás':'pg-vale','Gás do povo':'pg-gdp','Crédito':'pg-cred','Débito':'pg-deb','Convênio':'pg-conv','Marcou/Fiado':'pg-fiado','Abateu':'pg-abat'};
+function optPag(x){
+  const ic = iconePagamento(x), cls = CLASSE_OPTION_PAGAMENTO[x];
+  return '<option value="'+x+'"'+(cls?' class="'+cls+'"':'')+'>'+(ic?ic+' ':'')+x+'</option>';
+}
 function opcoesPagamentoComIcone(lista, texto){
   return '<option value="" selected disabled>'+texto+'</option>'+lista.map(x=>{
     const ic = iconePagamento(x);
@@ -2253,6 +2263,13 @@ function iconeVeiculoHtml(v, tamanho){
   const larguraBase = tipo==='moto' ? Math.round(t*0.7) : Math.round(t*0.6);
   return '<img src="data:image/png;base64,'+b64+'" width="'+larguraBase+'" style="vertical-align:middle;" alt="'+tipo+'">';
 }
+// <option> não aceita <img>: o mesmo ícone do sistema entra como imagem de fundo da linha.
+function optVeiculo(v){
+  const cor = v.corIcone || (v.corVerde ? '#16a34a' : '#1E3A8A');
+  const tipo = v.tipo==='pickup' ? 'pickup' : (v.tipo==='moto' ? 'moto' : 'carro');
+  const set = ICONES_VEICULO_B64[tipo], b64 = (cor.toLowerCase()==='#6b7280') ? set.cinza : set.azul;
+  return '<option value="'+v.id+'" style="background:url(data:image/png;base64,'+b64+') no-repeat 6px center;background-size:auto 16px;padding-left:32px;">'+v.nome+'</option>';
+}
 function iconeVeiculo(id){ const v=(state.veiculos||[]).find(x=>x.id===id); return v ? (iconeVeiculoHtml(v)+' '+v.nome) : ''; }
 function categoriasVeiculoDisponiveis(){ return state.categoriasDespesas.filter(cat=> categoriaParaceVeiculo(cat) || (state.categoriasVeiculoExtra||[]).includes(cat)); }
 
@@ -2351,6 +2368,33 @@ function pedidosEstoqueAbertos(){
     Object.keys(KG_GAS).forEach(t=>{ const q = Number(pc.itens&&pc.itens[t])||0; if(!q) return; const it = p.itens['Gás|'+t] || (p.itens['Gás|'+t] = {item:t, recebido:0, pedido:0}); it.pedido = Math.max(it.pedido, q); });
   });
   return Object.values(mapa).filter(p=>Object.values(p.itens).some(i=>i.pedido>i.recebido));
+}
+// Acompanhamento por nº de pedido: cheios recebidos x pedidos (falta / a mais) e vazios devolvidos ao fornecedor.
+function pedidosAcompanhamento(){
+  const mapa = {};
+  const get = ped=> mapa[ped] || (mapa[ped] = {pedido:ped, itens:{}, data:''});
+  const item = (p,tipo,chave,label)=>{ const k = tipo+'|'+chave; return p.itens[k] || (p.itens[k] = {item:label, recebido:0, pedido:0, vazDev:0}); };
+  (state.estoqueLancamentos||[]).forEach(l=>{
+    if(!l.pedido) return;
+    const p = get(l.pedido), q = Number(l.quantidade)||0;
+    if(l.estado==='Cheio' && l.direcao==='entrada'){ const it = item(p,l.tipo,l.itemChave,l.item); it.recebido += q; it.pedido = Math.max(it.pedido, Number(l.pedidoQtd)||0); }
+    else if(l.estado==='Vazio' && l.direcao==='saida'){ item(p,l.tipo,l.itemChave,l.item).vazDev += q; }
+    else return;
+    if((l.data||'')>p.data) p.data = l.data;
+  });
+  (state.pedidosCarga||[]).forEach(pc=>{
+    const p = get(pc.pedido); if(pc.dataPrevista && !p.data) p.data = pc.dataPrevista;
+    Object.keys(KG_GAS).forEach(t=>{ const q = Number(pc.itens&&pc.itens[t])||0; if(q){ const it = item(p,'Gás',t,t); it.pedido = Math.max(it.pedido, q); } });
+  });
+  return Object.values(mapa).map(p=>{
+    p.lista = Object.values(p.itens).map(i=>Object.assign(i,{
+      faltam: Math.max(0, i.pedido-i.recebido),
+      aMais: i.pedido>0 ? Math.max(0, i.recebido-i.pedido) : 0,
+      vazFaltam: Math.max(0, i.recebido-i.vazDev)
+    }));
+    p.pendente = p.lista.some(i=>i.faltam>0 || i.aMais>0 || i.vazFaltam>0);
+    return p;
+  }).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
 }
 function itensAbaixoDoMinimo(){
   if(!state.estoqueMinimo) return [];
@@ -2627,6 +2671,40 @@ function fmtDate(d){ const p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
 // a partir de ~21h. Antes essa função tinha esse bug e causava venda lançada à noite ficar com a
 // data errada (um dia à frente), o que gerava diferença entre "Vendas do dia" e os relatórios por
 // período quando alguém filtrava pelo dia certo depois.
+// Data temporária de lançamento: por 30 min, os formulários de venda já abrem nessa data.
+let dataLancTempMem = null;
+function dataLancTemp(){
+  let o = dataLancTempMem;
+  try{ if(!o) o = JSON.parse(localStorage.getItem('tomgas_dataLancTemp')||'null'); }catch(e){}
+  if(o && o.data && o.ate>Date.now()){ dataLancTempMem = o; return o; }
+  dataLancTempMem = null; try{ localStorage.removeItem('tomgas_dataLancTemp'); }catch(e){}
+  return null;
+}
+function dataLancamentoPadrao(){ const t = dataLancTemp(); return t ? t.data : todayStr(); }
+function htmlDataTempVendas(){
+  const t = dataLancTemp(), d = new Date(Date.now()-86400000);
+  const ontem = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(t){
+    const h = new Date(t.ate), hh = String(h.getHours()).padStart(2,'0')+':'+String(h.getMinutes()).padStart(2,'0');
+    return '<div class="card" style="border:2px solid var(--amber,#f59e0b);"><strong>📅 Lançando vendas na data '+fmtDate(t.data)+'</strong> <span class="hint" style="display:inline;">(ativo até '+hh+' — os formulários de venda já abrem nessa data)</span> '+
+      '<button type="button" class="btn small ghost" id="btn-data-temp-desativar" style="margin-left:8px;">Desativar</button></div>';
+  }
+  return '<div class="card"><details><summary><strong>📅 Lançar vendas de outro dia (data fixa por 30 min)</strong></summary>'+
+    '<div class="hint" style="margin-top:6px;">Escolha a data e ative: por 30 minutos todo formulário de venda (manual, planilha, falta retirar, importação) já vem preenchido com ela.</div>'+
+    '<div class="form-row" style="margin-top:6px;max-width:360px;"><div><label>Data</label><input type="date" id="input-data-temp" value="'+ontem+'" max="'+todayStr()+'"></div></div>'+
+    '<button type="button" class="btn small" id="btn-data-temp-ativar" style="margin-top:6px;">Ativar por 30 min</button></details></div>';
+}
+document.addEventListener('click', e=>{
+  if(e.target.closest('#btn-data-temp-ativar')){
+    const v = (document.getElementById('input-data-temp')||{}).value; if(!v) return;
+    dataLancTempMem = {data:v, ate:Date.now()+30*60*1000};
+    try{ localStorage.setItem('tomgas_dataLancTemp', JSON.stringify(dataLancTempMem)); }catch(er){}
+    renderAll();
+  } else if(e.target.closest('#btn-data-temp-desativar')){
+    dataLancTempMem = null; try{ localStorage.removeItem('tomgas_dataLancTemp'); }catch(er){}
+    renderAll();
+  }
+});
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 // Corrige a data gravada errada por causa do bug (já corrigido) do fuso horário em todayStr() —
 // calculava em UTC, então perto das 21h-23h59 no horário de Brasília o sistema achava que já era
@@ -6400,7 +6478,7 @@ function preencherFormEdicaoVenda(v, fvEl){
     fvEl.parentNode.insertBefore(avisoIrmaos, fvEl);
   }
   avisoIrmaos.innerHTML = itensIrmaos.length===0 ? '' :
-    '<div class="hint" style="background:var(--blue-tint);padding:8px 10px;border-radius:8px;margin-bottom:10px;">🛒 Essa venda tem mais '+itensIrmaos.length+' item(ns) na mesma compra — edite um de cada vez: '+
+    '<div class="hint" style="background:var(--blue-tint);padding:8px 10px;border-radius:8px;margin-bottom:10px;">🛒 Essa venda tem mais '+itensIrmaos.length+' item(ns) na mesma compra — edite um de cada vez (se mudar a <strong>data</strong> aqui, os outros itens da mesma compra acompanham): '+
     itensIrmaos.map(ir=>'<button type="button" class="act-link" data-editar-item-irmao="'+ir.id+'">✎ '+escapeHtmlCampanha(ir.produto)+'</button>').join(' · ')+'</div>';
   avisoIrmaos.querySelectorAll('[data-editar-item-irmao]').forEach(btn=>btn.onclick=()=>{
     const vv = state.vendas.find(x=>x.id===btn.dataset.editarItemIrmao);
@@ -7383,8 +7461,8 @@ function criarLinhaPlanilhaVenda(dataPadrao){
     '<td><select class="pv-canal" style="min-width:110px;"><option value="">-</option>'+CANAIS.map(c=>'<option>'+c+'</option>').join('')+'</select></td>'+
     '<td><input type="number" class="pv-qtd" min="1" value="1"></td>'+
     '<td><input type="number" class="pv-valor" min="0" step="0.01" placeholder="0,00"></td>'+
-    '<td><select class="pv-pagamento" style="min-width:130px;"><option value="">Selecione</option>'+PAGAMENTOS.map(p=>'<option>'+p+'</option>').join('')+'</select></td>'+
-    '<td><select class="pv-pagamento2" style="min-width:130px;" title="Só preencha na 1ª linha do cliente, se a compra toda tiver 2 formas de pagamento"><option value="">(sem dividir)</option>'+PAGAMENTOS.filter(p=>p!=='Abateu').map(p=>'<option>'+p+'</option>').join('')+'</select></td>'+
+    '<td><select class="pv-pagamento" style="min-width:130px;"><option value="">Selecione</option>'+PAGAMENTOS.map(optPag).join('')+'</select></td>'+
+    '<td><select class="pv-pagamento2" style="min-width:130px;" title="Só preencha na 1ª linha do cliente, se a compra toda tiver 2 formas de pagamento"><option value="">(sem dividir)</option>'+PAGAMENTOS.filter(p=>p!=='Abateu').map(optPag).join('')+'</select></td>'+
     '<td><input type="number" class="pv-valorforma1" min="0" step="0.01" placeholder="R$ na 1ª forma" title="Quanto foi pago na 1ª forma — o resto vai pra 2ª forma. Só na 1ª linha do cliente."></td>'+
     '<td><select class="pv-entrega" style="min-width:130px;">'+TIPOS_ENTREGA.map(t=>'<option'+(t==='Retirada'?' selected':'')+'>'+t+'</option>').join('')+'</select></td>'+
     '<td><select class="pv-entregador" style="min-width:140px;" title="Só é usado quando a Entrega é de verdade (a pé/Celta/moto/Strada) — manda o link da entrega pra esse entregador no WhatsApp ao salvar">'+entregadoresOptionsHtml('')+'</select></td>'+
@@ -7687,11 +7765,11 @@ function viewVendas(){
     '<div class="card metric-link" data-ir-relatorio="notas" style="border-left:4px solid #8B5CF6;cursor:pointer;">'+
     '<strong style="color:#8B5CF6;">📋 Notas para o Bling — '+diasPendentesNF+' dia(s) pendente(s)</strong>'+
     '<div class="hint" style="margin-top:4px;">Ainda tem nota fiscal de gás pendente de lançar no Bling em '+diasPendentesNF+' dia(s). Clique aqui para abrir o relatório e concluir.</div></div>';
-  return cardNotasBling+cardVendasDuplicadasTopo+cardVendasSeparadas+htmlPlanilhaVendas(hoje)+'<div class="card"><details id="details-venda-manual"'+(vendaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
+  return htmlDataTempVendas()+cardNotasBling+cardVendasDuplicadasTopo+cardVendasSeparadas+htmlPlanilhaVendas(hoje)+'<div class="card"><details id="details-venda-manual"'+(vendaManualAberta?' open':'')+'><summary><strong>Lançamento manual (clique para abrir)</strong></summary><h2 style="margin-top:10px;">Registrar venda</h2>'+
     '<div class="hint">Editando uma venda daqui (✎ no Histórico): se você corrigir o produto ou a quantidade de uma venda que já tinha descontado o estoque, o sistema já corrige sozinho — devolve o que foi descontado errado e desconta o certo. Não precisa mexer no Estoque manualmente. Exceção: vendas bem antigas, de antes desse controle existir no sistema, podem não reverter sozinhas — depois de salvar, confira o Estoque pra garantir.</div>'+
     '<form id="form-venda">'+
     '<div class="form-row">'+
-    '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
+    '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+dataLancamentoPadrao()+'" required></div>'+
     '<div><label>Cliente (opcional)</label><input list="lista-clientes" name="cliente" id="input-cliente-venda" placeholder="Nome do cliente"><datalist id="lista-clientes">'+clienteOpts+'</datalist>'+
     '<button type="button" class="link-btn btn-buscar-cliente" data-alvo="input-cliente-venda">🔍 buscar na lista</button> '+
     '<button type="button" class="link-btn" id="btn-novo-cliente-venda">+ novo cliente</button>'+htmlEnderecoEntregaBox('end-ent-venda','input-cliente-venda')+'</div>'+
@@ -7879,7 +7957,7 @@ function viewFaltaRetirar(){
     '<form id="form-falta-retirar-novo" style="margin-top:10px;">'+
     '<div class="form-row">'+
     '<div><label>Cliente <span class="req">*</span></label><input list="lista-clientes-faltaretirar" name="cliente" placeholder="Nome do cliente" required><datalist id="lista-clientes-faltaretirar">'+clienteOpts+'</datalist></div>'+
-    '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+hoje+'" required></div>'+
+    '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+dataLancamentoPadrao()+'" required></div>'+
     '</div>'+
     '<div class="form-row">'+
     '<div><label>Produto <span class="req">*</span></label><select name="categoria" required>'+opcoesComPlaceholder(CATEGORIAS_CONTROLADAS,'Selecione o produto')+'</select></div>'+
@@ -7887,7 +7965,7 @@ function viewFaltaRetirar(){
     '</div>'+
     '<div><label>Observação (opcional)</label><input type="text" name="obs" placeholder="Ex: aproveitou o preço, vai retirar quando acabar o de casa"></div>'+
     '<label class="checkbox-item"><input type="checkbox" name="vasilhame_vazio_deixado"> O vasilhame vazio dessa carga já foi deixado no depósito</label>'+
-    '<div><label>Como já foi pago (opcional)</label><select name="pagamento_ja_recebido"><option value="">Não informar agora</option>'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(p=>'<option>'+p+'</option>').join('')+'</select></div>'+
+    '<div><label>Como já foi pago (opcional)</label><select name="pagamento_ja_recebido"><option value="">Não informar agora</option>'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(optPag).join('')+'</select></div>'+
     '<button type="submit" class="btn" style="margin-top:10px;">Registrar falta retirar</button>'+
     '</form></details></div>'+
     '<div class="card"><h2>Pendentes ('+pendenciasRetirada.length+')</h2>'+
@@ -8012,7 +8090,7 @@ function linhaPlanilhaDespesaHtml(dataPadrao){
     '<td><div style="display:flex;gap:4px;align-items:center;"><select class="pd-conta" style="min-width:170px;">'+optsContaDespesa()+'</select>'+
     '<button type="button" class="btn small ghost pd-nova-conta" title="Cadastrar conta nova" style="padding:4px 8px;">+</button></div></td>'+
     '<td><input type="text" class="pd-descricao" placeholder="Descrição" style="min-width:220px;"></td>'+
-    '<td><select class="pd-veiculo" style="min-width:150px;"><option value="">Não é de veículo</option>'+(state.veiculos||[]).map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></td>'+
+    '<td><select class="pd-veiculo" style="min-width:150px;"><option value="">Não é de veículo</option>'+(state.veiculos||[]).map(v=>optVeiculo(v)).join('')+'</select></td>'+
     '<td><button type="button" class="del-link pd-remover-linha" title="Remover linha">🗑</button></td>'+
     '</tr>';
 }
@@ -8127,7 +8205,7 @@ function viewDespesas(){
     '<input type="text" id="nova-cat-despesa-input" placeholder="Nome da nova categoria">'+
     '<button type="button" class="btn small ghost" id="btn-add-cat-despesa">Adicionar</button></div></div>'+
     '<label>Descrição (opcional)</label><input type="text" name="descricao" placeholder="Ex: compra de vasilhames novos">'+
-    '<div id="wrap-veiculo-despesa" style="display:none;"><label>Qual veículo é essa despesa?</label><select name="veiculoId"><option value="">Não é de veículo</option>'+state.veiculos.map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></div>'+
+    '<div id="wrap-veiculo-despesa" style="display:none;"><label>Qual veículo é essa despesa?</label><select name="veiculoId"><option value="">Não é de veículo</option>'+state.veiculos.map(v=>optVeiculo(v)).join('')+'</select></div>'+
     '<button type="submit" class="btn">'+(importTextoDespesasWizard && importTextoDespesasWizard.indice<importTextoDespesasWizard.blocos.length ? 'Confirmar despesa e ir pra próxima ('+(importTextoDespesasWizard.indice+1)+'/'+importTextoDespesasWizard.blocos.length+')' : 'Registrar despesa')+'</button></form></details></div>'+
     '<div class="card"><h2>Despesas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('despesas','Registre aqui os gastos do dia (compras, contas, manutenção). Assim como as vendas, a maior parte pode vir automaticamente pela importação da planilha Excel.')+
     '<div id="lista-despesas-hoje-wrap">'+despesasTable(despesasHoje)+'</div></div>'+
@@ -8138,13 +8216,15 @@ function viewDespesas(){
     '<div><label>&nbsp;</label><button type="button" class="btn small ghost" id="despesa-filtro-limpar">Ver todas (sem filtro de data)</button></div>'+
     '</div>'+
     '<input type="text" id="busca-despesa" class="searchbar" placeholder="Buscar por descrição ou categoria...">'+
-    '<div id="lista-despesas-wrap">'+despesasTable(state.despesas.filter(d=>d.data>=firstOfMonth() && d.data<=hoje).slice().sort((a,b)=>b.criadoEm-a.criadoEm))+'</div>'+
+    '<div id="lista-despesas-wrap">'+despesasTable(state.despesas.filter(d=>d.data>=firstOfMonth() && d.data<=hoje).slice().sort((a,b)=>b.criadoEm-a.criadoEm), true)+'</div>'+
     '<div class="hint" style="margin-top:8px;">Mostrando o período selecionado acima. Use a busca para refinar dentro do período, ou clique em "ver todas" pra procurar em qualquer data.</div>'+
     '</div>';
 }
-function despesasTable(list){
+function despesasTable(list, paginar){
   if(list.length===0) return '<div class="empty">Nenhuma despesa encontrada.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Conta</th><th>Veículo</th><th>Valor</th><th></th></tr></thead><tbody>'+
+  let barra = '';
+  if(paginar){ const tot = list.length; list = pgFatia('desp', list); barra = pgBarra('desp', tot, '_pgRedrawDespesas'); }
+  return barra+'<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Conta</th><th>Veículo</th><th>Valor</th><th></th></tr></thead><tbody>'+
   list.map(d=>{
     const v = d.veiculoId ? (state.veiculos||[]).find(x=>x.id===d.veiculoId) : null;
     const contaBadge = d.conta ? '<span class="badge" style="background:'+(contaEhPessoal(d.conta)?'var(--amber-tint)':'var(--blue-tint)')+';color:'+(contaEhPessoal(d.conta)?'var(--amber)':'var(--royal)')+';">'+d.conta+'</span>' : '—';
@@ -8247,12 +8327,13 @@ function etiquetaVencimentoHtml(conta){
 }
 function contasPagarTable(lista){
   if(lista.length===0) return '<div class="empty">Nenhuma conta encontrada.</div>';
+  const totCp = lista.length; lista = pgFatia('cp', lista);
   const linhas = lista.map(c=>
     '<tr><td>'+fmtDate(c.vencimento)+'</td><td>'+escapeHtmlCampanha(c.descricao)+'</td><td>'+escapeHtmlCampanha(c.categoria||'')+'</td><td>'+fmtMoney(c.valor)+'</td><td>'+etiquetaVencimentoHtml(c)+'</td>'+
     '<td class="cel-acoes">'+(c.status!=='pago'?'<button type="button" class="btn small green" data-pagar-conta="'+c.id+'">✅ Marcar paga</button>':'<span class="hint">pago em '+fmtDate(c.pagoEm)+'</span>')+
     ' <button class="act-link" data-edit-conta-pagar="'+c.id+'">✎</button><button class="del-link" data-del-conta-pagar="'+c.id+'">🗑</button></td></tr>'
   ).join('');
-  return '<div class="table-wrap"><table><thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
+  return pgBarra('cp', totCp, '_pgRedrawContasPagar')+'<div class="table-wrap"><table><thead><tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
 }
 function viewContasPagar(){
   const editando = editContaPagarId ? state.contasPagar.find(x=>x.id===editContaPagarId) : null;
@@ -8761,7 +8842,8 @@ function viewMapaDeposito(){
 }
 function movimentacoesEstoqueTable(lista){
   if(lista.length===0) return '<div class="empty">Nenhuma movimentação encontrada.</div>';
-  return '<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:50%;"><col style="width:24%;"><col style="width:26%;"></colgroup><thead><tr><th>Item</th><th>Mov. / Por</th><th></th></tr></thead><tbody>'+
+  const totMov = lista.length; lista = pgFatia('mov', lista);
+  return pgBarra('mov', totMov, '_pgRedrawMovEstoque')+'<div class="table-wrap tabela-vendas"><table><colgroup><col style="width:50%;"><col style="width:24%;"><col style="width:26%;"></colgroup><thead><tr><th>Item</th><th>Mov. / Por</th><th></th></tr></thead><tbody>'+
   lista.map(l=>{
     const tituloItem = l.item+' — '+l.estado+' ('+l.tipo+') · '+fmtDate(l.data)+(l.motivo?' · '+l.motivo:'');
     return '<tr><td title="'+escapeHtmlCampanha(tituloItem)+'">'+l.item+' — '+l.estado+' <span class="hint">('+l.tipo+')</span><br><span class="hint" style="font-size:10px;">'+fmtDate(l.data)+(l.pedido?' · Pedido '+escapeHtmlCampanha(l.pedido):'')+(l.motivo?' · '+l.motivo:'')+'</span></td>'+
@@ -8852,8 +8934,18 @@ function viewEstoque(){
     '<div><label>Mín. Água Safira cheio</label><input type="number" min="0" step="1" name="min_agua_safira" value="'+((min.agua&&min.agua.safira)||0)+'"></div>'+
     '</div><button type="submit" class="btn small">Salvar mínimos</button></form></div>'+
     cardEst('meta')+'<h2>📦 Meta volume (compras de carga)</h2>'+metaVolumeEstoqueHtml()+'</div>'+
-    (function(){ const ab = pedidosEstoqueAbertos(); return ab.length ? cardEst('pedidos')+'<h2>📋 Pedidos com entrega parcial</h2>'+ab.map(p=>'<div style="padding:4px 0;border-bottom:1px solid var(--border);"><strong>Pedido '+escapeHtmlCampanha(p.pedido)+'</strong>: '+Object.values(p.itens).map(i=>escapeHtmlCampanha(i.item)+' '+i.recebido+(i.pedido?' de '+i.pedido+(i.pedido>i.recebido?' (faltam '+(i.pedido-i.recebido)+')':' ✓'):'')).join(' · ')+'</div>').join('')+'</div>' : ''; })()+
-    cardEst('lancar')+'<h2>Lançar movimentação de estoque</h2>'+
+    (function(){
+      const todos = pedidosAcompanhamento(), pend = todos.filter(p=>p.pendente); if(!todos.length) return '';
+      const credito = {}; todos.forEach(p=>p.lista.forEach(i=>{ if(i.aMais>0) credito[i.item] = (credito[i.item]||0)+i.aMais; }));
+      const linha = p=>'<div style="padding:6px 0;border-bottom:1px solid var(--border);"><strong>Pedido '+escapeHtmlCampanha(p.pedido)+'</strong>'+(p.data?' <span class="hint" style="display:inline;">('+fmtDate(p.data)+')</span>':'')+
+        p.lista.map(i=>'<div style="margin-left:10px;font-size:13px;">'+escapeHtmlCampanha(i.item)+': recebeu <strong>'+i.recebido+'</strong>'+(i.pedido?' de '+i.pedido:'')+
+          (i.faltam>0?' — <span style="color:var(--danger);font-weight:700;">faltam '+i.faltam+' chegar</span>':(i.aMais>0?' — <span style="color:#d97706;font-weight:700;">'+i.aMais+' a mais (abate no próximo pedido)</span>':(i.pedido?' ✓':'')))+
+          (i.recebido>0?' · vazios devolvidos <strong>'+i.vazDev+'</strong>'+(i.vazFaltam>0?' — <span style="color:var(--danger);font-weight:700;">falta devolver '+i.vazFaltam+'</span>':' ✓'):'')+'</div>').join('')+'</div>';
+      return cardEst('pedidos')+'<h2>📋 Pedidos de carga — o que falta chegar e devolver'+(pend.length?' ('+pend.length+')':'')+'</h2>'+
+        (Object.keys(credito).length?'<div class="import-conferencia-alert">Crédito de cargas a mais, a abater no próximo pedido: '+Object.entries(credito).map(e=>e[0]+' +'+e[1]).join(' · ')+'</div>':'')+
+        (pend.length?pend.map(linha).join(''):'<div class="empty">Todos os pedidos estão completos e com vazios devolvidos ✓</div>')+
+        '<div class="hint" style="margin-top:6px;">Vale só para movimentações lançadas com o nº do pedido. A dívida total de vazios com o fornecedor continua no aviso vermelho no topo.</div></div>';
+    })()+    cardEst('lancar')+'<h2>Lançar movimentação de estoque</h2>'+
     '<div class="hint">Use isto quando o fornecedor trouxer carga nova, ou pra registrar qualquer entrada/saída — fica no histórico com data, quantidade e quem lançou.</div>'+
     '<div class="import-conferencia-alert">⚠ Esse lançamento aqui é sempre manual e direto — não tem ligação com nenhuma venda. Se o estoque errado veio de uma venda lançada no produto errado, primeiro edite a venda em Vendas (ela já corrige o estoque sozinho, devolvendo o errado e descontando o certo). Só lance aqui pra fechar uma diferença que sobrou depois disso, ou pra ajustes que não vêm de venda nenhuma (perda, quebra, contagem física).</div>'+
     '<form id="form-estoque-mov"><div class="form-row">'+
@@ -8886,8 +8978,8 @@ function viewEstoque(){
     '<div><label>&nbsp;</label><button type="button" class="btn small ghost" id="mov-filtro-limpar">Limpar filtro</button></div>'+
     '</div>'+
     '<input type="text" id="busca-mov-estoque" class="searchbar" placeholder="Buscar por item, motivo ou quem lançou...">'+
-    '<div id="lista-mov-estoque-wrap">'+movimentacoesEstoqueTable(state.estoqueLancamentos.slice().sort((a,b)=>b.criadoEm-a.criadoEm).slice(0,80))+'</div>'+
-    '<div class="hint" style="margin-top:8px;">Sem filtro mostra as 80 mais recentes. Use o período ou a busca pra procurar movimentações mais antigas.</div>'+
+    '<div id="lista-mov-estoque-wrap">'+movimentacoesEstoqueTable(state.estoqueLancamentos.slice().sort((a,b)=>b.criadoEm-a.criadoEm))+'</div>'+
+    '<div class="hint" style="margin-top:8px;">Mostra as mais recentes primeiro. Use o período ou a busca pra procurar movimentações mais antigas.</div>'+
     '</div>'+
     cardEst('ajustar')+'<h2>Ajustar estoque manualmente</h2>'+
     '<div class="hint">Use isto só pra corrigir uma contagem errada — não fica no histórico de movimentações. Para lançar chegada de fornecedor, use "Lançar movimentação" acima.</div>'+
@@ -9615,11 +9707,11 @@ function viewLGPD(){
 }
 function viewLogAtividades(){
   const lista = (state.logAtividades||[]).slice().reverse().slice(0,200);
-  const linhas = lista.map(l=>'<tr><td>'+new Date(l.quando).toLocaleString('pt-BR')+'</td><td>'+escapeHtmlCampanha(l.usuario||'—')+'</td><td>'+escapeHtmlCampanha(l.area||'—')+'</td></tr>').join('');
+  const linhas = pgFatia('log', lista).map(l=>'<tr><td>'+new Date(l.quando).toLocaleString('pt-BR')+'</td><td>'+escapeHtmlCampanha(l.usuario||'—')+'</td><td>'+escapeHtmlCampanha(l.area||'—')+'</td></tr>').join('');
   return '<div class="card"><details id="details-log-atividades"><summary><h2 style="display:inline;">🗒️ Log de atividades</h2></summary>'+
     '<div class="hint" style="margin-top:8px;">Mostra quem mexeu em quê e quando (últimos 200 registros).</div>'+
     (lista.length===0 ? '<div class="empty">Nenhuma atividade registrada ainda.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Quando</th><th>Usuário</th><th>Área alterada</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    pgBarra('log', lista.length, 'renderAll')+'<div class="table-wrap"><table><thead><tr><th>Quando</th><th>Usuário</th><th>Área alterada</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</details></div>';
 }
 function viewRelatorios(){
@@ -9685,7 +9777,7 @@ function relatorioCreditos(){
     '<datalist id="lista-clientes-credito">'+clientesAZ().map(c=>'<option value="'+c.nome+'">').join('')+'</datalist></div>'+
     '<div><label>Valor (R$) <span class="req">*</span></label><input type="number" step="0.01" name="valor" required></div>'+
     '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+todayStr()+'" required></div>'+
-    '<div><label>Forma de pagamento</label><select name="forma_pagamento"><option value="">— não se aplica —</option>'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado'&&p!=='Abateu').map(p=>'<option>'+p+'</option>').join('')+'</select></div></div>'+
+    '<div><label>Forma de pagamento</label><select name="forma_pagamento"><option value="">— não se aplica —</option>'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado'&&p!=='Abateu').map(optPag).join('')+'</select></div></div>'+
     '<label>Observação</label><input type="text" name="obs" placeholder="Ex: pagou 150 numa compra de 130, sobrou 20 de crédito">'+
     '<button type="submit" class="btn small">Lançar</button></form>'+
     '<h3 style="margin-top:16px;">Créditos por cliente</h3>'+
@@ -9940,7 +10032,7 @@ function relatorioFretes(){
     '<div><label>De</label><input type="date" id="rfr-de" value="'+firstOfMonth()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rfr-ate" value="'+todayStr()+'"></div>'+
     '<div><label>Meio de entrega</label><select id="rfr-tipo"><option value="">Todos</option>'+TIPOS_ENTREGA.map(t=>'<option>'+t+'</option>').join('')+'</select></div>'+
-    '<div><label>Forma de pagamento</label><select id="rfr-pagamento"><option value="">Todas</option>'+PAGAMENTOS.map(p=>'<option>'+p+'</option>').join('')+'</select></div></div>'+
+    '<div><label>Forma de pagamento</label><select id="rfr-pagamento"><option value="">Todas</option>'+PAGAMENTOS.map(optPag).join('')+'</select></div></div>'+
     '<button class="btn small ghost" id="rfr-filtrar">Filtrar</button><div id="rfr-resultado" style="margin-top:16px;"></div>';
 }
 function ehDespesaCombustivel(d){ return chaveNormalizada(d.categoria||'').includes('combust'); }
@@ -9949,7 +10041,7 @@ function relatorioCombustivelFrete(){
     '<h3>Filtrar</h3><div class="form-row">'+
     '<div><label>De</label><input type="date" id="rcf-de" value="'+firstOfMonth()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rcf-ate" value="'+todayStr()+'"></div>'+
-    '<div><label>Veículo (opcional)</label><select id="rcf-veiculo"><option value="">Todos</option>'+state.veiculos.map(v=>'<option value="'+v.id+'">'+v.icone+' '+v.nome+'</option>').join('')+'</select></div>'+
+    '<div><label>Veículo (opcional)</label><select id="rcf-veiculo"><option value="">Todos</option>'+state.veiculos.map(v=>optVeiculo(v)).join('')+'</select></div>'+
     '</div>'+
     '<button class="btn small ghost" id="rcf-filtrar">Filtrar</button><div id="rcf-resultado" style="margin-top:16px;"></div>';
 }
@@ -10171,6 +10263,7 @@ function relatorioResumoDia(){
     '</div>';
 }
 let margemDe = null, margemAte = null;
+let mgPorPagina = 30, mgPagina = 1;
 function relatorioMargem(){
   const de = margemDe || firstOfMonth(), ate = margemAte || todayStr();
   const custos = state.custosProdutos || {}, mapa = {};
@@ -10180,31 +10273,41 @@ function relatorioMargem(){
   });
   const linhas = Object.entries(mapa).sort((a,b)=>b[1].valor-a[1].valor);
   let totVenda = 0, totLucro = 0;
-  const html = linhas.map(([nome,m])=>{
+  linhas.forEach(([nome,m])=>{ const c = Number(custos[nome]); if(custos[nome]!=null && custos[nome]!=='' && !isNaN(c) && c>0){ totVenda += m.valor; totLucro += m.valor - c*m.qtd; } });
+  const totalPag = Math.max(1, Math.ceil(linhas.length/mgPorPagina)); if(mgPagina>totalPag) mgPagina = totalPag;
+  const html = linhas.slice((mgPagina-1)*mgPorPagina, mgPagina*mgPorPagina).map(([nome,m])=>{
     const custo = Number(custos[nome]); const temCusto = custos[nome]!=null && custos[nome]!=='' && !isNaN(custo) && custo>0;
     const lucro = temCusto ? m.valor - custo*m.qtd : null;
-    if(temCusto){ totVenda += m.valor; totLucro += lucro; }
     return '<tr><td>'+escapeHtmlCampanha(nome)+'</td><td>'+m.qtd+'</td><td>'+fmtMoney(m.valor)+'</td><td>'+fmtMoney(m.qtd?m.valor/m.qtd:0)+'</td>'+
-      '<td><input type="number" min="0" step="0.01" data-custo-produto="'+escapeHtmlCampanha(nome)+'" value="'+(temCusto?custo:'')+'" placeholder="custo" style="width:80px;"></td>'+
+      '<td><input type="number" min="0" step="0.01" data-custo-produto="'+escapeHtmlCampanha(nome)+'" value="'+(temCusto?custo:'')+'" placeholder="custo" style="width:80px;padding:2px 6px;margin:0;"></td>'+
       '<td style="font-weight:700;color:'+(lucro==null?'var(--text3)':(lucro>=0?'var(--green,#16A34A)':'var(--danger)'))+';">'+(lucro==null?'—':fmtMoney(lucro))+'</td>'+
       '<td>'+(lucro==null||m.valor<=0?'—':(lucro/m.valor*100).toFixed(1)+'%')+'</td></tr>';
   }).join('');
   return '<div class="card"><h2>📈 Lucro por produto</h2><div class="hint">Informe quanto custa cada unidade (preço de compra) uma vez só — fica salvo. O lucro = vendido − custo × quantidade, no período. Vendas a prazo contam como vendidas.</div>'+
     '<div class="form-row" style="margin-top:8px;"><div><label>De</label><input type="date" id="mg-de" value="'+de+'"></div><div><label>Até</label><input type="date" id="mg-ate" value="'+ate+'"></div></div>'+
-    (linhas.length ? '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Qtd</th><th>Vendido</th><th>Preço médio</th><th>Custo unit.</th><th>Lucro</th><th>Margem</th></tr></thead><tbody>'+html+'</tbody></table></div>'+
+    (linhas.length ? '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0;"><label style="margin:0;">Mostrar <select id="mg-porpag" style="width:auto;display:inline-block;">'+[30,50,100,200].map(n=>'<option value="'+n+'"'+(n===mgPorPagina?' selected':'')+'>'+n+'</option>').join('')+'</select> itens por página</label>'+
+      '<span class="hint" style="margin:0;">'+(totalPag>1?('Página '+mgPagina+' de '+totalPag+' · '):'')+linhas.length+' produto(s)</span>'+
+      (totalPag>1?'<button type="button" class="btn small ghost" data-mg-pag="-1"'+(mgPagina<=1?' disabled':'')+'>◀ Anterior</button><button type="button" class="btn small ghost" data-mg-pag="1"'+(mgPagina>=totalPag?' disabled':'')+'>Próxima ▶</button>':'')+'</div>'+
+      '<div class="table-wrap tab-compacta"><table><thead><tr><th>Produto</th><th>Qtd</th><th>Vendido</th><th>Preço médio</th><th>Custo unit.</th><th>Lucro</th><th>Margem</th></tr></thead><tbody>'+html+'</tbody></table></div>'+
       '<button type="button" class="btn small" id="mg-salvar" style="margin-top:8px;">Salvar custos</button>'+
       (totVenda>0?'<div class="hint" style="margin-top:8px;">Nos produtos com custo informado: vendido <strong>'+fmtMoney(totVenda)+'</strong> · lucro <strong>'+fmtMoney(totLucro)+'</strong> · margem <strong>'+(totLucro/totVenda*100).toFixed(1)+'%</strong></div>':'')
       : '<div class="empty">Nenhuma venda no período.</div>')+'</div>';
 }
-document.addEventListener('change', e=>{
-  if(e.target.id==='mg-de'){ margemDe = e.target.value||null; renderAll(); }
+document.addEventListener('change', async e=>{
+  if(e.target.id==='mg-porpag'){ await salvarCustosVisiveis(); mgPorPagina = Number(e.target.value)||30; mgPagina = 1; renderAll(); }
+  else if(e.target.id==='mg-de'){ margemDe = e.target.value||null; renderAll(); }
   else if(e.target.id==='mg-ate'){ margemAte = e.target.value||null; renderAll(); }
 });
-document.addEventListener('click', async e=>{
-  if(!e.target.closest('#mg-salvar')) return;
+async function salvarCustosVisiveis(){
   if(!state.custosProdutos || typeof state.custosProdutos!=='object') state.custosProdutos = {};
   document.querySelectorAll('[data-custo-produto]').forEach(i=>{ const n = i.dataset.custoProduto; if(i.value!=='') state.custosProdutos[n] = Number(i.value)||0; else delete state.custosProdutos[n]; });
-  if(await save('custosProdutos')) renderAll();
+  return await save('custosProdutos');
+}
+document.addEventListener('click', async e=>{
+  const pg = e.target.closest('[data-mg-pag]');
+  if(pg){ await salvarCustosVisiveis(); mgPagina += Number(pg.dataset.mgPag); renderAll(); return; }
+  if(!e.target.closest('#mg-salvar')) return;
+  if(await salvarCustosVisiveis()) renderAll();
 });
 function relatorioABC(){
   return '<h3>Filtrar</h3>'+ajudaHtml('abc','A Curva ABC separa seus clientes pelo quanto cada um pesa no faturamento. Classe A = os clientes que juntos somam até 80% do total gasto (poucos clientes, muito importantes — merecem atenção redobrada). Classe B = de 80% a 95% (clientes bons, intermediários). Classe C = os 5% finais (muitos clientes, mas cada um gasta pouco). Ajuda a decidir onde focar atenção, cobrança e mimos.')+
@@ -10224,16 +10327,18 @@ function renderRelatorioABCResultado(){
   let acumulado = 0;
   const contagem = {A:0,B:0,C:0};
   const corClasse = {A:'#188038',B:'#f5a623',C:'#8a8a8a'};
-  const linhasHtml = linhas.map((l,i)=>{
+  const linhasHtmlArr = linhas.map((l,i)=>{
     acumulado += l.valor;
     const pctAcum = totalGeral>0 ? (acumulado/totalGeral*100) : 0;
     const classe = pctAcum<=80 ? 'A' : pctAcum<=95 ? 'B' : 'C';
     contagem[classe]++;
     return '<tr><td>'+(i+1)+'</td><td>'+escapeHtmlCampanha(l.nome)+'</td><td>'+fmtMoney(l.valor)+'</td><td>'+pctAcum.toFixed(1)+'%</td><td><span class="badge" style="background:'+corClasse[classe]+'22;color:'+corClasse[classe]+';font-weight:800;">'+classe+'</span></td></tr>';
-  }).join('');
+  });
+  pgFatia('abc', linhasHtmlArr, de+'|'+ate);
   document.getElementById('abc-resultado').innerHTML = (linhas.length===0 ? '<div class="empty">Nenhuma venda encontrada nesse período.</div>' :
     '<div class="hint" style="margin-bottom:10px;">Classe A: <strong>'+contagem.A+'</strong> cliente(s) · Classe B: <strong>'+contagem.B+'</strong> cliente(s) · Classe C: <strong>'+contagem.C+'</strong> cliente(s) — total do período: <strong>'+fmtMoney(totalGeral)+'</strong></div>'+
-    '<div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Valor gasto</th><th>% acumulado</th><th>Classe</th></tr></thead><tbody>'+linhasHtml+'</tbody></table></div>');
+    pgBarra('abc', linhasHtmlArr.length, 'renderRelatorioABCResultado')+
+    '<div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Valor gasto</th><th>% acumulado</th><th>Classe</th></tr></thead><tbody>'+pgFatia('abc', linhasHtmlArr, de+'|'+ate).join('')+'</tbody></table></div>');
 }
 function relatorioIndicacoes(){
   const porIndicador = {};
@@ -10357,7 +10462,7 @@ function relatorioNovosClientes(){
   const clientesComData = (state.clientes||[]).filter(c=>c.criadoEm);
   const doMes = clientesComData.filter(c=>monthKeyFromTimestamp(c.criadoEm)===mk).sort((a,b)=>b.criadoEm-a.criadoEm);
   const semData = (state.clientes||[]).length - clientesComData.length;
-  const linhas = doMes.map(c=>{
+  const linhas = pgFatia('nov', doMes, mk).map(c=>{
     const d = new Date(c.criadoEm);
     return '<tr><td>'+fmtDate(d.toISOString().slice(0,10))+'</td><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+escapeHtmlCampanha(c.telefone||'—')+'</td><td>'+escapeHtmlCampanha(c.indicadoPor||'—')+'</td></tr>';
   }).join('');
@@ -10371,53 +10476,236 @@ function relatorioNovosClientes(){
     '</div>'+
     '<div class="card">'+
     (doMes.length===0 ? '<div class="empty">Nenhum cliente novo nesse mês.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Indicado por</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
+    pgBarra('nov', doMes.length, 'renderAll')+'<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Telefone</th><th>Indicado por</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
+}
+// ===== Revisão de cadastros: dados faltando + possíveis duplicados (tudo editável, grava direto no cliente) =====
+let revBusca = '', revFiltro = 'faltando', revOrdem = 'nome', revObrig = ['telefone','endereco'];
+let revCache = null;
+const REV_CAMPOS = [{campo:'telefone',label:'Telefone'},{campo:'endereco',label:'Endereço'},{campo:'complemento',label:'Complemento'}];
+function revTelValido(t){ const d = apenasDigitos(t); return d.length>=10 && d.length<=13; }
+function revFaltas(c){
+  const f = [];
+  REV_CAMPOS.forEach(cd=>{ if(revObrig.includes(cd.campo) && !String(c[cd.campo]||'').trim()) f.push(cd.campo); });
+  if(String(c.telefone||'').trim() && !revTelValido(c.telefone)) f.push('telefoneInvalido');
+  return f;
+}
+// Acha cadastros que parecem a mesma pessoa. Só compara dentro de "blocos" (mesmo telefone, mesma
+// primeira/última palavra do nome, mesmo começo do nome) pra não comparar 1.400 x 1.400 nomes.
+function revCalcularSimilares(){
+  const cs = state.clientes||[];
+  const sig = cs.length+':'+cs.reduce((h,c)=>{ const s=(c.nome||'')+'|'+(c.telefone||'')+'|'+(c.endereco||''); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return h; },7);
+  if(revCache && revCache.sig===sig) return revCache;
+  const n = cs.length;
+  const info = cs.map(c=>{
+    const nome = chaveNormalizada(c.nome), tel = apenasDigitos(c.telefone).slice(-9);
+    return {nome, tel, telOk: tel.length>=8, tok: nome.split(' ').filter(Boolean), end: chaveNormalizada(c.endereco).replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim()};
+  });
+  // Cada ligação tem força: 3 = telefone/nome igual ou palavras trocadas; 2 = nome muito parecido (>=90%);
+  // 1 = nome parecido (88-90%) ou nome contido no outro. Grupos grandes demais (>8) são refeitos só com
+  // as ligações mais fortes, pra não juntar "Ana Silva Santos" e "Ana Silva Souza" só porque os dois contêm "Ana Silva".
+  const arestas = [], vistos = new Set();
+  const comparar = (i,j)=>{
+    if(i===j) return; const k = i<j ? i*n+j : j*n+i; if(vistos.has(k)) return; vistos.add(k);
+    const a = info[i], b = info[j], mot = []; let forca = 0;
+    if(a.telOk && a.tel===b.tel){ mot.push('telefone igual'); forca = 3; }
+    if(a.nome && b.nome){
+      if(a.nome===b.nome){ mot.push('nome igual'); forca = 3; }
+      else if(a.tok.slice().sort().join(' ')===b.tok.slice().sort().join(' ')){ mot.push('nome com palavras trocadas'); forca = 3; }
+      else {
+        const sim = similaridadeTexto(a.nome,b.nome);
+        const menor = a.tok.length<=b.tok.length ? a : b, maior = menor===a ? b : a;
+        if(sim>=0.9){ mot.push('nome parecido ('+Math.round(sim*100)+'%)'); forca = Math.max(forca,2); }
+        else if(sim>=0.88){ mot.push('nome parecido ('+Math.round(sim*100)+'%)'); forca = Math.max(forca,1); }
+        else if(menor.tok.length>=2 && maior.tok.length>menor.tok.length && menor.tok.every(t=>maior.tok.includes(t))){ mot.push('nome contido no outro'); forca = Math.max(forca,1); }
+      }
+    }
+    if(!forca) return; // endereço sozinho pode ser família/vizinho: não junta
+    if(a.end.length>=10 && a.end===b.end) mot.push('mesmo endereço');
+    arestas.push([i,j,forca,mot]);
+  };
+  const blocos = new Map();
+  const add = (k,i)=>{ let l = blocos.get(k); if(!l){ l = []; blocos.set(k,l); } l.push(i); };
+  info.forEach((x,i)=>{
+    if(x.telOk) add('t:'+x.tel,i);
+    if(x.tok.length){ add('p:'+x.tok[0],i); if(x.tok.length>1) add('u:'+x.tok[x.tok.length-1],i); add('s:'+x.nome.replace(/ /g,'').slice(0,4),i); }
+    if(x.end.length>=10) add('e:'+x.end,i);
+  });
+  blocos.forEach(lista=>{ if(lista.length>400) return; for(let a=0;a<lista.length;a++) for(let b=a+1;b<lista.length;b++) comparar(lista[a],lista[b]); });
+  const componentes = (nos, minForca)=>{
+    const pai = new Map(nos.map(i=>[i,i])), set = new Set(nos);
+    const achar = i=>{ while(pai.get(i)!==i){ pai.set(i,pai.get(pai.get(i))); i = pai.get(i); } return i; };
+    const usadas = [];
+    arestas.forEach(e=>{ if(e[2]>=minForca && set.has(e[0]) && set.has(e[1])){ pai.set(achar(e[0]), achar(e[1])); usadas.push(e); } });
+    const g = new Map(); nos.forEach(i=>{ const r = achar(i); if(!g.has(r)) g.set(r,[]); g.get(r).push(i); });
+    return Array.from(g.values()).filter(x=>x.length>1).map(idx=>({idx, usadas:usadas.filter(e=>idx.includes(e[0]))}));
+  };
+  const todos = cs.map((_,i)=>i), finais = [];
+  const refinar = (comp, minForca)=>{
+    if(comp.idx.length<=8 || minForca>3){ finais.push(comp); return; }
+    componentes(comp.idx, minForca+1).forEach(c=>refinar(c, minForca+1));
+  };
+  componentes(todos,1).forEach(c=>refinar(c,1));
+  const clusters = finais.map(c=>{ const mot = new Set(); c.usadas.forEach(e=>e[3].forEach(m=>mot.add(m))); return {ids:c.idx.map(i=>cs[i].id), motivos:Array.from(mot)}; });
+  revCache = {sig, clusters};
+  return revCache;
+}
+function revContadoresHtml(){
+  const cs = state.clientes||[];
+  const f = cs.map(revFaltas);
+  const comFalta = f.filter(x=>x.length).length;
+  const semTel = cs.filter(c=>!String(c.telefone||'').trim()).length, semEnd = cs.filter(c=>!String(c.endereco||'').trim()).length;
+  const telInv = f.filter(x=>x.includes('telefoneInvalido')).length;
+  const sim = revCalcularSimilares();
+  const nSim = sim.clusters.reduce((s,k)=>s+k.ids.length,0);
+  const m = (l,v,ruim)=>'<div class="metric'+(ruim&&v>0?' neg':'')+'"><div class="label">'+l+'</div><div class="value">'+v+'</div></div>';
+  return '<div class="card"><div class="grid cols4">'+m('Total de cadastros',cs.length,false)+m('Com dado faltando / errado',comFalta,true)+m('Sem telefone',semTel,true)+m('Sem endereço',semEnd,true)+
+    m('Telefone com tamanho estranho',telInv,true)+m('Grupos de possíveis duplicados',sim.clusters.length,false)+m('Cadastros nesses grupos',nSim,false)+'</div></div>';
 }
 function relatorioClientesIncompletos(){
-  const CAMPOS_DISPONIVEIS = [
-    {campo:'telefone', label:'Telefone'},
-    {campo:'endereco', label:'Endereço'},
-    {campo:'complemento', label:'Complemento'},
-    {campo:'obs', label:'Observação'},
-    {campo:'aniversario', label:'Aniversário'},
-    {campo:'apelidos', label:'Apelidos'},
-    {campo:'indicadoPor', label:'Indicado por'}
-  ];
-  const camposChecados = (relatorioClientesIncompletosCampos&&relatorioClientesIncompletosCampos.length) ? relatorioClientesIncompletosCampos : ['telefone','endereco'];
-  const vazio = v=>{ if(Array.isArray(v)) return v.length===0; return !v || !String(v).trim(); };
-  let incompletos = (state.clientes||[]).filter(c=> camposChecados.some(campo=>vazio(c[campo])) );
-  incompletos = incompletos.slice().sort((a,b)=>{
-    if(relatorioClientesIncompletosOrdem==='criadoEm') return (a.criadoEm||0)-(b.criadoEm||0);
-    return (a.nome||'').localeCompare(b.nome||'','pt-BR');
-  });
-  const linhas = incompletos.map(c=>{
-    const faltando = CAMPOS_DISPONIVEIS.filter(cd=>camposChecados.includes(cd.campo) && vazio(c[cd.campo]));
-    const dataCad = c.criadoEm ? fmtDate(new Date(c.criadoEm).toISOString().slice(0,10)) : '—';
-    return '<tr><td>'+escapeHtmlCampanha(c.nome)+'</td><td>'+dataCad+'</td>'+
-      '<td>'+faltando.map(f=>'<span class="badge" style="background:var(--danger);">'+f.label+'</span>').join(' ')+'</td></tr>';
-  }).join('');
-  const checkboxesHtml = CAMPOS_DISPONIVEIS.map(cd=>
-    '<label class="checkbox-item"><input type="checkbox" class="chk-campo-cliente-incompleto" value="'+cd.campo+'" '+(camposChecados.includes(cd.campo)?'checked':'')+'> '+cd.label+'</label>'
-  ).join('');
-  return '<div class="card"><h2>🧩 Clientes com Cadastro Incompleto</h2>'+
-    ajudaHtml('clientes-incompletos','Mostra todo cliente que está faltando pelo menos um dos campos marcados abaixo. Marque só os campos que importam pra você conferir (por padrão, Telefone e Endereço) e escolha se quer ver em ordem alfabética ou pela data em que o cliente foi cadastrado no sistema.')+
-    '<div style="margin-top:8px;"><strong>Campos a conferir:</strong><div class="cat-checklist" style="margin-top:6px;">'+checkboxesHtml+'</div></div>'+
-    '<div class="form-row" style="margin-top:14px;max-width:360px;"><div><label>Ordenar por</label>'+
-    '<select id="sel-ordem-clientes-incompletos">'+
-    '<option value="nome" '+(relatorioClientesIncompletosOrdem==='nome'?'selected':'')+'>Ordem alfabética (A→Z)</option>'+
-    '<option value="criadoEm" '+(relatorioClientesIncompletosOrdem==='criadoEm'?'selected':'')+'>Data de criação do cadastro (mais antigos primeiro)</option>'+
-    '</select></div></div>'+
-    '</div>'+
-    '<div class="card"><div class="grid cols2">'+
-    '<div class="metric"><div class="label">Cadastros incompletos</div><div class="value">'+incompletos.length+'</div></div>'+
-    '<div class="metric"><div class="label">Total de clientes</div><div class="value">'+(state.clientes||[]).length+'</div></div>'+
-    '</div></div>'+
-    '<div class="card">'+
-    (incompletos.length===0 ? '<div class="empty">Nenhum cliente faltando os campos marcados acima. 🎉</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Cadastrado em</th><th>Falta</th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
-    '</div>';
+  const op = (v,t,atual)=>'<option value="'+v+'"'+(atual===v?' selected':'')+'>'+t+'</option>';
+  return '<div class="card"><h2>🧩 Revisão de cadastros</h2>'+
+    '<div class="hint">Confira e corrija telefone e endereço (necessários pro botão de entrega). Campo em <strong style="color:#DC2626;">vermelho</strong> = faltando (ou telefone com tamanho estranho). Cadastros que parecem a mesma pessoa ficam <strong>juntos</strong>, marcados em laranja, pra você decidir se algum pode deixar de existir. Tudo que você altera aqui já grava direto no cadastro do cliente.</div>'+
+    '<input type="text" id="rev-busca" class="searchbar" placeholder="Pesquisar por nome, telefone, endereço, apelido, observação..." value="'+escapeHtmlCampanha(revBusca)+'">'+
+    '<div class="form-row"><div><label>Mostrar</label><select id="rev-filtro">'+op('faltando','Só os que faltam algum dado',revFiltro)+op('similares','Só possíveis duplicados',revFiltro)+op('ambos','Faltando dado ou duplicado',revFiltro)+op('todos','Todos os cadastros',revFiltro)+'</select></div>'+
+    '<div><label>Ordem</label><select id="rev-ordem">'+op('nome','Alfabética (A→Z)',revOrdem)+op('criadoEm','Mais antigos primeiro',revOrdem)+'</select></div></div>'+
+    '<div style="margin-top:6px;"><span class="hint">Considerar como "faltando":</span> '+REV_CAMPOS.map(cd=>'<label class="checkbox-item"><input type="checkbox" class="rev-obrig" value="'+cd.campo+'"'+(revObrig.includes(cd.campo)?' checked':'')+'> '+cd.label+'</label>').join(' ')+'</div></div>'+
+    '<div id="rev-contadores">'+revContadoresHtml()+'</div><div id="rev-resultado"></div>';
 }
+function renderRevisaoCadastros(){
+  const el = document.getElementById('rev-resultado'); if(!el) return;
+  const cs = state.clientes||[], sim = revCalcularSimilares();
+  const cont = document.getElementById('rev-contadores'); if(cont) cont.innerHTML = revContadoresHtml();
+  const vendasPor = {}; (state.vendas||[]).forEach(v=>{ const k = chaveNormalizada(v.cliente); if(k) vendasPor[k] = (vendasPor[k]||0)+1; });
+  const empresasChave = new Set((state.empresas||[]).map(e=>chaveNormalizada(e.nome)));
+  const nVendas = c=>vendasPor[chaveNormalizada(c.nome)]||0;
+  const faltas = new Map(cs.map(c=>[c.id, revFaltas(c)]));
+  const q = chaveNormalizada(revBusca), qd = apenasDigitos(revBusca);
+  const bate = c=>{ if(!q) return true; const txt = chaveNormalizada([c.nome,c.endereco,c.complemento,c.obs,c.indicadoPor,(c.apelidos||[]).join(' ')].join(' ')); return txt.includes(q) || (qd.length>=3 && apenasDigitos(c.telefone).includes(qd)); };
+  const porId = new Map(cs.map(c=>[c.id,c]));
+  const porNome = (a,b)=>chaveNormalizada(a.nome).localeCompare(chaveNormalizada(b.nome),'pt-BR');
+  const unidades = [], emCluster = new Set();
+  sim.clusters.forEach(k=>{ const membros = k.ids.map(id=>porId.get(id)).filter(Boolean).sort(porNome); if(membros.length<2) return; membros.forEach(m=>emCluster.add(m.id)); unidades.push({membros, motivos:k.motivos}); });
+  cs.forEach(c=>{ if(!emCluster.has(c.id)) unidades.push({membros:[c]}); });
+  const filtradas = unidades.filter(u=>{
+    const falta = u.membros.some(m=>faltas.get(m.id).length), ehCl = !!u.motivos;
+    if(revFiltro==='faltando' && !falta) return false;
+    if(revFiltro==='similares' && !ehCl) return false;
+    if(revFiltro==='ambos' && !falta && !ehCl) return false;
+    return u.membros.some(bate);
+  });
+  const chaveOrd = u=> revOrdem==='criadoEm' ? Math.min.apply(null,u.membros.map(m=>m.criadoEm||0)) : chaveNormalizada(u.membros[0].nome);
+  filtradas.sort((a,b)=>{ const x = chaveOrd(a), y = chaveOrd(b); return revOrdem==='criadoEm' ? x-y : String(x).localeCompare(String(y),'pt-BR'); });
+  const p = PG.rev || (PG.rev = {size:30, page:1, sig:null});
+  const sigF = [revFiltro,revBusca,revOrdem,revObrig.join(',')].join('|'); if(p.sig!==sigF){ p.sig = sigF; p.page = 1; }
+  const paginas = []; let atual = [], cnt = 0;
+  filtradas.forEach(u=>{ if(cnt>0 && cnt+u.membros.length>p.size){ paginas.push(atual); atual = []; cnt = 0; } atual.push(u); cnt += u.membros.length; });
+  if(atual.length) paginas.push(atual);
+  const totPag = Math.max(1, paginas.length); p.page = Math.min(Math.max(1,p.page), totPag);
+  const pagina = paginas[p.page-1]||[];
+  const totalLinhas = filtradas.reduce((s,u)=>s+u.membros.length,0);
+  const inp = (c,campo,ph)=>{
+    const f = faltas.get(c.id);
+    const ruim = campo==='telefone' ? (f.includes('telefone')||f.includes('telefoneInvalido')) : (campo==='nome' ? !String(c.nome||'').trim() : f.includes(campo));
+    const titulo = campo==='telefone' && f.includes('telefoneInvalido') ? ' title="Telefone com tamanho estranho (esperado DDD + número)"' : '';
+    return '<input type="text" class="rev-inp'+(ruim?' rev-falta':'')+'" data-rev-id="'+c.id+'" data-rev-campo="'+campo+'" value="'+escapeHtmlCampanha(c[campo]||'')+'" placeholder="'+ph+'"'+titulo+'>';
+  };
+  const linha = (c,emSim)=>'<tr data-rev-linha="'+c.id+'"'+(emSim?' class="rev-sim"':'')+'><td>'+inp(c,'nome','nome')+'</td><td>'+inp(c,'telefone','falta telefone')+'</td><td>'+inp(c,'endereco','falta endereço')+'</td><td>'+inp(c,'complemento','complemento')+'</td>'+
+    '<td style="font-size:12px;white-space:nowrap;">'+nVendas(c)+' venda(s)'+(c.autoCadastrado?'<br><span class="hint">auto-cadastrado</span>':'')+(empresasChave.has(chaveNormalizada(c.nome))?'<br><span class="hint">🏢 convênio</span>':'')+'</td>'+
+    '<td><button type="button" class="del-link" data-rev-del="'+c.id+'">🗑 excluir</button></td></tr>';
+  const pontos = c=>nVendas(c)*10 + (empresasChave.has(chaveNormalizada(c.nome))?1000:0) + ['telefone','endereco','complemento','obs','aniversario'].filter(k=>c[k]).length;
+  const corpo = pagina.map(u=>{
+    if(!u.motivos) return linha(u.membros[0], false);
+    const melhor = u.membros.slice().sort((a,b)=>pontos(b)-pontos(a))[0];
+    const ids = u.membros.map(m=>m.id).join(',');
+    return '<tr class="rev-head"><td colspan="6">🔁 <strong>Possíveis duplicados ('+u.membros.length+')</strong> — '+escapeHtmlCampanha(u.motivos.join(' · '))+
+      ' &nbsp; Manter: <select data-rev-manter style="width:auto;display:inline-block;max-width:260px;">'+u.membros.map(m=>'<option value="'+m.id+'"'+(m.id===melhor.id?' selected':'')+'>'+escapeHtmlCampanha(m.nome)+' ('+nVendas(m)+' vendas)</option>').join('')+'</select> '+
+      '<button type="button" class="btn small ghost" data-rev-unir data-rev-ids="'+ids+'">🔗 Unir os outros neste</button></td></tr>'+
+      u.membros.map(m=>linha(m,true)).join('');
+  }).join('');
+  const barra = !totalLinhas ? '' : (function(){
+    const b = pgBarra('rev', totalLinhas, 'renderRevisaoCadastros', totPag);
+    return b;
+  })();
+  el.innerHTML = '<div class="card">'+(filtradas.length===0 ? '<div class="empty">Nenhum cadastro nesse filtro. 🎉</div>' :
+    barra+'<div class="table-wrap tab-compacta"><table><thead><tr><th>Nome</th><th>Telefone / WhatsApp</th><th>Endereço</th><th>Complemento</th><th>Histórico</th><th></th></tr></thead><tbody>'+corpo+'</tbody></table></div>')+'</div>';
+}
+function revAtualizarLinha(id){
+  const c = (state.clientes||[]).find(x=>x.id===id); if(!c) return;
+  const f = revFaltas(c);
+  document.querySelectorAll('input.rev-inp[data-rev-id="'+id+'"]').forEach(i=>{
+    const campo = i.dataset.revCampo;
+    const ruim = campo==='telefone' ? (f.includes('telefone')||f.includes('telefoneInvalido')) : (campo==='nome' ? !String(c.nome||'').trim() : f.includes(campo));
+    i.classList.toggle('rev-falta', ruim);
+  });
+  const cont = document.getElementById('rev-contadores'); if(cont) cont.innerHTML = revContadoresHtml();
+}
+async function revMesclar(manter, removerLista){
+  const chaves = new Set(['clientes']);
+  const herdar = ['telefone','endereco','complemento','obs','aniversario','apelidos','indicadoPor','botijaoReserva'];
+  removerLista.forEach(dup=>{
+    herdar.forEach(campo=>{ const v = manter[campo], dv = dup[campo]; const vazio = Array.isArray(v) ? v.length===0 : !v; if(vazio && (Array.isArray(dv) ? dv.length>0 : dv)) manter[campo] = dv; });
+    if(Array.isArray(dup.grupos) && dup.grupos.length) manter.grupos = Array.from(new Set([].concat(manter.grupos||[], dup.grupos)));
+    if(Array.isArray(dup.enderecosExtras) && dup.enderecosExtras.length) manter.enderecosExtras = (manter.enderecosExtras||[]).concat(dup.enderecosExtras);
+    const kd = chaveNormalizada(dup.nome);
+    if(kd && kd!==chaveNormalizada(manter.nome)){
+      manter.apelidos = Array.from(new Set([].concat(manter.apelidos||[], [dup.nome]))); // nome antigo vira apelido: vendas futuras com ele caem neste cadastro
+      renomearClienteEmTudo(dup.nome, manter.nome).forEach(k=>chaves.add(k));
+      Object.keys(CAMPOS_CLIENTE_POR_LISTA).forEach(lista=>{
+        const campo = CAMPOS_CLIENTE_POR_LISTA[lista]; let mudou = false;
+        (state[lista]||[]).forEach(it=>{ if(lista==='comodatos' && it.direcao!=='cliente') return; if(chaveNormalizada(it[campo])===kd){ it[campo] = manter.nome; mudou = true; } });
+        if(mudou) chaves.add(lista);
+      });
+      (state.clientes||[]).forEach(o=>{ if(o!==dup && chaveNormalizada(o.indicadoPor)===kd) o.indicadoPor = manter.nome; });
+    }
+  });
+  const ids = new Set(removerLista.map(d=>d.id));
+  state.clientes = state.clientes.filter(c=>!ids.has(c.id));
+  for(const k of chaves) await save(k);
+}
+document.addEventListener('input', e=>{
+  if(e.target.id!=='rev-busca') return;
+  revBusca = e.target.value; clearTimeout(window._revT); window._revT = setTimeout(renderRevisaoCadastros, 200);
+});
+document.addEventListener('change', async e=>{
+  const t = e.target;
+  if(t.id==='rev-filtro'){ revFiltro = t.value; renderRevisaoCadastros(); return; }
+  if(t.id==='rev-ordem'){ revOrdem = t.value; renderRevisaoCadastros(); return; }
+  if(t.classList && t.classList.contains('rev-obrig')){ revObrig = Array.from(document.querySelectorAll('.rev-obrig:checked')).map(x=>x.value); renderRevisaoCadastros(); return; }
+  if(!(t.classList && t.classList.contains('rev-inp'))) return;
+  const c = (state.clientes||[]).find(x=>x.id===t.dataset.revId); if(!c) return;
+  const campo = t.dataset.revCampo, novo = t.value.trim(), antigo = String(c[campo]||'');
+  if(novo===antigo) return;
+  if(campo==='nome'){
+    if(!novo){ alert('O nome não pode ficar vazio.'); t.value = antigo; return; }
+    const chaves = renomearClienteEmTudo(antigo, novo);
+    (state.clientes||[]).forEach(o=>{ if(o!==c && chaveNormalizada(o.indicadoPor)===chaveNormalizada(antigo)) o.indicadoPor = novo; });
+    c.nome = novo;
+    for(const k of Array.from(new Set(['clientes'].concat(chaves)))) await save(k);
+  } else { c[campo] = novo; await save('clientes'); }
+  revAtualizarLinha(c.id);
+});
+document.addEventListener('click', async e=>{
+  const del = e.target.closest && e.target.closest('[data-rev-del]');
+  if(del){
+    const cli = (state.clientes||[]).find(x=>x.id===del.dataset.revDel); if(!cli) return;
+    const vinc = vinculosDoCliente(cli.nome);
+    const aviso = vinc.length===0 ? 'Excluir o cadastro "'+cli.nome+'"?\n\nNenhuma venda, fiado ou outro registro está vinculado a ele.'
+      : 'Atenção: "'+cli.nome+'" está vinculado a:\n\n'+vinc.map(v=>'• '+v.qtd+' '+v.label).join('\n')+'\n\nEsses registros NÃO são apagados, mas ficam sem cadastro. Se for duplicado, prefira "Unir os outros neste". Excluir mesmo assim?';
+    if(confirm(aviso)){ state.clientes = state.clientes.filter(x=>x.id!==cli.id); await save('clientes'); renderRevisaoCadastros(); }
+    return;
+  }
+  const unir = e.target.closest && e.target.closest('[data-rev-unir]');
+  if(unir){
+    const ids = unir.dataset.revIds.split(','), sel = unir.parentElement.querySelector('select[data-rev-manter]');
+    const manter = (state.clientes||[]).find(x=>x.id===sel.value); if(!manter) return;
+    const outros = ids.filter(i=>i!==manter.id).map(i=>(state.clientes||[]).find(x=>x.id===i)).filter(Boolean); if(!outros.length) return;
+    const resumo = outros.map(o=>{ const v = vinculosDoCliente(o.nome); return '• '+o.nome+(v.length?' ('+v.map(x=>x.qtd+' '+x.label).join(', ')+')':' (sem histórico)'); }).join('\n');
+    if(!confirm('Manter "'+manter.nome+'" e unir nele:\n\n'+resumo+'\n\nO histórico (vendas, fiado etc.) passa para "'+manter.nome+'", campos vazios dele são completados com os dos outros, e os outros cadastros são removidos. Continuar?')) return;
+    await revMesclar(manter, outros); renderRevisaoCadastros();
+  }
+});
+
 function relatorioMeta(){
   const mk = metaRelMesSelecionado || monthKey(todayStr());
   const meta = metaMensalP13(mk);
@@ -10824,9 +11112,9 @@ function relatorioControleGeral(){
   const totalVendas = vendasP.reduce((s,v)=>s+v.valor_total,0);
   const totalFiado = fiadosP.reduce((s,f)=>s+f.valor,0);
   const totalConvenio = convVendasP.reduce((s,v)=>s+v.valor_total,0) + convLancP.reduce((s,c)=>s+c.valor,0);
-  const linhasVendas = vendasP.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(v=>
+  const linhasVendas = pgFatia('cgv', vendasP.slice().sort((a,b)=>a.data.localeCompare(b.data)), de+'|'+ate).map(v=>
     '<tr><td>'+fmtDate(v.data)+'</td><td>'+escapeHtmlCampanha(v.cliente||v.empresa||'—')+'</td><td>'+iconeCatalogo(v.produto,state.categoriasProdutosGrupo?.[v.categoria])+' '+escapeHtmlCampanha(v.produto)+'</td><td>'+v.quantidade+'</td><td>'+fmtMoney(v.valor_total)+'</td><td>'+pagamentoComIconeHtml(v.pagamento)+'</td></tr>').join('');
-  const linhasFiado = fiadosP.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(f=>
+  const linhasFiado = pgFatia('cgf', fiadosP.slice().sort((a,b)=>a.data.localeCompare(b.data)), de+'|'+ate).map(f=>
     '<tr><td>'+fmtDate(f.data)+'</td><td>'+escapeHtmlCampanha(f.cliente)+'</td><td>'+fmtMoney(f.valor)+'</td><td>'+escapeHtmlCampanha(f.obs||(f.forma_pagamento?'':'🔧 Ajuste avulso')||'—')+'</td></tr>').join('');
   const linhasConvenio = convVendasP.map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+escapeHtmlCampanha(v.empresa||v.cliente)+'</td><td>Venda: '+escapeHtmlCampanha(v.produto)+'</td><td>'+fmtMoney(v.valor_total)+'</td></tr>').join('')+
     convLancP.map(c=>'<tr><td>'+fmtDate(c.data)+'</td><td>'+escapeHtmlCampanha(c.empresa)+'</td><td>Lançamento: '+escapeHtmlCampanha(c.descricao||'🔧 Ajuste')+'</td><td>'+fmtMoney(c.valor)+'</td></tr>').join('');
@@ -10839,10 +11127,10 @@ function relatorioControleGeral(){
     '<div class="metric"><div class="label">📒 Fiado lançado no período</div><div class="value">'+fmtMoney(totalFiado)+'</div></div>'+
     '<div class="metric"><div class="label">🏢 Convênio no período</div><div class="value">'+fmtMoney(totalConvenio)+'</div></div>'+
     '</div></div>'+
-    '<div class="card"><h3>💰 Vendas ('+vendasP.length+')</h3>'+
+    '<div class="card"><h3>💰 Vendas ('+vendasP.length+')</h3>'+pgBarra('cgv', vendasP.length, 'renderAll')+
     (linhasVendas?'<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente/Empresa</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Pagamento</th></tr></thead><tbody>'+linhasVendas+'</tbody></table></div>':'<div class="empty">Nenhuma venda no período.</div>')+
     '</div>'+
-    '<div class="card"><h3>📒 Fiados ('+fiadosP.length+')</h3>'+
+    '<div class="card"><h3>📒 Fiados ('+fiadosP.length+')</h3>'+pgBarra('cgf', fiadosP.length, 'renderAll')+
     (linhasFiado?'<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Valor</th><th>Obs</th></tr></thead><tbody>'+linhasFiado+'</tbody></table></div>':'<div class="empty">Nenhum fiado lançado no período.</div>')+
     '</div>'+
     '<div class="card"><h3>🏢 Convênios</h3>'+
@@ -10862,6 +11150,7 @@ function relatorioVendidoNoMes(){
   const linhas = Object.entries(porProduto).sort((a,b)=>b[1].valor-a[1].valor);
   const totalQtd = linhas.reduce((s,l)=>s+l[1].qtd,0);
   const totalValor = linhas.reduce((s,l)=>s+l[1].valor,0);
+  pgFatia('rvm', linhas, mk);
   return '<div class="card"><h2>🧾 Tudo que Vendeu no Mês</h2>'+
     '<div class="hint">Todo item que saiu numa venda lançada no mês escolhido, com a quantidade e o valor total de cada um — sem precisar marcar categoria nem produto, já mostra tudo.</div>'+
     '<div class="form-row" style="margin-top:10px;max-width:260px;"><div><label>Mês</label><input type="month" id="input-mes-vendido-no-mes" value="'+mk+'"></div></div>'+
@@ -10872,8 +11161,8 @@ function relatorioVendidoNoMes(){
     '</div></div>'+
     '<div class="card">'+
     (linhas.length===0?'<div class="empty">Nenhuma venda lançada em '+nomeMes(mk)+'.</div>':
-    '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Categoria</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody>'+
-    linhas.map(l=>'<tr><td>'+iconeCatalogo(l[0],state.categoriasProdutosGrupo?.[l[1].categoria])+' '+escapeHtmlCampanha(l[0])+'</td><td>'+escapeHtmlCampanha(l[1].categoria||'—')+'</td><td>'+l[1].qtd+'</td><td>'+fmtMoney(l[1].valor)+'</td></tr>').join('')+
+    pgBarra('rvm', linhas.length, 'renderAll')+'<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Categoria</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody>'+
+    pgFatia('rvm', linhas, mk).map(l=>'<tr><td>'+iconeCatalogo(l[0],state.categoriasProdutosGrupo?.[l[1].categoria])+' '+escapeHtmlCampanha(l[0])+'</td><td>'+escapeHtmlCampanha(l[1].categoria||'—')+'</td><td>'+l[1].qtd+'</td><td>'+fmtMoney(l[1].valor)+'</td></tr>').join('')+
     '</tbody></table></div>')+
     '</div>';
 }
@@ -11710,6 +11999,7 @@ function renderRelatorioItensResultado(){
   });
   const linhas = Object.entries(porCategoria).sort((a,b)=>b[1].qtd-a[1].qtd);
   const linhasProduto = Object.entries(porProduto).sort((a,b)=>b[1].qtd-a[1].qtd);
+  pgFatia('rit', linhasProduto, [de,ate,gruposSel,tiposSel,produtosSel].join('|'));
   wrap.innerHTML =
     '<div class="grid cols2" style="margin-bottom:12px;">'+
     '<div class="metric"><div class="label">Itens vendidos (seleção atual)</div><div class="value">'+totalQtd+'</div></div>'+
@@ -11722,8 +12012,9 @@ function renderRelatorioItensResultado(){
     '</tbody></table></div>'+
     '<h3 style="margin-top:16px;">Por produto individual</h3>'+
     '<div class="hint" style="margin-bottom:6px;">Mesmo total de cima, quebrado item por item — ex.: dentro de "Produtos de Limpeza" mostra quanto foi vendido de cada produto específico.</div>'+
+    pgBarra('rit', linhasProduto.length, 'renderRelatorioItensResultado')+
     '<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Categoria</th><th>Quantidade</th><th>Valor total</th></tr></thead><tbody>'+
-    linhasProduto.map(l=>'<tr><td>'+escapeHtmlCampanha(l[0])+'</td><td>'+escapeHtmlCampanha(l[1].categoria)+'</td><td>'+l[1].qtd+'</td><td>'+fmtMoney(l[1].valor)+'</td></tr>').join('')+
+    pgFatia('rit', linhasProduto, [de,ate,gruposSel,tiposSel,produtosSel].join('|')).map(l=>'<tr><td>'+escapeHtmlCampanha(l[0])+'</td><td>'+escapeHtmlCampanha(l[1].categoria)+'</td><td>'+l[1].qtd+'</td><td>'+fmtMoney(l[1].valor)+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function renderRelatorioEntregasResultado(){
@@ -11758,6 +12049,7 @@ function renderRelatorioEntregasResultado(){
     if((v.criadoEm||0) < porGrupo[chave].criadoEm) porGrupo[chave].criadoEm = v.criadoEm||0;
   });
   const listaEntregas = Object.values(porGrupo).sort((a,b)=> (a.data===b.data ? (a.criadoEm-b.criadoEm) : a.data.localeCompare(b.data)));
+  pgFatia('rent', listaEntregas, [de,ate,tipo].join('|'));
   document.getElementById('rent-resultado').innerHTML =
     '<div class="grid cols2" style="max-width:420px;margin-bottom:12px;">'+
     '<div class="metric"><div class="label">Total de entregas no período</div><div class="value">'+gruposDoPeriodo.size+'</div></div>'+
@@ -11768,9 +12060,9 @@ function renderRelatorioEntregasResultado(){
     linhas.map(l=>'<tr><td>'+entregaLabel(l[0])+'</td><td>'+l[1].qtd+'</td><td>'+fmtMoney(l[1].frete)+'</td></tr>').join('')+
     '</tbody></table></div>')+
     (listaEntregas.length===0?'':
-    '<h4 style="margin:16px 0 6px;">Conferência — entregas do período, uma a uma</h4>'+
+    '<h4 style="margin:16px 0 6px;">Conferência — entregas do período, uma a uma</h4>'+pgBarra('rent', listaEntregas.length, 'renderRelatorioEntregasResultado')+
     '<div class="table-wrap"><table><thead><tr><th>#</th><th>Data</th><th>Cliente</th><th>Meio de entrega</th><th>Frete</th></tr></thead><tbody>'+
-    listaEntregas.map((e,i)=>'<tr><td>'+(i+1)+'</td><td>'+fmtDate(e.data)+'</td><td>'+escapeHtmlCampanha(e.cliente)+'</td><td>'+entregaLabel(e.tipo)+'</td><td>'+fmtMoney(e.frete)+'</td></tr>').join('')+
+    pgFatia('rent', listaEntregas, [de,ate,tipo].join('|')).map((e,i)=>'<tr><td>'+(pgIni('rent')+i+1)+'</td><td>'+fmtDate(e.data)+'</td><td>'+escapeHtmlCampanha(e.cliente)+'</td><td>'+entregaLabel(e.tipo)+'</td><td>'+fmtMoney(e.frete)+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function renderRelatorioFretesResultado(){
@@ -11790,6 +12082,7 @@ function renderRelatorioFretesResultado(){
   });
   const linhasPagamento = Object.entries(porPagamento).sort((a,b)=>b[1]-a[1]);
   const linhasTipo = Object.entries(porTipo).sort((a,b)=>b[1]-a[1]);
+  pgFatia('rfr', filtradas, [de,ate,tipo,pagamento].join('|'));
   document.getElementById('rfr-resultado').innerHTML =
     '<div class="grid cols2" style="max-width:420px;margin-bottom:12px;">'+
     '<div class="metric"><div class="label">Fretes no período</div><div class="value">'+filtradas.length+'</div></div>'+
@@ -11802,8 +12095,9 @@ function renderRelatorioFretesResultado(){
     '<div><h4 style="margin:0 0 6px;">Por meio de entrega</h4><div class="table-wrap"><table><thead><tr><th>Meio</th><th>Frete</th></tr></thead><tbody>'+
     linhasTipo.map(l=>'<tr><td>'+entregaLabel(l[0])+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+'</tbody></table></div></div>'+
     '</div>'+
+    pgBarra('rfr', filtradas.length, 'renderRelatorioFretesResultado')+
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Meio de entrega</th><th>Forma de pagamento</th><th>Frete</th></tr></thead><tbody>'+
-    filtradas.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+(v.cliente||'—')+'</td><td>'+entregaLabel(v.tipo_entrega)+'</td><td>'+(v.pagamento||'—')+'</td><td>'+fmtMoney(v.frete)+'</td></tr>').join('')+
+    pgFatia('rfr', filtradas.slice().sort((a,b)=>b.data.localeCompare(a.data)), [de,ate,tipo,pagamento].join('|')).map(v=>'<tr><td>'+fmtDate(v.data)+'</td><td>'+(v.cliente||'—')+'</td><td>'+entregaLabel(v.tipo_entrega)+'</td><td>'+(v.pagamento||'—')+'</td><td>'+fmtMoney(v.frete)+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function renderRelatorioCombustivelFreteResultado(){
@@ -11865,6 +12159,33 @@ function renderRelatorioCombustivelFreteResultado(){
     linhasVeiculo.map(l=>'<tr><td>'+escapeHtmlCampanha(l[0])+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+
     '</tbody></table></div>' : '<div class="hint" style="margin-top:10px;">Nenhuma despesa de combustível encontrada nesse período (confira se a categoria da despesa tem "Combustível" no nome).</div>');
 }
+// ===== Paginação genérica (30/50/100/200 por página) =====
+const PG = {};
+function pgFatia(chave, arr, sig){
+  const p = PG[chave] || (PG[chave] = {size:30, page:1, sig:null});
+  if(sig!==undefined && p.sig!==sig){ p.sig = sig; p.page = 1; }
+  const tot = Math.max(1, Math.ceil(arr.length/p.size)); p.page = Math.min(Math.max(1,p.page), tot);
+  return arr.slice((p.page-1)*p.size, p.page*p.size);
+}
+function pgReset(chave){ if(PG[chave]) PG[chave].page = 1; }
+function pgIni(chave){ const p = PG[chave]; return p ? (p.page-1)*p.size : 0; }
+function pgBarra(chave, total, redraw, totPagFixo){
+  if(!total) return '';
+  const p = PG[chave] || {size:30, page:1}, tot = totPagFixo || Math.max(1, Math.ceil(total/p.size));
+  return '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:8px 0;"><label style="margin:0;">Mostrar <select data-pg-size="'+chave+'" data-pg-redraw="'+redraw+'" style="width:auto;display:inline-block;">'+[30,50,100,200].map(n=>'<option value="'+n+'"'+(n===p.size?' selected':'')+'>'+n+'</option>').join('')+'</select> itens por página</label>'+
+    '<span class="hint" style="margin:0;">'+(tot>1?('Página '+p.page+' de '+tot+' · '):'')+total+' registro(s)</span>'+
+    (tot>1?'<button type="button" class="btn small ghost" data-pg-nav="-1" data-pg-key="'+chave+'" data-pg-redraw="'+redraw+'"'+(p.page<=1?' disabled':'')+'>◀ Anterior</button><button type="button" class="btn small ghost" data-pg-nav="1" data-pg-key="'+chave+'" data-pg-redraw="'+redraw+'"'+(p.page>=tot?' disabled':'')+'>Próxima ▶</button>':'')+'</div>';
+}
+function pgRedraw(nome){ const fn = window[nome]; if(typeof fn==='function') fn(); }
+document.addEventListener('change', e=>{
+  const sel = e.target.closest && e.target.closest('select[data-pg-size]'); if(!sel) return;
+  const p = PG[sel.dataset.pgSize]; if(!p) return; p.size = Number(sel.value)||30; p.page = 1; pgRedraw(sel.dataset.pgRedraw);
+});
+document.addEventListener('click', e=>{
+  const b = e.target.closest && e.target.closest('[data-pg-nav]'); if(!b) return;
+  const p = PG[b.dataset.pgKey]; if(!p) return; p.page += Number(b.dataset.pgNav); pgRedraw(b.dataset.pgRedraw);
+});
+let rvPorPagina = 30, rvPagina = 1;
 function renderRelatorioVendasResultado(){
   const de = document.getElementById('rv-de').value, ate = document.getElementById('rv-ate').value;
   const nome = document.getElementById('rv-nome').value.toLowerCase();
@@ -11878,6 +12199,9 @@ function renderRelatorioVendasResultado(){
     porCategoria[v.categoria].valor += v.valor_total;
   });
   const linhasCategoria = Object.entries(porCategoria).sort((a,b)=>a[0].localeCompare(b[0]));
+  const ordenadas = filtradas.slice().sort((a,b)=> a.categoria.localeCompare(b.categoria) || b.data.localeCompare(a.data));
+  const totalPag = Math.max(1, Math.ceil(ordenadas.length/rvPorPagina));
+  if(rvPagina>totalPag) rvPagina = totalPag;
   document.getElementById('rv-resultado').innerHTML =
     '<div class="metric" style="max-width:260px;margin-bottom:12px;"><div class="label">Total no período</div><div class="value">'+fmtMoney(total)+'</div>'+avisoAPrazoHtml(filtradas)+(freteTotal>0?'<div class="hint">Já é só o produto — o valor dos fretes ('+fmtMoney(freteTotal)+') não entra aqui, fica separado.</div>':'')+'</div>'+
     (linhasCategoria.length===0?'':
@@ -11887,9 +12211,15 @@ function renderRelatorioVendasResultado(){
     '</tbody></table></div>')+
     (filtradas.length===0?'<div class="empty">Nenhuma venda encontrada.</div>':
     '<h4 style="margin-bottom:6px;">Lançamentos individuais</h4>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px;"><label style="margin:0;">Mostrar <select id="rv-porpag" style="width:auto;display:inline-block;">'+[30,50,100,200].map(n=>'<option value="'+n+'"'+(n===rvPorPagina?' selected':'')+'>'+n+'</option>').join('')+'</select> itens por página</label>'+
+    '<span class="hint" style="margin:0;">'+(totalPag>1?('Página '+rvPagina+' de '+totalPag+' · '):'')+filtradas.length+' lançamento(s)</span>'+
+    (totalPag>1?'<button type="button" class="btn small ghost" data-rv-pag="-1"'+(rvPagina<=1?' disabled':'')+'>◀ Anterior</button><button type="button" class="btn small ghost" data-rv-pag="1"'+(rvPagina>=totalPag?' disabled':'')+'>Próxima ▶</button>':'')+'</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Venda do dia</th><th>Data</th><th>Produto</th><th>Cliente</th><th>Canal</th><th>Valor</th><th>Pagto</th></tr></thead><tbody>'+
-    filtradas.slice().sort((a,b)=> a.categoria.localeCompare(b.categoria) || b.data.localeCompare(a.data)).map(v=>'<tr><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+(v.canal||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td><td>'+v.pagamento+'</td></tr>').join('')+
+    ordenadas.slice((rvPagina-1)*rvPorPagina, rvPagina*rvPorPagina).map(v=>'<tr><td>'+numeroVendaDoDia(v)+'</td><td>'+fmtDate(v.data)+'</td><td>'+v.categoria+'</td><td>'+(v.cliente||'—')+'</td><td>'+(v.canal||'—')+'</td><td>'+fmtMoney(v.valor_total)+'</td><td>'+v.pagamento+'</td></tr>').join('')+
     '</tbody></table></div>');
+  const selPP = document.getElementById('rv-porpag');
+  if(selPP) selPP.onchange = ()=>{ rvPorPagina = Number(selPP.value)||30; rvPagina = 1; renderRelatorioVendasResultado(); };
+  document.querySelectorAll('[data-rv-pag]').forEach(b=>b.onclick=()=>{ rvPagina += Number(b.dataset.rvPag); renderRelatorioVendasResultado(); });
 }
 function renderRelatorioRankingResultado(){
   const de = document.getElementById('rk-de').value, ate = document.getElementById('rk-ate').value;
@@ -11905,9 +12235,11 @@ function renderRelatorioRankingResultado(){
   });
   const linhas = Object.entries(porCliente).map(([nome,d])=>({nome,qtd:d.qtd,valor:d.valor,compras:d.compras}))
     .sort((a,b)=> ordenar==='quantidade' ? b.qtd-a.qtd : b.valor-a.valor);
+  const pagRk = pgFatia('rk', linhas, [de,ate,categoria,ordenar].join('|'));
   document.getElementById('rk-resultado').innerHTML = (linhas.length===0?'<div class="empty">Nenhuma venda encontrada nesse filtro.</div>':
+    pgBarra('rk', linhas.length, 'renderRelatorioRankingResultado')+
     '<div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Qtd. comprada'+(categoria?' ('+categoria+')':'')+'</th><th>Valor total gasto</th><th>Nº de compras</th></tr></thead><tbody>'+
-    linhas.map((l,i)=>'<tr><td>'+(i+1)+'</td><td>'+l.nome+'</td><td>'+l.qtd+'</td><td>'+fmtMoney(l.valor)+'</td><td>'+l.compras+'</td></tr>').join('')+
+    pagRk.map((l,i)=>'<tr><td>'+(pgIni('rk')+i+1)+'</td><td>'+l.nome+'</td><td>'+l.qtd+'</td><td>'+fmtMoney(l.valor)+'</td><td>'+l.compras+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function renderRelatorioDespesasResultado(){
@@ -11931,13 +12263,15 @@ function renderRelatorioDespesasResultado(){
   const cardCategoria = '<div class="card" style="margin:12px 0;"><h3>📂 Despesas por categoria</h3>'+
     (linhasCategoria?'<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Valor</th><th>% do total</th></tr></thead><tbody>'+linhasCategoria+'</tbody></table></div>':'<div class="empty">Nenhuma despesa no período.</div>')+
     '</div>';
+  pgFatia('rdes', filtradas, de+'|'+ate);
   document.getElementById('rd-resultado').innerHTML =
     '<div class="metric neg" style="max-width:260px;margin-bottom:12px;"><div class="label">Total no período</div><div class="value">'+fmtMoney(total)+'</div></div>'+
     cardCategoria+
     cardContas+
     (filtradas.length===0?'<div class="empty">Nenhuma despesa encontrada.</div>':
+    pgBarra('rdes', filtradas.length, 'renderRelatorioDespesasResultado')+
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Conta</th><th>Valor</th></tr></thead><tbody>'+
-    filtradas.sort((a,b)=>b.data.localeCompare(a.data)).map(d=>'<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+iconeCategoriaDespesaHtml(d.categoria)+d.categoria+'</td><td>'+(d.conta||'—')+'</td><td>'+fmtMoney(d.valor)+'</td></tr>').join('')+
+    pgFatia('rdes', filtradas.slice().sort((a,b)=>b.data.localeCompare(a.data)), de+'|'+ate).map(d=>'<tr><td>'+fmtDate(d.data)+'</td><td>'+(d.descricao||'—')+'</td><td>'+iconeCategoriaDespesaHtml(d.categoria)+d.categoria+'</td><td>'+(d.conta||'—')+'</td><td>'+fmtMoney(d.valor)+'</td></tr>').join('')+
     '</tbody></table></div>');
 }
 function corNota(tipo){
@@ -12056,7 +12390,7 @@ function renderRelatorioEmpresasResultado(){
     '<div class="hint">Assim como no fiado, registre aqui quando a empresa pagar o convênio. O saldo acima é atualizado automaticamente.</div>'+
     '<form id="form-convenio-pag" data-base-saldo="'+saldo+'" style="margin-top:8px;"><div class="form-row">'+
     '<div><label>Valor pago (R$)</label><input type="text" inputmode="decimal" id="input-valor-pagamento-convenio" name="valor" placeholder="0,00" required></div>'+
-    '<div><label>Forma de pagamento</label><select name="forma_pagamento">'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(p=>'<option>'+p+'</option>').join('')+'</select></div>'+
+    '<div><label>Forma de pagamento</label><select name="forma_pagamento">'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(optPag).join('')+'</select></div>'+
     '<div><label>Data do pagamento</label><input type="date" name="data" value="'+ate+'" required></div></div>'+
     '<div style="margin:-6px 0 12px;"><button type="button" class="link-btn" id="btn-quitar-tudo-convenio">Preencher com o valor total (quitação total)</button></div>'+
     '<button type="submit" class="btn small green">Registrar pagamento</button></form>'+
@@ -13054,6 +13388,8 @@ function attachHandlers(){
       const v = state.vendas.find(x=>x.id===editVendaId);
       if(v){
         if(v.estoqueBaixado) ajustaEstoquePorVenda(v.categoria, v.quantidade, true);
+        const dataAntigaV = v.data, novaDataV = f.get('data');
+        if(v.grupoId && novaDataV && novaDataV!==dataAntigaV) state.vendas.forEach(x=>{ if(x.id!==v.id && x.grupoId===v.grupoId && x.data===dataAntigaV) x.data = novaDataV; });
         v.data=f.get('data'); v.cliente=resolverNomeCliente(f.get('cliente')||''); v.canal=f.get('canal');
         v.categoria=categoria; v.produto=produto; v.quantidade=quantidade; v.valor_unit=valor_unit; v.valor_total=valor_total;
         v.pagamento=f.get('pagamento'); v.nota=f.get('nota'); v.tipo_entrega=f.get('tipo_entrega'); v.cupom=(f.get('cupom')||'').trim().toUpperCase();
@@ -13468,13 +13804,13 @@ function attachHandlers(){
     }
   };
   const tbodyPlanilha = document.getElementById('tbody-planilha-vendas');
-  if(tbodyPlanilha && tbodyPlanilha.children.length===0) tbodyPlanilha.appendChild(criarLinhaPlanilhaVenda(todayStr()));
+  if(tbodyPlanilha && tbodyPlanilha.children.length===0) tbodyPlanilha.appendChild(criarLinhaPlanilhaVenda(dataLancamentoPadrao()));
   const selMaisVendidosPlanilha = document.querySelector('#box-mais-vendidos-planilha .sel-item-rapido');
   if(selMaisVendidosPlanilha) selMaisVendidosPlanilha.onchange = ()=>{
     if(!tbodyPlanilha) return;
     const op = selMaisVendidosPlanilha.selectedOptions[0];
     const dataUltima = tbodyPlanilha.querySelector('tr:last-child .pv-data');
-    const novaLinha = criarLinhaPlanilhaVenda(dataUltima ? dataUltima.value : todayStr());
+    const novaLinha = criarLinhaPlanilhaVenda(dataUltima ? dataUltima.value : dataLancamentoPadrao());
     tbodyPlanilha.appendChild(novaLinha);
     if(novaLinha._seletorCtrl) novaLinha._seletorCtrl.setValor(op.dataset.categoria, op.value);
     novaLinha.scrollIntoView({behavior:'smooth', block:'center'});
@@ -13483,13 +13819,13 @@ function attachHandlers(){
   const btnPlanilhaAddLinha = document.getElementById('btn-planilha-add-linha');
   if(btnPlanilhaAddLinha) btnPlanilhaAddLinha.onclick = ()=>{
     const dataUltima = tbodyPlanilha.querySelector('tr:last-child .pv-data');
-    tbodyPlanilha.appendChild(criarLinhaPlanilhaVenda(dataUltima ? dataUltima.value : todayStr()));
+    tbodyPlanilha.appendChild(criarLinhaPlanilhaVenda(dataUltima ? dataUltima.value : dataLancamentoPadrao()));
   };
   if(tbodyPlanilha) tbodyPlanilha.addEventListener('click', (e)=>{
     if(!e.target.classList.contains('pv-remover-linha')) return;
     const linhasAtuais = tbodyPlanilha.querySelectorAll('tr');
     if(linhasAtuais.length<=1){
-      e.target.closest('tr').replaceWith(criarLinhaPlanilhaVenda(todayStr()));
+      e.target.closest('tr').replaceWith(criarLinhaPlanilhaVenda(dataLancamentoPadrao()));
       return;
     }
     e.target.closest('tr').remove();
@@ -14011,17 +14347,17 @@ function attachHandlers(){
     let base = state.estoqueLancamentos.slice().sort((a,b)=>b.criadoEm-a.criadoEm);
     if(de) base = base.filter(l=>l.data>=de);
     if(ate) base = base.filter(l=>l.data<=ate);
-    if(!de && !ate) base = base.slice(0,80);
     if(q) base = base.filter(l=>((l.item||'')+' '+(l.motivo||'')+' '+(l.usuario||'')+' '+(l.pedido||'')).toLowerCase().includes(q));
     document.getElementById('lista-mov-estoque-wrap').innerHTML = movimentacoesEstoqueTable(base);
     attachMovEstoqueRowHandlers();
   }
+  window._pgRedrawMovEstoque = aplicarFiltroMovEstoque;
   const buscaMovEstoque = document.getElementById('busca-mov-estoque');
-  if(buscaMovEstoque) buscaMovEstoque.oninput = aplicarFiltroMovEstoque;
+  if(buscaMovEstoque) buscaMovEstoque.oninput = ()=>{ pgReset('mov'); aplicarFiltroMovEstoque(); };
   const movFiltroDe = document.getElementById('mov-filtro-de');
-  if(movFiltroDe) movFiltroDe.onchange = aplicarFiltroMovEstoque;
+  if(movFiltroDe) movFiltroDe.onchange = ()=>{ pgReset('mov'); aplicarFiltroMovEstoque(); };
   const movFiltroAte = document.getElementById('mov-filtro-ate');
-  if(movFiltroAte) movFiltroAte.onchange = aplicarFiltroMovEstoque;
+  if(movFiltroAte) movFiltroAte.onchange = ()=>{ pgReset('mov'); aplicarFiltroMovEstoque(); };
   const movFiltroLimpar = document.getElementById('mov-filtro-limpar');
   if(movFiltroLimpar) movFiltroLimpar.onclick = ()=>{
     document.getElementById('mov-filtro-de').value='';
@@ -14851,15 +15187,16 @@ function attachHandlers(){
     if(de) base = base.filter(d=>d.data>=de);
     if(ate) base = base.filter(d=>d.data<=ate);
     if(q) base = base.filter(d=>(d.descricao+' '+d.categoria).toLowerCase().includes(q));
-    document.getElementById('lista-despesas-wrap').innerHTML = despesasTable(base);
+    document.getElementById('lista-despesas-wrap').innerHTML = despesasTable(base, true);
     attachDespesaRowHandlers();
   }
+  window._pgRedrawDespesas = aplicarFiltroDespesas;
   const buscaDespesa = document.getElementById('busca-despesa');
-  if(buscaDespesa) buscaDespesa.oninput = aplicarFiltroDespesas;
+  if(buscaDespesa) buscaDespesa.oninput = ()=>{ pgReset('desp'); aplicarFiltroDespesas(); };
   const despesaFiltroDe = document.getElementById('despesa-filtro-de');
-  if(despesaFiltroDe) despesaFiltroDe.onchange = aplicarFiltroDespesas;
+  if(despesaFiltroDe) despesaFiltroDe.onchange = ()=>{ pgReset('desp'); aplicarFiltroDespesas(); };
   const despesaFiltroAte = document.getElementById('despesa-filtro-ate');
-  if(despesaFiltroAte) despesaFiltroAte.onchange = aplicarFiltroDespesas;
+  if(despesaFiltroAte) despesaFiltroAte.onchange = ()=>{ pgReset('desp'); aplicarFiltroDespesas(); };
   const despesaFiltroLimpar = document.getElementById('despesa-filtro-limpar');
   if(despesaFiltroLimpar) despesaFiltroLimpar.onclick = ()=>{
     document.getElementById('despesa-filtro-de').value = '';
@@ -15786,7 +16123,7 @@ function attachHandlers(){
     renderAll();
   });
 
-  const rvFiltrar = document.getElementById('rv-filtrar'); if(rvFiltrar) rvFiltrar.onclick = renderRelatorioVendasResultado;
+  const rvFiltrar = document.getElementById('rv-filtrar'); if(rvFiltrar) rvFiltrar.onclick = ()=>{ rvPagina = 1; renderRelatorioVendasResultado(); };
   const rkFiltrar = document.getElementById('rk-filtrar'); if(rkFiltrar) rkFiltrar.onclick = renderRelatorioRankingResultado;
   const rdData = document.getElementById('rd-data'); if(rdData) rdData.onchange = ()=>{ resumoDiaData = rdData.value; renderAll(); };
   const abcFiltrar = document.getElementById('abc-filtrar'); if(abcFiltrar) abcFiltrar.onclick = renderRelatorioABCResultado;
@@ -16037,6 +16374,7 @@ function attachHandlers(){
     btnGerarPdfConvenio.disabled = false; btnGerarPdfConvenio.textContent = '📄 Gerar PDF do convênio (vendas + anexos)';
   };
   if(relatorioSub==='vendas' && document.getElementById('rv-resultado')) renderRelatorioVendasResultado();
+  if(document.getElementById('rev-resultado')) renderRevisaoCadastros();
   if(relatorioSub==='ranking' && document.getElementById('rk-resultado')) renderRelatorioRankingResultado();
   if(relatorioSub==='abc' && document.getElementById('abc-resultado')) renderRelatorioABCResultado();
   if(relatorioSub==='despesas' && document.getElementById('rd-resultado')) renderRelatorioDespesasResultado();
@@ -16186,12 +16524,13 @@ function attachHandlers(){
     document.getElementById('lista-contaspagar-wrap').innerHTML = contasPagarTable(base);
     attachContaPagarRowHandlers();
   }
+  window._pgRedrawContasPagar = aplicarFiltroContasPagar;
   const buscaContaPagar = document.getElementById('busca-conta-pagar');
-  if(buscaContaPagar) buscaContaPagar.oninput = aplicarFiltroContasPagar;
+  if(buscaContaPagar) buscaContaPagar.oninput = ()=>{ pgReset('cp'); aplicarFiltroContasPagar(); };
   const contaPagarFiltroDe = document.getElementById('contapagar-filtro-de');
-  if(contaPagarFiltroDe) contaPagarFiltroDe.onchange = aplicarFiltroContasPagar;
+  if(contaPagarFiltroDe) contaPagarFiltroDe.onchange = ()=>{ pgReset('cp'); aplicarFiltroContasPagar(); };
   const contaPagarFiltroAte = document.getElementById('contapagar-filtro-ate');
-  if(contaPagarFiltroAte) contaPagarFiltroAte.onchange = aplicarFiltroContasPagar;
+  if(contaPagarFiltroAte) contaPagarFiltroAte.onchange = ()=>{ pgReset('cp'); aplicarFiltroContasPagar(); };
   const contaPagarFiltroLimpar = document.getElementById('contapagar-filtro-limpar');
   if(contaPagarFiltroLimpar) contaPagarFiltroLimpar.onclick = ()=>{
     document.getElementById('contapagar-filtro-de').value='';
@@ -18774,7 +19113,7 @@ function renderCsvVendasMapping(){
     '<div class="mapping-row"><span>Frete</span><select id="map-v-frete">'+optsVazio+'</select></div>'+
     '<div class="hint" style="margin-top:6px;">Se a planilha tiver telefone/endereço do cliente, o sistema cadastra o cliente novo automaticamente ao importar — clientes que já existem (mesmo nome) não são duplicados.</div>'+
     '<div class="form-row" style="max-width:620px;margin-top:10px;">'+
-    '<div><label>Data padrão (linhas sem data)</label><input type="date" id="input-v-data-base" value="'+todayStr()+'"></div>'+
+    '<div><label>Data padrão (linhas sem data)</label><input type="date" id="input-v-data-base" value="'+dataLancamentoPadrao()+'"></div>'+
     '<div><label>Canal padrão (linhas sem canal)</label><select id="input-v-canal-base">'+opcoesComPlaceholder(CANAIS,'Selecione')+'</select></div>'+
     '<div><label>Pagamento padrão (linhas sem forma de pagamento)</label><select id="input-v-pagamento-base">'+opcoesPagamentoComIcone(PAGAMENTOS,'Selecione')+'</select></div>'+
     '<div><label>Entrega padrão (linhas sem tipo de entrega)</label><select id="input-v-entrega-base">'+opcoesComPlaceholder(TIPOS_ENTREGA,'Selecione')+'</select></div>'+
