@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "v34_17-10-2026";
+    var VERSAO_ATUAL = "v40_18-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -306,9 +306,15 @@ html[data-theme="dark"] .pg-deb, html[data-theme="natal"] .pg-deb{color:#3B6BFF;
 html[data-theme="dark"] .pg-conv, html[data-theme="natal"] .pg-conv{color:#FFEB3B;}
 html[data-theme="dark"] .pg-fiado, html[data-theme="natal"] .pg-fiado{color:#B266FF;}
 html[data-theme="dark"] .pg-abat, html[data-theme="natal"] .pg-abat{color:#e9c46a;}
-.rev-inp{width:100%;min-width:130px;padding:3px 6px !important;margin:0 !important;font-size:13px;}
+.vsel-btn{width:100%;display:flex;align-items:center;gap:8px;text-align:left;background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-size:14px;cursor:pointer;min-height:38px;}
+.vsel-lista{background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.35);max-height:260px;overflow:auto;z-index:9999;}
+.vsel-item{padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;}
+.vsel-item:hover{background:var(--blue-tint);}
+.rev-tab{table-layout:fixed;min-width:900px;}
+.rev-inp{width:100%;box-sizing:border-box;resize:none;overflow:hidden;line-height:1.25;font-family:inherit;padding:3px 6px !important;margin:0 !important;font-size:13px;white-space:pre-wrap;word-break:break-word;}
 .rev-falta{border:2px solid #DC2626 !important;background:rgba(220,38,38,.14) !important;color:#DC2626 !important;font-weight:600;}
 .rev-falta::placeholder{color:#DC2626;opacity:.9;font-weight:600;}
+.rev-salvo{border:2px solid #16A34A !important;background:rgba(22,163,74,.18) !important;transition:background .3s;}
 .rev-sim td:first-child{border-left:4px solid #f59e0b;}
 .rev-head td{background:rgba(245,158,11,.16);font-size:13px;}
 .tab-compacta th,.tab-compacta td{padding:3px 8px !important;line-height:1.2;}
@@ -899,7 +905,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "v34_17-10-2026";
+const APP_BUILD_HORARIO = "v40_18-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -2105,14 +2111,14 @@ ICONES_CATEGORIA['Gás do Povo'] = '🔥';
 [['dfonte',"Água D'Fonte"],['safira','Água Safira']].forEach(function(par){
   var label = par[1];
   ICONES_CATEGORIA['Carga de ' + label + ' 20L'] = '💧';
-  ICONES_CATEGORIA['Vasilhame de ' + label + ' 20L'] = '🫙';
+  ICONES_CATEGORIA['Vasilhame de ' + label + ' 20L'] = '🏺';
 });
 Object.assign(ICONES_CATEGORIA, {
   'Acessórios para Gás':'🔧','Acessórios para Água':'🚰',
   'Bandeja de Ovos':'🥚','Dúzia de Ovos':'🥚','Ovos Soltos':'🥚',
   'Bebidas':'🥤','Caldos':'🍲','Camisetas':'👕','Carvão':'⚫','Cosméticos':'💄',
   'Farofas':'🌾','Impressões e Xérox':'🖨️','Nhoque':'🍝','Produtos de Limpeza':'🧼',
-  'Produtos de Mercearia':'🛒','Serviços Fernando':'🛠️','Suplementos':'💊','Terra dos Ventos':'📦','Toalhas':'🧻'
+  'Produtos de Mercearia':'🛒','Roupas':'👕','outros':'📦','Outros':'📦','Serviços Fernando':'🛠️','Suplementos':'💊','Terra dos Ventos':'📦','Toalhas':'🧻'
 });
 /* Grupo (Gás / Água / Outros) de cada subcategoria não controlada — usado pra organizar o catálogo
    e a planilha de importação. Subcategorias sem entrada aqui caem em "Outros" por padrão. */
@@ -2168,7 +2174,7 @@ const ICONES_CATEGORIA_DESPESA = {
   'Energia Elétrica':'💡','Água / Saneamento':'🚿','Desperdício / Descarte':'🗑️','Outros':'📁',
   // Ícones das categorias próprias já cadastradas pelo usuário (nomes exatos como estão salvos hoje)
   'Boletos de Cargas de Gás':'🔥','Mercado':'🛒','Ração Meninos e Vilão':'🐶','Farmácia':'💊',
-  'Carvão':'⚫','Terra dos Ventos':'🍦','Produtos de Limpeza Leve Limp':'🧴','Combustível':'⛽',
+  'Carvão':'⚫','Padaria':'🥖','Terra dos Ventos':'🍦','Produtos de Limpeza Leve Limp':'🧴','Combustível':'⛽',
   'Arilu Rap 10':'📦','Ambev':'🍺','Coca Cola':'🥤','Suplementos Expresso dos Suplementos André':'💪',
   'Aluguel do Barracão + Casa':'🏠','Luz do Barracão':'💡','Luz Casa':'💡','Água Casa + Barracão':'🚿',
   'Internet':'🌐','Consórcios':'💰','IPTUS':'🏛️','Impostos Dars':'🧾','Vivo Empresarial':'📱',
@@ -2263,13 +2269,38 @@ function iconeVeiculoHtml(v, tamanho){
   const larguraBase = tipo==='moto' ? Math.round(t*0.7) : Math.round(t*0.6);
   return '<img src="data:image/png;base64,'+b64+'" width="'+larguraBase+'" style="vertical-align:middle;" alt="'+tipo+'">';
 }
-// <option> não aceita <img>: o mesmo ícone do sistema entra como imagem de fundo da linha.
-function optVeiculo(v){
-  const cor = v.corIcone || (v.corVerde ? '#16a34a' : '#1E3A8A');
-  const tipo = v.tipo==='pickup' ? 'pickup' : (v.tipo==='moto' ? 'moto' : 'carro');
-  const set = ICONES_VEICULO_B64[tipo], b64 = (cor.toLowerCase()==='#6b7280') ? set.cinza : set.azul;
-  return '<option value="'+v.id+'" style="background:url(data:image/png;base64,'+b64+') no-repeat 6px center;background-size:auto 16px;padding-left:32px;">'+v.nome+'</option>';
+// Seletor de veículo com o MESMO ícone do painel: o <select> real fica escondido (mantém .value, FormData
+// e eventos funcionando) e a lista visível é desenhada à mão, porque <option> não aceita imagem.
+function seletorVeiculoHtml(attrs, rotuloVazio){
+  const vs = state.veiculos||[];
+  return '<div class="vsel"><select '+attrs+' style="display:none;"><option value="">'+rotuloVazio+'</option>'+vs.map(v=>'<option value="'+v.id+'">'+escapeHtmlCampanha(v.nome)+'</option>').join('')+'</select>'+
+    '<button type="button" class="vsel-btn"></button>'+
+    '<div class="vsel-lista" style="display:none;"><div class="vsel-item" data-v="">'+rotuloVazio+'</div>'+vs.map(v=>'<div class="vsel-item" data-v="'+v.id+'">'+iconeVeiculoHtml(v,18)+' '+escapeHtmlCampanha(v.nome)+'</div>').join('')+'</div></div>';
 }
+function vselAtualizar(box){
+  const sel = box.querySelector('select'), btn = box.querySelector('.vsel-btn'); if(!sel||!btn) return;
+  const it = Array.from(box.querySelectorAll('.vsel-item')).find(x=>x.dataset.v===sel.value) || box.querySelector('.vsel-item');
+  const html = it.innerHTML+' <span style="margin-left:auto;opacity:.7;">▾</span>';
+  if(btn.dataset.h!==html){ btn.innerHTML = html; btn.dataset.h = html; }
+}
+function vselFechar(){ document.querySelectorAll('.vsel-lista').forEach(l=>l.style.display='none'); }
+setInterval(()=>document.querySelectorAll('.vsel').forEach(vselAtualizar), 300);
+document.addEventListener('click', e=>{
+  const btn = e.target.closest && e.target.closest('.vsel-btn');
+  if(btn){
+    const lista = btn.parentElement.querySelector('.vsel-lista'), abrir = lista.style.display==='none';
+    vselFechar();
+    if(abrir){ window._vselAbertoEm = Date.now(); const r = btn.getBoundingClientRect(); lista.style.cssText = 'display:block;position:fixed;left:'+r.left+'px;top:'+(r.bottom+2)+'px;width:'+Math.max(r.width,200)+'px;'; }
+    return;
+  }
+  const item = e.target.closest && e.target.closest('.vsel-item');
+  if(item){
+    const box = item.closest('.vsel'), sel = box.querySelector('select'); sel.value = item.dataset.v;
+    sel.dispatchEvent(new Event('change',{bubbles:true})); vselAtualizar(box); vselFechar(); return;
+  }
+  vselFechar();
+});
+window.addEventListener('scroll', e=>{ if(Date.now()-(window._vselAbertoEm||0)<400) return; if(e.target && e.target.closest && e.target.closest('.vsel-lista')) return; vselFechar(); }, true);
 function iconeVeiculo(id){ const v=(state.veiculos||[]).find(x=>x.id===id); return v ? (iconeVeiculoHtml(v)+' '+v.nome) : ''; }
 function categoriasVeiculoDisponiveis(){ return state.categoriasDespesas.filter(cat=> categoriaParaceVeiculo(cat) || (state.categoriasVeiculoExtra||[]).includes(cat)); }
 
@@ -6337,6 +6368,15 @@ function criarChart(id, config){
   destruirChart(id);
   dashCharts[id] = new Chart(el, config);
 }
+// Ícone da categoria no quadro do Painel: gás/água usam os mesmos desenhos do Estoque (cheio = carga, vazio = vasilhame)
+function iconeCategoriaHtml(cat){
+  var m = /^(Carga|Vasilhame) de Gás (P\d+)$/.exec(cat||'');
+  if(m && ICONES_GAS_B64[m[2]]) return iconVasilhame(m[1]==='Carga','',16,m[2]);
+  if(cat==='Gás do Povo') return iconVasilhame(true,'',16,'P13');
+  m = /^(Carga|Vasilhame) de Água (D'Fonte|Safira) 20L$/.exec(cat||'');
+  if(m) return iconGota(m[1]==='Carga','',16,m[2]==='Safira'?'safira':'dfonte');
+  return ICONES_CATEGORIA[cat] || '';
+}
 function renderDashboardRelatorios(){
   const deEl = document.getElementById('db-de'), ateEl = document.getElementById('db-ate');
   if(!deEl || !ateEl) return;
@@ -6349,7 +6389,7 @@ function renderDashboardRelatorios(){
   const linhasCategoria = Object.entries(porCategoria).sort((a,b)=>b[1]-a[1]);
   document.getElementById('db-vendas-categoria').innerHTML = linhasCategoria.length===0 ? '<div class="empty">Nada vendido no período.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Total</th></tr></thead><tbody>'+
-    linhasCategoria.map(l=>'<tr><td>'+(ICONES_CATEGORIA[l[0]]?'<span style="font-size:12px;margin-right:5px;">'+ICONES_CATEGORIA[l[0]]+'</span>':'')+l[0]+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+'</tbody></table></div>';
+    linhasCategoria.map(l=>'<tr><td>'+(iconeCategoriaHtml(l[0])?'<span style="font-size:12px;margin-right:5px;">'+iconeCategoriaHtml(l[0])+'</span>':(l[0]&&l[0]!=='undefined'?'':'<span style="font-size:12px;margin-right:5px;">❓</span>'))+((l[0]&&l[0]!=='undefined')?l[0]:'Sem categoria')+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+'</tbody></table></div>';
 
   const carrinhos = {};
   vendas.forEach(v=>{ const chave = v.grupoId || v.id; carrinhos[chave] = (carrinhos[chave]||0) + v.valor_total + (v.frete||0); });
@@ -8090,7 +8130,7 @@ function linhaPlanilhaDespesaHtml(dataPadrao){
     '<td><div style="display:flex;gap:4px;align-items:center;"><select class="pd-conta" style="min-width:170px;">'+optsContaDespesa()+'</select>'+
     '<button type="button" class="btn small ghost pd-nova-conta" title="Cadastrar conta nova" style="padding:4px 8px;">+</button></div></td>'+
     '<td><input type="text" class="pd-descricao" placeholder="Descrição" style="min-width:220px;"></td>'+
-    '<td><select class="pd-veiculo" style="min-width:150px;"><option value="">Não é de veículo</option>'+(state.veiculos||[]).map(v=>optVeiculo(v)).join('')+'</select></td>'+
+    '<td style="min-width:170px;">'+seletorVeiculoHtml('class="pd-veiculo"','Não é de veículo')+'</td>'+
     '<td><button type="button" class="del-link pd-remover-linha" title="Remover linha">🗑</button></td>'+
     '</tr>';
 }
@@ -8205,7 +8245,7 @@ function viewDespesas(){
     '<input type="text" id="nova-cat-despesa-input" placeholder="Nome da nova categoria">'+
     '<button type="button" class="btn small ghost" id="btn-add-cat-despesa">Adicionar</button></div></div>'+
     '<label>Descrição (opcional)</label><input type="text" name="descricao" placeholder="Ex: compra de vasilhames novos">'+
-    '<div id="wrap-veiculo-despesa" style="display:none;"><label>Qual veículo é essa despesa?</label><select name="veiculoId"><option value="">Não é de veículo</option>'+state.veiculos.map(v=>optVeiculo(v)).join('')+'</select></div>'+
+    '<div id="wrap-veiculo-despesa" style="display:none;"><label>Qual veículo é essa despesa?</label>'+seletorVeiculoHtml('name="veiculoId"','Não é de veículo')+'</div>'+
     '<button type="submit" class="btn">'+(importTextoDespesasWizard && importTextoDespesasWizard.indice<importTextoDespesasWizard.blocos.length ? 'Confirmar despesa e ir pra próxima ('+(importTextoDespesasWizard.indice+1)+'/'+importTextoDespesasWizard.blocos.length+')' : 'Registrar despesa')+'</button></form></details></div>'+
     '<div class="card"><h2>Despesas de hoje — total '+fmtMoney(totalHoje)+'</h2>'+ajudaHtml('despesas','Registre aqui os gastos do dia (compras, contas, manutenção). Assim como as vendas, a maior parte pode vir automaticamente pela importação da planilha Excel.')+
     '<div id="lista-despesas-hoje-wrap">'+despesasTable(despesasHoje)+'</div></div>'+
@@ -10041,7 +10081,7 @@ function relatorioCombustivelFrete(){
     '<h3>Filtrar</h3><div class="form-row">'+
     '<div><label>De</label><input type="date" id="rcf-de" value="'+firstOfMonth()+'"></div>'+
     '<div><label>Até</label><input type="date" id="rcf-ate" value="'+todayStr()+'"></div>'+
-    '<div><label>Veículo (opcional)</label><select id="rcf-veiculo"><option value="">Todos</option>'+state.veiculos.map(v=>optVeiculo(v)).join('')+'</select></div>'+
+    '<div><label>Veículo (opcional)</label>'+seletorVeiculoHtml('id="rcf-veiculo"','Todos')+'</div>'+
     '</div>'+
     '<button class="btn small ghost" id="rcf-filtrar">Filtrar</button><div id="rcf-resultado" style="margin-top:16px;"></div>';
 }
@@ -10608,7 +10648,7 @@ function renderRevisaoCadastros(){
     const f = faltas.get(c.id);
     const ruim = campo==='telefone' ? (f.includes('telefone')||f.includes('telefoneInvalido')) : (campo==='nome' ? !String(c.nome||'').trim() : f.includes(campo));
     const titulo = campo==='telefone' && f.includes('telefoneInvalido') ? ' title="Telefone com tamanho estranho (esperado DDD + número)"' : '';
-    return '<input type="text" class="rev-inp'+(ruim?' rev-falta':'')+'" data-rev-id="'+c.id+'" data-rev-campo="'+campo+'" value="'+escapeHtmlCampanha(c[campo]||'')+'" placeholder="'+ph+'"'+titulo+'>';
+    return '<textarea rows="1" class="rev-inp'+(ruim?' rev-falta':'')+'" data-rev-id="'+c.id+'" data-rev-campo="'+campo+'" placeholder="'+ph+'"'+titulo+'>'+escapeHtmlCampanha(c[campo]||'')+'</textarea>';
   };
   const linha = (c,emSim)=>'<tr data-rev-linha="'+c.id+'"'+(emSim?' class="rev-sim"':'')+'><td>'+inp(c,'nome','nome')+'</td><td>'+inp(c,'telefone','falta telefone')+'</td><td>'+inp(c,'endereco','falta endereço')+'</td><td>'+inp(c,'complemento','complemento')+'</td>'+
     '<td style="font-size:12px;white-space:nowrap;">'+nVendas(c)+' venda(s)'+(c.autoCadastrado?'<br><span class="hint">auto-cadastrado</span>':'')+(empresasChave.has(chaveNormalizada(c.nome))?'<br><span class="hint">🏢 convênio</span>':'')+'</td>'+
@@ -10628,12 +10668,16 @@ function renderRevisaoCadastros(){
     return b;
   })();
   el.innerHTML = '<div class="card">'+(filtradas.length===0 ? '<div class="empty">Nenhum cadastro nesse filtro. 🎉</div>' :
-    barra+'<div class="table-wrap tab-compacta"><table><thead><tr><th>Nome</th><th>Telefone / WhatsApp</th><th>Endereço</th><th>Complemento</th><th>Histórico</th><th></th></tr></thead><tbody>'+corpo+'</tbody></table></div>')+'</div>';
+    barra+'<div class="table-wrap tab-compacta"><table class="rev-tab"><thead><tr><th style="width:22%;">Nome</th><th style="width:16%;">Telefone / WhatsApp</th><th style="width:28%;">Endereço</th><th style="width:20%;">Complemento</th><th>Histórico</th><th></th></tr></thead><tbody>'+corpo+'</tbody></table></div>')+'</div>';
+  revAutoSize(el);
+}
+function revAutoSize(raiz){
+  (raiz||document).querySelectorAll('.rev-inp').forEach(t=>{ t.style.height = 'auto'; t.style.height = (t.scrollHeight+2)+'px'; });
 }
 function revAtualizarLinha(id){
   const c = (state.clientes||[]).find(x=>x.id===id); if(!c) return;
   const f = revFaltas(c);
-  document.querySelectorAll('input.rev-inp[data-rev-id="'+id+'"]').forEach(i=>{
+  document.querySelectorAll('.rev-inp[data-rev-id="'+id+'"]').forEach(i=>{
     const campo = i.dataset.revCampo;
     const ruim = campo==='telefone' ? (f.includes('telefone')||f.includes('telefoneInvalido')) : (campo==='nome' ? !String(c.nome||'').trim() : f.includes(campo));
     i.classList.toggle('rev-falta', ruim);
@@ -10664,8 +10708,12 @@ async function revMesclar(manter, removerLista){
   for(const k of chaves) await save(k);
 }
 document.addEventListener('input', e=>{
+  if(e.target.classList && e.target.classList.contains('rev-inp')){ revAutoSize(e.target.closest('tr')); return; }
   if(e.target.id!=='rev-busca') return;
   revBusca = e.target.value; clearTimeout(window._revT); window._revT = setTimeout(renderRevisaoCadastros, 200);
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && e.target.classList && e.target.classList.contains('rev-inp')){ e.preventDefault(); e.target.blur(); }
 });
 document.addEventListener('change', async e=>{
   const t = e.target;
@@ -10684,6 +10732,7 @@ document.addEventListener('change', async e=>{
     for(const k of Array.from(new Set(['clientes'].concat(chaves)))) await save(k);
   } else { c[campo] = novo; await save('clientes'); }
   revAtualizarLinha(c.id);
+  t.classList.add('rev-salvo'); setTimeout(()=>t.classList.remove('rev-salvo'), 1500);
 });
 document.addEventListener('click', async e=>{
   const del = e.target.closest && e.target.closest('[data-rev-del]');
