@@ -69,7 +69,7 @@
 window.__ROTA_PUBLICA__ = (function(){
   try{
     var qs = new URLSearchParams(location.search);
-    return qs.has('entrega') || qs.has('entregaVenda') || qs.has('nps') || qs.has('rastrear') || qs.has('pesquisamanual') || qs.has('dica');
+    return qs.has('entrega') || qs.has('entregaVenda') || qs.has('nps') || qs.has('rastrear') || qs.has('pesquisamanual') || qs.has('dica') || qs.has('pendencias');
   }catch(e){ return false; }
 })();
 if(!window.__ROTA_PUBLICA__){
@@ -867,6 +867,74 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
   setTimeout(function(){ mostrarFalha('tempo de carregamento excedido'); }, 15000);
 })();
 </script>
+<style id="pend-css">
+/* ===== Pendências da equipe ===== */
+.pd-root{--pd-or:#C2410C;--pd-or-tint:#FFEFE2;--pd-or-txt:#C2410C;--pd-gr:#15803D;}
+html[data-theme="dark"] .pd-root,html[data-theme="natal"] .pd-root{--pd-or-tint:#3B200E;--pd-or-txt:#FDBA74;}
+.pd-root,.pd-root *{box-sizing:border-box;}
+.pd-root{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--text);}
+.pd-root button{font-family:inherit;cursor:pointer;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;color:#fff;background:var(--royal);white-space:nowrap;line-height:1.2;}
+.pd-root button:disabled{opacity:.55;cursor:default;}
+.pd-root .pd-g{background:#15803D;}
+.pd-root .pd-o{background:#C2410C;}
+.pd-root .pd-chip{background:var(--blue-tint);color:var(--text);padding:7px 12px;}
+.pd-root .pd-chip.on{background:var(--royal);color:#fff;}
+.pd-n{display:inline-block;min-width:18px;text-align:center;background:#C2410C;color:#fff;border-radius:20px;font-size:11px;padding:0 6px;margin-left:6px;}
+.pd-in{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 10px;font-size:14px;background:var(--card);color:var(--text);font-family:inherit;display:block;}
+textarea.pd-in{min-height:70px;resize:vertical;}
+.pd-lbl{display:block;font-size:12px;font-weight:600;color:var(--text2);margin:10px 0 4px;}
+.pd-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.pd-ov{position:fixed;inset:0;z-index:2600;background:rgba(5,10,25,.7);display:none;align-items:flex-start;justify-content:center;padding:14px;overflow-y:auto;}
+.pd-modal{background:var(--bg);border:1px solid var(--border);border-radius:14px;width:min(980px,100%);padding:14px;margin:auto 0;}
+.pd-mh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.pd-mh h2,.pd-card h2{margin:0;font-size:17px;color:var(--text);}
+.pd-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+.pd-filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+.pd-sel{border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;background:var(--card);color:var(--text);font-family:inherit;width:auto;}
+.pd-legenda{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin:0 0 10px;}
+.pd-legenda i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+.pd-item{border-radius:10px;padding:10px 12px;margin-bottom:8px;border-left:4px solid var(--royal-light);background:var(--blue-tint);}
+.pd-item.pd-vd{border-left-color:#15803D;background:var(--green-tint);}
+.pd-it-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+.pd-tit{font-size:14px;font-weight:600;color:var(--text);word-break:break-word;}
+.pd-obs{font-size:12.5px;color:var(--text2);margin-top:3px;word-break:break-word;}
+.pd-meta{font-size:11.5px;color:var(--text2);margin-top:4px;}
+.pd-tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+.pd-tag-or{background:var(--pd-or-tint);color:var(--pd-or-txt);border:1px solid var(--pd-or-txt);}
+.pd-tag-solid{background:#C2410C;color:#fff;}
+.pd-tag-gr{background:var(--green-tint);color:var(--green);border:1px solid var(--green);}
+.pd-tag-bl{background:var(--card);color:var(--text);border:1px solid var(--border);}
+.pd-res{margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--card);border-left:4px solid #C2410C;font-size:13px;color:var(--text);word-break:break-word;}
+.pd-res small{display:block;color:var(--text2);font-size:11px;margin-bottom:2px;text-transform:uppercase;font-weight:700;}
+.pd-acoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.pd-tl{margin:10px 0 2px 6px;padding-left:16px;border-left:2px solid var(--border);}
+.pd-ev{position:relative;margin-bottom:10px;font-size:12.5px;color:var(--text);}
+.pd-ev:before{content:"";position:absolute;left:-23px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--royal-light);border:2px solid var(--card);}
+.pd-ev-o:before{background:#EA580C;}.pd-ev-d:before{background:#9A3412;}.pd-ev-g:before{background:#16A34A;}
+.pd-ev small{display:block;color:var(--text2);font-size:11px;}
+.pd-q{display:block;color:var(--text2);font-style:italic;word-break:break-word;}
+.pd-foot{padding-top:10px;font-size:12.5px;color:var(--text2);}
+.pd-foot-1{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.pd-foot-2{display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;}
+.pd-pg{white-space:nowrap;color:var(--text);font-weight:700;font-size:13px;min-width:104px;text-align:center;}
+.pd-vazio{text-align:center;color:var(--text2);padding:22px 8px;font-size:13px;}
+.pd-pessoa-lk{display:grid;grid-template-columns:1fr;gap:8px;padding:12px;border-radius:10px;background:var(--blue-tint);margin-bottom:8px;}
+.pd-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;background:var(--royal);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.35);max-width:92vw;}
+.pd-toast.erro{background:#C2410C;}
+#pend-fab{position:fixed;right:14px;bottom:554px;z-index:500;width:38px;height:38px;border-radius:50%;background:#C2410C;border:none;box-shadow:0 4px 12px rgba(194,65,12,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;padding:0;}
+#pend-fab-badge{position:absolute;top:-4px;right:-4px;background:#1E3A8A;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 5px;display:none;}
+.pd-pub{min-height:100vh;background:var(--bg);}
+.pd-pub-h{background:var(--royal);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;}
+.pd-pub-h i{width:10px;height:10px;border-radius:50%;background:var(--neon,#B6FF3D);display:inline-block;}
+.pd-pub-in{max-width:560px;margin:0 auto;padding:14px 14px 60px;}
+.pd-track{height:6px;border-radius:999px;background:var(--border);overflow:hidden;margin:10px 0 4px;}
+.pd-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--royal-light),#16A34A);}
+.pd-sec{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;margin:16px 0 8px;}
+.pd-tick{width:26px;height:26px;border-radius:50%;border:2px solid var(--text2);background:var(--card);padding:0 !important;flex:none;}
+.pd-pitem{display:flex;gap:10px;align-items:flex-start;}
+.pd-pitem>div{flex:1;min-width:0;}
+@media (max-width:560px){.pd-ov{padding:6px;}.pd-modal{padding:10px;}}
+</style>
 </head>
 <body>
 <div id="tela-loading-animada" style="display:none;"><div class="lb-burst"><div class="lb-camada" style="width:100%;height:100%;background:#fff;"></div><div class="lb-camada" style="width:80%;height:80%;background:#22FF00;"></div><div class="lb-camada" style="width:60%;height:60%;background:#00F0FF;"></div><div class="lb-camada" style="width:40%;height:40%;background:#0B2FE0;"></div></div></div>
@@ -19688,6 +19756,7 @@ async function afterLogin(){
   initFiadoFab();
   initAlertasFab();
   initRecados();
+  initPendenciasFab();
   rodarBackupAutomaticoSeNecessario();
   iniciarNotificacoesRealtime();
   iniciarSincronizacaoRealtime();
@@ -20753,6 +20822,322 @@ async function iniciarPesquisaManualPublica(){
   }
   render();
 }
+/* ===== PENDÊNCIAS DA EQUIPE (tabelas pend_* no Supabase; acesso só por funções pend_a_* / pend_p_*) ===== */
+const PEND_ST = { filtro:'pendentes', pessoa:'', pagina:1, tam:10, total:0, aguard:0, itens:[], pessoas:[], tela:'lista', editando:null, hist:{}, devolvendo:null };
+const PEND_PUB = { token:'', nome:'', tarefas:[], okId:null, nova:false, hist:{}, verConc:false, concLimite:10 };
+const PEND_EV = { criada:['criou a tarefa','b'], ok:['deu OK','o'], devolvida:['devolveu','d'], aprovada:['aprovou','g'], reaberta:['reabriu a tarefa','b'], editada:['editou a tarefa','b'], lixeira:['mandou para a lixeira','b'], restaurada:['restaurou da lixeira','b'] };
+const PEND_ERROS = { link_invalido:'Link inválido ou desativado.', titulo_obrigatorio:'Escreva o que precisa ser feito.', resolucao_obrigatoria:'Escreva como você resolveu (mínimo 3 letras).', comentario_obrigatorio:'Escreva o que falta (mínimo 3 letras).', estado_invalido:'Essa tarefa já mudou de situação. Atualize a tela.', tarefa_invalida:'Tarefa não encontrada.', sem_permissao:'Sem permissão.' };
+
+function pendEsc(s){ return escapeHtmlCampanha(s==null ? '' : String(s)); }
+function pendMsgErro(m){ m = m || ''; for(const k in PEND_ERROS){ if(m.indexOf(k) >= 0) return PEND_ERROS[k]; } return 'Não foi possível concluir. Tente novamente.'; }
+async function pendRpc(nome, args){
+  const r = await supabaseClient.rpc(nome, args || {});
+  if(r.error) throw new Error(pendMsgErro(r.error.message));
+  return r.data;
+}
+function pendToast(msg, erro){
+  const d = document.createElement('div');
+  d.className = 'pd-root pd-toast' + (erro ? ' erro' : '');
+  d.textContent = msg;
+  document.body.appendChild(d);
+  setTimeout(function(){ d.remove(); }, 3200);
+}
+function pendFmtPrazo(d){ if(!d) return 'sem prazo'; const p = d.split('-'); return p[2] + '/' + p[1]; }
+function pendFmtDH(iso){
+  try{ return new Date(iso).toLocaleString('pt-BR', { timeZone:'America/Sao_Paulo', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }).replace(/,?\s+/, ' às '); }
+  catch(e){ return ''; }
+}
+function pendHojeISO(){ const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0'); }
+function pendAtrasada(t){ return t.status === 'pendente' && !!t.prazo && t.prazo < pendHojeISO(); }
+function pendUltimoEvento(t){ const h = t.historico || []; return h.length ? h[h.length-1].evento : ''; }
+function pendTimeline(hist){
+  return '<div class="pd-tl">' + (hist || []).map(function(e){
+    const m = PEND_EV[e.evento] || [e.evento, 'b'];
+    return '<div class="pd-ev pd-ev-' + m[1] + '"><b>' + pendEsc(e.autor) + ' ' + m[0] + '</b><small>' + pendEsc(pendFmtDH(e.em)) + '</small>' +
+      (e.texto ? '<span class="pd-q">“' + pendEsc(e.texto) + '”</span>' : '') + '</div>';
+  }).join('') + '</div>';
+}
+function pendUrl(token){ return location.href.split('?')[0].split('#')[0] + '?pendencias=' + token; }
+
+/* ---------- PAINEL DO FERNANDO (dentro do sistema) ---------- */
+function initPendenciasFab(){
+  if(typeof MODO_DEMO !== 'undefined' && MODO_DEMO) return;
+  if(!usuarioAtualEhAdmin) return;
+  if(document.getElementById('pend-fab')) return;
+  const b = document.createElement('button');
+  b.id = 'pend-fab'; b.title = 'Pendências da equipe';
+  b.innerHTML = '📋<span id="pend-fab-badge"></span>';
+  b.onclick = pendAbrirPainel;
+  document.body.appendChild(b);
+  pendAtualizarBadge();
+  setInterval(pendAtualizarBadge, 90000);
+}
+function pendBadge(n){ const el = document.getElementById('pend-fab-badge'); if(!el) return; el.textContent = n; el.style.display = n > 0 ? 'block' : 'none'; }
+async function pendAtualizarBadge(){
+  try{ const d = await pendRpc('pend_a_listar', { p_filtro:'aguardando', p_pessoa:null, p_pagina:1, p_tamanho:1 }); pendBadge(d.aguardando || 0); }catch(e){}
+}
+async function pendAbrirPainel(){
+  let ov = document.getElementById('pend-overlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'pend-overlay'; ov.className = 'pd-root pd-ov';
+    ov.innerHTML = '<div class="pd-modal"><div class="pd-mh"><h2>Pendências da equipe</h2><div class="pd-row">' +
+      '<button data-a="links">Links da equipe</button><button class="pd-g" data-a="nova">+ Nova tarefa</button><button data-a="fechar" aria-label="Fechar">✕</button></div></div>' +
+      '<div id="pend-corpo"></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', pendClickAdmin);
+    ov.addEventListener('change', pendChangeAdmin);
+  }
+  ov.style.display = 'flex';
+  try{ PEND_ST.pessoas = await pendRpc('pend_a_pessoas'); }catch(e){ pendToast(e.message, true); }
+  PEND_ST.tela = 'lista';
+  await pendCarregar();
+}
+async function pendCarregar(){
+  try{
+    const d = await pendRpc('pend_a_listar', { p_filtro:PEND_ST.filtro, p_pessoa:PEND_ST.pessoa || null, p_pagina:PEND_ST.pagina, p_tamanho:PEND_ST.tam });
+    PEND_ST.itens = d.itens || []; PEND_ST.total = d.total || 0; PEND_ST.aguard = d.aguardando || 0;
+    pendBadge(PEND_ST.aguard);
+    const maxPag = Math.max(1, Math.ceil(PEND_ST.total / PEND_ST.tam));
+    if(PEND_ST.pagina > maxPag){ PEND_ST.pagina = maxPag; return pendCarregar(); }
+  }catch(e){ pendToast(e.message, true); }
+  pendRenderLista();
+}
+function pendRenderLista(){
+  const c = document.getElementById('pend-corpo'); if(!c) return;
+  const chips = [['pendentes','Pendentes'],['aguardando','Aguardando conferência'],['concluidas','Concluídas'],['todas','Histórico'],['lixeira','Lixeira']];
+  const optP = '<option value="">Todas as pessoas</option>' + PEND_ST.pessoas.map(function(p){ return '<option value="' + p.id + '"' + (PEND_ST.pessoa === p.id ? ' selected' : '') + '>' + pendEsc(p.nome) + '</option>'; }).join('');
+  const total = PEND_ST.total, tam = PEND_ST.tam, maxPag = Math.max(1, Math.ceil(total / tam));
+  const de = total ? (PEND_ST.pagina - 1) * tam + 1 : 0, ate = total ? de + PEND_ST.itens.length - 1 : 0;
+  c.innerHTML = '<div class="pd-card">' +
+    '<div class="pd-filtros"><select class="pd-sel" data-a="pessoa">' + optP + '</select>' +
+    chips.map(function(x){ return '<button class="pd-chip' + (PEND_ST.filtro === x[0] ? ' on' : '') + '" data-a="filtro" data-v="' + x[0] + '">' + x[1] + (x[0] === 'aguardando' && PEND_ST.aguard > 0 ? '<span class="pd-n">' + PEND_ST.aguard + '</span>' : '') + '</button>'; }).join('') + '</div>' +
+    '<div class="pd-legenda"><span><i style="background:var(--royal-light)"></i>Criada por Fernando</span><span><i style="background:#15803D"></i>Criada pela equipe</span></div>' +
+    (PEND_ST.itens.length ? PEND_ST.itens.map(pendLinhaAdmin).join('') : '<div class="pd-vazio">Nenhuma tarefa aqui.</div>') +
+    '<div class="pd-foot"><div class="pd-foot-1"><span>Mostrando ' + de + '–' + ate + ' de ' + total + ' tarefas</span>' +
+    '<select class="pd-sel" data-a="tam">' + [10,25,50].map(function(n){ return '<option value="' + n + '"' + (n === tam ? ' selected' : '') + '>' + n + ' por página</option>'; }).join('') + '</select></div>' +
+    '<div class="pd-foot-2"><button data-a="ant"' + (PEND_ST.pagina <= 1 ? ' disabled' : '') + '>‹ Anterior</button><span class="pd-pg">Página ' + PEND_ST.pagina + ' de ' + maxPag + '</span>' +
+    '<button data-a="prox"' + (PEND_ST.pagina >= maxPag ? ' disabled' : '') + '>Próxima ›</button></div></div></div>';
+}
+function pendLinhaAdmin(t){
+  const doAdmin = t.criado_por === 'admin';
+  let tag = '';
+  if(t.lixeira) tag = '<span class="pd-tag pd-tag-bl">Na lixeira</span>';
+  else if(t.status === 'aguardando') tag = '<span class="pd-tag pd-tag-or">Aguardando conferência</span>';
+  else if(t.status === 'concluida') tag = '<span class="pd-tag pd-tag-gr">Concluída</span>';
+  else if(pendUltimoEvento(t) === 'devolvida') tag = '<span class="pd-tag pd-tag-solid">Devolvida</span>';
+  else if(pendAtrasada(t)) tag = '<span class="pd-tag pd-tag-or">Atrasada</span>';
+  const B = function(a, rotulo, cls){ return '<button' + (cls ? ' class="' + cls + '"' : '') + ' data-a="' + a + '" data-id="' + t.id + '">' + rotulo + '</button>'; };
+  let acoes = '';
+  if(t.lixeira) acoes = B('restaurar','Restaurar') + B('hist','Histórico');
+  else if(t.status === 'aguardando') acoes = B('aprovar','Aprovar','pd-g') + B('devolver','Devolver','pd-o') + B('hist','Histórico') + B('editar','Editar');
+  else if(t.status === 'concluida') acoes = B('reabrir','Reabrir') + B('editar','Editar') + B('lixeira','Mover para a lixeira','pd-o') + B('hist','Histórico');
+  else acoes = B('editar','Editar') + B('lixeira','Mover para a lixeira','pd-o') + B('hist','Histórico');
+  const devolvendo = PEND_ST.devolvendo === t.id
+    ? '<label class="pd-lbl">O que falta? (a pessoa vai ver)</label><textarea class="pd-in" id="pend-dev-txt" placeholder="Explique o que precisa ser ajustado"></textarea>' +
+      '<div class="pd-acoes"><button class="pd-o" data-a="enviardev" data-id="' + t.id + '">Enviar de volta</button><button data-a="cancdev">Cancelar</button></div>' : '';
+  return '<div class="pd-item ' + (doAdmin ? '' : 'pd-vd') + '">' +
+    '<div class="pd-it-top"><div class="pd-tit">' + pendEsc(t.pessoa) + ' · ' + pendEsc(t.titulo) + '</div>' + tag + '</div>' +
+    (t.observacao ? '<div class="pd-obs">' + pendEsc(t.observacao) + '</div>' : '') +
+    '<div class="pd-meta">Prazo ' + pendFmtPrazo(t.prazo) + ' · criada em ' + pendEsc(pendFmtDH(t.criado_em)) + ' por ' + (doAdmin ? 'Fernando' : pendEsc(t.pessoa)) + '</div>' +
+    (t.status === 'aguardando' && !t.lixeira ? '<div class="pd-res"><small>Como ' + pendEsc(t.pessoa) + ' resolveu · ' + pendEsc(pendFmtDH(t.ok_em)) + '</small>' + pendEsc(t.resolucao) + '</div>' : '') +
+    devolvendo + (PEND_ST.devolvendo === t.id ? '' : '<div class="pd-acoes">' + acoes + '</div>') +
+    (PEND_ST.hist[t.id] ? pendTimeline(t.historico) : '') + '</div>';
+}
+async function pendClickAdmin(e){
+  const ov = e.currentTarget;
+  if(e.target === ov){ ov.style.display = 'none'; return; }
+  const bt = e.target.closest('[data-a]'); if(!bt || bt.tagName === 'SELECT') return;
+  const a = bt.dataset.a, id = bt.dataset.id;
+  try{
+    if(a === 'fechar') ov.style.display = 'none';
+    else if(a === 'filtro'){ PEND_ST.filtro = bt.dataset.v; PEND_ST.pagina = 1; PEND_ST.tela = 'lista'; await pendCarregar(); }
+    else if(a === 'ant'){ PEND_ST.pagina = Math.max(1, PEND_ST.pagina - 1); await pendCarregar(); }
+    else if(a === 'prox'){ PEND_ST.pagina++; await pendCarregar(); }
+    else if(a === 'hist'){ PEND_ST.hist[id] = !PEND_ST.hist[id]; pendRenderLista(); }
+    else if(a === 'aprovar'){ await pendRpc('pend_a_aprovar', { p_tarefa:id, p_comentario:null }); pendToast('Tarefa aprovada.'); await pendCarregar(); }
+    else if(a === 'devolver'){ PEND_ST.devolvendo = id; pendRenderLista(); }
+    else if(a === 'cancdev'){ PEND_ST.devolvendo = null; pendRenderLista(); }
+    else if(a === 'enviardev'){
+      const txt = (ov.querySelector('#pend-dev-txt') || {}).value;
+      await pendRpc('pend_a_devolver', { p_tarefa:id, p_comentario:txt });
+      PEND_ST.devolvendo = null; pendToast('Devolvida para a pessoa.'); await pendCarregar();
+    }
+    else if(a === 'reabrir'){ await pendRpc('pend_a_reabrir', { p_tarefa:id, p_comentario:null }); pendToast('Tarefa reaberta.'); await pendCarregar(); }
+    else if(a === 'lixeira'){
+      if(!confirm('Mandar esta tarefa para a lixeira? Ela continua guardada no histórico.')) return;
+      await pendRpc('pend_a_lixeira', { p_tarefa:id, p_lixeira:true }); pendToast('Enviada para a lixeira.'); await pendCarregar();
+    }
+    else if(a === 'restaurar'){ await pendRpc('pend_a_lixeira', { p_tarefa:id, p_lixeira:false }); pendToast('Tarefa restaurada.'); await pendCarregar(); }
+    else if(a === 'nova') pendAbrirForm(null);
+    else if(a === 'editar') pendAbrirForm(id);
+    else if(a === 'salvarform') await pendSalvarForm();
+    else if(a === 'voltar'){ PEND_ST.tela = 'lista'; await pendCarregar(); }
+    else if(a === 'links'){ PEND_ST.tela = 'links'; PEND_ST.pessoas = await pendRpc('pend_a_pessoas'); pendRenderLinks(); }
+    else if(a === 'zap') pendEnviarZap(id);
+    else if(a === 'copiar') pendCopiar(id);
+    else if(a === 'salvartel'){ await pendSalvarTel(id); pendToast('Telefone salvo.'); }
+    else if(a === 'novotoken'){
+      const p = PEND_ST.pessoas.find(function(x){ return x.id === id; });
+      if(!confirm('Gerar um novo link para ' + (p ? p.nome : 'esta pessoa') + '? O link antigo deixa de funcionar.')) return;
+      await pendRpc('pend_a_novo_token', { p_pessoa:id });
+      PEND_ST.pessoas = await pendRpc('pend_a_pessoas'); pendRenderLinks(); pendToast('Novo link gerado.');
+    }
+  }catch(err){ pendToast(err.message, true); }
+}
+async function pendChangeAdmin(e){
+  const a = e.target.dataset && e.target.dataset.a;
+  if(a === 'pessoa'){ PEND_ST.pessoa = e.target.value; PEND_ST.pagina = 1; await pendCarregar(); }
+  else if(a === 'tam'){ PEND_ST.tam = parseInt(e.target.value, 10) || 10; PEND_ST.pagina = 1; await pendCarregar(); }
+}
+function pendAbrirForm(id){
+  PEND_ST.tela = 'form';
+  PEND_ST.editando = id ? (PEND_ST.itens.find(function(x){ return x.id === id; }) || null) : null;
+  const t = PEND_ST.editando, c = document.getElementById('pend-corpo');
+  const opts = PEND_ST.pessoas.map(function(p){ return '<option value="' + p.id + '"' + (t && t.pessoa_id === p.id ? ' selected' : '') + '>' + pendEsc(p.nome) + '</option>'; }).join('');
+  c.innerHTML = '<div class="pd-card"><h2>' + (t ? 'Editar tarefa' : 'Nova tarefa') + '</h2>' +
+    '<label class="pd-lbl">Pessoa</label><select class="pd-in" id="pend-f-pessoa">' + opts + '</select>' +
+    '<label class="pd-lbl">O que precisa ser feito</label><input class="pd-in" id="pend-f-titulo" maxlength="200" value="' + pendEsc(t ? t.titulo : '') + '">' +
+    '<label class="pd-lbl">Observação</label><textarea class="pd-in" id="pend-f-obs" maxlength="1000">' + pendEsc(t ? (t.observacao || '') : '') + '</textarea>' +
+    '<label class="pd-lbl">Prazo</label><input class="pd-in" type="date" id="pend-f-prazo" value="' + pendEsc(t ? (t.prazo || '') : '') + '">' +
+    '<div class="pd-acoes" style="margin-top:14px"><button class="pd-g" data-a="salvarform">Salvar</button><button data-a="voltar">Cancelar</button></div></div>';
+}
+async function pendSalvarForm(){
+  const v = function(id){ return document.getElementById(id).value; };
+  const titulo = v('pend-f-titulo');
+  if(!titulo.trim()){ pendToast('Escreva o que precisa ser feito.', true); return; }
+  const t = PEND_ST.editando, prazo = v('pend-f-prazo') || null;
+  if(t) await pendRpc('pend_a_editar', { p_tarefa:t.id, p_pessoa:v('pend-f-pessoa'), p_titulo:titulo, p_obs:v('pend-f-obs'), p_prazo:prazo });
+  else { await pendRpc('pend_a_criar', { p_pessoa:v('pend-f-pessoa'), p_titulo:titulo, p_obs:v('pend-f-obs'), p_prazo:prazo }); PEND_ST.filtro = 'pendentes'; }
+  pendToast('Tarefa salva.'); PEND_ST.tela = 'lista'; PEND_ST.pagina = 1; await pendCarregar();
+}
+function pendRenderLinks(){
+  const c = document.getElementById('pend-corpo'); if(!c) return;
+  c.innerHTML = '<div class="pd-card"><div class="pd-mh" style="margin-bottom:6px"><h2>Links da equipe</h2><button data-a="voltar">Voltar às tarefas</button></div>' +
+    '<div class="pd-obs" style="margin-bottom:10px">Cada pessoa abre só o link dela, sem senha. Digite o telefone (com DDD) uma vez e use o botão para mandar pelo WhatsApp.</div>' +
+    PEND_ST.pessoas.map(function(p){
+      return '<div class="pd-pessoa-lk"><div class="pd-row" style="justify-content:space-between"><b>' + pendEsc(p.nome) + '</b>' +
+        '<span class="pd-meta">' + p.abertas + ' pendente(s) · ' + p.aguardando + ' aguardando conferência</span></div>' +
+        '<input class="pd-in" id="pend-tel-' + p.id + '" inputmode="tel" placeholder="Telefone com DDD, ex.: 43 99999-9999" value="' + pendEsc(p.telefone || '') + '">' +
+        '<div class="pd-acoes"><button class="pd-g" data-a="zap" data-id="' + p.id + '">Enviar por WhatsApp</button>' +
+        '<button data-a="salvartel" data-id="' + p.id + '">Salvar telefone</button><button data-a="copiar" data-id="' + p.id + '">Copiar link</button>' +
+        '<button class="pd-o" data-a="novotoken" data-id="' + p.id + '">Gerar novo link</button></div></div>';
+    }).join('') + '</div>';
+}
+async function pendSalvarTel(id){
+  const inp = document.getElementById('pend-tel-' + id); if(!inp) return;
+  await pendRpc('pend_a_telefone', { p_pessoa:id, p_telefone:inp.value });
+  const p = PEND_ST.pessoas.find(function(x){ return x.id === id; }); if(p) p.telefone = inp.value.trim();
+}
+function pendEnviarZap(id){
+  const p = PEND_ST.pessoas.find(function(x){ return x.id === id; }); if(!p) return;
+  const inp = document.getElementById('pend-tel-' + id);
+  let tel = ((inp && inp.value) || p.telefone || '').replace(/\D/g, '');
+  if(tel && tel.length <= 11) tel = '55' + tel;
+  const msg = 'Olá, ' + p.nome + '! Este é o seu link de tarefas do Tom Gás:\n' + pendUrl(p.token) + '\n\nPor ele você vê suas tarefas, cria novas e dá OK contando como resolveu.';
+  window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(msg), '_blank');
+  if(inp && inp.value.trim() !== (p.telefone || '')) pendSalvarTel(id).catch(function(){});
+}
+function pendCopiar(id){
+  const p = PEND_ST.pessoas.find(function(x){ return x.id === id; }); if(!p) return;
+  const url = pendUrl(p.token);
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function(){ pendToast('Link copiado.'); }, function(){ prompt('Copie o link:', url); });
+  else prompt('Copie o link:', url);
+}
+
+/* ---------- LINK INDIVIDUAL DA PESSOA (?pendencias=código, sem senha) ---------- */
+async function iniciarPendenciasPublica(token){
+  try{ aplicarFaviconPaginaPublica(); }catch(e){}
+  let claro = false; try{ claro = window.matchMedia('(prefers-color-scheme: light)').matches; }catch(e){}
+  if(!claro) document.documentElement.setAttribute('data-theme', 'dark');
+  document.body.innerHTML = '<div id="pend-pub" class="pd-root pd-pub"></div>';
+  const w = document.getElementById('pend-pub');
+  w.addEventListener('click', pendClickPub);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden && !PEND_PUB.okId && !PEND_PUB.nova) pendPubCarregar(); });
+  PEND_PUB.token = token;
+  await pendPubCarregar();
+}
+async function pendPubCarregar(){
+  const w = document.getElementById('pend-pub'); if(!w) return;
+  try{
+    const d = await pendRpc('pend_p_listar', { p_token:PEND_PUB.token });
+    PEND_PUB.nome = d.pessoa; PEND_PUB.tarefas = d.tarefas || [];
+  }catch(e){
+    w.innerHTML = '<div class="pd-pub-h"><i></i>Tom Gás · Tarefas</div><div class="pd-pub-in"><div class="pd-card"><h2>Link inválido</h2><div class="pd-obs">Peça um novo link ao Fernando.</div></div></div>';
+    return;
+  }
+  pendPubRender();
+}
+function pendCartaoPub(t){
+  const doAdmin = t.criado_por === 'admin';
+  const ult = pendUltimoEvento(t);
+  const ev = (t.historico || []).slice().reverse().find(function(h){ return h.evento === 'devolvida' || h.evento === 'reaberta'; });
+  let tag = '';
+  if(t.status === 'aguardando') tag = '<span class="pd-tag pd-tag-or">Aguardando conferência</span>';
+  else if(t.status === 'concluida') tag = '<span class="pd-tag pd-tag-gr">Concluída</span>';
+  else if(ult === 'devolvida') tag = '<span class="pd-tag pd-tag-solid">Devolvida</span>';
+  else if(pendAtrasada(t)) tag = '<span class="pd-tag pd-tag-or">Atrasada</span>';
+  const tick = t.status === 'pendente' ? '<button class="pd-tick" data-a="ok" data-id="' + t.id + '" aria-label="Dar OK"></button>' : '';
+  const form = PEND_PUB.okId === t.id
+    ? '<label class="pd-lbl">Como você resolveu?</label><textarea class="pd-in" id="pend-ok-txt" maxlength="1000" placeholder="Conte o que foi feito"></textarea>' +
+      '<div class="pd-acoes"><button class="pd-g" data-a="enviarok" data-id="' + t.id + '">Enviar para conferência</button><button data-a="cancok">Cancelar</button></div>' : '';
+  return '<div class="pd-item ' + (doAdmin ? '' : 'pd-vd') + '"><div class="pd-pitem">' + tick + '<div>' +
+    '<div class="pd-it-top"><div class="pd-tit">' + pendEsc(t.titulo) + '</div>' + tag + '</div>' +
+    (t.observacao ? '<div class="pd-obs">' + pendEsc(t.observacao) + '</div>' : '') +
+    '<div class="pd-meta">Prazo ' + pendFmtPrazo(t.prazo) + ' · criada em ' + pendEsc(pendFmtDH(t.criado_em)) + ' por ' + (doAdmin ? 'Fernando' : 'você') + '</div>' +
+    (t.status === 'pendente' && ev && ev.texto && ult === ev.evento ? '<div class="pd-res"><small>Fernando escreveu</small>' + pendEsc(ev.texto) + '</div>' : '') +
+    (t.status === 'aguardando' ? '<div class="pd-res"><small>Sua resolução</small>' + pendEsc(t.resolucao) + '</div>' : '') +
+    form + '<div class="pd-acoes"><button data-a="hist" data-id="' + t.id + '">' + (PEND_PUB.hist[t.id] ? 'Esconder histórico' : 'Ver histórico') + '</button></div>' +
+    (PEND_PUB.hist[t.id] ? pendTimeline(t.historico) : '') + '</div></div></div>';
+}
+function pendPubRender(){
+  const w = document.getElementById('pend-pub'); if(!w) return;
+  const T = PEND_PUB.tarefas;
+  const pend = T.filter(function(t){ return t.status === 'pendente'; }), aguard = T.filter(function(t){ return t.status === 'aguardando'; }), conc = T.filter(function(t){ return t.status === 'concluida'; });
+  const pct = T.length ? Math.round(conc.length * 100 / T.length) : 0;
+  const formNova = PEND_PUB.nova
+    ? '<div class="pd-card"><h2 style="font-size:15px">Nova tarefa</h2><label class="pd-lbl">O que precisa ser feito</label><input class="pd-in" id="pend-n-titulo" maxlength="200">' +
+      '<label class="pd-lbl">Observação</label><textarea class="pd-in" id="pend-n-obs" maxlength="1000"></textarea>' +
+      '<label class="pd-lbl">Prazo</label><input class="pd-in" type="date" id="pend-n-prazo">' +
+      '<div class="pd-acoes" style="margin-top:12px"><button class="pd-g" data-a="salvarnova">Salvar tarefa</button><button data-a="cancnova">Cancelar</button></div></div>' : '';
+  const concShow = PEND_PUB.verConc ? conc.slice(0, PEND_PUB.concLimite) : [];
+  w.innerHTML = '<div class="pd-pub-h"><i></i>Tom Gás · Tarefas</div><div class="pd-pub-in">' +
+    '<div class="pd-card"><div class="pd-row" style="justify-content:space-between"><h2>Tarefas de ' + pendEsc(PEND_PUB.nome) + '</h2><button data-a="atualizar">Atualizar</button></div>' +
+    '<div class="pd-track"><div class="pd-fill" style="width:' + pct + '%"></div></div><div class="pd-meta">' + conc.length + ' de ' + T.length + ' concluídas' + (aguard.length ? ' · ' + aguard.length + ' aguardando conferência' : '') + '</div>' +
+    '<div class="pd-acoes"><button class="pd-g" data-a="nova" style="width:100%;padding:11px">+ Nova tarefa</button></div></div>' + formNova +
+    '<div class="pd-sec">Pendentes (' + pend.length + ')</div>' + (pend.length ? pend.map(pendCartaoPub).join('') : '<div class="pd-vazio">Nada pendente. Bom trabalho!</div>') +
+    (aguard.length ? '<div class="pd-sec">Aguardando conferência (' + aguard.length + ')</div>' + aguard.map(pendCartaoPub).join('') : '') +
+    '<div class="pd-sec">Concluídas (' + conc.length + ')</div>' +
+    (conc.length ? '<button data-a="verconc">' + (PEND_PUB.verConc ? 'Esconder concluídas' : 'Mostrar concluídas') + '</button>' : '<div class="pd-vazio">Ainda não há tarefas concluídas.</div>') +
+    '<div style="margin-top:8px">' + concShow.map(pendCartaoPub).join('') + '</div>' +
+    (PEND_PUB.verConc && conc.length > PEND_PUB.concLimite ? '<button data-a="maisconc">Ver mais</button>' : '') + '</div>';
+}
+async function pendClickPub(e){
+  const bt = e.target.closest('[data-a]'); if(!bt) return;
+  const a = bt.dataset.a, id = bt.dataset.id;
+  try{
+    if(a === 'ok'){ PEND_PUB.okId = id; pendPubRender(); const t = document.getElementById('pend-ok-txt'); if(t) t.focus(); }
+    else if(a === 'cancok'){ PEND_PUB.okId = null; pendPubRender(); }
+    else if(a === 'enviarok'){
+      const txt = (document.getElementById('pend-ok-txt') || {}).value;
+      await pendRpc('pend_p_ok', { p_token:PEND_PUB.token, p_tarefa:id, p_resolucao:txt });
+      PEND_PUB.okId = null; pendToast('Enviado para o Fernando conferir.'); await pendPubCarregar();
+    }
+    else if(a === 'hist'){ PEND_PUB.hist[id] = !PEND_PUB.hist[id]; pendPubRender(); }
+    else if(a === 'nova'){ PEND_PUB.nova = true; pendPubRender(); }
+    else if(a === 'cancnova'){ PEND_PUB.nova = false; pendPubRender(); }
+    else if(a === 'salvarnova'){
+      const g = function(i){ return document.getElementById(i).value; };
+      if(!g('pend-n-titulo').trim()){ pendToast('Escreva o que precisa ser feito.', true); return; }
+      await pendRpc('pend_p_criar', { p_token:PEND_PUB.token, p_titulo:g('pend-n-titulo'), p_obs:g('pend-n-obs'), p_prazo:g('pend-n-prazo') || null });
+      PEND_PUB.nova = false; pendToast('Tarefa criada.'); await pendPubCarregar();
+    }
+    else if(a === 'verconc'){ PEND_PUB.verConc = !PEND_PUB.verConc; PEND_PUB.concLimite = 10; pendPubRender(); }
+    else if(a === 'maisconc'){ PEND_PUB.concLimite += 10; pendPubRender(); }
+    else if(a === 'atualizar'){ await pendPubCarregar(); }
+  }catch(err){ pendToast(err.message, true); }
+}
+
 async function init(){
   const paramsUrl = new URLSearchParams(location.search);
   const entregaId = paramsUrl.get('entrega');
@@ -20767,6 +21152,8 @@ async function init(){
   if(pesquisaManualParam){ await iniciarPesquisaManualPublica(); return; }
   const dicaParam = paramsUrl.get('dica');
   if(dicaParam){ await iniciarDicaPublica(dicaParam); return; }
+  const pendParam = paramsUrl.get('pendencias');
+  if(pendParam){ await iniciarPendenciasPublica(pendParam); return; }
   attachAuthHandlers();
   attachLogoInput();
   registerServiceWorker();
