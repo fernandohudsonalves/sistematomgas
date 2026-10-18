@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "v49_18-10-2026";
+    var VERSAO_ATUAL = "v50_18-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -923,7 +923,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "v49_18-10-2026";
+const APP_BUILD_HORARIO = "v50_18-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -6454,11 +6454,12 @@ function renderDashboardRelatorios(){
   const despesas = state.despesas.filter(d=>d.data>=de && d.data<=ate);
 
   const porCategoria = {};
-  vendas.forEach(v=>{ porCategoria[v.categoria] = (porCategoria[v.categoria]||0)+v.valor_total; });
+  const qtdPorCategoria = {};
+  vendas.forEach(v=>{ porCategoria[v.categoria] = (porCategoria[v.categoria]||0)+v.valor_total; qtdPorCategoria[v.categoria] = (qtdPorCategoria[v.categoria]||0)+(Number(v.quantidade)||0); });
   const linhasCategoria = Object.entries(porCategoria).sort((a,b)=>b[1]-a[1]);
   document.getElementById('db-vendas-categoria').innerHTML = linhasCategoria.length===0 ? '<div class="empty">Nada vendido no período.</div>' :
-    '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Total</th></tr></thead><tbody>'+
-    linhasCategoria.map(l=>'<tr><td>'+(iconeCategoriaHtml(l[0])?'<span style="font-size:12px;margin-right:5px;">'+iconeCategoriaHtml(l[0])+'</span>':(l[0]&&l[0]!=='undefined'?'':'<span style="font-size:12px;margin-right:5px;">❓</span>'))+((l[0]&&l[0]!=='undefined')?l[0]:'Sem categoria')+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+'</tbody></table></div>';
+    '<div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Quantidade</th><th>Total</th></tr></thead><tbody>'+
+    linhasCategoria.map(l=>'<tr><td>'+(iconeCategoriaHtml(l[0])?'<span style="font-size:12px;margin-right:5px;">'+iconeCategoriaHtml(l[0])+'</span>':(l[0]&&l[0]!=='undefined'?'':'<span style="font-size:12px;margin-right:5px;">❓</span>'))+((l[0]&&l[0]!=='undefined')?l[0]:'Sem categoria')+'</td><td>'+(qtdPorCategoria[l[0]]||0).toLocaleString('pt-BR')+'</td><td>'+fmtMoney(l[1])+'</td></tr>').join('')+'</tbody></table></div>';
 
   const carrinhos = {};
   vendas.forEach(v=>{ const chave = v.grupoId || v.id; carrinhos[chave] = (carrinhos[chave]||0) + v.valor_total + (v.frete||0); });
