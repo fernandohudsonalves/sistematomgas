@@ -11,7 +11,7 @@
 // quando a versão realmente mudou, então não fica recarregando à toa.
 (function(){
   try{
-    var VERSAO_ATUAL = "v45_18-10-2026";
+    var VERSAO_ATUAL = "v47_18-10-2026";
     var CHAVE_VERSAO = 'tomgas_versao_instalada';
     var CHAVE_TENTOU = 'tomgas_forcou_atualizacao_' + VERSAO_ATUAL;
     var versaoSalva = null;
@@ -408,11 +408,15 @@ button.btn.small{padding:6px 12px;font-size:12px;margin-top:0;}
 .table-wrap td.cel-acoes{overflow:visible;max-width:none;white-space:nowrap;}
 .table-wrap td .badge,.table-wrap td .pill{white-space:nowrap;}
 .table-wrap td button{font-size:11.5px;padding:2px 4px;}
-.tabela-empresas table{table-layout:auto;}
-.tabela-empresas th,.tabela-empresas td{white-space:normal;overflow:visible;text-overflow:clip;max-width:none;word-break:break-word;vertical-align:middle;}
-.tabela-empresas td .badge{white-space:normal;display:inline-block;}
-.tabela-empresas td.cel-acoes{white-space:normal;min-width:150px;}
-.tabela-empresas td.cel-acoes button,.tabela-empresas td.cel-acoes a{margin:2px 2px 2px 0;}
+.tabela-empresas table{table-layout:auto;min-width:780px;}
+.tabela-empresas th,.tabela-empresas td{white-space:nowrap;overflow:visible;text-overflow:clip;max-width:none;vertical-align:middle;padding:12px 10px;font-size:13.5px;}
+.tabela-empresas th{font-size:12px;}
+.tabela-empresas td:nth-child(3){white-space:normal;min-width:170px;max-width:260px;}
+.tabela-empresas td:nth-child(5){white-space:normal;min-width:130px;max-width:170px;}
+.tabela-empresas td .badge{white-space:normal;display:inline-block;font-size:12px;padding:3px 10px;}
+.tabela-empresas td.cel-acoes{white-space:normal;min-width:225px;position:sticky;right:0;background:var(--card,#fff);box-shadow:-6px 0 8px -6px rgba(0,0,0,.35);}
+.tabela-empresas th:last-child{position:sticky;right:0;background:var(--card,#fff);}
+.tabela-empresas td.cel-acoes button,.tabela-empresas td.cel-acoes a{margin:2px 4px 2px 0;font-size:12.5px;padding:4px 8px;display:inline-block;}
 .tabela-vendas th,.tabela-vendas td{font-size:10.5px;padding:4px 5px;max-width:none;}
 .tabela-vendas .badge{font-size:9px;padding:1px 6px;}
 .tabela-vendas td button{font-size:12px;padding:2px 5px;min-width:22px;}
@@ -910,7 +914,7 @@ html[data-theme="dark"] .rt-btn-map.waze, html[data-theme="natal"] .rt-btn-map.w
 <div id="app" style="display:none;"></div>
 
 <script>
-const APP_BUILD_HORARIO = "v45_18-10-2026";
+const APP_BUILD_HORARIO = "v47_18-10-2026";
 // Cadastro público (criar conta) desativado a pedido do dono, até definir melhores estratégias
 // de segurança (ex: aprovação manual, convite por e-mail, etc.). Pra reativar, é só trocar pra true.
 const CADASTRO_ATIVO = false;
@@ -2522,7 +2526,7 @@ let relatorioVendidoNoMesSelecionado = null;
 let relatorioControleGeralDe = null;
 let relatorioControleGeralAte = null;
 let calendarioCampanhaMes = null;
-let relEmpresaSel = '';
+let relEmpresaSel = ''; let buscaVendaInicial = '';
 let relEmpresaDe = '';
 let relEmpresaAte = '';
 let cadastroSub = 'clientes';
@@ -6301,6 +6305,22 @@ function saldoDaEmpresa(empresa){
   const pagos = pagamentosDaEmpresa(empresa).reduce((s,p)=>s+p.valor,0);
   return Math.max(0, debitos - pagos);
 }
+// Divide o saldo devedor da empresa por mês de origem: os pagamentos abatem primeiro as dívidas mais
+// antigas (como o cliente costuma pagar), e o que sobra fica no mês em que a dívida nasceu.
+function saldoPorMesEmpresa(empresa){
+  const mkAtual = monthKey(todayStr());
+  const d = new Date(mkAtual+'-01T12:00:00'); d.setMonth(d.getMonth()-1);
+  const mkAnterior = monthKey(d.toISOString().slice(0,10));
+  let pago = pagamentosDaEmpresa(empresa).reduce((s,p)=>s+p.valor,0);
+  const r = {antigo:0, anterior:0, atual:0};
+  debitosDaEmpresa(empresa).slice().sort((a,b)=>a.data.localeCompare(b.data)).forEach(db=>{
+    const abate = Math.min(pago, Math.max(0,db.valor)); pago -= abate;
+    const resta = db.valor - abate;
+    const mk = monthKey(db.data);
+    if(mk>=mkAtual) r.atual += resta; else if(mk===mkAnterior) r.anterior += resta; else r.antigo += resta;
+  });
+  return r;
+}
 function empresasComConvenio(){
   const nomes = new Set();
   const cadastradas = (state.empresas||[]).map(e=>e.nome);
@@ -6322,15 +6342,17 @@ function totalConveniosAberto(){
   return empresasComConvenio().reduce((s,e)=>s+saldoDaEmpresa(e), 0);
 }
 function convenioPorEmpresaHtml(filtro){
-  const todasLinhas = empresasComConvenio().map(n=>({nome:n, saldo:saldoDaEmpresa(n)})).filter(x=>x.saldo>0.004).sort((a,b)=>b.saldo-a.saldo);
+  const todasLinhas = empresasComConvenio().map(n=>({nome:n, saldo:saldoDaEmpresa(n), mes:saldoPorMesEmpresa(n)})).filter(x=>x.saldo>0.004).sort((a,b)=>b.saldo-a.saldo);
   if(todasLinhas.length===0) return '<div class="empty">Nenhuma empresa com saldo em aberto no momento.</div>';
   const q = (filtro||'').toLowerCase().trim();
   const linhas = q ? todasLinhas.filter(l=>l.nome.toLowerCase().includes(q)) : todasLinhas;
+  const temAntigo = linhas.some(l=>l.mes.antigo>0.004);
+  const cel = v=>'<td style="'+(v>0.004?'color:var(--danger);font-weight:700;':'opacity:.55;')+'">'+fmtMoney(v)+'</td>';
   return (linhas.length===0 ? '<div class="empty">Nenhuma empresa encontrada.</div>' :
-    '<div class="table-wrap tabela-vendas tabela-fiado-cliente"><table><thead><tr><th>Empresa</th><th>Saldo devedor</th><th></th></tr></thead><tbody>'+
+    '<div class="table-wrap tabela-vendas tabela-fiado-cliente tabela-conv-meses"><table><thead><tr><th>Empresa</th>'+(temAntigo?'<th>Meses anteriores ao último</th>':'')+'<th>Mês anterior</th><th>Mês atual</th><th>Saldo devedor total</th><th></th></tr></thead><tbody>'+
     linhas.map(l=>{
       const emp = state.empresas.find(e=>e.nome===l.nome);
-      return '<tr><td>'+l.nome+(emp&&emp.telefone?' <a href="'+linkWhatsApp(emp.telefone)+'" target="_blank" title="Chamar '+l.nome+' no WhatsApp" style="vertical-align:middle;">'+iconWhatsApp('#25D366',15)+'</a>':'')+'</td><td>'+fmtMoney(l.saldo)+'</td>'+
+      return '<tr><td>'+l.nome+(emp&&emp.telefone?' <a href="'+linkWhatsApp(emp.telefone)+'" target="_blank" title="Chamar '+l.nome+' no WhatsApp" style="vertical-align:middle;">'+iconWhatsApp('#25D366',15)+'</a>':'')+'</td>'+(temAntigo?cel(l.mes.antigo):'')+cel(l.mes.anterior)+cel(l.mes.atual)+'<td style="font-weight:700;">'+fmtMoney(l.saldo)+'</td>'+
       '<td class="cel-acoes"><button class="act-link" data-ver-detalhes-empresa="'+encodeURIComponent(l.nome)+'">📄 ver detalhes</button><button class="act-link" data-registrar-pagamento-empresa="'+encodeURIComponent(l.nome)+'">💵 registrar pagamento</button></td></tr>';
     }).join('')+
     '</tbody></table></div>');
@@ -6695,7 +6717,7 @@ function empresasTable(list){
     if(qtdAgendamentos) partes.push(qtdAgendamentos+' entrega(s) agendada(s)');
     const vinculoTxt = partes.length ? '<span class="badge status-receber" title="'+partes.join(', ')+'">'+partes.join(' · ')+'</span>' : '<span class="hint">Sem vínculo</span>';
     return '<tr><td>'+e.nome+'</td><td>'+(e.telefone||'—')+'</td><td>'+(e.endereco||'—')+'</td><td>'+(e.responsavel||'—')+'</td><td>'+vinculoTxt+'</td>'+
-    '<td class="cel-acoes">'+botaoWhatsApp(e.telefone)+'<button class="act-link" data-edit-empresa="'+e.id+'">✎ editar</button><button class="del-link" data-del-empresa="'+e.id+'" data-vinculos="'+partes.length+'">🗑 excluir</button></td></tr>';
+    '<td class="cel-acoes">'+botaoWhatsApp(e.telefone)+'<button class="act-link" data-ver-vendas-empresa="'+e.id+'">📋 ver vendas</button><button class="act-link" data-edit-empresa="'+e.id+'">✎ editar</button><button class="del-link" data-del-empresa="'+e.id+'" data-vinculos="'+partes.length+'">🗑 excluir</button></td></tr>';
   }).join('')+'</tbody></table></div>';
 }
 
@@ -14952,6 +14974,11 @@ function attachHandlers(){
     });
   };
   const attachEmpresaRowHandlers = ()=>{
+    document.querySelectorAll('[data-ver-vendas-empresa]').forEach(btn=>btn.onclick=()=>{
+      const em = state.empresas.find(x=>x.id===btn.dataset.verVendasEmpresa);
+      if(!em) return;
+      buscaVendaInicial = em.nome; currentTab = 'vendas'; renderAll();
+    });
     document.querySelectorAll('[data-edit-empresa]').forEach(btn=>btn.onclick=()=>{
       const em = state.empresas.find(x=>x.id===btn.dataset.editEmpresa);
       const femEl = document.getElementById('form-empresa-cad');
@@ -15198,6 +15225,7 @@ function attachHandlers(){
     paginaVendasHistorico=1;
     filtrarListaVendas();
   };
+  if(buscaVendaInicial && buscaVenda){ buscaVenda.value = buscaVendaInicial; buscaVendaInicial = ''; }
   if(document.getElementById('lista-vendas-wrap')) filtrarListaVendas();
   const btnForcarCorrecaoFuso = document.getElementById('btn-forcar-correcao-fuso');
   if(btnForcarCorrecaoFuso) btnForcarCorrecaoFuso.onclick = async ()=>{
