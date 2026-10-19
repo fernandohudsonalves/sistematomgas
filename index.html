@@ -935,42 +935,53 @@ textarea.pd-in{min-height:70px;resize:vertical;}
 .pd-pitem>div{flex:1;min-width:0;}
 @media (max-width:560px){.pd-ov{padding:6px;}.pd-modal{padding:10px;}}
 
-/* ===== Botões flutuantes: menores, mais juntos, todos azuis (WhatsApp verde) e escondidos na lateral ===== */
-#whats-fab,#rota-fab,#new-ag-fab,#fiado-fab,#empresas-conv-fab,#recado-fab,#sim-venda-fab,#calc-fab,#cal-fab,#alertas-fab,#pend-fab{
-  width:30px !important;height:30px !important;right:10px !important;padding:0 !important;
-  font-size:14px !important;line-height:1 !important;color:#fff !important;
+/* ===== Botões flutuantes: menores, mais juntos, todos azuis (WhatsApp verde), coluna no alto e escondidos na lateral ===== */
+#agenda-fab,#pend-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab{
+  width:30px !important;height:30px !important;right:10px !important;bottom:auto !important;padding:0 !important;
+  border-radius:50% !important;display:flex !important;align-items:center !important;justify-content:center !important;
+  font-size:14px !important;line-height:1 !important;color:#fff !important;z-index:500 !important;
   background:var(--royal) !important;box-shadow:0 3px 8px rgba(15,27,61,.38) !important;
   transition:transform .18s ease,opacity .18s ease,background .15s ease !important;
 }
-#whats-fab:hover,#rota-fab:hover,#new-ag-fab:hover,#fiado-fab:hover,#empresas-conv-fab:hover,#recado-fab:hover,#sim-venda-fab:hover,#calc-fab:hover,#cal-fab:hover,#alertas-fab:hover,#pend-fab:hover{background:var(--royal-light) !important;}
+#agenda-fab:hover,#pend-fab:hover,#alertas-fab:hover,#cal-fab:hover,#calc-fab:hover,#sim-venda-fab:hover,#recado-fab:hover,#empresas-conv-fab:hover,#fiado-fab:hover,#new-ag-fab:hover,#rota-fab:hover{background:var(--royal-light) !important;}
 #whats-fab{background:#25D366 !important;box-shadow:0 3px 8px rgba(37,211,102,.45) !important;}
 #whats-fab:hover{background:#2EE673 !important;}
 #new-ag-fab{font-size:18px !important;font-weight:700 !important;}
 #whats-fab svg{width:17px !important;height:17px !important;}
 #calc-fab svg{width:18px !important;height:18px !important;}
-/* posições: uma coluna só, 36px de passo (30px do botão + 6px de respiro) */
-#whats-fab{bottom:14px !important;}
-#rota-fab{bottom:50px !important;}
-#new-ag-fab{bottom:86px !important;}
-#fiado-fab{bottom:122px !important;}
-#empresas-conv-fab{bottom:158px !important;}
-#recado-fab{bottom:194px !important;}
-#sim-venda-fab{bottom:230px !important;}
-#calc-fab{bottom:266px !important;}
-#cal-fab{bottom:302px !important;}
-#alertas-fab{bottom:338px !important;}
-#pend-fab{bottom:374px !important;}
+/* Agenda: de pílula com texto para botão redondo só com o ícone */
+#agenda-fab{font-size:0 !important;}
+#agenda-fab::before{content:"📋";font-size:14px;line-height:1;}
+/* coluna única começando logo abaixo de onde ficava a Agenda: 36px de passo (30px do botão + 6px de respiro) */
+#agenda-fab{top:150px !important;}
+#pend-fab{top:186px !important;}
+#alertas-fab{top:222px !important;}
+#cal-fab{top:258px !important;}
+#calc-fab{top:294px !important;}
+#sim-venda-fab{top:330px !important;}
+#recado-fab{top:366px !important;}
+#empresas-conv-fab{top:402px !important;}
+#fiado-fab{top:438px !important;}
+#new-ag-fab{top:474px !important;}
+#rota-fab{top:510px !important;}
+#whats-fab{top:546px !important;}
 /* painéis que abriam em cima da coluna agora abrem ao lado do botão dele */
-#calc-panel{right:50px !important;bottom:266px !important;}
-#sim-venda-panel{right:50px !important;bottom:230px !important;}
-#recado-panel{right:50px !important;bottom:194px !important;}
+#agenda-drawer{right:50px !important;}
+#calc-panel{right:50px !important;top:294px !important;bottom:auto !important;}
+#sim-venda-panel{right:50px !important;top:330px !important;bottom:auto !important;max-height:min(50vh,calc(100vh - 342px)) !important;}
+#recado-panel{right:50px !important;top:366px !important;bottom:auto !important;max-height:min(360px,calc(100vh - 378px)) !important;}
 #alertas-fab-badge,#recado-fab-badge,#pend-fab-badge{top:-6px !important;right:-6px !important;font-size:10px !important;padding:0 4px !important;}
+/* barrinha verde na borda: mostra onde passar o mouse para revelar os botões */
+#fab-handle{position:fixed;right:0;top:306px;width:5px;height:120px;border-radius:5px 0 0 5px;background:#22C55E;box-shadow:0 0 10px rgba(34,197,94,.65);z-index:499;pointer-events:none;opacity:.85;transition:opacity .2s ease;animation:fabHandlePulse 2.6s ease-in-out infinite;}
+html.fabs-on #fab-handle{opacity:0;animation:none;}
+@keyframes fabHandlePulse{0%,100%{opacity:.5;}50%{opacity:1;}}
+@media (prefers-reduced-motion:reduce){#fab-handle{animation:none;}}
 /* no computador (com mouse): ficam escondidos na lateral e aparecem ao chegar perto */
 @media (hover:hover) and (pointer:fine){
-  html:not(.fabs-on) :is(#whats-fab,#rota-fab,#new-ag-fab,#fiado-fab,#empresas-conv-fab,#recado-fab,#sim-venda-fab,#calc-fab,#cal-fab,#alertas-fab,#pend-fab){
+  html:not(.fabs-on) :is(#agenda-fab,#pend-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab){
     transform:translateX(52px) !important;opacity:0 !important;pointer-events:none !important;
   }
-  html:not(.fabs-on) :is(#whats-fab,#rota-fab,#new-ag-fab,#fiado-fab,#empresas-conv-fab,#recado-fab,#sim-venda-fab,#calc-fab,#cal-fab,#alertas-fab,#pend-fab):focus-visible{
+  html:not(.fabs-on) :is(#agenda-fab,#pend-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab):focus-visible{
     transform:none !important;opacity:1 !important;pointer-events:auto !important;
   }
 }
@@ -20907,7 +20918,7 @@ function initPendenciasFab(){
   if(document.getElementById('pend-fab')) return;
   const b = document.createElement('button');
   b.id = 'pend-fab'; b.title = 'Pendências da equipe';
-  b.innerHTML = '📋<span id="pend-fab-badge"></span>';
+  b.innerHTML = '✅<span id="pend-fab-badge"></span>';
   b.onclick = pendAbrirPainel;
   document.body.appendChild(b);
   pendAtualizarBadge();
@@ -21184,13 +21195,16 @@ function initFabsAutoHide(){
   try{ if(!window.matchMedia('(hover:hover) and (pointer:fine)').matches) return; }catch(e){ return; }
   if(window._fabsAutoHide) return;
   window._fabsAutoHide = true;
+  const ag = document.getElementById('agenda-fab'); if(ag && !ag.title) ag.title = 'Agenda';
+  if(!document.getElementById('fab-handle')){ const h = document.createElement('div'); h.id = 'fab-handle'; h.setAttribute('aria-hidden','true'); document.body.appendChild(h); }
   const raiz = document.documentElement; let timer = null;
   const abrir = function(){ clearTimeout(timer); timer = null; raiz.classList.add('fabs-on'); };
   const fechar = function(){ if(timer) return; timer = setTimeout(function(){ raiz.classList.remove('fabs-on'); timer = null; }, 350); };
   document.addEventListener('mousemove', function(e){
-    const dx = window.innerWidth - e.clientX, dy = window.innerHeight - e.clientY;
+    const dx = window.innerWidth - e.clientX, y = e.clientY;
     const aberto = raiz.classList.contains('fabs-on');
-    if(dx <= (aberto ? 120 : 48) && dy <= 470) abrir(); else if(aberto) fechar();
+    const dentro = aberto ? (dx <= 120 && y >= 100 && y <= 640) : (dx <= 48 && y >= 126 && y <= 606);
+    if(dentro) abrir(); else if(aberto) fechar();
   }, { passive:true });
   document.addEventListener('mouseleave', fechar);
   document.addEventListener('focusin', function(e){ if(e.target && /-fab$/.test(e.target.id || '')) abrir(); });
