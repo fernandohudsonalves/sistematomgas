@@ -951,6 +951,35 @@ textarea.pd-in{min-height:70px;resize:vertical;}
 .pd-det{margin-top:6px;}
 .pd-det summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text2);}
 
+.pd-aten{border-left:4px solid #C2410C;}
+.pd-aten h2{margin:0 0 8px;font-size:16px;}
+.pd-aten-ok{border-left:4px solid #15803D;font-size:13.5px;}
+.pd-aten-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);}
+.pd-aten-row:first-of-type{border-top:none;}
+.pd-aten-txt{flex:1;font-size:13.5px;color:var(--text);}
+.pd-aten-dot{width:10px;height:10px;border-radius:50%;flex:none;}
+.pd-aten-or{background:#C2410C;}.pd-aten-bl{background:var(--royal-light);}.pd-aten-gr{background:#15803D;}
+.pd-tab{width:100%;border-collapse:collapse;font-size:13px;}
+.pd-tab th{text-align:left;color:var(--text2);font-size:11px;text-transform:uppercase;padding:7px 6px;border-bottom:2px solid var(--border);white-space:nowrap;}
+.pd-tab td{padding:8px 6px;border-bottom:1px solid var(--border);color:var(--text);}
+.pd-dlg-wide{width:min(820px,100%);}
+.pd-ext-h{font-size:14px;margin:14px 0 6px;color:var(--text);}
+
+.pd-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg);flex:0 0 auto;}
+.pd-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px;}
+.pd-kpi{background:var(--blue-tint);border-radius:10px;padding:12px;}
+.pd-kpi-r{font-size:12.5px;color:var(--text2);}
+.pd-kpi-v{font-size:26px;font-weight:700;color:var(--text);line-height:1.2;margin:2px 0;}
+.pd-delta{font-size:12px;font-weight:600;}
+.pd-delta-bom{color:var(--green);}
+.pd-delta-ruim{color:#FDBA74;}
+html:not([data-theme="dark"]):not([data-theme="natal"]) .pd-delta-ruim{color:#C2410C;}
+.pd-insights{background:var(--card);border-left:4px solid #C2410C;border-radius:8px;padding:10px 12px;margin:0 0 6px;font-size:13px;color:var(--text);}
+.pd-insights b{display:block;margin-bottom:4px;}
+.pd-chart{position:relative;width:100%;}
+.pd-leg{display:flex;gap:16px;font-size:12px;color:var(--text2);margin-bottom:6px;}
+.pd-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
+
 /* ===== Botões flutuantes: menores, mais juntos, todos azuis (WhatsApp verde), coluna no alto e escondidos na lateral ===== */
 #agenda-fab,#pend-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab{
   width:30px !important;height:30px !important;right:10px !important;bottom:auto !important;padding:0 !important;
@@ -4017,7 +4046,7 @@ function viewTempoEntrega(){
   const fmtDur = min=> min==null ? '—' : (min>=60 ? Math.floor(min/60)+'h '+(min%60)+'min' : min+' min');
   const linhas = lista.map(t=>'<tr><td>'+fmtDate(t.data)+'</td><td>'+escapeHtmlCampanha(t.cliente||'')+'</td><td>'+escapeHtmlCampanha(getClienteEndereco(t.cliente)||'—')+'</td><td>'+(getClienteTelefone(t.cliente)||'—')+'</td><td>'+fmtHora(t.horaPedido)+'</td><td>'+fmtHora(t.horaConclusao)+'</td><td><strong>'+fmtDur(t.duracaoMin)+'</strong></td>'+
     '<td class="cel-acoes"><button type="button" class="del-link" title="Excluir registro" data-del-tempo="'+t.id+'">🗑</button></td></tr>').join('');
-  return '<div class="card"><h2>⏱ Tempo de Entrega</h2>'+ajudaHtml('tempoentrega','Assim que o entregador conclui o passo 3 (ENTREGUE) na tela pública de confirmação, o sistema grava aqui a data, o cliente, o horário em que o pedido foi feito, o horário da conclusão, e calcula sozinho quanto tempo levou.')+
+  return '<div class="card"><h2>⏱ Tempo de Entrega</h2>'+'<div class="pd-root" style="margin:6px 0"><button data-aten="entregas">📊 Ver desempenho das entregas</button></div>'+ajudaHtml('tempoentrega','Assim que o entregador conclui o passo 3 (ENTREGUE) na tela pública de confirmação, o sistema grava aqui a data, o cliente, o horário em que o pedido foi feito, o horário da conclusão, e calcula sozinho quanto tempo levou.')+
     (lista.length===0 ? '<div class="empty">Nenhuma entrega concluída registrada ainda.</div>' :
     '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Endereço</th><th>Telefone</th><th>Horário do pedido</th><th>Horário da conclusão</th><th>Tempo de entrega</th><th></th></tr></thead><tbody>'+linhas+'</tbody></table></div>')+
     '</div>';
@@ -6249,7 +6278,7 @@ function viewDashboard(){
   const pendenciasRetiradaDash = state.vendas.filter(v=>v.tipo_entrega==='Falta retirar' && !v.retirado);
   const pendenciasJaRetirouDash = state.vendas.filter(v=>v.tipo_entrega==='Já retirou' && v.pagamento==='Marcou/Fiado');
 
-  return comunicadosBannerHtml()+
+  return comunicadosBannerHtml()+atencaoHojeCardDashboardHtml()+
     backupAtrasadoCardDashboardHtml()+pedidosParciaisCardDashboardHtml()+feriadoProximoCardDashboardHtml()+
     (alertasEstoque.length>0 ? '<div class="card" style="border-left:4px solid var(--danger);cursor:pointer;" data-ir-relatorio-estoque="1"><h2 style="color:var(--danger);">⚠️ Estoque baixo — '+alertasEstoque.length+' item(ns)</h2>'+
       '<div class="hint">'+alertasEstoque.map(al=>al.label+' ('+al.atual+'/'+al.min+')').join(' · ')+' — toque para ver na aba Estoque.</div></div>' : '')+
@@ -20324,7 +20353,8 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       entregadorId: primeira.entregadorId||'',
       vendaJaLancada: true,
       itensExcel: linhas.map((l,i)=>({canal:l.canal||'', produto:l.produto||l.categoria||'', quantidade:l.quantidade||1, valorUnit:Number(l.valor_unit)||0, notaVenda:l.nota||'', tipoEntrega:l.tipo_entrega||'', empresa:l.empresa||'', frete: i===0?(Number(l.frete)||0):0, observacao:l.obs||''})),
-      marcarNotif(campo){ linhas.forEach(l=>l[campo]=true); },
+      marcarNotif(campo){ const agoraIso=new Date().toISOString(); linhas.forEach(l=>{ l[campo]=true; if(campo==='notif_saiu' && !l.t_saiu) l.t_saiu=agoraIso; if(campo==='notif_chegou' && !l.t_chegou) l.t_chegou=agoraIso; }); },
+      tempos(){ const p=linhas[0]; return { saiu:p.t_saiu||null, chegou:p.t_chegou||null, agendada:!!p.entrega_hora }; },
       marcarConcluido(){ linhas.forEach(l=>l.entrega_status='entregue'); },
       desmarcarConcluido(){ linhas.forEach(l=>l.entrega_status='pendente'); },
       marcarRecebido(){ linhas.forEach(l=>l.dinheiro_recebido=true); },
@@ -20347,7 +20377,8 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
       entregadorId: ag.entregadorId||'',
       vendaJaLancada: false,
       itensExcel: [{canal:'', produto:ag.produto||ag.produto_nota||'', quantidade:ag.quantidade||1, valorUnit: ag.quantidade ? (Number(ag.valor)||0)/ag.quantidade : (Number(ag.valor)||0), notaVenda:'', tipoEntrega:ag.tipo_entrega||'', empresa:ag.empresa||'', frete:Number(ag.frete)||0, observacao:''}],
-      marcarNotif(campo){ ag[campo]=true; },
+      marcarNotif(campo){ ag[campo]=true; const agoraIso=new Date().toISOString(); if(campo==='notif_saiu' && !ag.t_saiu) ag.t_saiu=agoraIso; if(campo==='notif_chegou' && !ag.t_chegou) ag.t_chegou=agoraIso; },
+      tempos(){ return { saiu:ag.t_saiu||null, chegou:ag.t_chegou||null, agendada:!!ag.agendado }; },
       marcarConcluido(){ ag.status='concluido'; },
       desmarcarConcluido(){ ag.status='pendente'; },
       marcarRecebido(){ ag.dinheiro_recebido=true; },
@@ -20452,7 +20483,7 @@ async function iniciarConfirmacaoEntregaPublica(tipo, id){
   async function registrarTempoEntrega(){
     const agora = new Date();
     const duracaoMin = entrega.criadoEm ? Math.max(0, Math.round((agora - new Date(entrega.criadoEm))/60000)) : null;
-    temposEntrega.push({id:uid(), data:todayStr(), cliente:entrega.cliente||'', horaPedido:entrega.criadoEm||null, horaConclusao:agora.toISOString(), duracaoMin, agendamentoId:entrega.anexoContexto.agendamentoId||null, vendaGrupoId:entrega.anexoContexto.vendaGrupoId||null});
+    temposEntrega.push({id:uid(), data:todayStr(), cliente:entrega.cliente||'', horaPedido:entrega.criadoEm||null, horaConclusao:agora.toISOString(), duracaoMin, agendamentoId:entrega.anexoContexto.agendamentoId||null, vendaGrupoId:entrega.anexoContexto.vendaGrupoId||null, entregadorId:entrega.entregadorId||'', horaSaida:(entrega.tempos?entrega.tempos().saiu:null), horaChegada:(entrega.tempos?entrega.tempos().chegou:null), agendada:(entrega.tempos?!!entrega.tempos().agendada:false)});
     await supabaseClient.from('app_data').upsert({chave:'temposEntrega',valor:temposEntrega,atualizado_em:new Date().toISOString()},{onConflict:'chave'});
   }
   async function salvarAnexo(item){
@@ -20952,20 +20983,25 @@ function pendUrl(token){ return location.href.split('?')[0].split('#')[0] + '?pe
 
 /* ---------- PAINEL DO FERNANDO (dentro do sistema) ---------- */
 function initPendenciasFab(){
+  initGestaoExtra();
   if(typeof MODO_DEMO !== 'undefined' && MODO_DEMO) return;
   if(!usuarioAtualEhAdmin) return;
   if(document.getElementById('pend-fab')) return;
   const b = document.createElement('button');
-  b.id = 'pend-fab'; b.title = 'Pendências da equipe';
-  b.innerHTML = '✅<span id="pend-fab-badge"></span>';
+  b.id = 'pend-fab'; b.title = 'Equipe';
+  b.innerHTML = '👥<span id="pend-fab-badge"></span>';
   b.onclick = pendAbrirPainel;
   document.body.appendChild(b);
   pendAtualizarBadge();
   setInterval(pendAtualizarBadge, 90000);
 }
+function pendMarcarAba(tela){
+  document.querySelectorAll('#pend-tabs [data-v]').forEach(function(b){ b.classList.toggle('on', b.dataset.v === tela); });
+  if(tela !== 'desempenho' && typeof pendDestruirCharts === 'function') pendDestruirCharts();
+}
 function pendBadge(n){ const el = document.getElementById('pend-fab-badge'); if(!el) return; el.textContent = n; el.style.display = n > 0 ? 'block' : 'none'; }
 async function pendAtualizarBadge(){
-  try{ const d = await pendRpc('pend_a_listar', { p_filtro:'aguardando', p_pessoa:null, p_pagina:1, p_tamanho:1 }); pendBadge(d.aguardando || 0); }catch(e){}
+  try{ const d = await pendRpc('pend_a_resumo'); PEND_RESUMO = d; pendBadge(d.aguardando || 0); atencaoHojeAtualizarDom(); }catch(e){}
 }
 async function pendAbrirPainel(){
   let pn = document.getElementById('pend-panel');
@@ -20973,8 +21009,9 @@ async function pendAbrirPainel(){
   if(!pn){
     pn = document.createElement('div');
     pn.id = 'pend-panel'; pn.className = 'pd-root pd-panel';
-    pn.innerHTML = '<div class="pd-mh" id="pend-head"><div class="pd-row"><span class="pd-grip" title="Arraste para mover">⠿</span><h2>Pendências da equipe</h2></div><div class="pd-row">' +
-      '<button data-a="links">Links da equipe</button><button class="pd-g" data-a="nova">+ Nova tarefa</button><button data-a="fechar" aria-label="Fechar">✕</button></div></div>' +
+    pn.innerHTML = '<div class="pd-mh" id="pend-head"><div class="pd-row"><span class="pd-grip" title="Arraste para mover">⠿</span><h2>Equipe</h2></div><div class="pd-row">' +
+      '<button class="pd-g" data-a="nova">+ Nova tarefa</button><button data-a="fechar" aria-label="Fechar">✕</button></div></div>' +
+      '<div class="pd-tabs" id="pend-tabs">' + [['lista','Tarefas'],['desempenho','Desempenho'],['entregas','Entregas'],['ranking','Ranking'],['lembretes','Lembretes'],['links','Links']].map(function(x){ return '<button class="pd-chip" data-a="tab" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
       '<div id="pend-corpo"></div>';
     document.body.appendChild(pn);
     pn.addEventListener('click', pendClickAdmin);
@@ -20995,9 +21032,11 @@ async function pendCarregar(){
     if(PEND_ST.pagina > maxPag){ PEND_ST.pagina = maxPag; return pendCarregar(); }
   }catch(e){ pendToast(e.message, true); }
   pendRenderLista();
+  pendAtualizarBadge();
 }
 function pendRenderLista(){
   const c = document.getElementById('pend-corpo'); if(!c) return;
+  pendMarcarAba('lista');
   const chips = [['pendentes','Pendentes'],['aguardando','Aguardando conferência'],['concluidas','Concluídas'],['todas','Histórico'],['lixeira','Lixeira']];
   const optP = '<option value="">Todas as pessoas</option>' + PEND_ST.pessoas.map(function(p){ return '<option value="' + p.id + '"' + (PEND_ST.pessoa === p.id ? ' selected' : '') + '>' + pendEsc(p.nome) + '</option>'; }).join('');
   const total = PEND_ST.total, tam = PEND_ST.tam, maxPag = Math.max(1, Math.ceil(total / tam));
@@ -21040,7 +21079,8 @@ function pendLinhaAdmin(t){
 async function pendClickAdmin(e){
   const ov = e.currentTarget;
   const bt = e.target.closest('[data-a]'); if(!bt || bt.tagName === 'SELECT') return;
-  const a = bt.dataset.a, id = bt.dataset.id;
+  let a = bt.dataset.a; const id = bt.dataset.id;
+  if(a === 'tab'){ const v = bt.dataset.v; a = v === 'lista' ? 'voltar' : v; }
   try{
     if(a === 'fechar') ov.classList.remove('open');
     else if(a === 'filtro'){ PEND_ST.filtro = bt.dataset.v; PEND_ST.pagina = 1; PEND_ST.tela = 'lista'; await pendCarregar(); }
@@ -21061,6 +21101,12 @@ async function pendClickAdmin(e){
       await pendRpc('pend_a_lixeira', { p_tarefa:id, p_lixeira:true }); pendToast('Enviada para a lixeira.'); await pendCarregar();
     }
     else if(a === 'restaurar'){ await pendRpc('pend_a_lixeira', { p_tarefa:id, p_lixeira:false }); pendToast('Tarefa restaurada.'); await pendCarregar(); }
+    else if(a === 'lembretes') await pendAbrirLembretes();
+    else if(a === 'ranking') await pendAbrirRanking();
+    else if(a === 'desempenho') await pendAbrirDesempenho();
+    else if(a === 'entregas') pendAbrirEntregas();
+    else if(a === 'zaplemb') pendEnviarLembrete(id);
+    else if(a === 'copiarlemb') pendCopiarLembrete(id);
     else if(a === 'nova') pendAbrirForm(null);
     else if(a === 'editar') pendAbrirForm(id);
     else if(a === 'salvarform') await pendSalvarForm();
@@ -21081,9 +21127,12 @@ async function pendChangeAdmin(e){
   const a = e.target.dataset && e.target.dataset.a;
   if(a === 'pessoa'){ PEND_ST.pessoa = e.target.value; PEND_ST.pagina = 1; await pendCarregar(); }
   else if(a === 'tam'){ PEND_ST.tam = parseInt(e.target.value, 10) || 10; PEND_ST.pagina = 1; await pendCarregar(); }
+  else if(a === 'entdias'){ PEND_ST.entDias = parseInt(e.target.value, 10) || 30; pendRenderEntregas(); }
+  else if(a === 'desdias'){ PEND_ST.desDias = parseInt(e.target.value, 10) || 30; await pendCarregarDesempenho(); }
+  else if(a === 'rankdias'){ PEND_ST.rankDias = parseInt(e.target.value, 10) || 0; await pendCarregarRanking(); }
 }
 function pendAbrirForm(id){
-  PEND_ST.tela = 'form';
+  PEND_ST.tela = 'form'; pendMarcarAba('lista');
   PEND_ST.editando = id ? (PEND_ST.itens.find(function(x){ return x.id === id; }) || null) : null;
   const t = PEND_ST.editando, c = document.getElementById('pend-corpo');
   const opts = PEND_ST.pessoas.map(function(p){ return '<option value="' + p.id + '"' + (t && t.pessoa_id === p.id ? ' selected' : '') + '>' + pendEsc(p.nome) + '</option>'; }).join('');
@@ -21105,6 +21154,7 @@ async function pendSalvarForm(){
 }
 function pendRenderLinks(){
   const c = document.getElementById('pend-corpo'); if(!c) return;
+  pendMarcarAba('links');
   c.innerHTML = '<div class="pd-card"><div class="pd-mh" style="margin-bottom:6px"><h2>Links da equipe</h2><button data-a="voltar">Voltar às tarefas</button></div>' +
     '<div class="pd-obs" style="margin-bottom:10px">Cada pessoa abre só o link dela, sem senha. Digite o telefone (com DDD) uma vez e use o botão para mandar pelo WhatsApp.</div>' +
     PEND_ST.pessoas.map(function(p){
@@ -21403,11 +21453,12 @@ async function pedidosPosLancamento(tocados, avisos){
 
 // ---- blocos de tela (cartão "Pedidos de carga") ----
 function pedidosOkHtml(){
-  const lista = pedidosCompletosAguardandoOk(); if(!lista.length) return '';
-  return '<div class="pd-root">' + lista.map(function(p){
+  const lista = pedidosCompletosAguardandoOk();
+  const botao = '<div class="pd-root" style="margin:6px 0"><button data-extrato-pedidos="1">Extrato do atacadista</button></div>';
+  return botao + (lista.length ? '<div class="pd-root">' + lista.map(function(p){
     const resumo = Object.keys(p.itens).map(function(k){ return p.itens[k]; }).filter(function(i){ return i.pedido > 0; }).map(function(i){ return i.item + ': ' + i.recebido + ' de ' + i.pedido; }).join(' · ');
     return '<div class="pd-okbox"><div><b>✅ Pedido ' + pendEsc(p.pedido) + ' completo</b><div class="pd-meta">' + pendEsc(resumo) + '</div></div><button class="pd-g" data-ok-pedido="' + pendEsc(p.pedido) + '">OK para encerrar</button></div>';
-  }).join('') + '</div>';
+  }).join('') + '</div>' : '');
 }
 function movimentosPedidoHtml(pedido){
   const ls = (state.estoqueLancamentos || []).filter(function(l){ return l.pedido === pedido; })
@@ -21482,6 +21533,414 @@ function inicializarPedidoMov(f){
   f.addEventListener('change', function(e){ if(e.target === sel) return; montar(); });
   f.addEventListener('input', function(e){ if(e.target === fQtd || e.target === qinp) preview(); });
   montar();
+}
+
+/* ===== Gestão extra: "precisa da sua atenção hoje", lembretes, ranking da equipe e extrato do atacadista ===== */
+let PEND_RESUMO = null;
+
+function initGestaoExtra(){
+  if(window._gestaoExtraOk) return; window._gestaoExtraOk = true;
+  document.addEventListener('click', function(e){
+    const b = e.target.closest('[data-aten],[data-extrato-pedidos]'); if(!b) return;
+    if(b.hasAttribute('data-extrato-pedidos')){ pedidosAbrirExtrato(); return; }
+    const a = b.dataset.aten;
+    if(a === 'conferir') pendAbrirPainelEm('lista', 'aguardando');
+    else if(a === 'atrasadas') pendAbrirPainelEm('lista', 'pendentes');
+    else if(a === 'lembretes') pendAbrirPainelEm('lembretes');
+    else if(a === 'pedidos'){ currentTab = 'estoque'; renderAll(); }
+    else if(a === 'extrato') pedidosAbrirExtrato();
+    else if(a === 'entregas') pendAbrirPainelEm('entregas');
+  });
+  setInterval(function(){ atencaoHojeAtualizarDom(); entregasAtualizarVivo(); }, 60000);
+}
+async function pendAbrirPainelEm(tela, filtro){
+  if(filtro){ PEND_ST.filtro = filtro; PEND_ST.pagina = 1; PEND_ST.pessoa = ''; }
+  const pn = document.getElementById('pend-panel');
+  if(!pn || !pn.classList.contains('open')) await pendAbrirPainel();
+  else if(tela === 'lista'){ PEND_ST.tela = 'lista'; await pendCarregar(); }
+  if(tela === 'lembretes') await pendAbrirLembretes(); else if(tela === 'ranking') await pendAbrirRanking(); else if(tela === 'entregas') pendAbrirEntregas();
+}
+
+/* ---------- 1) Cartão "Precisa da sua atenção hoje" (início do sistema) ---------- */
+function atencaoItens(){
+  const it = [], r = PEND_RESUMO;
+  const lentas = entregasAtrasadasAoVivo();
+  if(lentas.length){ const w = lentas[0]; it.push({ cor:'or', txt:lentas.length + (lentas.length === 1 ? ' entrega passou' : ' entregas passaram') + ' de ' + META_ENTREGA_MIN + ' min (a mais antiga: ' + w.cliente + ', ' + w.min + ' min, ' + w.etapa + ')', acao:'entregas', rot:'Ver entregas' }); }
+  if(r){
+    if(r.aguardando > 0) it.push({ cor:'or', txt:r.aguardando + ' tarefa(s) aguardando a sua conferência', acao:'conferir', rot:'Conferir' });
+    if(r.atrasadas > 0) it.push({ cor:'or', txt:r.atrasadas + ' tarefa(s) atrasada(s)', acao:'atrasadas', rot:'Ver' });
+    if(r.devolvidas > 0) it.push({ cor:'bl', txt:r.devolvidas + ' tarefa(s) devolvida(s) esperando a pessoa refazer', acao:'atrasadas', rot:'Ver' });
+    if(r.pessoas_com_pendencia > 0) it.push({ cor:'bl', txt:r.pessoas_com_pendencia + ' pessoa(s) com tarefas pendentes', acao:'lembretes', rot:'Enviar lembretes' });
+  }
+  const ok = pedidosCompletosAguardandoOk();
+  if(ok.length) it.push({ cor:'gr', txt:'Pedido ' + ok.map(function(p){ return p.pedido; }).join(', ') + ' completo(s): falta o seu OK para encerrar', acao:'pedidos', rot:'Abrir Estoque' });
+  const dev = saldosComodato('atacadista').filter(function(x){ return x.produto === 'Vasilhame vazio' && x.saldo > 0; });
+  if(dev.length) it.push({ cor:'bl', txt:'Vazios devendo ao atacadista: ' + dev.map(function(x){ return x.saldo + ' ' + itemComodatoLabel(x.categoria, x.item); }).join(', '), acao:'extrato', rot:'Ver extrato' });
+  return it;
+}
+function atencaoHojeCardDashboardHtml(){
+  if(typeof MODO_DEMO !== 'undefined' && MODO_DEMO) return '';
+  if(!usuarioAtualEhAdmin) return '';
+  const it = atencaoItens();
+  if(!it.length) return PEND_RESUMO ? '<div id="atencao-hoje" class="pd-root"><div class="card pd-aten-ok">✅ Tudo em dia hoje: nada esperando a sua conferência, sem tarefas atrasadas e sem pedido para encerrar.</div></div>' : '<div id="atencao-hoje"></div>';
+  return '<div id="atencao-hoje" class="pd-root"><div class="card pd-aten"><h2>🔔 Precisa da sua atenção hoje</h2>' + it.map(function(x){
+    return '<div class="pd-aten-row"><span class="pd-aten-dot pd-aten-' + x.cor + '"></span><span class="pd-aten-txt">' + pendEsc(x.txt) + '</span><button' + (x.cor === 'or' ? ' class="pd-o"' : (x.cor === 'gr' ? ' class="pd-g"' : '')) + ' data-aten="' + x.acao + '">' + pendEsc(x.rot) + '</button></div>';
+  }).join('') + '</div></div>';
+}
+function atencaoHojeAtualizarDom(){
+  const el = document.getElementById('atencao-hoje'); if(!el) return;
+  el.outerHTML = atencaoHojeCardDashboardHtml() || '<div id="atencao-hoje"></div>';
+}
+
+/* ---------- 2) Lembretes por WhatsApp ---------- */
+function pendSaudacao(){ const h = new Date().getHours(); return h < 12 ? 'Bom dia' : (h < 18 ? 'Boa tarde' : 'Boa noite'); }
+function pendMsgLembrete(p){
+  const linhas = p.tarefas.map(function(t, i){
+    return (i + 1) + '. ' + t.titulo + (t.prazo ? ' (prazo ' + pendFmtPrazo(t.prazo) + (t.atrasada ? ', ATRASADA' : '') + ')' : '') + (t.devolvida ? ' - devolvida, precisa refazer' : '');
+  }).join('\n');
+  const mais = p.total > p.tarefas.length ? '\n+ ' + (p.total - p.tarefas.length) + ' outra(s) no seu link' : '';
+  return pendSaudacao() + ', ' + p.nome + '! Você tem ' + p.total + ' tarefa(s) pendente(s):\n' + linhas + mais + '\n\nAbra o seu link e dê OK em cada uma contando como resolveu:\n' + pendUrl(p.token);
+}
+function pendLembEnviadoHoje(id){ try{ return localStorage.getItem('pend_lemb_' + pendHojeISO() + '_' + id) === '1'; }catch(e){ return false; } }
+async function pendAbrirLembretes(){
+  PEND_ST.tela = 'lembretes';
+  PEND_ST.lemb = await pendRpc('pend_a_lembretes');
+  pendRenderLembretes();
+}
+function pendRenderLembretes(){
+  const c = document.getElementById('pend-corpo'); if(!c) return;
+  pendMarcarAba('lembretes');
+  const L = PEND_ST.lemb || [];
+  c.innerHTML = '<div class="pd-card"><div class="pd-mh" style="margin-bottom:6px"><h2>Lembretes do dia</h2><button data-a="voltar">Voltar às tarefas</button></div>' +
+    '<div class="pd-obs" style="margin-bottom:10px">Cada botão abre o WhatsApp com a mensagem pronta: as tarefas pendentes da pessoa e o link dela. É só tocar em enviar.</div>' +
+    L.map(function(p){
+      if(!p.total) return '<div class="pd-pessoa-lk"><div class="pd-row" style="justify-content:space-between"><b>' + pendEsc(p.nome) + '</b><span class="pd-tag pd-tag-gr">Sem tarefas pendentes ✓</span></div></div>';
+      const atras = p.tarefas.filter(function(t){ return t.atrasada; }).length;
+      return '<div class="pd-pessoa-lk"><div class="pd-row" style="justify-content:space-between"><b>' + pendEsc(p.nome) + '</b><span class="pd-row">' +
+        '<span class="pd-tag pd-tag-bl">' + p.total + ' pendente(s)</span>' + (atras ? '<span class="pd-tag pd-tag-or">' + atras + ' atrasada(s)</span>' : '') +
+        (p.aguardando ? '<span class="pd-meta">' + p.aguardando + ' aguardando você</span>' : '') + (pendLembEnviadoHoje(p.id) ? '<span class="pd-tag pd-tag-gr">✓ enviado hoje</span>' : '') + '</span></div>' +
+        '<div class="pd-res" style="white-space:pre-line;margin:0">' + pendEsc(pendMsgLembrete(p)) + '</div>' +
+        (p.telefone ? '' : '<div class="pd-meta">Sem telefone salvo: o WhatsApp vai pedir para escolher o contato (cadastre em Links da equipe).</div>') +
+        '<div class="pd-acoes"><button class="pd-g" data-a="zaplemb" data-id="' + p.id + '">Enviar no WhatsApp</button><button data-a="copiarlemb" data-id="' + p.id + '">Copiar texto</button></div></div>';
+    }).join('') + '</div>';
+}
+function pendEnviarLembrete(id){
+  const p = (PEND_ST.lemb || []).find(function(x){ return x.id === id; }); if(!p) return;
+  let tel = (p.telefone || '').replace(/\D/g, ''); if(tel && tel.length <= 11) tel = '55' + tel;
+  window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(pendMsgLembrete(p)), '_blank');
+  try{ localStorage.setItem('pend_lemb_' + pendHojeISO() + '_' + id, '1'); }catch(e){}
+  pendRenderLembretes();
+}
+function pendCopiarLembrete(id){
+  const p = (PEND_ST.lemb || []).find(function(x){ return x.id === id; }); if(!p) return;
+  const txt = pendMsgLembrete(p);
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function(){ pendToast('Texto copiado.'); }, function(){ prompt('Copie o texto:', txt); });
+  else prompt('Copie o texto:', txt);
+}
+
+/* ---------- 3) Ranking da equipe ---------- */
+async function pendAbrirRanking(){
+  PEND_ST.tela = 'ranking'; if(PEND_ST.rankDias === undefined) PEND_ST.rankDias = 30;
+  await pendCarregarRanking();
+}
+async function pendCarregarRanking(){
+  PEND_ST.rank = await pendRpc('pend_a_ranking', { p_dias:PEND_ST.rankDias });
+  pendRenderRanking();
+}
+function pendRenderRanking(){
+  const c = document.getElementById('pend-corpo'); if(!c) return;
+  pendMarcarAba('ranking');
+  const R = (PEND_ST.rank || []).map(function(r){
+    const conc = r.no_prazo + r.com_atraso;
+    return Object.assign({}, r, { conc:conc, pct:conc ? Math.round(r.no_prazo * 100 / conc) : null });
+  }).sort(function(a, b){ return (b.pct === null ? -1 : b.pct) - (a.pct === null ? -1 : a.pct) || b.conc - a.conc; });
+  const melhor = R.find(function(r){ return r.pct !== null && r.conc >= 3; });
+  const tag = function(p){ return p === null ? '<span class="pd-meta">sem dados</span>' : '<span class="pd-tag ' + (p >= 80 ? 'pd-tag-gr' : (p >= 50 ? 'pd-tag-bl' : 'pd-tag-or')) + '">' + p + '%</span>'; };
+  const dias = [[7,'Últimos 7 dias'],[30,'Últimos 30 dias'],[90,'Últimos 90 dias'],[0,'Todo o período']];
+  c.innerHTML = '<div class="pd-card"><div class="pd-mh" style="margin-bottom:6px"><h2>Ranking da equipe</h2><div class="pd-row"><select class="pd-sel" data-a="rankdias">' +
+    dias.map(function(d){ return '<option value="' + d[0] + '"' + (PEND_ST.rankDias === d[0] ? ' selected' : '') + '>' + d[1] + '</option>'; }).join('') +
+    '</select><button data-a="voltar">Voltar às tarefas</button></div></div>' +
+    '<div class="pd-obs" style="margin-bottom:10px">"No prazo" conta quando o OK da pessoa veio até a data do prazo. A porcentagem só considera tarefas concluídas com prazo; atrasadas, devolvidas e pendentes mostram a situação de agora.</div>' +
+    '<div style="overflow-x:auto"><table class="pd-tab"><thead><tr><th>Pessoa</th><th>No prazo</th><th>Com atraso</th><th>% no prazo</th><th>Atrasadas agora</th><th>Devolvidas</th><th>Pendentes</th><th>Aguardando</th></tr></thead><tbody>' +
+    (R.length ? R.map(function(r){
+      return '<tr><td><b>' + (melhor && melhor.pessoa_id === r.pessoa_id ? '🏆 ' : '') + pendEsc(r.nome) + '</b></td><td>' + r.no_prazo + '</td><td>' + r.com_atraso + '</td><td>' + tag(r.pct) + '</td><td>' +
+        (r.atrasadas_agora ? '<span class="pd-tag pd-tag-or">' + r.atrasadas_agora + '</span>' : '0') + '</td><td>' + r.devolvidas + '</td><td>' + r.pendentes + '</td><td>' + r.aguardando + '</td></tr>';
+    }).join('') : '<tr><td colspan="8" class="pd-vazio">Sem dados ainda.</td></tr>') + '</tbody></table></div></div>';
+}
+
+/* ---------- 4) Extrato do atacadista (por pedido) ---------- */
+function pedidoSituacao(p){ return pedidoEncerrado(p.pedido) ? 'Encerrado' : (pedidoCompleto(p) ? 'Completo, aguardando OK' : 'Em aberto'); }
+function pedidoMovLinhas(pedido){
+  return (state.estoqueLancamentos || []).filter(function(l){ return l.pedido === pedido; })
+    .sort(function(a, b){ return (a.data || '').localeCompare(b.data || '') || (a.criadoEm || 0) - (b.criadoEm || 0); })
+    .map(function(l){
+      const txt = (l.estado === 'Cheio' && l.direcao === 'entrada') ? l.quantidade + ' ' + l.item + ' cheio(s) chegaram'
+        : (l.estado === 'Vazio' && l.direcao === 'saida') ? l.quantidade + ' ' + l.item + ' vazio(s) devolvido(s)'
+        : l.estado + ' ' + l.direcao + ' ' + l.quantidade + ' ' + l.item;
+      return fmtDate(l.data) + ': ' + txt;
+    });
+}
+function pedidosExtratoLista(filtro){
+  return pedidosOrdenados().filter(function(p){
+    const enc = pedidoEncerrado(p.pedido), comp = pedidoCompleto(p);
+    if(filtro === 'abertos') return !enc && !comp;
+    if(filtro === 'completos') return comp && !enc;
+    if(filtro === 'encerrados') return enc;
+    return true;
+  });
+}
+function pedidoItensExtrato(p){ return Object.keys(p.itens).map(function(k){ return p.itens[k]; }).filter(function(i){ return i.pedido > 0 || i.recebido > 0 || i.vazDev > 0; }); }
+function pedidosExtratoVazios(){ return saldosComodato('atacadista').filter(function(x){ return x.produto === 'Vasilhame vazio'; }); }
+function pedidosExtratoHtml(lista){
+  const blocos = lista.map(function(p){
+    return '<h3 class="pd-ext-h">Pedido ' + pendEsc(p.pedido) + ' <span class="pd-tag ' + (pedidoEncerrado(p.pedido) ? 'pd-tag-bl' : (pedidoCompleto(p) ? 'pd-tag-gr' : 'pd-tag-or')) + '">' + pendEsc(pedidoSituacao(p)) + '</span></h3>' +
+      '<table class="pd-tab"><thead><tr><th>Item</th><th>Pedido</th><th>Chegou</th><th>Falta chegar</th><th>A mais</th><th>Vazios devolvidos</th><th>Vazios faltam</th></tr></thead><tbody>' +
+      pedidoItensExtrato(p).map(function(i){ return '<tr><td>' + pendEsc(i.item) + '</td><td>' + i.pedido + '</td><td>' + i.recebido + '</td><td>' + (i.faltam || 0) + '</td><td>' + (i.aMais || 0) + '</td><td>' + i.vazDev + '</td><td>' + (i.vazFaltam || 0) + '</td></tr>'; }).join('') +
+      '</tbody></table><div class="pd-meta">' + pedidoMovLinhas(p.pedido).map(pendEsc).join('<br>') + '</div>';
+  }).join('') || '<div class="pd-vazio">Nenhum pedido neste filtro.</div>';
+  const vz = pedidosExtratoVazios().filter(function(x){ return x.saldo !== 0; });
+  return blocos + '<h3 class="pd-ext-h">Dívida geral de vasilhames vazios com o atacadista</h3>' +
+    (vz.length ? '<table class="pd-tab"><tbody>' + vz.map(function(x){ return '<tr><td>' + pendEsc(x.nome) + '</td><td>' + pendEsc(itemComodatoLabel(x.categoria, x.item)) + '</td><td>' + (x.saldo > 0 ? 'devemos ' + x.saldo : 'ele nos deve ' + (-x.saldo)) + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="pd-meta">Nada em aberto.</div>');
+}
+function pedidosExtratoTexto(lista){
+  const linhas = ['EXTRATO DE PEDIDOS - ' + fmtDate(todayStr()), ''];
+  lista.forEach(function(p){
+    linhas.push('Pedido ' + p.pedido + ' (' + pedidoSituacao(p).toLowerCase() + ')');
+    pedidoItensExtrato(p).forEach(function(i){
+      linhas.push('  ' + i.item + ': pedido ' + i.pedido + ' | chegou ' + i.recebido + ' | falta ' + (i.faltam || 0) + (i.aMais ? ' | a mais ' + i.aMais : '') + ' | vazios devolvidos ' + i.vazDev + (i.vazFaltam ? ' | vazios faltam ' + i.vazFaltam : ''));
+    });
+    pedidoMovLinhas(p.pedido).forEach(function(m){ linhas.push('    - ' + m); });
+    linhas.push('');
+  });
+  const vz = pedidosExtratoVazios().filter(function(x){ return x.saldo !== 0; });
+  linhas.push('Vazios (divida geral):');
+  if(vz.length) vz.forEach(function(x){ linhas.push('  ' + x.nome + ' - ' + itemComodatoLabel(x.categoria, x.item) + ': ' + (x.saldo > 0 ? 'devemos ' + x.saldo : 'ele nos deve ' + (-x.saldo))); }); else linhas.push('  nada em aberto');
+  return linhas.join('\n');
+}
+function pedidosAbrirExtrato(){
+  if(document.getElementById('pend-extrato')) return;
+  let filtro = 'abertos';
+  const ov = document.createElement('div'); ov.id = 'pend-extrato'; ov.className = 'pd-root pd-dlg-ov';
+  const desenhar = function(){ ov.querySelector('#pd-ext-corpo').innerHTML = pedidosExtratoHtml(pedidosExtratoLista(filtro)); };
+  ov.innerHTML = '<div class="pd-dlg pd-dlg-wide"><div class="pd-mh" style="margin-bottom:8px"><h2 style="margin:0">Extrato do atacadista</h2><select class="pd-sel" id="pd-ext-filtro">' +
+    '<option value="abertos">Pedidos em aberto</option><option value="completos">Completos (aguardando OK)</option><option value="encerrados">Encerrados</option><option value="todos">Todos</option></select></div>' +
+    '<div id="pd-ext-corpo"></div><div class="pd-acoes" style="margin-top:14px"><button class="pd-g" data-d="copiar">Copiar texto</button><button data-d="imprimir">Imprimir</button><button data-d="fechar">Fechar</button></div></div>';
+  ov.addEventListener('change', function(e){ if(e.target.id === 'pd-ext-filtro'){ filtro = e.target.value; desenhar(); } });
+  ov.addEventListener('click', function(e){
+    if(e.target === ov){ ov.remove(); return; }
+    const b = e.target.closest('[data-d]'); if(!b) return;
+    if(b.dataset.d === 'fechar') ov.remove();
+    else if(b.dataset.d === 'copiar'){
+      const txt = pedidosExtratoTexto(pedidosExtratoLista(filtro));
+      if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function(){ pendToast('Extrato copiado. É só colar no WhatsApp.'); }, function(){ prompt('Copie o extrato:', txt); });
+      else prompt('Copie o extrato:', txt);
+    } else if(b.dataset.d === 'imprimir'){
+      const w = window.open('', '_blank'); if(!w){ pendToast('Libere os pop-ups para imprimir.', true); return; }
+      w.document.write('<!doctype html><meta charset="utf-8"><title>Extrato do atacadista</title><style>body{font-family:Arial,sans-serif;padding:16px;color:#111}.pd-tab{border-collapse:collapse;width:100%;margin-bottom:6px}.pd-tab td,.pd-tab th{border:1px solid #999;padding:4px 6px;font-size:12px;text-align:left}.pd-ext-h{font-size:14px;margin:14px 0 4px}.pd-meta{font-size:11px;color:#444;margin-bottom:8px}.pd-tag{font-size:11px;border:1px solid #666;border-radius:10px;padding:1px 6px}</style><h2>Extrato do atacadista - ' + pendEsc(fmtDate(todayStr())) + '</h2>' + pedidosExtratoHtml(pedidosExtratoLista(filtro)));
+      w.document.close(); w.focus(); w.print();
+    }
+  });
+  document.body.appendChild(ov); desenhar();
+}
+
+/* ---------- 5) Desempenho da equipe (gráficos) ---------- */
+let PEND_CHARTS = [];
+function pendDestruirCharts(){ PEND_CHARTS.forEach(function(c){ try{ c.destroy(); }catch(e){} }); PEND_CHARTS = []; }
+async function pendAbrirDesempenho(){
+  PEND_ST.tela = 'desempenho'; if(PEND_ST.desDias === undefined) PEND_ST.desDias = 30;
+  await pendCarregarDesempenho();
+}
+async function pendCarregarDesempenho(){
+  PEND_ST.des = await pendRpc('pend_a_desempenho', { p_dias:PEND_ST.desDias });
+  pendRenderDesempenho();
+}
+function pendPct(no, atr){ const t = no + atr; return t ? Math.round(no * 100 / t) : null; }
+function pendFmtDias(d){ return d == null ? '—' : String(Math.round(d * 10) / 10).replace('.', ',') + ' dia' + (Math.round(d * 10) / 10 === 1 ? '' : 's'); }
+function pendDelta(atual, ant, unidade, menorMelhor){
+  if(atual == null || ant == null) return '';
+  const d = Math.round((atual - ant) * 10) / 10; if(d === 0) return '<div class="pd-meta">igual ao período anterior</div>';
+  const bom = menorMelhor ? d < 0 : d > 0;
+  return '<div class="pd-delta ' + (bom ? 'pd-delta-bom' : 'pd-delta-ruim') + '">' + (d > 0 ? '▲ +' : '▼ ') + String(Math.abs(d)).replace('.', ',') + (d < 0 && !(d > 0) ? '' : '') + ' ' + unidade + '</div>';
+}
+function pendInsightsDesempenho(D){
+  const out = [], pp = (D.por_pessoa || []).map(function(p){ return { nome:p.nome, pct:pendPct(p.no_prazo, p.com_atraso), conc:p.no_prazo + p.com_atraso }; }).filter(function(p){ return p.pct !== null && p.conc >= 2; }).sort(function(a, b){ return a.pct - b.pct; });
+  if(pp.length >= 2 && pp[0].pct < 70 && pp[pp.length - 1].pct - pp[0].pct >= 15){
+    const atr = (D.atrasadas_por_pessoa || []).find(function(x){ return x.nome === pp[0].nome; });
+    out.push(pp[0].nome + ' está com ' + pp[0].pct + '% no prazo' + (atr ? ' e ' + atr.n + ' atrasada(s)' : '') + ': vale uma conversa para entender o que está travando.');
+  }
+  const dias = ['segunda','terça','quarta','quinta','sexta','sábado','domingo'], ds = D.dia_semana || [], tot = ds.reduce(function(a, b){ return a + b; }, 0), max = Math.max.apply(null, ds.concat([0]));
+  if(tot >= 4 && max >= 3){ const i = ds.indexOf(max); out.push('Os atrasos se concentram na ' + dias[i] + ' (' + max + ' de ' + tot + '): talvez valha distribuir melhor os prazos que vencem nesse dia.'); }
+  return out;
+}
+function pendRenderDesempenho(){
+  const c = document.getElementById('pend-corpo'); if(!c) return;
+  pendMarcarAba('desempenho'); pendDestruirCharts();
+  const D = PEND_ST.des || {}, A = D.atual || {}, P = D.anterior || {}, V = D.devolucoes || {};
+  const pa = pendPct(A.no_prazo || 0, A.com_atraso || 0), pb = pendPct(P.no_prazo || 0, P.com_atraso || 0);
+  const dvA = V.ok_atual ? Math.round(V.dev_atual * 100 / V.ok_atual) : null, dvB = V.ok_anterior ? Math.round(V.dev_anterior * 100 / V.ok_anterior) : null;
+  const topAtr = (D.atrasadas_por_pessoa || [])[0];
+  const card = function(rot, valor, extra){ return '<div class="pd-kpi"><div class="pd-kpi-r">' + rot + '</div><div class="pd-kpi-v">' + valor + '</div>' + (extra || '') + '</div>'; };
+  const dias = [[7,'Últimos 7 dias'],[30,'Últimos 30 dias'],[90,'Últimos 90 dias']], ins = pendInsightsDesempenho(D);
+  c.innerHTML = '<div class="pd-card"><div class="pd-mh" style="margin-bottom:8px"><h2>Desempenho da equipe</h2><select class="pd-sel" data-a="desdias">' +
+    dias.map(function(d){ return '<option value="' + d[0] + '"' + (PEND_ST.desDias === d[0] ? ' selected' : '') + '>' + d[1] + '</option>'; }).join('') + '</select></div>' +
+    '<div class="pd-kpis">' + card('No prazo', pa == null ? '—' : pa + '%', pendDelta(pa, pb, 'pontos', false)) +
+    card('Tempo médio para resolver', pendFmtDias(A.tempo_medio_dias), pendDelta(A.tempo_medio_dias, P.tempo_medio_dias, 'dia', true)) +
+    card('Atrasadas agora', String(D.atrasadas_agora || 0), topAtr ? '<div class="pd-meta">' + topAtr.n + ' ' + (topAtr.n === 1 ? 'é' : 'são') + ' de ' + pendEsc(topAtr.nome) + '</div>' : '') +
+    card('Devolvidas', dvA == null ? '—' : dvA + '%', dvA == null ? '' : pendDelta(dvA, dvB, 'pontos', true) + '<div class="pd-meta">das tarefas feitas</div>') + '</div>' +
+    (ins.length ? '<div class="pd-insights"><b>Onde agir</b>' + ins.map(function(t){ return '<div>• ' + pendEsc(t) + '</div>'; }).join('') + '</div>' : '') +
+    '<h3 class="pd-ext-h">Tarefas feitas no prazo, por pessoa</h3><div class="pd-chart" style="height:' + Math.max(150, (D.por_pessoa || []).length * 44 + 50) + 'px"><canvas id="pd-c1" role="img" aria-label="Porcentagem de tarefas no prazo por pessoa"></canvas></div>' +
+    '<h3 class="pd-ext-h">Tarefas concluídas por semana</h3><div class="pd-leg"><span><i style="background:#2a78d6"></i>No prazo</span><span><i style="background:#eb6834"></i>Com atraso</span></div><div class="pd-chart" style="height:220px"><canvas id="pd-c2" role="img" aria-label="Tarefas concluídas por semana, no prazo e com atraso"></canvas></div>' +
+    '<h3 class="pd-ext-h">Em que dia da semana os atrasos acontecem</h3><div class="pd-chart" style="height:180px"><canvas id="pd-c3" role="img" aria-label="Atrasos por dia da semana"></canvas></div>' +
+    '<div class="pd-obs" style="margin-top:10px">Conta a tarefa quando a pessoa deu OK, mesmo que você ainda não tenha aprovado. Tarefas sem prazo não entram na porcentagem.</div></div>';
+  if(typeof Chart === 'undefined'){ c.insertAdjacentHTML('beforeend', '<div class="pd-vazio">Os gráficos não carregaram. Atualize a página.</div>'); return; }
+  const escuro = ['dark','natal'].indexOf(document.documentElement.getAttribute('data-theme')) >= 0;
+  const cs = getComputedStyle(document.documentElement), tx = (cs.getPropertyValue('--text2') || '').trim() || '#898781', bd = (cs.getPropertyValue('--border') || '').trim() || '#e1e0d9';
+  const azul = escuro ? '#3987e5' : '#2a78d6', lar = escuro ? '#d95926' : '#eb6834', verde = escuro ? '#199e70' : '#1baf7a', cinza = escuro ? '#4a5a78' : '#b8c2d6';
+  Chart.defaults.font.family = 'inherit'; Chart.defaults.font.size = 12; Chart.defaults.color = tx;
+  const eixoY = { grid:{ color:bd, drawTicks:false }, border:{ display:false }, ticks:{ color:tx, padding:6, precision:0 }, beginAtZero:true };
+  const pessoas = (D.por_pessoa || []).map(function(p){ return { nome:p.nome, pct:pendPct(p.no_prazo, p.com_atraso) }; }).filter(function(p){ return p.pct !== null; }).sort(function(a, b){ return b.pct - a.pct; });
+  const k1 = document.getElementById('pd-c1');
+  if(pessoas.length){ PEND_CHARTS.push(new Chart(k1, { type:'bar', data:{ labels:pessoas.map(function(p){ return p.nome; }), datasets:[{ data:pessoas.map(function(p){ return p.pct; }), borderRadius:4, barThickness:20,
+      backgroundColor:pessoas.map(function(p, i){ return pessoas.length > 1 && i === 0 ? verde : (pessoas.length > 1 && i === pessoas.length - 1 && p.pct < 70 ? lar : cinza); }) }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(x){ return Math.round(x.raw) + '% no prazo'; } } } },
+      scales:{ x:{ min:0, max:100, grid:{ color:bd, drawTicks:false }, border:{ display:false }, ticks:{ color:tx, callback:function(v){ return v + '%'; } } }, y:{ grid:{ display:false }, border:{ display:false }, ticks:{ color:tx } } } } })); }
+  else k1.parentNode.innerHTML = '<div class="pd-vazio">Ainda sem tarefas concluídas com prazo neste período.</div>';
+  const sem = D.semanas || [], fmt = function(s){ const p = String(s).split('-'); return p[2] + '/' + p[1]; };
+  PEND_CHARTS.push(new Chart(document.getElementById('pd-c2'), { type:'bar', data:{ labels:sem.map(function(s){ return fmt(s.semana); }), datasets:[
+      { label:'No prazo', data:sem.map(function(s){ return s.no_prazo; }), backgroundColor:azul, borderRadius:3, borderSkipped:'bottom' },
+      { label:'Com atraso', data:sem.map(function(s){ return s.com_atraso; }), backgroundColor:lar, borderRadius:3, borderSkipped:'bottom' }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ stacked:true, grid:{ display:false }, border:{ color:bd }, ticks:{ color:tx } }, y:Object.assign({ stacked:true }, eixoY) } } }));
+  const ds = D.dia_semana || [0,0,0,0,0,0,0], mx = Math.max.apply(null, ds.concat([0]));
+  PEND_CHARTS.push(new Chart(document.getElementById('pd-c3'), { type:'bar', data:{ labels:['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'], datasets:[{ data:ds, borderRadius:4, barThickness:26, backgroundColor:ds.map(function(v){ return mx >= 3 && v === mx ? lar : cinza; }) }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(x){ return x.raw + ' atraso(s)'; } } } }, scales:{ x:{ grid:{ display:false }, border:{ color:bd }, ticks:{ color:tx } }, y:eixoY } } }));
+}
+
+/* ===== Tempo de entrega: etapas gravadas, meta de 25 min, entregas em andamento e relatório por entregador/horário ===== */
+const META_ENTREGA_MIN = 25;     // meta do pedido até a entrega
+const ENTREGA_MAX_MIN = 240;     // acima disso (4 h) é tratada como esquecida/agendada de véspera e não entra nas médias
+
+function entregaMs(v){ if(v == null || v === '') return null; const n = typeof v === 'number' ? v : Date.parse(v); return isNaN(n) ? null : n; }
+function entregaMin(a, b){ return Math.round((b - a) / 60000); }
+function entregaNomeEnt(id){ return (id && typeof nomeEntregador === 'function' && nomeEntregador(id)) || 'Sem entregador'; }
+
+// ---------- entregas imediatas em andamento HOJE (vendas e agendamentos), com a etapa em que estão ----------
+function entregasAoVivo(agora){
+  agora = agora || Date.now();
+  const hoje = todayStr(), out = [], grupos = {};
+  (state.vendas || []).forEach(function(v){
+    if(!TIPOS_ENTREGA_COM_ENTREGADOR.includes(v.tipo_entrega)) return;
+    const k = v.grupoId || v.id;
+    if(grupos[k]) return; grupos[k] = true;
+    if(v.entrega_status === 'entregue' || v.entrega_hora || (v.data || '') !== hoje) return;
+    const ini = entregaMs(v.criadoEm); if(ini == null) return;
+    out.push({ id:k, cliente:v.cliente || 'Cliente', ini:ini, min:entregaMin(ini, agora), entregadorId:v.entregadorId || '', etapa:v.notif_chegou ? 'no local' : (v.notif_saiu ? 'em rota' : 'ainda não saiu') });
+  });
+  (state.agendamentos || []).forEach(function(a){
+    if(a.status === 'concluido' || a.agendado || (a.data || '') !== hoje) return;
+    if(a.vendaId && grupos[a.vendaId]) return;
+    const ini = entregaMs(a.criadoEm); if(ini == null) return;
+    out.push({ id:a.id, cliente:a.cliente || 'Cliente', ini:ini, min:entregaMin(ini, agora), entregadorId:a.entregadorId || '', etapa:a.notif_chegou ? 'no local' : (a.notif_saiu ? 'em rota' : 'ainda não saiu') });
+  });
+  return out.sort(function(a, b){ return b.min - a.min; });
+}
+function entregasAtrasadasAoVivo(agora){ return entregasAoVivo(agora).filter(function(e){ return e.min > META_ENTREGA_MIN; }); }
+
+// ---------- entregas concluídas (state.temposEntrega) ----------
+function entregaRegistros(dias, agora){
+  agora = agora || Date.now();
+  const lim = dias ? agora - dias * 86400000 : 0;
+  return (state.temposEntrega || []).map(function(t){
+    const ini = entregaMs(t.horaPedido), fim = entregaMs(t.horaConclusao), saiu = entregaMs(t.horaSaida), cheg = entregaMs(t.horaChegada);
+    let ent = t.entregadorId || '';
+    if(!ent && t.vendaGrupoId){ const v = (state.vendas || []).find(function(x){ return (x.grupoId || x.id) === t.vendaGrupoId; }); ent = v ? (v.entregadorId || '') : ''; }
+    if(!ent && t.agendamentoId){ const a = (state.agendamentos || []).find(function(x){ return x.id === t.agendamentoId; }); ent = a ? (a.entregadorId || '') : ''; }
+    const total = t.duracaoMin != null ? t.duracaoMin : (ini != null && fim != null ? entregaMin(ini, fim) : null);
+    return { cliente:t.cliente || '', ini:ini, fim:fim, total:total, ent:ent, agendada:!!t.agendada,
+      preparo:(ini != null && saiu != null) ? entregaMin(ini, saiu) : null, trajeto:(saiu != null && cheg != null) ? entregaMin(saiu, cheg) : null, local:(cheg != null && fim != null) ? entregaMin(cheg, fim) : null,
+      hora:ini != null ? new Date(ini).getHours() : null };
+  }).filter(function(r){ return r.fim != null && r.fim >= lim; });
+}
+function entregaMedia(arr){ return arr.length ? Math.round(arr.reduce(function(a, b){ return a + b; }, 0) / arr.length) : null; }
+// Conta só entregas imediatas com tempo plausível; o resto é contado em "ignoradas".
+function entregaAgregar(regs){
+  const validas = regs.filter(function(r){ return !r.agendada && r.total != null && r.total >= 0 && r.total <= ENTREGA_MAX_MIN; });
+  const na = validas.filter(function(r){ return r.total <= META_ENTREGA_MIN; }).length;
+  const por = {}, horas = {};
+  validas.forEach(function(r){
+    (por[r.ent] = por[r.ent] || []).push(r);
+    if(r.hora != null) (horas[r.hora] = horas[r.hora] || []).push(r);
+  });
+  const col = function(k){ return validas.map(function(r){ return r[k]; }).filter(function(x){ return x != null && x >= 0; }); };
+  return {
+    n:validas.length, ignoradas:regs.length - validas.length, media:entregaMedia(validas.map(function(r){ return r.total; })), pctMeta:validas.length ? Math.round(na * 100 / validas.length) : null,
+    etapas:{ preparo:entregaMedia(col('preparo')), trajeto:entregaMedia(col('trajeto')), local:entregaMedia(col('local')), n:col('trajeto').length },
+    porEnt:Object.keys(por).map(function(id){ const a = por[id]; return { id:id, nome:entregaNomeEnt(id), n:a.length, media:entregaMedia(a.map(function(r){ return r.total; })),
+      pctMeta:Math.round(a.filter(function(r){ return r.total <= META_ENTREGA_MIN; }).length * 100 / a.length), trajeto:entregaMedia(a.map(function(r){ return r.trajeto; }).filter(function(x){ return x != null && x >= 0; })) }; }).sort(function(a, b){ return a.media - b.media; }),
+    porHora:Object.keys(horas).map(Number).sort(function(a, b){ return a - b; }).map(function(h){ const a = horas[h]; return { h:h, n:a.length, media:entregaMedia(a.map(function(r){ return r.total; })) }; })
+  };
+}
+function entregaInsights(A){
+  const out = [];
+  const pico = A.porHora.slice().sort(function(a, b){ return b.n - a.n; })[0];
+  if(pico && pico.n >= 3) out.push('O horário de pico é das ' + pico.h + 'h às ' + (pico.h + 1) + 'h (' + pico.n + ' pedidos)' + (pico.media > META_ENTREGA_MIN ? ', e nele o tempo médio sobe para ' + pico.media + ' min (meta ' + META_ENTREGA_MIN + '): vale reforçar a equipe nesse horário.' : ', e a equipe mantém ' + pico.media + ' min de média.'));
+  const lento = A.porEnt.filter(function(e){ return e.n >= 3 && e.media > META_ENTREGA_MIN; }).sort(function(a, b){ return b.media - a.media; })[0];
+  if(lento) out.push(lento.nome + ' leva em média ' + lento.media + ' min (' + lento.pctMeta + '% dentro da meta de ' + META_ENTREGA_MIN + '): vale entender o que atrasa.');
+  const E = A.etapas;
+  if(E.n >= 3){
+    const et = [['preparo (do pedido até sair)', E.preparo], ['trajeto', E.trajeto], ['entrega no local', E.local]].filter(function(x){ return x[1] != null; }).sort(function(a, b){ return b[1] - a[1]; })[0];
+    if(et) out.push('A etapa que mais demora é o ' + et[0] + ': ' + et[1] + ' min em média.');
+  }
+  return out;
+}
+
+// ---------- tela "Entregas" do hub Equipe ----------
+function entregasVivoHtml(){
+  const L = entregasAoVivo();
+  if(!L.length) return '<div class="pd-meta">Nenhuma entrega imediata em andamento agora.</div>';
+  return L.map(function(e){
+    const lenta = e.min > META_ENTREGA_MIN;
+    return '<div class="pd-aten-row"><span class="pd-aten-dot ' + (lenta ? 'pd-aten-or' : 'pd-aten-gr') + '"></span><span class="pd-aten-txt"><b>' + pendEsc(e.cliente) + '</b> · ' + pendEsc(entregaNomeEnt(e.entregadorId)) + ' · <span class="pd-tag ' + (lenta ? 'pd-tag-or' : 'pd-tag-bl') + '">' + pendEsc(e.etapa) + '</span></span><b' + (lenta ? ' style="color:#FDBA74"' : '') + '>' + e.min + ' min</b></div>';
+  }).join('');
+}
+function entregasAtualizarVivo(){ const el = document.getElementById('pd-ent-vivo'); if(el) el.innerHTML = entregasVivoHtml(); }
+function pendAbrirEntregas(){ PEND_ST.tela = 'entregas'; if(PEND_ST.entDias === undefined) PEND_ST.entDias = 30; pendRenderEntregas(); }
+function pendRenderEntregas(){
+  const c = document.getElementById('pend-corpo'); if(!c) return;
+  pendMarcarAba('entregas'); pendDestruirCharts();
+  const A = entregaAgregar(entregaRegistros(PEND_ST.entDias)), ins = entregaInsights(A), E = A.etapas;
+  const dias = [[7,'Últimos 7 dias'],[30,'Últimos 30 dias'],[90,'Últimos 90 dias']];
+  const card = function(r, v, x){ return '<div class="pd-kpi"><div class="pd-kpi-r">' + r + '</div><div class="pd-kpi-v">' + v + '</div>' + (x || '') + '</div>'; };
+  const ok = A.media != null && A.media <= META_ENTREGA_MIN;
+  c.innerHTML = '<div class="pd-card"><div class="pd-mh" style="margin-bottom:8px"><h2>Entregas</h2><select class="pd-sel" data-a="entdias">' + dias.map(function(d){ return '<option value="' + d[0] + '"' + (PEND_ST.entDias === d[0] ? ' selected' : '') + '>' + d[1] + '</option>'; }).join('') + '</select></div>' +
+    '<h3 class="pd-ext-h" style="margin-top:0">Em andamento agora</h3><div id="pd-ent-vivo">' + entregasVivoHtml() + '</div>' +
+    '<h3 class="pd-ext-h">Tempo do pedido até a entrega (meta ' + META_ENTREGA_MIN + ' min)</h3>' +
+    '<div class="pd-kpis">' + card('Tempo médio', A.media == null ? '—' : A.media + ' min', A.media == null ? '' : '<div class="pd-delta ' + (ok ? 'pd-delta-bom' : 'pd-delta-ruim') + '">' + (ok ? 'dentro da meta' : (A.media - META_ENTREGA_MIN) + ' min acima da meta') + '</div>') +
+    card('Dentro da meta', A.pctMeta == null ? '—' : A.pctMeta + '%', '<div class="pd-meta">de ' + A.n + ' entrega(s)</div>') +
+    card('Preparo', E.preparo == null ? '—' : E.preparo + ' min', '<div class="pd-meta">do pedido até sair</div>') +
+    card('Trajeto', E.trajeto == null ? '—' : E.trajeto + ' min', '<div class="pd-meta">de INICIAR TRAJETO até CHEGUEI</div>') + '</div>' +
+    (ins.length ? '<div class="pd-insights"><b>Onde agir</b>' + ins.map(function(t){ return '<div>• ' + pendEsc(t) + '</div>'; }).join('') + '</div>' : '') +
+    (A.n ? '<h3 class="pd-ext-h">Tempo médio por entregador</h3><div class="pd-chart" style="height:' + Math.max(150, A.porEnt.length * 44 + 50) + 'px"><canvas id="pd-e1" role="img" aria-label="Tempo médio por entregador"></canvas></div>' +
+      '<h3 class="pd-ext-h">Horário de pico: pedidos e tempo médio por hora</h3><div class="pd-leg"><span><i style="background:#2a78d6"></i>Pedidos</span><span><i style="background:#eb6834"></i>Tempo médio (min)</span></div><div class="pd-chart" style="height:230px"><canvas id="pd-e2" role="img" aria-label="Pedidos e tempo médio por hora do dia"></canvas></div>'
+      : '<div class="pd-vazio">Ainda não há entregas concluídas com tempo neste período.</div>') +
+    '<div class="pd-obs" style="margin-top:10px">Só entram entregas imediatas (as marcadas como "agendadas" ficam de fora) e com até ' + (ENTREGA_MAX_MIN / 60) + ' h.' + (A.ignoradas ? ' ' + A.ignoradas + ' registro(s) ignorado(s) por esse motivo.' : '') +
+    ' Preparo e trajeto só aparecem nas entregas feitas depois desta atualização' + (E.n ? ' (' + E.n + ' até agora)' : '') + '.</div></div>';
+  if(!A.n) return;
+  if(typeof Chart === 'undefined'){ c.insertAdjacentHTML('beforeend', '<div class="pd-vazio">Os gráficos não carregaram. Atualize a página.</div>'); return; }
+  const escuro = ['dark', 'natal'].indexOf(document.documentElement.getAttribute('data-theme')) >= 0;
+  const cs = getComputedStyle(document.documentElement), tx = (cs.getPropertyValue('--text2') || '').trim() || '#898781', bd = (cs.getPropertyValue('--border') || '').trim() || '#e1e0d9';
+  const azul = escuro ? '#3987e5' : '#2a78d6', lar = escuro ? '#d95926' : '#eb6834', verde = escuro ? '#199e70' : '#1baf7a';
+  Chart.defaults.font.family = 'inherit'; Chart.defaults.font.size = 12; Chart.defaults.color = tx;
+  PEND_CHARTS.push(new Chart(document.getElementById('pd-e1'), { type:'bar', data:{ labels:A.porEnt.map(function(e){ return e.nome; }), datasets:[
+      { type:'bar', label:'Tempo médio (min)', data:A.porEnt.map(function(e){ return e.media; }), borderRadius:4, barThickness:20, backgroundColor:A.porEnt.map(function(e){ return e.media <= META_ENTREGA_MIN ? verde : lar; }) },
+      { type:'line', label:'Meta', data:A.porEnt.map(function(){ return META_ENTREGA_MIN; }), borderColor:tx, borderDash:[5, 4], pointRadius:0, borderWidth:1.5 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(x){ return x.dataset.label + ': ' + x.raw + ' min'; } } } },
+      scales:{ x:{ min:0, grid:{ color:bd, drawTicks:false }, border:{ display:false }, ticks:{ color:tx, callback:function(v){ return v + ' min'; } } }, y:{ grid:{ display:false }, border:{ display:false }, ticks:{ color:tx } } } } }));
+  const maxN = Math.max.apply(null, A.porHora.map(function(x){ return x.n; }).concat([0]));
+  PEND_CHARTS.push(new Chart(document.getElementById('pd-e2'), { type:'bar', data:{ labels:A.porHora.map(function(x){ return x.h + 'h'; }), datasets:[
+      { type:'bar', label:'Pedidos', data:A.porHora.map(function(x){ return x.n; }), borderRadius:3, backgroundColor:azul, yAxisID:'y' },
+      { type:'line', label:'Tempo médio (min)', data:A.porHora.map(function(x){ return x.media; }), borderColor:lar, backgroundColor:lar, pointRadius:3, borderWidth:2, tension:.25, yAxisID:'y1' }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ grid:{ display:false }, border:{ color:bd }, ticks:{ color:tx } },
+      y:{ beginAtZero:true, grid:{ color:bd, drawTicks:false }, border:{ display:false }, ticks:{ color:tx, precision:0 } }, y1:{ beginAtZero:true, position:'right', grid:{ display:false }, border:{ display:false }, ticks:{ color:tx, callback:function(v){ return v + ' min'; } } } } } }));
 }
 
 async function init(){
