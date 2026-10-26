@@ -980,6 +980,17 @@ html:not([data-theme="dark"]):not([data-theme="natal"]) .pd-delta-ruim{color:#C2
 .pd-leg{display:flex;gap:16px;font-size:12px;color:var(--text2);margin-bottom:6px;}
 .pd-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
 
+.pd-os{border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid var(--border);border-left:5px solid var(--royal-light);background:var(--blue-tint);}
+.pd-os.pd-vd{border-left-color:#15803D;background:var(--green-tint);}
+.pd-os-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;}
+.pd-os-num{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;font-size:13px;letter-spacing:.5px;border:2px solid var(--text2);border-radius:6px;padding:2px 9px;color:var(--text);background:var(--card);}
+.pd-os-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:8px;}
+.pd-os-f{background:var(--card);border-radius:8px;padding:6px 9px;}
+.pd-os-f small,.pd-os-full small{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);font-weight:700;margin-bottom:1px;}
+.pd-os-f b{font-size:13px;color:var(--text);font-weight:600;}
+.pd-os-full{background:var(--card);border-radius:8px;padding:7px 10px;margin-bottom:8px;}
+.pd-os-mini{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:2px;}
+
 /* ===== Botões flutuantes: menores, mais juntos, todos azuis (WhatsApp verde), coluna no alto e escondidos na lateral ===== */
 #agenda-fab,#pend-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab{
   width:30px !important;height:30px !important;right:10px !important;bottom:auto !important;padding:0 !important;
@@ -20947,7 +20958,7 @@ async function iniciarPesquisaManualPublica(){
 /* ===== PENDÊNCIAS DA EQUIPE (tabelas pend_* no Supabase; acesso só por funções pend_a_* / pend_p_*) ===== */
 const PEND_ST = { filtro:'pendentes', pessoa:'', pagina:1, tam:10, total:0, aguard:0, itens:[], pessoas:[], tela:'lista', editando:null, hist:{}, devolvendo:null };
 const PEND_PUB = { token:'', nome:'', tarefas:[], okId:null, nova:false, hist:{}, verConc:false, concLimite:10 };
-const PEND_EV = { criada:['criou a tarefa','b'], ok:['deu OK','o'], devolvida:['devolveu','d'], aprovada:['aprovou','g'], reaberta:['reabriu a tarefa','b'], editada:['editou a tarefa','b'], lixeira:['mandou para a lixeira','b'], restaurada:['restaurou da lixeira','b'] };
+const PEND_EV = { criada:['criou a tarefa','b'], ok:['deu OK','o'], devolvida:['devolveu','d'], aprovada:['aprovou','g'], fechada:['fechou a O.S.','g'], reaberta:['reabriu a tarefa','b'], editada:['editou a tarefa','b'], lixeira:['mandou para a lixeira','b'], restaurada:['restaurou da lixeira','b'] };
 const PEND_ERROS = { link_invalido:'Link inválido ou desativado.', titulo_obrigatorio:'Escreva o que precisa ser feito.', resolucao_obrigatoria:'Escreva como você resolveu (mínimo 3 letras).', comentario_obrigatorio:'Escreva o que falta (mínimo 3 letras).', estado_invalido:'Essa tarefa já mudou de situação. Atualize a tela.', tarefa_invalida:'Tarefa não encontrada.', sem_permissao:'Sem permissão.' };
 
 function pendEsc(s){ return escapeHtmlCampanha(s==null ? '' : String(s)); }
@@ -21037,13 +21048,14 @@ async function pendCarregar(){
 function pendRenderLista(){
   const c = document.getElementById('pend-corpo'); if(!c) return;
   pendMarcarAba('lista');
-  const chips = [['pendentes','Pendentes'],['aguardando','Aguardando conferência'],['concluidas','Concluídas'],['todas','Histórico'],['lixeira','Lixeira']];
+  const chips = [['pendentes','Abertas'],['aguardando','Aguardando conferência'],['concluidas','Resolvidas'],['todas','Todas'],['lixeira','Lixeira']];
   const optP = '<option value="">Todas as pessoas</option>' + PEND_ST.pessoas.map(function(p){ return '<option value="' + p.id + '"' + (PEND_ST.pessoa === p.id ? ' selected' : '') + '>' + pendEsc(p.nome) + '</option>'; }).join('');
   const total = PEND_ST.total, tam = PEND_ST.tam, maxPag = Math.max(1, Math.ceil(total / tam));
   const de = total ? (PEND_ST.pagina - 1) * tam + 1 : 0, ate = total ? de + PEND_ST.itens.length - 1 : 0;
   c.innerHTML = '<div class="pd-card">' +
     '<div class="pd-filtros"><select class="pd-sel" data-a="pessoa">' + optP + '</select>' +
     chips.map(function(x){ return '<button class="pd-chip' + (PEND_ST.filtro === x[0] ? ' on' : '') + '" data-a="filtro" data-v="' + x[0] + '">' + x[1] + (x[0] === 'aguardando' && PEND_ST.aguard > 0 ? '<span class="pd-n">' + PEND_ST.aguard + '</span>' : '') + '</button>'; }).join('') + '</div>' +
+    '<div class="pd-row" style="margin-bottom:8px"><button data-a="imprimirpend">🖨 Imprimir pendências ' + (PEND_ST.pessoa ? 'desta pessoa' : 'de todos') + '</button></div>' +
     '<div class="pd-legenda"><span><i style="background:var(--royal-light)"></i>Criada por Fernando</span><span><i style="background:#15803D"></i>Criada pela equipe</span></div>' +
     (PEND_ST.itens.length ? PEND_ST.itens.map(pendLinhaAdmin).join('') : '<div class="pd-vazio">Nenhuma tarefa aqui.</div>') +
     '<div class="pd-foot"><div class="pd-foot-1"><span>Mostrando ' + de + '–' + ate + ' de ' + total + ' tarefas</span>' +
@@ -21051,30 +21063,89 @@ function pendRenderLista(){
     '<div class="pd-foot-2"><button data-a="ant"' + (PEND_ST.pagina <= 1 ? ' disabled' : '') + '>‹ Anterior</button><span class="pd-pg">Página ' + PEND_ST.pagina + ' de ' + maxPag + '</span>' +
     '<button data-a="prox"' + (PEND_ST.pagina >= maxPag ? ' disabled' : '') + '>Próxima ›</button></div></div></div>';
 }
+function pendNumOS(t){ return 'O.S. Nº ' + String(t.numero || 0).padStart(4, '0'); }
+function pendCampoOS(r, v){ return '<div class="pd-os-f"><small>' + r + '</small><b>' + v + '</b></div>'; }
 function pendLinhaAdmin(t){
   const doAdmin = t.criado_por === 'admin';
   let tag = '';
-  if(t.lixeira) tag = '<span class="pd-tag pd-tag-bl">Na lixeira</span>';
+  if(t.lixeira) tag = '<span class="pd-tag pd-tag-bl">Excluída (na lixeira)</span>';
   else if(t.status === 'aguardando') tag = '<span class="pd-tag pd-tag-or">Aguardando conferência</span>';
-  else if(t.status === 'concluida') tag = '<span class="pd-tag pd-tag-gr">Concluída</span>';
+  else if(t.status === 'concluida') tag = '<span class="pd-tag pd-tag-gr">Resolvida</span>';
   else if(pendUltimoEvento(t) === 'devolvida') tag = '<span class="pd-tag pd-tag-solid">Devolvida</span>';
   else if(pendAtrasada(t)) tag = '<span class="pd-tag pd-tag-or">Atrasada</span>';
+  else tag = '<span class="pd-tag pd-tag-bl">Aberta</span>';
   const B = function(a, rotulo, cls){ return '<button' + (cls ? ' class="' + cls + '"' : '') + ' data-a="' + a + '" data-id="' + t.id + '">' + rotulo + '</button>'; };
   let acoes = '';
   if(t.lixeira) acoes = B('restaurar','Restaurar') + B('hist','Histórico');
-  else if(t.status === 'aguardando') acoes = B('aprovar','Aprovar','pd-g') + B('devolver','Devolver','pd-o') + B('hist','Histórico') + B('editar','Editar');
-  else if(t.status === 'concluida') acoes = B('reabrir','Reabrir') + B('editar','Editar') + B('lixeira','Mover para a lixeira','pd-o') + B('hist','Histórico');
-  else acoes = B('editar','Editar') + B('lixeira','Mover para a lixeira','pd-o') + B('hist','Histórico');
+  else if(t.status === 'aguardando') acoes = B('aprovar','Aprovar e fechar','pd-g') + B('devolver','Devolver','pd-o') + B('editar','Editar') + B('imprimir','Imprimir O.S.') + B('hist','Histórico');
+  else if(t.status === 'concluida') acoes = B('reabrir','Reabrir') + B('editar','Editar') + B('imprimir','Imprimir O.S.') + B('lixeira','Excluir','pd-o') + B('hist','Histórico');
+  else acoes = B('fecharos','Fechar O.S.','pd-g') + B('editar','Editar') + B('imprimir','Imprimir O.S.') + B('lixeira','Excluir','pd-o') + B('hist','Histórico');
   const devolvendo = PEND_ST.devolvendo === t.id
     ? '<label class="pd-lbl">O que falta? (a pessoa vai ver)</label><textarea class="pd-in" id="pend-dev-txt" placeholder="Explique o que precisa ser ajustado"></textarea>' +
       '<div class="pd-acoes"><button class="pd-o" data-a="enviardev" data-id="' + t.id + '">Enviar de volta</button><button data-a="cancdev">Cancelar</button></div>' : '';
-  return '<div class="pd-item ' + (doAdmin ? '' : 'pd-vd') + '">' +
-    '<div class="pd-it-top"><div class="pd-tit">' + pendEsc(t.pessoa) + ' · ' + pendEsc(t.titulo) + '</div>' + tag + '</div>' +
-    (t.observacao ? '<div class="pd-obs">' + pendEsc(t.observacao) + '</div>' : '') +
-    '<div class="pd-meta">Prazo ' + pendFmtPrazo(t.prazo) + ' · criada em ' + pendEsc(pendFmtDH(t.criado_em)) + ' por ' + (doAdmin ? 'Fernando' : pendEsc(t.pessoa)) + '</div>' +
-    (t.status === 'aguardando' && !t.lixeira ? '<div class="pd-res"><small>Como ' + pendEsc(t.pessoa) + ' resolveu · ' + pendEsc(pendFmtDH(t.ok_em)) + '</small>' + pendEsc(t.resolucao) + '</div>' : '') +
-    devolvendo + (PEND_ST.devolvendo === t.id ? '' : '<div class="pd-acoes">' + acoes + '</div>') +
+  const fechando = PEND_ST.fechando === t.id
+    ? '<label class="pd-lbl">Como foi resolvido? (opcional)</label><textarea class="pd-in" id="pend-fechar-txt" placeholder="Anote o que foi feito, se quiser"></textarea>' +
+      '<div class="pd-acoes"><button class="pd-g" data-a="enviarfecharos" data-id="' + t.id + '">Fechar O.S.</button><button data-a="cancfecharos">Cancelar</button></div>' : '';
+  const emForm = PEND_ST.devolvendo === t.id || PEND_ST.fechando === t.id;
+  return '<div class="pd-os ' + (doAdmin ? '' : 'pd-vd') + '">' +
+    '<div class="pd-os-top"><span class="pd-os-num">' + pendNumOS(t) + '</span>' + tag + '</div>' +
+    '<div class="pd-os-grid">' + pendCampoOS('Responsável', pendEsc(t.pessoa)) + pendCampoOS('Prazo', pendFmtPrazo(t.prazo)) +
+      pendCampoOS('Aberta em', pendEsc(pendFmtDH(t.criado_em)) + ' por ' + (doAdmin ? 'Fernando' : pendEsc(t.pessoa))) +
+      (t.status === 'concluida' && t.concluida_em ? pendCampoOS('Resolvida em', pendEsc(pendFmtDH(t.concluida_em))) : '') + '</div>' +
+    '<div class="pd-os-full"><small>Serviço</small><div class="pd-tit">' + pendEsc(t.titulo) + '</div></div>' +
+    (t.observacao ? '<div class="pd-os-full"><small>Observações</small><div class="pd-obs" style="margin:0">' + pendEsc(t.observacao) + '</div></div>' : '') +
+    (t.resolucao && !t.lixeira && (t.status === 'aguardando' || t.status === 'concluida') ? '<div class="pd-res"><small>' + (t.status === 'aguardando' ? 'Como ' + pendEsc(t.pessoa) + ' resolveu' : 'Resolução') + ' · ' + pendEsc(pendFmtDH(t.status === 'aguardando' ? t.ok_em : (t.concluida_em || t.ok_em))) + '</small>' + pendEsc(t.resolucao) + '</div>' : '') +
+    devolvendo + fechando + (emForm ? '' : '<div class="pd-acoes">' + acoes + '</div>') +
     (PEND_ST.hist[t.id] ? pendTimeline(t.historico) : '') + '</div>';
+}
+function pendHtmlImpressao(grupos){
+  const hoje = new Date().toLocaleString('pt-BR', { timeZone:'America/Sao_Paulo', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const css = 'body{font-family:Arial,sans-serif;color:#111;margin:0}.pg{padding:22px 26px;page-break-after:always}.pg:last-child{page-break-after:auto}h1{font-size:17px;margin:0}h2{font-size:21px;margin:2px 0 4px}.sub{font-size:12px;color:#444;margin-bottom:12px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #777;padding:7px 8px;font-size:12.5px;text-align:left;vertical-align:top}th{background:#eee}td.c{text-align:center;width:34px;font-size:18px}td.n{width:72px;font-family:monospace;font-weight:700}td.p{width:78px}td.f{width:120px}.o{font-size:11px;color:#444;margin-top:2px}.at{font-weight:700;text-decoration:underline}.ass{display:flex;gap:40px;margin-top:46px}.ass div{flex:1;border-top:1px solid #111;padding-top:4px;font-size:12px;text-align:center}';
+  return '<!doctype html><meta charset="utf-8"><title>Pendências</title><style>' + css + '</style>' + grupos.map(function(g){
+    return '<div class="pg"><h1>Tom Gás · Pendências</h1><h2>' + pendEsc(g.nome) + '</h2><div class="sub">' + g.tarefas.length + ' pendência(s) em aberto · impresso em ' + pendEsc(hoje) + '</div>' +
+      '<table><tr><th></th><th>O.S.</th><th>Serviço</th><th>Prazo</th><th>Situação</th><th>Feito em</th></tr>' + g.tarefas.map(function(t){
+        const sit = pendAtrasada(t) ? '<span class="at">ATRASADA</span>' : (pendUltimoEvento(t) === 'devolvida' ? 'Devolvida' : 'No prazo');
+        return '<tr><td class="c">☐</td><td class="n">' + pendEsc(String(t.numero || 0).padStart(4, '0')) + '</td><td><b>' + pendEsc(t.titulo) + '</b>' + (t.observacao ? '<div class="o">' + pendEsc(t.observacao) + '</div>' : '') + '</td><td class="p">' + pendFmtPrazo(t.prazo) + '</td><td>' + sit + '</td><td class="f"></td></tr>';
+      }).join('') + '</table><div class="ass"><div>' + pendEsc(g.nome) + '</div><div>Conferido por</div></div></div>';
+  }).join('');
+}
+function pendAbrirImpressao(grupos){
+  const w = window.open('', '_blank'); if(!w){ pendToast('Libere os pop-ups para imprimir.', true); return false; }
+  w.document.write(pendHtmlImpressao(grupos)); w.document.close(); w.focus(); w.print(); return true;
+}
+async function pendBuscarAbertas(pessoaId){
+  const out = []; let pag = 1, total = 0;
+  do {
+    const d = await pendRpc('pend_a_listar', { p_filtro:'pendentes', p_pessoa:pessoaId || null, p_pagina:pag, p_tamanho:100 });
+    total = d.total || 0; (d.itens || []).forEach(function(x){ out.push(x); }); pag++;
+  } while(out.length < total && pag <= 10);
+  return out;
+}
+async function pendImprimirPendencias(pessoaId){
+  try{
+    const itens = await pendBuscarAbertas(pessoaId);
+    if(!itens.length){ pendToast('Nenhuma pendência aberta para imprimir.', true); return; }
+    const por = {}, ordem = []; itens.forEach(function(t){ if(!por[t.pessoa]){ por[t.pessoa] = []; ordem.push(t.pessoa); } por[t.pessoa].push(t); });
+    pendAbrirImpressao(ordem.sort().map(function(n){ return { nome:n, tarefas:por[n] }; }));
+  }catch(e){ pendToast(e.message, true); }
+}
+function pendImprimirMeu(){
+  const abertas = (PEND_PUB.tarefas || []).filter(function(t){ return t.status === 'pendente'; });
+  if(!abertas.length){ pendToast('Você não tem pendências abertas.', true); return; }
+  pendAbrirImpressao([{ nome:PEND_PUB.nome, tarefas:abertas }]);
+}
+function pendImprimirOS(id){
+  const t = (PEND_ST.itens || []).find(function(x){ return x.id === id; }); if(!t) return;
+  const w = window.open('', '_blank'); if(!w){ pendToast('Libere os pop-ups para imprimir.', true); return; }
+  const sit = t.lixeira ? 'Excluída' : (t.status === 'concluida' ? 'Resolvida' : (t.status === 'aguardando' ? 'Aguardando conferência' : 'Aberta'));
+  const hist = (t.historico || []).map(function(e){ const m = PEND_EV[e.evento] || [e.evento, 'b']; return '<tr><td>' + pendEsc(pendFmtDH(e.em)) + '</td><td>' + pendEsc(e.autor + ' ' + m[0]) + '</td><td>' + pendEsc(e.texto || '') + '</td></tr>'; }).join('');
+  w.document.write('<!doctype html><meta charset="utf-8"><title>' + pendEsc(pendNumOS(t)) + '</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111}h1{font-size:18px;margin:0}h2{font-size:22px;margin:4px 0 14px}table{border-collapse:collapse;width:100%;margin-bottom:12px}td,th{border:1px solid #888;padding:6px 8px;font-size:13px;text-align:left;vertical-align:top}th{background:#eee;width:22%}.box{border:1px solid #888;padding:10px;min-height:50px;margin-bottom:12px;font-size:13px;white-space:pre-line}.ass{display:flex;gap:40px;margin-top:50px}.ass div{flex:1;border-top:1px solid #111;padding-top:4px;font-size:12px;text-align:center}</style>' +
+    '<h1>Tom Gás · Ordem de Serviço</h1><h2>' + pendEsc(pendNumOS(t)) + '</h2>' +
+    '<table><tr><th>Responsável</th><td>' + pendEsc(t.pessoa) + '</td><th>Situação</th><td>' + sit + '</td></tr><tr><th>Aberta em</th><td>' + pendEsc(pendFmtDH(t.criado_em)) + ' por ' + (t.criado_por === 'admin' ? 'Fernando' : pendEsc(t.pessoa)) + '</td><th>Prazo</th><td>' + pendFmtPrazo(t.prazo) + '</td></tr></table>' +
+    '<b>Serviço</b><div class="box">' + pendEsc(t.titulo) + '</div><b>Observações</b><div class="box">' + pendEsc(t.observacao || '') + '</div><b>Resolução</b><div class="box">' + pendEsc(t.resolucao || '') + '</div>' +
+    '<b>Histórico</b><table><tr><th>Quando</th><th>Quem / o quê</th><th>Anotação</th></tr>' + hist + '</table>' +
+    '<div class="ass"><div>Responsável</div><div>Conferido por</div></div>');
+  w.document.close(); w.focus(); w.print();
 }
 async function pendClickAdmin(e){
   const ov = e.currentTarget;
@@ -21087,9 +21158,20 @@ async function pendClickAdmin(e){
     else if(a === 'ant'){ PEND_ST.pagina = Math.max(1, PEND_ST.pagina - 1); await pendCarregar(); }
     else if(a === 'prox'){ PEND_ST.pagina++; await pendCarregar(); }
     else if(a === 'hist'){ PEND_ST.hist[id] = !PEND_ST.hist[id]; pendRenderLista(); }
-    else if(a === 'aprovar'){ await pendRpc('pend_a_aprovar', { p_tarefa:id, p_comentario:null }); pendToast('Tarefa aprovada.'); await pendCarregar(); }
-    else if(a === 'devolver'){ PEND_ST.devolvendo = id; pendRenderLista(); }
+    else if(a === 'aprovar'){ await pendRpc('pend_a_aprovar', { p_tarefa:id, p_comentario:null }); pendToast('O.S. aprovada e fechada.'); await pendCarregar(); }
+    else if(a === 'devolver'){ PEND_ST.devolvendo = id; PEND_ST.fechando = null; pendRenderLista(); }
     else if(a === 'cancdev'){ PEND_ST.devolvendo = null; pendRenderLista(); }
+    else if(a === 'fecharos'){ PEND_ST.fechando = id; PEND_ST.devolvendo = null; pendRenderLista(); }
+    else if(a === 'cancfecharos'){ PEND_ST.fechando = null; pendRenderLista(); }
+    else if(a === 'enviarfecharos'){
+      const txt = (ov.querySelector('#pend-fechar-txt') || {}).value;
+      await pendRpc('pend_a_fechar', { p_tarefa:id, p_texto:txt });
+      PEND_ST.fechando = null; pendToast('O.S. fechada. Ela foi para Resolvidas.'); await pendCarregar();
+    }
+    else if(a === 'imprimir') pendImprimirOS(id);
+    else if(a === 'imprimirpend') await pendImprimirPendencias(PEND_ST.pessoa || null);
+    else if(a === 'imprimirpessoa') await pendImprimirPendencias(id);
+    else if(a === 'abrirlink'){ const p = PEND_ST.pessoas.find(function(x){ return x.id === id; }); if(p) window.open(pendUrl(p.token), '_blank'); }
     else if(a === 'enviardev'){
       const txt = (ov.querySelector('#pend-dev-txt') || {}).value;
       await pendRpc('pend_a_devolver', { p_tarefa:id, p_comentario:txt });
@@ -21097,8 +21179,8 @@ async function pendClickAdmin(e){
     }
     else if(a === 'reabrir'){ await pendRpc('pend_a_reabrir', { p_tarefa:id, p_comentario:null }); pendToast('Tarefa reaberta.'); await pendCarregar(); }
     else if(a === 'lixeira'){
-      if(!confirm('Mandar esta tarefa para a lixeira? Ela continua guardada no histórico.')) return;
-      await pendRpc('pend_a_lixeira', { p_tarefa:id, p_lixeira:true }); pendToast('Enviada para a lixeira.'); await pendCarregar();
+      if(!confirm('Excluir esta O.S.? Ela vai para a lixeira, continua guardada no histórico e dá para restaurar.')) return;
+      await pendRpc('pend_a_lixeira', { p_tarefa:id, p_lixeira:true }); pendToast('O.S. excluída (está na lixeira).'); await pendCarregar();
     }
     else if(a === 'restaurar'){ await pendRpc('pend_a_lixeira', { p_tarefa:id, p_lixeira:false }); pendToast('Tarefa restaurada.'); await pendCarregar(); }
     else if(a === 'lembretes') await pendAbrirLembretes();
@@ -21161,7 +21243,7 @@ function pendRenderLinks(){
       return '<div class="pd-pessoa-lk"><div class="pd-row" style="justify-content:space-between"><b>' + pendEsc(p.nome) + '</b>' +
         '<span class="pd-meta">' + p.abertas + ' pendente(s) · ' + p.aguardando + ' aguardando conferência</span></div>' +
         '<input class="pd-in" id="pend-tel-' + p.id + '" inputmode="tel" placeholder="Telefone com DDD, ex.: 43 99999-9999" value="' + pendEsc(p.telefone || '') + '">' +
-        '<div class="pd-acoes"><button class="pd-g" data-a="zap" data-id="' + p.id + '">Enviar por WhatsApp</button>' +
+        '<div class="pd-acoes"><button class="pd-g" data-a="zap" data-id="' + p.id + '">Enviar por WhatsApp</button><button data-a="abrirlink" data-id="' + p.id + '">Abrir link</button><button data-a="imprimirpessoa" data-id="' + p.id + '">🖨 Imprimir pendências</button>' +
         '<button data-a="salvartel" data-id="' + p.id + '">Salvar telefone</button><button data-a="copiar" data-id="' + p.id + '">Copiar link</button>' +
         '<button class="pd-o" data-a="novotoken" data-id="' + p.id + '">Gerar novo link</button></div></div>';
     }).join('') + '</div>';
@@ -21224,7 +21306,7 @@ function pendCartaoPub(t){
     ? '<label class="pd-lbl">Como você resolveu?</label><textarea class="pd-in" id="pend-ok-txt" maxlength="1000" placeholder="Conte o que foi feito"></textarea>' +
       '<div class="pd-acoes"><button class="pd-g" data-a="enviarok" data-id="' + t.id + '">Enviar para conferência</button><button data-a="cancok">Cancelar</button></div>' : '';
   return '<div class="pd-item ' + (doAdmin ? '' : 'pd-vd') + '"><div class="pd-pitem">' + tick + '<div>' +
-    '<div class="pd-it-top"><div class="pd-tit">' + pendEsc(t.titulo) + '</div>' + tag + '</div>' +
+    '<div class="pd-os-mini">' + pendNumOS(t) + '</div><div class="pd-it-top"><div class="pd-tit">' + pendEsc(t.titulo) + '</div>' + tag + '</div>' +
     (t.observacao ? '<div class="pd-obs">' + pendEsc(t.observacao) + '</div>' : '') +
     '<div class="pd-meta">Prazo ' + pendFmtPrazo(t.prazo) + ' · criada em ' + pendEsc(pendFmtDH(t.criado_em)) + ' por ' + (doAdmin ? 'Fernando' : 'você') + '</div>' +
     (t.status === 'pendente' && ev && ev.texto && ult === ev.evento ? '<div class="pd-res"><small>Fernando escreveu</small>' + pendEsc(ev.texto) + '</div>' : '') +
@@ -21246,7 +21328,7 @@ function pendPubRender(){
   w.innerHTML = '<div class="pd-pub-h"><i></i>Tom Gás · Tarefas</div><div class="pd-pub-in">' +
     '<div class="pd-card"><div class="pd-row" style="justify-content:space-between"><h2>Tarefas de ' + pendEsc(PEND_PUB.nome) + '</h2><button data-a="atualizar">Atualizar</button></div>' +
     '<div class="pd-track"><div class="pd-fill" style="width:' + pct + '%"></div></div><div class="pd-meta">' + conc.length + ' de ' + T.length + ' concluídas' + (aguard.length ? ' · ' + aguard.length + ' aguardando conferência' : '') + '</div>' +
-    '<div class="pd-acoes"><button class="pd-g" data-a="nova" style="width:100%;padding:11px">+ Nova tarefa</button></div></div>' + formNova +
+    '<div class="pd-acoes"><button class="pd-g" data-a="nova" style="width:100%;padding:11px">+ Nova tarefa</button></div><div class="pd-acoes"><button data-a="imprimirmeu">🖨 Imprimir minhas pendências</button></div></div>' + formNova +
     '<div class="pd-sec">Pendentes (' + pend.length + ')</div>' + (pend.length ? pend.map(pendCartaoPub).join('') : '<div class="pd-vazio">Nada pendente. Bom trabalho!</div>') +
     (aguard.length ? '<div class="pd-sec">Aguardando conferência (' + aguard.length + ')</div>' + aguard.map(pendCartaoPub).join('') : '') +
     '<div class="pd-sec">Concluídas (' + conc.length + ')</div>' +
@@ -21277,6 +21359,7 @@ async function pendClickPub(e){
     else if(a === 'verconc'){ PEND_PUB.verConc = !PEND_PUB.verConc; PEND_PUB.concLimite = 10; pendPubRender(); }
     else if(a === 'maisconc'){ PEND_PUB.concLimite += 10; pendPubRender(); }
     else if(a === 'atualizar'){ await pendPubCarregar(); }
+    else if(a === 'imprimirmeu') pendImprimirMeu();
   }catch(err){ pendToast(err.message, true); }
 }
 
@@ -21540,6 +21623,7 @@ let PEND_RESUMO = null;
 
 function initGestaoExtra(){
   if(window._gestaoExtraOk) return; window._gestaoExtraOk = true;
+  initCreditosHaver();
   document.addEventListener('click', function(e){
     const b = e.target.closest('[data-aten],[data-extrato-pedidos]'); if(!b) return;
     if(b.hasAttribute('data-extrato-pedidos')){ pedidosAbrirExtrato(); return; }
@@ -21941,6 +22025,162 @@ function pendRenderEntregas(){
       { type:'line', label:'Tempo médio (min)', data:A.porHora.map(function(x){ return x.media; }), borderColor:lar, backgroundColor:lar, pointRadius:3, borderWidth:2, tension:.25, yAxisID:'y1' }] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ grid:{ display:false }, border:{ color:bd }, ticks:{ color:tx } },
       y:{ beginAtZero:true, grid:{ color:bd, drawTicks:false }, border:{ display:false }, ticks:{ color:tx, precision:0 } }, y1:{ beginAtZero:true, position:'right', grid:{ display:false }, border:{ display:false }, ticks:{ color:tx, callback:function(v){ return v + ' min'; } } } } } }));
+}
+
+/* ===== Crédito em haver: busca, paginação e caminho até o lançamento/venda que gerou o dinheiro ===== */
+const CRED_UI = { busca:'', tamCli:10, pagCli:1, buscaLanc:'', tam:10, pag:1, filtroCliente:'' };
+function credNorm(s){ return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+function credPaginar(arr, pag, tam){
+  const total = arr.length, pags = Math.max(1, Math.ceil(total / tam)); pag = Math.min(Math.max(1, pag), pags);
+  return { itens:arr.slice((pag - 1) * tam, pag * tam), pag:pag, pags:pags, total:total, de:total ? (pag - 1) * tam + 1 : 0, ate:Math.min(total, pag * tam) };
+}
+function credRodapeHtml(sel, pre, p, tam){
+  return '<div class="pd-root pd-foot"><div class="pd-foot-1"><span>Mostrando ' + p.de + '–' + p.ate + ' de ' + p.total + '</span><select class="pd-sel" data-cred="' + sel + '">' +
+    [10, 25, 50].map(function(n){ return '<option value="' + n + '"' + (n === tam ? ' selected' : '') + '>' + n + ' por página</option>'; }).join('') + '</select></div>' +
+    '<div class="pd-foot-2"><button data-cred-pag="' + pre + '-ant"' + (p.pag <= 1 ? ' disabled' : '') + '>‹ Anterior</button><span class="pd-pg">Página ' + p.pag + ' de ' + p.pags + '</span>' +
+    '<button data-cred-pag="' + pre + '-prox"' + (p.pag >= p.pags ? ' disabled' : '') + '>Próxima ›</button></div></div>';
+}
+function credResumoClientes(){
+  const m = {};
+  (state.creditos || []).forEach(function(c){
+    if(!c.cliente) return;
+    const o = m[c.cliente] = m[c.cliente] || { nome:c.cliente, saldo:0, ultima:'', n:0 };
+    o.saldo += c.valor; o.n++; if((c.data || '') > o.ultima) o.ultima = c.data || '';
+  });
+  return Object.keys(m).map(function(k){ m[k].saldo = Math.round(m[k].saldo * 100) / 100; return m[k]; });
+}
+
+// Substitui a tabela "Créditos por cliente" (mesmo nome da função original): agora com busca, paginação e acesso aos lançamentos.
+function creditoPorClienteHtml(){
+  const todos = credResumoClientes().filter(function(x){ return Math.abs(x.saldo) > 0.004; });
+  if(!todos.length) return '<div class="empty">Nenhum cliente com crédito em haver no momento.</div>';
+  const b = credNorm(CRED_UI.busca);
+  const lista = todos.filter(function(x){ return !b || credNorm(x.nome).indexOf(b) >= 0; }).sort(function(a, c){ return c.saldo - a.saldo; });
+  const totalHaver = todos.reduce(function(s, x){ return s + (x.saldo > 0 ? x.saldo : 0); }, 0);
+  const p = credPaginar(lista, CRED_UI.pagCli, CRED_UI.tamCli); CRED_UI.pagCli = p.pag;
+  return '<div class="pd-root"><div class="pd-row" style="margin-bottom:8px"><input class="pd-in" id="cred-busca" data-cred="busca" placeholder="Buscar cliente com crédito..." value="' + pendEsc(CRED_UI.busca) + '" style="max-width:340px">' +
+    '<span class="pd-meta"><b>' + todos.length + ' cliente(s)</b> com saldo · total em haver ' + pendEsc(fmtMoney(totalHaver)) + '</span></div></div>' +
+    (lista.length ? '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Saldo em haver</th><th>Última movimentação</th><th></th></tr></thead><tbody>' +
+      p.itens.map(function(l){
+        return '<tr><td>' + pendEsc(l.nome) + '</td><td>' + pendEsc(fmtMoney(l.saldo)) + '</td><td>' + (l.ultima ? pendEsc(fmtDate(l.ultima)) : '—') + ' <span class="hint">(' + l.n + ' lançamento' + (l.n === 1 ? '' : 's') + ')</span></td>' +
+          '<td><button class="act-link" data-cred-ver="' + encodeURIComponent(l.nome) + '">✎ ver e editar lançamentos</button></td></tr>';
+      }).join('') + '</tbody></table></div>' + credRodapeHtml('tamCli', 'cli', p, CRED_UI.tamCli)
+      : '<div class="empty">Nenhum cliente encontrado para "' + pendEsc(CRED_UI.busca) + '".</div>');
+}
+// Substitui a lista "Todos os lançamentos": agora filtrável, paginada e com o caminho até a venda de origem.
+function creditosListaHtml(){
+  let todos = state.creditos.slice().sort(function(a, b){ return (b.data || '').localeCompare(a.data || ''); });
+  if(!todos.length) return '<div class="empty">Nenhum crédito lançado ainda.</div>';
+  const fc = CRED_UI.filtroCliente, b = credNorm(CRED_UI.buscaLanc);
+  if(fc) todos = todos.filter(function(c){ return c.cliente === fc; });
+  if(b) todos = todos.filter(function(c){ return credNorm(c.cliente).indexOf(b) >= 0 || credNorm(c.obs).indexOf(b) >= 0; });
+  const p = credPaginar(todos, CRED_UI.pag, CRED_UI.tam); CRED_UI.pag = p.pag;
+  return '<div class="pd-root" id="cred-lista-topo"><div class="pd-row" style="margin-bottom:8px"><input class="pd-in" id="cred-busca-lanc" data-cred="buscaLanc" placeholder="Buscar por cliente ou observação..." value="' + pendEsc(CRED_UI.buscaLanc) + '" style="max-width:340px">' +
+    (fc ? '<span class="pd-tag pd-tag-bl">Só: ' + pendEsc(fc) + ' <button data-cred-limpar="1" style="padding:0 6px;margin-left:4px">✕</button></span>' : '') + '</div></div>' +
+    (todos.length ? '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Data</th><th>Valor</th><th>Forma de pagamento</th><th>Observação</th><th>Origem</th><th></th></tr></thead><tbody>' +
+      p.itens.map(function(c){
+        return '<tr><td>' + pendEsc(c.cliente) + '</td><td>' + pendEsc(fmtDate(c.data)) + '</td><td>' + pendEsc(fmtMoney(c.valor)) + '</td><td>' + pendEsc(c.forma_pagamento || '—') + '</td><td>' + pendEsc(c.obs || '—') + '</td>' +
+          '<td>' + (credVendasCandidatas(c).length ? '<button class="act-link" data-cred-venda="' + c.id + '">↗ ver venda</button>' : '—') + '</td>' +
+          '<td><button class="act-link" data-edit-credito="' + c.id + '">✎ editar</button><button class="del-link" data-del-credito="' + c.id + '">🗑 excluir</button></td></tr>';
+      }).join('') + '</tbody></table></div>' + credRodapeHtml('tam', 'l', p, CRED_UI.tam)
+      : '<div class="empty">Nenhum lançamento encontrado.</div>');
+}
+
+// Vendas que podem ter gerado esse lançamento: vínculo direto (vendaGrupoId) ou, na falta dele, mesma data e mesmo cliente.
+function credVendasCandidatas(c){
+  if(c.vendaGrupoId){
+    const v = (state.vendas || []).filter(function(x){ return (x.grupoId || x.id) === c.vendaGrupoId; });
+    return v.length ? [{ chave:c.vendaGrupoId, linhas:v, explicita:true }] : [];
+  }
+  const alvo = credNorm(c.cliente), g = {};
+  (state.vendas || []).forEach(function(v){ if(v.data === c.data && credNorm(v.cliente) === alvo){ const k = v.grupoId || v.id; (g[k] = g[k] || []).push(v); } });
+  return Object.keys(g).map(function(k){ return { chave:k, linhas:g[k], explicita:false }; });
+}
+function credTotalVenda(linhas){ return linhas.reduce(function(s, l){ return s + (Number(l.valor_total) || 0); }, 0); }
+async function credIrParaVenda(id){
+  const c = state.creditos.find(function(x){ return x.id === id; }); if(!c) return;
+  const cand = credVendasCandidatas(c);
+  if(!cand.length){ pendToast('Não achei a venda desse lançamento. Ele pode ter sido lançado à mão.', true); return; }
+  let alvo = cand[0];
+  if(cand.length > 1){
+    const opcoes = cand.map(function(g){ return { rotulo:'Venda de ' + fmtMoney(credTotalVenda(g.linhas)), sub:g.linhas.map(function(l){ return (l.qtd || l.quantidade || '') + ' ' + (l.produto || l.categoria || ''); }).join(', ') }; });
+    const idx = await pedidoDialogo({ titulo:'Qual venda?', texto:'Esse cliente tem ' + cand.length + ' vendas em ' + fmtDate(c.data) + '. Qual delas gerou esse lançamento?', opcoes:opcoes, padrao:0, ok:'Abrir para editar' });
+    if(idx === null) return; alvo = cand[idx];
+  }
+  const m = document.getElementById('cred-modal'); if(m) m.remove();
+  currentTab = 'vendas'; renderAll();
+  preencherFormEdicaoVenda(alvo.linhas[0], document.getElementById('form-venda'));
+  pendToast('Editando a venda que gerou esse crédito. Salve para confirmar.', false, 5000);
+}
+function credEditar(id){
+  const c = state.creditos.find(function(x){ return x.id === id; }), fc = document.getElementById('form-credito'); if(!c || !fc) return;
+  const campo = function(n){ return fc.querySelector('[name="' + n + '"]'); };
+  editCreditoId = c.id;
+  campo('cliente').value = c.cliente; campo('valor').value = Number(c.valor).toFixed(2); campo('data').value = c.data; campo('obs').value = c.obs || ''; campo('forma_pagamento').value = c.forma_pagamento || '';
+  fc.querySelector('button[type=submit]').textContent = 'Salvar alterações';
+  const m = document.getElementById('cred-modal'); if(m) m.remove();
+  fc.scrollIntoView({ behavior:'smooth' });
+}
+async function credExcluir(id){
+  const c = state.creditos.find(function(x){ return x.id === id; }); if(!c) return;
+  if(!confirm('Excluir esse lançamento de ' + fmtMoney(c.valor) + ' de ' + c.cliente + ' (' + fmtDate(c.data) + ')?\n\nEssa ação não pode ser desfeita.')) return;
+  state.creditos = state.creditos.filter(function(x){ return x.id !== c.id; });
+  await save('creditos'); renderAll();
+  const m = document.getElementById('cred-modal'); if(m){ m.remove(); if(state.creditos.some(function(x){ return x.cliente === c.cliente; })) credAbrirCliente(c.cliente); }
+}
+function credAbrirCliente(nome){
+  const antigo = document.getElementById('cred-modal'); if(antigo) antigo.remove();
+  const L = state.creditos.filter(function(c){ return c.cliente === nome; }).sort(function(a, b){ return (b.data || '').localeCompare(a.data || ''); });
+  const saldo = Math.round(L.reduce(function(s, c){ return s + c.valor; }, 0) * 100) / 100;
+  const ov = document.createElement('div'); ov.id = 'cred-modal'; ov.className = 'pd-root pd-dlg-ov';
+  ov.innerHTML = '<div class="pd-dlg pd-dlg-wide"><div class="pd-mh" style="margin-bottom:6px"><h2 style="margin:0">' + pendEsc(nome) + '</h2><span class="pd-tag ' + (saldo >= 0 ? 'pd-tag-gr' : 'pd-tag-or') + '">Saldo em haver: ' + pendEsc(fmtMoney(saldo)) + '</span></div>' +
+    '<div class="pd-obs" style="margin-bottom:10px">' + L.length + ' lançamento(s) deste cliente. Edite o lançamento ou vá direto para a venda que gerou o dinheiro.</div>' +
+    (L.length ? L.slice(0, 100).map(function(c){
+      const cand = credVendasCandidatas(c);
+      return '<div class="pd-item"><div class="pd-it-top"><div class="pd-tit">' + pendEsc(fmtMoney(c.valor)) + ' <span class="pd-tag ' + (c.valor >= 0 ? 'pd-tag-gr' : 'pd-tag-or') + '">' + (c.valor >= 0 ? 'crédito' : 'uso do crédito') + '</span></div><span class="pd-meta">' + pendEsc(fmtDate(c.data)) + '</span></div>' +
+        '<div class="pd-obs">' + pendEsc((c.forma_pagamento ? c.forma_pagamento + ' · ' : '') + (c.obs || 'sem observação')) + '</div>' +
+        '<div class="pd-acoes"><button data-cm="editar" data-id="' + c.id + '">Editar lançamento</button>' +
+        (cand.length ? '<button class="pd-g" data-cm="venda" data-id="' + c.id + '">' + (cand[0].explicita ? 'Ir para a venda que gerou' : 'Procurar a venda deste dia') + '</button>' : '') +
+        '<button class="pd-o" data-cm="excluir" data-id="' + c.id + '">Excluir</button></div></div>';
+    }).join('') : '<div class="pd-vazio">Sem lançamentos.</div>') +
+    '<div class="pd-acoes" style="margin-top:12px"><button data-cm="filtrar">Mostrar só este cliente na lista geral</button><button data-cm="fechar">Fechar</button></div></div>';
+  ov.addEventListener('click', function(e){
+    if(e.target === ov){ ov.remove(); return; }
+    const b = e.target.closest('[data-cm]'); if(!b) return;
+    const a = b.dataset.cm;
+    if(a === 'fechar') ov.remove();
+    else if(a === 'editar') credEditar(b.dataset.id);
+    else if(a === 'venda') credIrParaVenda(b.dataset.id);
+    else if(a === 'excluir') credExcluir(b.dataset.id);
+    else if(a === 'filtrar'){ CRED_UI.filtroCliente = nome; CRED_UI.pag = 1; ov.remove(); renderAll(); const t = document.getElementById('cred-lista-topo'); if(t) t.scrollIntoView({ behavior:'smooth' }); }
+  });
+  document.body.appendChild(ov);
+}
+function initCreditosHaver(){
+  if(window._credOk) return; window._credOk = true;
+  let tm = null;
+  const refazer = function(foco){
+    const y = window.scrollY, el = document.activeElement, pos = el && el.selectionStart;
+    renderAll(); window.scrollTo(0, y);
+    if(foco){ const n = document.getElementById(foco); if(n){ n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} } }
+  };
+  document.addEventListener('input', function(e){
+    const k = e.target.dataset && e.target.dataset.cred; if(k !== 'busca' && k !== 'buscaLanc') return;
+    clearTimeout(tm); const v = e.target.value, id = e.target.id;
+    tm = setTimeout(function(){ if(k === 'busca'){ CRED_UI.busca = v; CRED_UI.pagCli = 1; } else { CRED_UI.buscaLanc = v; CRED_UI.pag = 1; } refazer(id); }, 250);
+  });
+  document.addEventListener('change', function(e){
+    const k = e.target.dataset && e.target.dataset.cred;
+    if(k === 'tamCli'){ CRED_UI.tamCli = parseInt(e.target.value, 10) || 10; CRED_UI.pagCli = 1; refazer(); }
+    else if(k === 'tam'){ CRED_UI.tam = parseInt(e.target.value, 10) || 10; CRED_UI.pag = 1; refazer(); }
+  });
+  document.addEventListener('click', function(e){
+    const pg = e.target.closest('[data-cred-pag]');
+    if(pg){ const par = pg.dataset.credPag.split('-'), d = par[1] === 'ant' ? -1 : 1; if(par[0] === 'cli') CRED_UI.pagCli += d; else CRED_UI.pag += d; refazer(); return; }
+    const ver = e.target.closest('[data-cred-ver]'); if(ver){ credAbrirCliente(decodeURIComponent(ver.dataset.credVer)); return; }
+    const vd = e.target.closest('[data-cred-venda]'); if(vd){ credIrParaVenda(vd.dataset.credVenda); return; }
+    if(e.target.closest('[data-cred-limpar]')){ CRED_UI.filtroCliente = ''; CRED_UI.pag = 1; refazer(); }
+  });
 }
 
 async function init(){
