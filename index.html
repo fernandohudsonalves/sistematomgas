@@ -69,7 +69,7 @@
 window.__ROTA_PUBLICA__ = (function(){
   try{
     var qs = new URLSearchParams(location.search);
-    return qs.has('entrega') || qs.has('entregaVenda') || qs.has('nps') || qs.has('rastrear') || qs.has('pesquisamanual') || qs.has('dica') || qs.has('pendencias');
+    return qs.has('entrega') || qs.has('entregaVenda') || qs.has('nps') || qs.has('rastrear') || qs.has('pesquisamanual') || qs.has('dica') || qs.has('pendencias') || qs.has('contato');
   }catch(e){ return false; }
 })();
 if(!window.__ROTA_PUBLICA__){
@@ -924,7 +924,7 @@ textarea.pd-in{min-height:70px;resize:vertical;}
 .pd-pessoa-lk{display:grid;grid-template-columns:1fr;gap:8px;padding:12px;border-radius:10px;background:var(--blue-tint);margin-bottom:8px;}
 .pd-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9999;background:var(--royal);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.35);max-width:92vw;}
 .pd-toast.erro{background:#C2410C;}
-#pend-fab{position:fixed;right:14px;bottom:554px;z-index:500;width:38px;height:38px;border-radius:50%;background:#C2410C;border:none;box-shadow:0 4px 12px rgba(194,65,12,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;padding:0;}
+#pend-fab,#links-fab{position:fixed;right:14px;bottom:554px;z-index:500;width:38px;height:38px;border-radius:50%;background:#C2410C;border:none;box-shadow:0 4px 12px rgba(194,65,12,.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;padding:0;}
 #pend-fab-badge{position:absolute;top:-4px;right:-4px;background:#1E3A8A;color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 5px;display:none;}
 .pd-pub{min-height:100vh;background:var(--bg);}
 .pd-pub-h{background:var(--royal);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;}
@@ -991,15 +991,43 @@ html:not([data-theme="dark"]):not([data-theme="natal"]) .pd-delta-ruim{color:#C2
 .pd-os-full{background:var(--card);border-radius:8px;padding:7px 10px;margin-bottom:8px;}
 .pd-os-mini{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:2px;}
 
+.pd-live{padding:0;align-items:stretch;background:var(--bg);z-index:3100;}
+.pv-wrap{width:100%;height:100%;display:flex;flex-direction:column;color:var(--text);}
+.pv-top{display:flex;align-items:center;gap:18px;padding:14px 22px;background:var(--royal);color:#fff;}
+.pv-top h1{margin:0;font-size:26px;color:#fff;flex:1;}
+.pv-meta{font-size:16px;opacity:.9;}.pv-hora{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;}
+.pv-bt button{margin-left:8px;background:rgba(255,255,255,.18) !important;}
+.pv-main{flex:1;display:grid;grid-template-columns:2fr 1fr;gap:18px;padding:18px 22px;overflow:auto;}
+.pv-lista{display:flex;flex-direction:column;gap:12px;}
+.pv-card{display:flex;align-items:center;gap:18px;padding:16px 20px;border-radius:14px;border-left:10px solid #15803D;background:var(--green-tint);}
+.pv-card.pv-alerta{border-left-color:#EA580C;background:var(--pd-or-tint);}
+.pv-card.pv-atraso{border-left-color:#C2410C;background:var(--pd-or-tint);animation:pvPulso 1.2s ease-in-out infinite;}
+@keyframes pvPulso{0%,100%{box-shadow:0 0 0 0 rgba(194,65,12,.55);}50%{box-shadow:0 0 0 10px rgba(194,65,12,0);}}
+.pv-min{font-size:46px;font-weight:800;line-height:1;min-width:110px;font-variant-numeric:tabular-nums;}
+.pv-min small{font-size:16px;font-weight:600;margin-left:4px;color:var(--text2);}
+.pv-info{flex:1;display:flex;flex-direction:column;gap:4px;}
+.pv-info b{font-size:24px;}.pv-info span{font-size:16px;color:var(--text2);}
+.pv-bar{height:10px;border-radius:999px;background:var(--border);overflow:hidden;margin-top:6px;}
+.pv-bar i{display:block;height:100%;background:#15803D;}
+.pv-alerta .pv-bar i{background:#EA580C;}.pv-atraso .pv-bar i{background:#C2410C;}
+.pv-vazio{font-size:26px;color:var(--text2);text-align:center;padding:60px 0;}
+.pv-stats{display:flex;flex-direction:column;gap:12px;}
+.pv-k{background:var(--blue-tint);border-radius:14px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;}
+.pv-k span{font-size:17px;color:var(--text2);}.pv-k b{font-size:32px;}
+@media (max-width:800px){.pv-main{grid-template-columns:1fr;}.pv-top h1{font-size:20px;}}
+
+#links-corpo{padding:12px;overflow-y:auto;flex:1 1 auto;min-height:0;}
+.pd-link .pd-res{font-size:13px;}
+
 /* ===== Botões flutuantes: menores, mais juntos, todos azuis (WhatsApp verde), coluna no alto e escondidos na lateral ===== */
-#agenda-fab,#pend-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab{
+#agenda-fab,#pend-fab,#links-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab{
   width:30px !important;height:30px !important;right:10px !important;bottom:auto !important;padding:0 !important;
   border-radius:50% !important;display:flex !important;align-items:center !important;justify-content:center !important;
   font-size:14px !important;line-height:1 !important;color:#fff !important;z-index:500 !important;
   background:var(--royal) !important;box-shadow:0 3px 8px rgba(15,27,61,.38) !important;
   transition:transform .18s ease,opacity .18s ease,background .15s ease !important;
 }
-#agenda-fab:hover,#pend-fab:hover,#alertas-fab:hover,#cal-fab:hover,#calc-fab:hover,#sim-venda-fab:hover,#recado-fab:hover,#empresas-conv-fab:hover,#fiado-fab:hover,#new-ag-fab:hover,#rota-fab:hover{background:var(--royal-light) !important;}
+#agenda-fab:hover,#pend-fab:hover,#links-fab:hover,#alertas-fab:hover,#cal-fab:hover,#calc-fab:hover,#sim-venda-fab:hover,#recado-fab:hover,#empresas-conv-fab:hover,#fiado-fab:hover,#new-ag-fab:hover,#rota-fab:hover{background:var(--royal-light) !important;}
 #whats-fab{background:#25D366 !important;box-shadow:0 3px 8px rgba(37,211,102,.45) !important;}
 #whats-fab:hover{background:#2EE673 !important;}
 #new-ag-fab{font-size:18px !important;font-weight:700 !important;}
@@ -1009,6 +1037,7 @@ html:not([data-theme="dark"]):not([data-theme="natal"]) .pd-delta-ruim{color:#C2
 #agenda-fab{font-size:0 !important;}
 #agenda-fab::before{content:"📋";font-size:14px;line-height:1;}
 /* coluna única começando logo abaixo de onde ficava a Agenda: 36px de passo (30px do botão + 6px de respiro) */
+#links-fab{top:114px !important;}
 #agenda-fab{top:150px !important;}
 #pend-fab{top:186px !important;}
 #alertas-fab{top:222px !important;}
@@ -1034,13 +1063,15 @@ html.fabs-on #fab-handle{opacity:0;animation:none;}
 @media (prefers-reduced-motion:reduce){#fab-handle{animation:none;}}
 /* no computador (com mouse): ficam escondidos na lateral e aparecem ao chegar perto */
 @media (hover:hover) and (pointer:fine){
-  html:not(.fabs-on) :is(#agenda-fab,#pend-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab){
+  html:not(.fabs-on) :is(#agenda-fab,#pend-fab,#links-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab){
     transform:translateX(52px) !important;opacity:0 !important;pointer-events:none !important;
   }
-  html:not(.fabs-on) :is(#agenda-fab,#pend-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab):focus-visible{
+  html:not(.fabs-on) :is(#agenda-fab,#pend-fab,#links-fab,#alertas-fab,#cal-fab,#calc-fab,#sim-venda-fab,#recado-fab,#empresas-conv-fab,#fiado-fab,#new-ag-fab,#rota-fab,#whats-fab):focus-visible{
     transform:none !important;opacity:1 !important;pointer-events:auto !important;
   }
 }
+
+#links-panel{right:50px;top:114px;width:min(560px,calc(100vw - 80px));}
 </style>
 </head>
 <body>
@@ -2717,6 +2748,7 @@ let state = {
   custosProdutos: {},
   pedidosCarga: [],
   pedidosEncerrados: [],
+  linksClientes: [],
   checklistRotina: [],
   catalogoLivre: false,
   checklistDias: {},
@@ -5218,7 +5250,7 @@ function anexoFormHtml(formId, contexto){
     '</div><button type="submit" class="btn small ghost" style="margin-top:6px;">📎 Salvar anexo</button></form>';
 }
 
-const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','pedidosEncerrados','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','contasDespesaExtra','gruposCruzamento','fiados','fiadoPagamentos','fiadoDestinatarios','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas','dicasTreinamentos','horariosEspeciais','metaVolume','pedidosCarga','custosProdutos','categoriasDicas','iconesPersonalizados','modulosAtivos'];
+const APP_DATA_KEYS = ['vendas','despesas','clientes','empresas','produtos','estoque','estoqueLancamentos','pedidosEncerrados','linksClientes','categoriasProdutos','categoriasProdutosGrupo','categoriasDespesas','categoriasDespesasFixas','contasDespesaExtra','gruposCruzamento','fiados','fiadoPagamentos','fiadoDestinatarios','creditos','comodatos','agendamentos','metas','comunicados','precosControlados','historicoMensal','historicoColunasOrdem','checklistRotina','checklistDias','funcionarios','catalogoLivre','logoUrl','faviconUrl','convenioLancamentos','convenioPagamentos','estoqueMinimo','paradasRota','campanhas','envioCampanhaLog','publicos','agendaEventos','categoriasClientes','pendenciasConferencia','googleNegocio','pontosPartida','rotaConfig','entregadores','anexosEntrega','imagensStatusEntrega','temposEntrega','acertosEntrega','veiculos','categoriasVeiculoExtra','oficinasManutencao','veiculoKm','lapidarItens','recados','logAtividades','fechamentosCaixa','contasPagar','recompensasIndicacao','npsRespostas','pesquisaClientes','respostasPesquisaManual','usuariosSistema','calendarioEditorial','alarmesRecorrentes','feriadosCustom','alarmeFechamentoCaixaCriado','localizacaoEntregadores','metasCanal','interacoesCliente','tarefasCliente','avisosProgramados','fornecedoresGas','setores','blingBaixas','vendasSeparadasIgnoradas','dicasTreinamentos','horariosEspeciais','metaVolume','pedidosCarga','custosProdutos','categoriasDicas','iconesPersonalizados','modulosAtivos'];
 // Modo de visualização: ative acrescentando ?demo=1 na URL do arquivo. Pula o login de
 // verdade e mostra a tela do sistema já preenchida com alguns dados de EXEMPLO (fictícios),
 // sem nunca ler nem gravar nada no Supabase real — só serve pra olhar o layout/as mudanças
@@ -5309,6 +5341,7 @@ async function loadAll(){
   if(!state.custosProdutos || typeof state.custosProdutos!=='object' || Array.isArray(state.custosProdutos)) state.custosProdutos = {};
   if(!Array.isArray(state.pedidosCarga)) state.pedidosCarga = [];
   if(!Array.isArray(state.pedidosEncerrados)) state.pedidosEncerrados = [];
+  if(!Array.isArray(state.linksClientes)) state.linksClientes = [];
   if(!state.categoriasProdutosGrupo) state.categoriasProdutosGrupo = Object.assign({}, CATEGORIAS_OUTRAS_GRUPO_PADRAO);
   if(!state.checklistRotina) state.checklistRotina = [];
   if(!state.checklistDias) state.checklistDias = {};
@@ -5585,7 +5618,7 @@ document.addEventListener('submit', e=>{
 // Proteção contra sobrescrever dados criados em outro aparelho/aba: antes de gravar uma lista de
 // registros, busca no banco os registros novos (id que esta tela nunca viu) e os traz junto, em vez
 // de apagá-los. Exclusões feitas aqui continuam valendo (o id já era conhecido).
-const CHAVES_MESCLAR_NOVOS = ['vendas','despesas','clientes','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','convenioLancamentos','convenioPagamentos','estoqueLancamentos','dicasTreinamentos','contasPagar','horariosEspeciais','pedidosCarga','pedidosEncerrados'];
+const CHAVES_MESCLAR_NOVOS = ['vendas','despesas','clientes','fiados','fiadoPagamentos','creditos','comodatos','agendamentos','convenioLancamentos','convenioPagamentos','estoqueLancamentos','dicasTreinamentos','contasPagar','horariosEspeciais','pedidosCarga','pedidosEncerrados','linksClientes'];
 const _idsConhecidos = {};
 const _snapshots = {}; // key -> {id: json do registro como o banco tinha na última sincronização}
 function registrarIdsConhecidos(key){
@@ -5646,7 +5679,7 @@ async function save(key){
     return true;
   }catch(e){ console.error('Erro ao salvar', key, e); alert('Não foi possível salvar no Supabase: '+(e.message||e)); return false; }
 }
-const LABEL_AREA_LOG = {vendas:'Vendas',despesas:'Despesas',clientes:'Clientes',empresas:'Empresas',produtos:'Produtos',estoque:'Estoque',estoqueLancamentos:'Estoque',pedidosEncerrados:'Estoque',categoriasProdutos:'Categorias de produtos',categoriasDespesas:'Categorias de despesas',fiados:'Fiados',fiadoPagamentos:'Pagamentos de fiado',creditos:'Créditos',comodatos:'Comodatos',agendamentos:'Agendamentos',metas:'Metas',comunicados:'Comunicados',funcionarios:'Funcionários',campanhas:'Campanhas',pendenciasConferencia:'Pendências de conferência',entregadores:'Entregadores',acertosEntrega:'Acertos de entrega',veiculos:'Veículos',veiculoKm:'Quilometragem de veículos',lapidarItens:'Itens do Lapidar',oficinasManutencao:'Empresas de manutenção',rotaConfig:'Configuração de rota',paradasRota:'Paradas de rota',metasCanal:'Metas por canal',interacoesCliente:'Interações com clientes (CRM)',tarefasCliente:'Follow-ups de clientes (CRM)'};
+const LABEL_AREA_LOG = {vendas:'Vendas',despesas:'Despesas',clientes:'Clientes',empresas:'Empresas',produtos:'Produtos',estoque:'Estoque',estoqueLancamentos:'Estoque',pedidosEncerrados:'Estoque',linksClientes:'Links',categoriasProdutos:'Categorias de produtos',categoriasDespesas:'Categorias de despesas',fiados:'Fiados',fiadoPagamentos:'Pagamentos de fiado',creditos:'Créditos',comodatos:'Comodatos',agendamentos:'Agendamentos',metas:'Metas',comunicados:'Comunicados',funcionarios:'Funcionários',campanhas:'Campanhas',pendenciasConferencia:'Pendências de conferência',entregadores:'Entregadores',acertosEntrega:'Acertos de entrega',veiculos:'Veículos',veiculoKm:'Quilometragem de veículos',lapidarItens:'Itens do Lapidar',oficinasManutencao:'Empresas de manutenção',rotaConfig:'Configuração de rota',paradasRota:'Paradas de rota',metasCanal:'Metas por canal',interacoesCliente:'Interações com clientes (CRM)',tarefasCliente:'Follow-ups de clientes (CRM)'};
 function registrarLogAtividade(key){
   if(!Array.isArray(state.logAtividades)) state.logAtividades=[];
   state.logAtividades.push({id:uid(), quando:Date.now(), usuario:usuarioAtualNome, area: LABEL_AREA_LOG[key]||key});
@@ -5687,7 +5720,7 @@ async function existeBackup(chave){
     const { data, error } = await supabaseClient.from('app_data').select('chave').eq('chave', chave).limit(1);
     if(error) throw error;
     return !!(data && data.length>0);
-  }catch(e){ console.error('Erro ao checar backup', e); return true; }
+  }catch(e){ console.error('Erro ao checar backup', e); return false; }
 }
 async function criarBackupComChave(chave, tipo, observacao){
   try{
@@ -5755,7 +5788,14 @@ async function rodarBackupAutomaticoSeNecessario(){
   try{ await window._promessaCargaTardia; }catch(e){}
   const dataFechamento = diaAnteriorStr(todayStr());
   const chave = 'backup:'+dataFechamento;
-  const ok = await criarBackupComChave(chave, 'automatico');
+  // Já existe o backup desse dia? Então não regrava (antes, cada vez que o sistema abria ele era
+  // sobrescrito com os dados do momento, e deixava de ser o fechamento do dia anterior).
+  if(await existeBackup(chave)){
+    ultimoBackupAutomaticoOk = true; ultimoBackupAutomaticoQuando = new Date();
+    verificarUltimoBackup();
+    return;
+  }
+  const ok = await criarBackupComChave(chave, 'automatico', 'Rotina diária — fechamento de '+fmtDate(dataFechamento));
   ultimoBackupAutomaticoOk = ok;
   ultimoBackupAutomaticoQuando = new Date();
   verificarUltimoBackup();
@@ -5845,17 +5885,16 @@ async function renderListaBackups(){
   const container = document.getElementById('lista-backups');
   if(!container) return;
   try{
-    const { data, error } = await supabaseClient.from('app_data').select('chave,valor').like('chave','backup:%').order('chave',{ascending:false}).limit(30);
+    const { data, error } = await supabaseClient.from('app_data').select('chave,tipo:valor->>tipo,criado_em:valor->>criado_em,observacao:valor->>observacao').like('chave','backup:2%').order('chave',{ascending:false}).limit(30);
     if(error) throw error;
     if(!data || data.length===0){ container.innerHTML = '<div class="empty">Nenhum backup ainda.</div>'; return; }
-    container.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Hora</th><th>Tipo</th><th>Observação</th><th></th></tr></thead><tbody>'+
+    container.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Data do backup</th><th>Feito em</th><th>Tipo</th><th>Motivo</th><th></th></tr></thead><tbody>'+
       data.map(function(row){
-        const partes = row.chave.replace('backup:','').split('T');
-        const dataStr = partes[0];
-        const horaStr = partes[1] ? (partes[1].slice(0,2)+':'+partes[1].slice(2,4)+':'+partes[1].slice(4,6)) : '—';
-        const tipo = row.valor && row.valor.tipo==='manual' ? 'Manual' : 'Automático';
-        const obs = row.valor && row.valor.observacao ? row.valor.observacao : '—';
-        return '<tr><td>'+fmtDate(dataStr)+'</td><td>'+horaStr+'</td><td>'+tipo+'</td><td>'+obs+'</td>'+
+        const dataStr = row.chave.replace('backup:','').split('T')[0];
+        const feitoEm = row.criado_em ? new Date(row.criado_em).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+        const manual = row.tipo==='manual';
+        const motivo = row.observacao || (manual ? 'Backup manual (sem motivo informado)' : 'Rotina diária — fechamento de '+fmtDate(dataStr));
+        return '<tr><td>'+fmtDate(dataStr)+'</td><td>'+feitoEm+'</td><td>'+(manual?'Manual':'Automático')+'</td><td>'+escapeHtmlCampanha(motivo)+'</td>'+
           '<td><button class="act-link" data-restaurar-registros="'+row.chave+'" title="Escolher só alguns registros pra devolver">🧩 restaurar registros</button>'+
           '<button class="act-link" data-baixar-backup="'+row.chave+'">⬇ baixar</button>'+
           '<button class="del-link" data-restaurar-backup="'+row.chave+'">↺ restaurar</button></td></tr>';
@@ -9911,7 +9950,7 @@ function viewConfig(){
     cardConfig('backup','💾 Backup',
       '<div class="hint">Todo dia, na primeira vez que alguém abre o sistema, é feito um backup automático com o <strong>fechamento do dia anterior</strong> — guardado no próprio Supabase, mantendo os últimos 30. Você também pode clicar em "Fazer backup agora" quantas vezes quiser, na hora que quiser (por exemplo, ao fechar o caixa do dia) — cada um fica salvo com data <strong>e hora exatas</strong>, e também baixa um arquivo no seu aparelho.</div>'+
       (ultimoBackupAutomaticoQuando ? ('<div class="hint" style="margin-top:6px;">Última tentativa de backup automático nesta sessão: '+(ultimoBackupAutomaticoOk?'✅ deu certo':'❌ falhou')+' às '+ultimoBackupAutomaticoQuando.toLocaleTimeString()+'.</div>') : '<div class="hint" style="margin-top:6px;">Ainda não rodou o backup automático nesta sessão — abra essa tela de novo depois de recarregar a página.</div>')+
-      '<div style="margin-top:10px;max-width:420px;"><label>Observação (opcional)</label><input type="text" id="input-obs-backup-manual" placeholder="Ex: backup feito antes de importar planilha"></div>'+
+      '<div style="margin-top:10px;max-width:420px;"><label>Motivo do backup <span class="req">*</span></label><input type="text" id="input-obs-backup-manual" placeholder="Ex: backup feito antes de importar planilha"></div>'+
       '<button type="button" class="btn small" id="btn-backup-manual" style="margin-top:10px;">Fazer backup agora</button>'+
       '<details style="margin-top:18px;" id="details-lista-backups"'+(backupsListaAberta?' open':'')+'><summary><strong>Backups salvos</strong></summary>'+
       '<div id="lista-backups" class="hint" style="margin-top:10px;">Carregando...</div>'+
@@ -11735,11 +11774,11 @@ function relatorioFiado(){
   if(clienteRegistrandoPagamento){
     const saldoAtual = saldoDoCliente(clienteRegistrandoPagamento);
     const editando = editFiadoPagamentoId ? state.fiadoPagamentos.find(p=>p.id===editFiadoPagamentoId) : null;
-    const baseSaldoPagamento = saldoAtual + (editando ? (Number(editando.valor)||0) : 0);
+    const baseSaldoPagamento = editando ? Math.max(0, fiadoSaldoBrutoSem(clienteRegistrandoPagamento, editando)) : saldoAtual;
     painelPagamento = '<div class="item-venda-row" style="margin-top:10px;"><h4 style="margin-top:0;">'+(editando?'Editar pagamento':'Registrar pagamento')+' — '+clienteRegistrandoPagamento+'</h4>'+
       '<div class="hint">Saldo devedor atual: <strong>'+fmtMoney(saldoAtual)+'</strong>'+(editando?'':'. Se a pessoa pagou só uma parte, lance aqui só o valor que ela pagou — o restante continua em aberto. Se ela pagou tudo, o saldo zera e ela sai da lista de fiado sozinha.')+'</div>'+
       '<form id="form-pagamento-fiado" data-base-saldo="'+baseSaldoPagamento+'"><div class="form-row">'+
-      '<div><label>Valor pago (R$) <span class="req">*</span></label><input type="number" id="input-valor-pagamento-fiado" name="valor" min="0.01" step="0.01" value="'+(editando?Number(editando.valor).toFixed(2):'')+'" required></div>'+
+      '<div><label>Valor pago (R$) <span class="req">*</span></label><input type="number" id="input-valor-pagamento-fiado" name="valor" min="0.01" step="0.01" value="'+(editando?Number(editando.valorRecebido!=null?editando.valorRecebido:editando.valor).toFixed(2):'')+'" required></div>'+
       '<div><label>Forma de pagamento</label><select name="forma_pagamento">'+PAGAMENTOS.filter(p=>p!=='Marcou/Fiado').map(p=>'<option'+(editando&&editando.forma_pagamento===p?' selected':'')+'>'+p+'</option>').join('')+'</select></div>'+
       '<div><label>Data <span class="req">*</span></label><input type="date" name="data" value="'+(editando?editando.data:todayStr())+'" required></div></div>'+
       '<div style="margin:-6px 0 12px;"><button type="button" class="link-btn" id="btn-quitar-tudo-fiado">Preencher com o valor total (quitação total)</button></div>'+
@@ -14495,6 +14534,7 @@ function attachHandlers(){
     if(!pedido || !Object.keys(itens).length){ alert('Informe o nº do pedido e a quantidade de pelo menos um item.'); return; }
     if(!Array.isArray(state.pedidosCarga)) state.pedidosCarga = [];
   if(!Array.isArray(state.pedidosEncerrados)) state.pedidosEncerrados = [];
+  if(!Array.isArray(state.linksClientes)) state.linksClientes = [];
     const ex = state.pedidosCarga.find(x=>x.pedido===pedido);
     if(ex){ ex.itens = itens; ex.dataPrevista = f.get('dataPrevista')||''; }
     else state.pedidosCarga.push({id:uid(), pedido, dataPrevista:f.get('dataPrevista')||'', itens, criadoEm:Date.now()});
@@ -14853,14 +14893,10 @@ function attachHandlers(){
     const f = new FormData(fpg);
     const valor = Number(f.get('valor'))||0;
     if(valor<=0) return;
-    if(editFiadoPagamentoId){
-      const p = state.fiadoPagamentos.find(x=>x.id===editFiadoPagamentoId);
-      if(p){ p.valor=valor; p.forma_pagamento=f.get('forma_pagamento'); p.data=f.get('data')||todayStr(); }
-      editFiadoPagamentoId = null;
-    } else {
-      state.fiadoPagamentos.push({id:uid(), cliente:clienteRegistrandoPagamento, valor, forma_pagamento:f.get('forma_pagamento'), data:f.get('data')||todayStr()});
-    }
-    await save('fiadoPagamentos');
+    const resFiado = fiadoRegistrarPagamento({ editId:editFiadoPagamentoId, cliente:clienteRegistrandoPagamento, valor:valor, forma:f.get('forma_pagamento'), data:f.get('data')||todayStr() });
+    editFiadoPagamentoId = null;
+    await save('fiadoPagamentos'); await save('creditos');
+    if(resFiado.excesso > 0.004) pendToast('Pagou ' + fmtMoney(resFiado.excesso) + ' a mais: o valor foi para o haver do cliente.', false, 6000);
     clienteRegistrandoPagamento = null;
     renderAll();
   };
@@ -16983,8 +17019,9 @@ function attachHandlers(){
     const p = state.fiadoPagamentos.find(x=>x.id===btn.dataset.delPagamentoFiado);
     if(!p) return;
     if(confirm('Excluir este pagamento de '+fmtMoney(p.valor)+' de '+p.cliente+' (lançado em '+fmtDate(p.data)+')?\n\nO saldo devedor dele vai aumentar de novo. Essa ação não pode ser desfeita.')){
+      if(p.creditoId) state.creditos = state.creditos.filter(c=>c.id!==p.creditoId);
       state.fiadoPagamentos = state.fiadoPagamentos.filter(x=>x.id!==p.id);
-      await save('fiadoPagamentos');
+      await save('fiadoPagamentos'); if(p.creditoId) await save('creditos');
       renderAll();
     }
   });
@@ -17674,6 +17711,7 @@ function attachHandlers(){
   if(btnBackupManual) btnBackupManual.onclick = async ()=>{
     const inputObsBackup = document.getElementById('input-obs-backup-manual');
     const obsBackup = inputObsBackup ? inputObsBackup.value.trim() : '';
+    if(!obsBackup){ alert('Informe o motivo do backup (ex.: antes de importar planilha) para poder salvar.'); if(inputObsBackup) inputObsBackup.focus(); return; }
     btnBackupManual.disabled = true;
     const textoOriginal = btnBackupManual.textContent;
     btnBackupManual.textContent = 'Fazendo backup...';
@@ -20995,6 +21033,7 @@ function pendUrl(token){ return location.href.split('?')[0].split('#')[0] + '?pe
 /* ---------- PAINEL DO FERNANDO (dentro do sistema) ---------- */
 function initPendenciasFab(){
   initGestaoExtra();
+  initLinksFab();
   if(typeof MODO_DEMO !== 'undefined' && MODO_DEMO) return;
   if(!usuarioAtualEhAdmin) return;
   if(document.getElementById('pend-fab')) return;
@@ -21004,7 +21043,7 @@ function initPendenciasFab(){
   b.onclick = pendAbrirPainel;
   document.body.appendChild(b);
   pendAtualizarBadge();
-  setInterval(pendAtualizarBadge, 90000);
+  setInterval(pendAtualizarBadge, 45000);
 }
 function pendMarcarAba(tela){
   document.querySelectorAll('#pend-tabs [data-v]').forEach(function(b){ b.classList.toggle('on', b.dataset.v === tela); });
@@ -21012,7 +21051,7 @@ function pendMarcarAba(tela){
 }
 function pendBadge(n){ const el = document.getElementById('pend-fab-badge'); if(!el) return; el.textContent = n; el.style.display = n > 0 ? 'block' : 'none'; }
 async function pendAtualizarBadge(){
-  try{ const d = await pendRpc('pend_a_resumo'); PEND_RESUMO = d; pendBadge(d.aguardando || 0); atencaoHojeAtualizarDom(); }catch(e){}
+  try{ const d = await pendRpc('pend_a_resumo'); PEND_RESUMO = d; pendBadge(d.aguardando || 0); atencaoHojeAtualizarDom(); alertaVerificar(); }catch(e){}
 }
 async function pendAbrirPainel(){
   let pn = document.getElementById('pend-panel');
@@ -21035,6 +21074,7 @@ async function pendAbrirPainel(){
   await pendCarregar();
 }
 async function pendCarregar(){
+  if(PEND_ST.tela === 'os') PEND_ST.tela = 'lista';
   try{
     const d = await pendRpc('pend_a_listar', { p_filtro:PEND_ST.filtro, p_pessoa:PEND_ST.pessoa || null, p_pagina:PEND_ST.pagina, p_tamanho:PEND_ST.tam });
     PEND_ST.itens = d.itens || []; PEND_ST.total = d.total || 0; PEND_ST.aguard = d.aguardando || 0;
@@ -21046,6 +21086,7 @@ async function pendCarregar(){
   pendAtualizarBadge();
 }
 function pendRenderLista(){
+  if(PEND_ST.tela === 'os'){ pendRenderOS(); return; }
   const c = document.getElementById('pend-corpo'); if(!c) return;
   pendMarcarAba('lista');
   const chips = [['pendentes','Abertas'],['aguardando','Aguardando conferência'],['concluidas','Resolvidas'],['todas','Todas'],['lixeira','Lixeira']];
@@ -21376,7 +21417,7 @@ function initFabsAutoHide(){
   document.addEventListener('mousemove', function(e){
     const dx = window.innerWidth - e.clientX, y = e.clientY;
     const aberto = raiz.classList.contains('fabs-on');
-    const dentro = aberto ? (dx <= 120 && y >= 100 && y <= 640) : (dx <= 48 && y >= 126 && y <= 606);
+    const dentro = aberto ? (dx <= 120 && y >= 100 && y <= 640) : (dx <= 48 && y >= 100 && y <= 606);
     if(dentro) abrir(); else if(aberto) fechar();
   }, { passive:true });
   document.addEventListener('mouseleave', fechar);
@@ -21624,6 +21665,7 @@ let PEND_RESUMO = null;
 function initGestaoExtra(){
   if(window._gestaoExtraOk) return; window._gestaoExtraOk = true;
   initCreditosHaver();
+  initInovacoes();
   document.addEventListener('click', function(e){
     const b = e.target.closest('[data-aten],[data-extrato-pedidos]'); if(!b) return;
     if(b.hasAttribute('data-extrato-pedidos')){ pedidosAbrirExtrato(); return; }
@@ -21634,6 +21676,23 @@ function initGestaoExtra(){
     else if(a === 'pedidos'){ currentTab = 'estoque'; renderAll(); }
     else if(a === 'extrato') pedidosAbrirExtrato();
     else if(a === 'entregas') pendAbrirPainelEm('entregas');
+    else if(a === 'copia') backupBaixarAgora();
+    else if(a === 'fiadosobra') fiadoCorrigirAgora();
+    else if(a === 'busca') buscaAbrir();
+    else if(a === 'resumo') resumoDiaAbrir();
+    else if(a === 'vivo') painelVivoAbrir();
+    else if(a === 'som') alertaSomAlternar();
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
+    const ovs = document.querySelectorAll('.pd-dlg-ov');
+    if(ovs.length){ const ov = ovs[ovs.length - 1], b = ov.querySelector('[data-d="cancel"],[data-d="fechar"],[data-cm="fechar"]'); if(b) b.click(); else ov.remove(); return; }
+    const pn = document.getElementById('pend-panel');
+    if(pn && pn.classList.contains('open')){
+      const a = document.activeElement;
+      if(a && pn.contains(a) && /^(TEXTAREA|INPUT|SELECT)$/.test(a.tagName)){ a.blur(); return; }
+      pn.classList.remove('open');
+    }
   });
   setInterval(function(){ atencaoHojeAtualizarDom(); entregasAtualizarVivo(); }, 60000);
 }
@@ -21648,6 +21707,10 @@ async function pendAbrirPainelEm(tela, filtro){
 /* ---------- 1) Cartão "Precisa da sua atenção hoje" (início do sistema) ---------- */
 function atencaoItens(){
   const it = [], r = PEND_RESUMO;
+  try{
+    const sobras = fiadoSobrasPendentes();
+    if(sobras.length) it.push({ cor:'or', txt:(sobras.length === 1 ? sobras[0].cliente + ' pagou ' + fmtMoney(sobras[0].sobra) + ' a mais no fiado e a sobra não foi para o haver' : sobras.length + ' clientes pagaram a mais no fiado e a sobra não foi para o haver (total ' + fmtMoney(sobras.reduce(function(s, x){ return s + x.sobra; }, 0)) + ')'), acao:'fiadosobra', rot:'Corrigir agora' });
+  }catch(e){}
   const lentas = entregasAtrasadasAoVivo();
   if(lentas.length){ const w = lentas[0]; it.push({ cor:'or', txt:lentas.length + (lentas.length === 1 ? ' entrega passou' : ' entregas passaram') + ' de ' + META_ENTREGA_MIN + ' min (a mais antiga: ' + w.cliente + ', ' + w.min + ' min, ' + w.etapa + ')', acao:'entregas', rot:'Ver entregas' }); }
   if(r){
@@ -21658,6 +21721,21 @@ function atencaoItens(){
   }
   const ok = pedidosCompletosAguardandoOk();
   if(ok.length) it.push({ cor:'gr', txt:'Pedido ' + ok.map(function(p){ return p.pedido; }).join(', ') + ' completo(s): falta o seu OK para encerrar', acao:'pedidos', rot:'Abrir Estoque' });
+  try{
+    const datas = pedidoDatasMin(), hojeMs = Date.parse(todayStr());
+    const velhos = pedidosOrdenados().filter(function(p){
+      if(pedidoEncerrado(p.pedido) || pedidoCompleto(p)) return false;
+      const d = datas[p.pedido]; if(!d || d.indexOf('9999') === 0) return false;
+      return (hojeMs - Date.parse(d)) / 86400000 >= 7;
+    });
+    if(velhos.length){
+      const p = velhos[0], dias = Math.floor((hojeMs - Date.parse(datas[p.pedido])) / 86400000);
+      const falta = Object.keys(p.itens).map(function(k){ return p.itens[k]; }).filter(function(i){ return i.faltam > 0; }).map(function(i){ return i.faltam + ' ' + i.item; }).join(', ');
+      it.push({ cor:'bl', txt:velhos.length === 1 ? 'Pedido ' + p.pedido + ' espera há ' + dias + ' dias' + (falta ? ' (faltam ' + falta + ')' : '') : velhos.length + ' pedidos esperam há 7 dias ou mais (o mais antigo: ' + p.pedido + ', ' + dias + ' dias)', acao:'pedidos', rot:'Abrir Estoque' });
+    }
+  }catch(e){}
+  const diasCopia = backupDiasSemCopia();
+  if(diasCopia === null || diasCopia >= 7) it.push({ cor:'bl', txt:diasCopia === null ? 'Você ainda não baixou uma cópia de segurança dos dados para fora do sistema' : 'Faz ' + diasCopia + ' dias que você não baixa uma cópia de segurança dos dados', acao:'copia', rot:'Baixar cópia' });
   const dev = saldosComodato('atacadista').filter(function(x){ return x.produto === 'Vasilhame vazio' && x.saldo > 0; });
   if(dev.length) it.push({ cor:'bl', txt:'Vazios devendo ao atacadista: ' + dev.map(function(x){ return x.saldo + ' ' + itemComodatoLabel(x.categoria, x.item); }).join(', '), acao:'extrato', rot:'Ver extrato' });
   return it;
@@ -21666,10 +21744,13 @@ function atencaoHojeCardDashboardHtml(){
   if(typeof MODO_DEMO !== 'undefined' && MODO_DEMO) return '';
   if(!usuarioAtualEhAdmin) return '';
   const it = atencaoItens();
-  if(!it.length) return PEND_RESUMO ? '<div id="atencao-hoje" class="pd-root"><div class="card pd-aten-ok">✅ Tudo em dia hoje: nada esperando a sua conferência, sem tarefas atrasadas e sem pedido para encerrar.</div></div>' : '<div id="atencao-hoje"></div>';
+  if(!it.length) return PEND_RESUMO ? '<div id="atencao-hoje" class="pd-root"><div class="card pd-aten-ok">✅ Tudo em dia hoje: nada esperando a sua conferência, sem tarefas atrasadas e sem pedido para encerrar.' + atencaoRodapeHtml() + '</div></div>' : '<div id="atencao-hoje"></div>';
   return '<div id="atencao-hoje" class="pd-root"><div class="card pd-aten"><h2>🔔 Precisa da sua atenção hoje</h2>' + it.map(function(x){
     return '<div class="pd-aten-row"><span class="pd-aten-dot pd-aten-' + x.cor + '"></span><span class="pd-aten-txt">' + pendEsc(x.txt) + '</span><button' + (x.cor === 'or' ? ' class="pd-o"' : (x.cor === 'gr' ? ' class="pd-g"' : '')) + ' data-aten="' + x.acao + '">' + pendEsc(x.rot) + '</button></div>';
-  }).join('') + '</div></div>';
+  }).join('') + atencaoRodapeHtml() + '</div></div>';
+}
+function atencaoRodapeHtml(){
+  return '<div class="pd-acoes" style="margin-top:10px"><button data-aten="busca">🔎 Busca rápida (Ctrl+K)</button><button data-aten="resumo">📲 Resumo do dia</button><button data-aten="vivo">📺 Painel ao vivo</button><button data-aten="som">🔔 Som: ' + (alertaSomLigado() ? 'ligado' : 'desligado') + '</button></div>';
 }
 function atencaoHojeAtualizarDom(){
   const el = document.getElementById('atencao-hoje'); if(!el) return;
@@ -21801,9 +21882,9 @@ function pedidosExtratoTexto(lista){
   if(vz.length) vz.forEach(function(x){ linhas.push('  ' + x.nome + ' - ' + itemComodatoLabel(x.categoria, x.item) + ': ' + (x.saldo > 0 ? 'devemos ' + x.saldo : 'ele nos deve ' + (-x.saldo))); }); else linhas.push('  nada em aberto');
   return linhas.join('\n');
 }
-function pedidosAbrirExtrato(){
+function pedidosAbrirExtrato(inicial){
   if(document.getElementById('pend-extrato')) return;
-  let filtro = 'abertos';
+  let filtro = inicial || 'abertos';
   const ov = document.createElement('div'); ov.id = 'pend-extrato'; ov.className = 'pd-root pd-dlg-ov';
   const desenhar = function(){ ov.querySelector('#pd-ext-corpo').innerHTML = pedidosExtratoHtml(pedidosExtratoLista(filtro)); };
   ov.innerHTML = '<div class="pd-dlg pd-dlg-wide"><div class="pd-mh" style="margin-bottom:8px"><h2 style="margin:0">Extrato do atacadista</h2><select class="pd-sel" id="pd-ext-filtro">' +
@@ -21824,7 +21905,7 @@ function pedidosAbrirExtrato(){
       w.document.close(); w.focus(); w.print();
     }
   });
-  document.body.appendChild(ov); desenhar();
+  document.body.appendChild(ov); ov.querySelector('#pd-ext-filtro').value = filtro; desenhar();
 }
 
 /* ---------- 5) Desempenho da equipe (gráficos) ---------- */
@@ -21897,6 +21978,22 @@ function pendRenderDesempenho(){
   const ds = D.dia_semana || [0,0,0,0,0,0,0], mx = Math.max.apply(null, ds.concat([0]));
   PEND_CHARTS.push(new Chart(document.getElementById('pd-c3'), { type:'bar', data:{ labels:['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'], datasets:[{ data:ds, borderRadius:4, barThickness:26, backgroundColor:ds.map(function(v){ return mx >= 3 && v === mx ? lar : cinza; }) }] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:function(x){ return x.raw + ' atraso(s)'; } } } }, scales:{ x:{ grid:{ display:false }, border:{ color:bd }, ticks:{ color:tx } }, y:eixoY } } }));
+}
+
+/* ---------- cópia de segurança para fora do sistema (só lê os dados e baixa um arquivo) ---------- */
+function backupDiasSemCopia(){
+  try{ const d = localStorage.getItem('tg_copia_baixada'); if(!d) return null; return Math.floor((Date.parse(todayStr()) - Date.parse(d)) / 86400000); }catch(e){ return null; }
+}
+function backupBaixarAgora(){
+  try{
+    const pacote = { tipo:'copia-manual', criado_em:new Date().toISOString(), dados:montarSnapshotBackup() };
+    const blob = new Blob([JSON.stringify(pacote)], { type:'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'tomgas-copia-' + todayStr() + '.json';
+    document.body.appendChild(a); a.click(); setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} a.remove(); }, 1500);
+    try{ localStorage.setItem('tg_copia_baixada', todayStr()); }catch(e){}
+    atencaoHojeAtualizarDom();
+    pendToast('Cópia baixada. Guarde o arquivo em um lugar seguro (pendrive, e-mail ou nuvem).', false, 6000);
+  }catch(e){ pendToast('Não consegui gerar a cópia. Tente de novo.', true); }
 }
 
 /* ===== Tempo de entrega: etapas gravadas, meta de 25 min, entregas em andamento e relatório por entregador/horário ===== */
@@ -22080,7 +22177,7 @@ function creditosListaHtml(){
     (todos.length ? '<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Data</th><th>Valor</th><th>Forma de pagamento</th><th>Observação</th><th>Origem</th><th></th></tr></thead><tbody>' +
       p.itens.map(function(c){
         return '<tr><td>' + pendEsc(c.cliente) + '</td><td>' + pendEsc(fmtDate(c.data)) + '</td><td>' + pendEsc(fmtMoney(c.valor)) + '</td><td>' + pendEsc(c.forma_pagamento || '—') + '</td><td>' + pendEsc(c.obs || '—') + '</td>' +
-          '<td>' + (credVendasCandidatas(c).length ? '<button class="act-link" data-cred-venda="' + c.id + '">↗ ver venda</button>' : '—') + '</td>' +
+          '<td>' + (credVendasCandidatas(c).length ? '<button class="act-link" data-cred-venda="' + c.id + '">↗ ver venda</button>' : (c.fiadoPagamentoId ? '<button class="act-link" data-cred-fiado="' + c.id + '">↗ ver pagamento</button>' : '—')) + '</td>' +
           '<td><button class="act-link" data-edit-credito="' + c.id + '">✎ editar</button><button class="del-link" data-del-credito="' + c.id + '">🗑 excluir</button></td></tr>';
       }).join('') + '</tbody></table></div>' + credRodapeHtml('tam', 'l', p, CRED_UI.tam)
       : '<div class="empty">Nenhum lançamento encontrado.</div>');
@@ -22088,6 +22185,7 @@ function creditosListaHtml(){
 
 // Vendas que podem ter gerado esse lançamento: vínculo direto (vendaGrupoId) ou, na falta dele, mesma data e mesmo cliente.
 function credVendasCandidatas(c){
+  if(c.fiadoPagamentoId) return [];
   if(c.vendaGrupoId){
     const v = (state.vendas || []).filter(function(x){ return (x.grupoId || x.id) === c.vendaGrupoId; });
     return v.length ? [{ chave:c.vendaGrupoId, linhas:v, explicita:true }] : [];
@@ -22139,7 +22237,7 @@ function credAbrirCliente(nome){
       const cand = credVendasCandidatas(c);
       return '<div class="pd-item"><div class="pd-it-top"><div class="pd-tit">' + pendEsc(fmtMoney(c.valor)) + ' <span class="pd-tag ' + (c.valor >= 0 ? 'pd-tag-gr' : 'pd-tag-or') + '">' + (c.valor >= 0 ? 'crédito' : 'uso do crédito') + '</span></div><span class="pd-meta">' + pendEsc(fmtDate(c.data)) + '</span></div>' +
         '<div class="pd-obs">' + pendEsc((c.forma_pagamento ? c.forma_pagamento + ' · ' : '') + (c.obs || 'sem observação')) + '</div>' +
-        '<div class="pd-acoes"><button data-cm="editar" data-id="' + c.id + '">Editar lançamento</button>' +
+        '<div class="pd-acoes"><button data-cm="editar" data-id="' + c.id + '">Editar lançamento</button>' + (c.fiadoPagamentoId ? '<button class="pd-g" data-cm="fiado" data-id="' + c.id + '">Ir para o pagamento do fiado</button>' : '') +
         (cand.length ? '<button class="pd-g" data-cm="venda" data-id="' + c.id + '">' + (cand[0].explicita ? 'Ir para a venda que gerou' : 'Procurar a venda deste dia') + '</button>' : '') +
         '<button class="pd-o" data-cm="excluir" data-id="' + c.id + '">Excluir</button></div></div>';
     }).join('') : '<div class="pd-vazio">Sem lançamentos.</div>') +
@@ -22151,6 +22249,7 @@ function credAbrirCliente(nome){
     if(a === 'fechar') ov.remove();
     else if(a === 'editar') credEditar(b.dataset.id);
     else if(a === 'venda') credIrParaVenda(b.dataset.id);
+    else if(a === 'fiado') credIrParaFiado(b.dataset.id);
     else if(a === 'excluir') credExcluir(b.dataset.id);
     else if(a === 'filtrar'){ CRED_UI.filtroCliente = nome; CRED_UI.pag = 1; ov.remove(); renderAll(); const t = document.getElementById('cred-lista-topo'); if(t) t.scrollIntoView({ behavior:'smooth' }); }
   });
@@ -22178,8 +22277,401 @@ function initCreditosHaver(){
     const pg = e.target.closest('[data-cred-pag]');
     if(pg){ const par = pg.dataset.credPag.split('-'), d = par[1] === 'ant' ? -1 : 1; if(par[0] === 'cli') CRED_UI.pagCli += d; else CRED_UI.pag += d; refazer(); return; }
     const ver = e.target.closest('[data-cred-ver]'); if(ver){ credAbrirCliente(decodeURIComponent(ver.dataset.credVer)); return; }
+    const fd = e.target.closest('[data-cred-fiado]'); if(fd){ credIrParaFiado(fd.dataset.credFiado); return; }
     const vd = e.target.closest('[data-cred-venda]'); if(vd){ credIrParaVenda(vd.dataset.credVenda); return; }
     if(e.target.closest('[data-cred-limpar]')){ CRED_UI.filtroCliente = ''; CRED_UI.pag = 1; refazer(); }
+  });
+}
+
+/* ===== Inovações: busca rápida (Ctrl+K), resumo do dia, alertas sonoros e painel ao vivo das entregas ===== */
+function inovFoneWhats(t){ let d = String(t || '').replace(/\D/g, ''); if(d && d.length <= 11) d = '55' + d; return d; }
+function inovHojeDe(iso){ try{ return new Date(iso).toLocaleDateString('sv-SE', { timeZone:'America/Sao_Paulo' }); }catch(e){ return ''; } }
+function inovGruposVenda(lista){ const g = {}; lista.forEach(function(v){ const k = v.grupoId || v.id; (g[k] = g[k] || []).push(v); }); return Object.keys(g).map(function(k){ return { chave:k, linhas:g[k], total:credTotalVenda(g[k]) }; }); }
+
+function initInovacoes(){
+  if(window._inovOk) return; window._inovOk = true;
+  document.addEventListener('keydown', function(e){
+    if((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'k'){ e.preventDefault(); buscaAbrir(); }
+  });
+  document.addEventListener('visibilitychange', alertaTitulo);
+  setInterval(alertaVerificar, 20000);
+}
+
+/* ---------- 1) Busca rápida ---------- */
+const BUSCA = { timer:null, seq:0, itens:[], sel:0, q:'' };
+function buscaLocal(q){
+  const n = credNorm(q), digitos = q.replace(/\D/g, ''), out = [];
+  if(n.length < 2 && !/^\d+$/.test(q.trim())) return out;
+  (state.clientes || []).filter(function(c){
+    return credNorm(c.nome).indexOf(n) >= 0 || (c.apelidos || []).some(function(a){ return credNorm(a).indexOf(n) >= 0; }) || (digitos.length >= 4 && String(c.telefone || '').replace(/\D/g, '').indexOf(digitos) >= 0);
+  }).slice(0, 6).forEach(function(c){ out.push({ tipo:'cliente', rotulo:c.nome, sub:[c.telefone, c.endereco].filter(Boolean).join(' · '), c:c }); });
+  inovGruposVenda((state.vendas || []).filter(function(v){ return credNorm(v.cliente).indexOf(n) >= 0; })).sort(function(a, b){ return (b.linhas[0].data || '').localeCompare(a.linhas[0].data || ''); }).slice(0, 5)
+    .forEach(function(g){ out.push({ tipo:'venda', rotulo:'Venda de ' + g.linhas[0].cliente + ' · ' + fmtMoney(g.total), sub:fmtDate(g.linhas[0].data), g:g }); });
+  pedidosOrdenados().filter(function(p){ return String(p.pedido).indexOf(q.trim()) >= 0; }).slice(0, 4)
+    .forEach(function(p){ out.push({ tipo:'pedido', rotulo:'Pedido ' + p.pedido, sub:pedidoSituacao(p), p:p }); });
+  return out;
+}
+function buscaAbrir(){
+  if(document.getElementById('busca-rapida')) return;
+  const ov = document.createElement('div'); ov.id = 'busca-rapida'; ov.className = 'pd-root pd-dlg-ov'; ov.style.cssText = 'align-items:flex-start;padding-top:10vh;';
+  ov.innerHTML = '<div class="pd-dlg pd-dlg-wide"><input class="pd-in" id="busca-q" placeholder="Buscar cliente, O.S., pedido ou venda..." autocomplete="off"><div id="busca-res" style="margin-top:10px"></div><div class="pd-meta" style="margin-top:8px">↑ ↓ para escolher · Enter para abrir · Esc para fechar</div><button data-d="fechar" style="display:none">Fechar</button></div>';
+  BUSCA.itens = []; BUSCA.sel = 0; BUSCA.q = '';
+  const input = function(){ return document.getElementById('busca-q'); };
+  ov.addEventListener('click', function(e){
+    if(e.target === ov || e.target.closest('[data-d="fechar"]')){ ov.remove(); return; }
+    const b = e.target.closest('[data-bi]'); if(b) buscaAbrirItem(BUSCA.itens[Number(b.dataset.bi)]);
+  });
+  ov.addEventListener('input', function(e){
+    if(e.target.id !== 'busca-q') return;
+    clearTimeout(BUSCA.timer); const q = e.target.value; BUSCA.timer = setTimeout(function(){ buscaRodar(q); }, 180);
+  });
+  ov.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); const n = BUSCA.itens.length; if(n){ BUSCA.sel = (BUSCA.sel + (e.key === 'ArrowDown' ? 1 : n - 1)) % n; buscaRender(); } }
+    else if(e.key === 'Enter'){ e.preventDefault(); const it = BUSCA.itens[BUSCA.sel]; if(it) buscaAbrirItem(it); }
+  });
+  document.body.appendChild(ov); input().focus();
+}
+async function buscaRodar(q){
+  q = (q || '').trim(); BUSCA.q = q; const seq = ++BUSCA.seq;
+  if(!q){ BUSCA.itens = []; buscaRender(); return; }
+  BUSCA.itens = buscaLocal(q); BUSCA.sel = 0; buscaRender();
+  try{
+    const os = await pendRpc('pend_a_buscar', { p_q:q });
+    if(seq !== BUSCA.seq) return;
+    (os || []).forEach(function(t){ BUSCA.itens.push({ tipo:'os', rotulo:pendNumOS(t) + ' · ' + t.titulo, sub:t.pessoa + ' · ' + (t.lixeira ? 'excluída' : (t.status === 'concluida' ? 'resolvida' : (t.status === 'aguardando' ? 'aguardando conferência' : 'aberta'))), t:t }); });
+    buscaRender();
+  }catch(e){}
+}
+function buscaRender(){
+  const el = document.getElementById('busca-res'); if(!el) return;
+  if(!BUSCA.itens.length){ el.innerHTML = BUSCA.q ? '<div class="pd-vazio">Nada encontrado para "' + pendEsc(BUSCA.q) + '".</div>' : '<div class="pd-meta">Digite um nome, telefone, número de O.S. ou de pedido.</div>'; return; }
+  const nomes = { cliente:'Clientes', venda:'Vendas', pedido:'Pedidos', os:'Ordens de serviço' }; let ult = '';
+  el.innerHTML = BUSCA.itens.map(function(it, i){
+    const cab = it.tipo !== ult ? '<div class="pd-sec" style="margin:10px 0 4px">' + nomes[it.tipo] + '</div>' : ''; ult = it.tipo;
+    return cab + '<div class="pd-opt" data-bi="' + i + '" style="' + (i === BUSCA.sel ? 'outline:2px solid var(--royal-light);' : '') + '"><span><b>' + pendEsc(it.rotulo) + '</b>' + (it.sub ? '<small>' + pendEsc(it.sub) + '</small>' : '') + '</span></div>';
+  }).join('');
+}
+async function buscaAbrirItem(it){
+  if(!it) return;
+  const ov = document.getElementById('busca-rapida'); if(ov) ov.remove();
+  if(it.tipo === 'cliente') buscaFichaCliente(it.c);
+  else if(it.tipo === 'venda'){ currentTab = 'vendas'; renderAll(); preencherFormEdicaoVenda(it.g.linhas[0], document.getElementById('form-venda')); }
+  else if(it.tipo === 'pedido') pedidosAbrirExtrato('todos');
+  else if(it.tipo === 'os') await pendMostrarOS(it.t);
+}
+function buscaFichaCliente(c){
+  const antigo = document.getElementById('ficha-cliente'); if(antigo) antigo.remove();
+  const saldo = (credResumoClientes().find(function(x){ return x.nome === c.nome; }) || { saldo:0 }).saldo;
+  const compras = inovGruposVenda((state.vendas || []).filter(function(v){ return v.cliente === c.nome; })).sort(function(a, b){ return (b.linhas[0].data || '').localeCompare(a.linhas[0].data || ''); }).slice(0, 5);
+  const ov = document.createElement('div'); ov.id = 'ficha-cliente'; ov.className = 'pd-root pd-dlg-ov';
+  ov.innerHTML = '<div class="pd-dlg"><div class="pd-mh" style="margin-bottom:6px"><h2 style="margin:0">' + pendEsc(c.nome) + '</h2>' + (Math.abs(saldo) > 0.004 ? '<span class="pd-tag ' + (saldo > 0 ? 'pd-tag-gr' : 'pd-tag-or') + '">Em haver: ' + pendEsc(fmtMoney(saldo)) + '</span>' : '') + '</div>' +
+    '<div class="pd-obs">' + pendEsc([c.telefone, c.endereco, c.complemento].filter(Boolean).join(' · ') || 'Sem telefone nem endereço cadastrados') + '</div>' + (c.obs ? '<div class="pd-res" style="margin-top:8px">' + pendEsc(c.obs) + '</div>' : '') +
+    '<h3 class="pd-ext-h">Últimas compras</h3>' + (compras.length ? compras.map(function(g){ return '<div class="pd-meta">' + pendEsc(fmtDate(g.linhas[0].data)) + ' · ' + pendEsc(fmtMoney(g.total)) + '</div>'; }).join('') : '<div class="pd-meta">Sem compras registradas.</div>') +
+    '<div class="pd-acoes" style="margin-top:12px">' + (c.telefone ? '<button class="pd-g" data-f="zap">WhatsApp</button>' : '') + (Math.abs(saldo) > 0.004 ? '<button data-f="credito">Ver crédito e lançamentos</button>' : '') + '<button data-d="fechar">Fechar</button></div></div>';
+  ov.addEventListener('click', function(e){
+    if(e.target === ov || e.target.closest('[data-d="fechar"]')){ ov.remove(); return; }
+    const b = e.target.closest('[data-f]'); if(!b) return;
+    if(b.dataset.f === 'zap') window.open('https://wa.me/' + inovFoneWhats(c.telefone), '_blank');
+    else if(b.dataset.f === 'credito'){ ov.remove(); credAbrirCliente(c.nome); }
+  });
+  document.body.appendChild(ov);
+}
+function pendRenderOS(){
+  const c = document.getElementById('pend-corpo'); const t = (PEND_ST.itens || [])[0]; if(!c || !t) return;
+  pendMarcarAba('lista');
+  c.innerHTML = '<div class="pd-card"><div class="pd-mh" style="margin-bottom:6px"><h2>' + pendEsc(pendNumOS(t)) + '</h2><button data-a="voltar">Voltar às tarefas</button></div>' + pendLinhaAdmin(t) + '</div>';
+}
+async function pendMostrarOS(t){
+  const pn = document.getElementById('pend-panel');
+  if(!pn || !pn.classList.contains('open')) await pendAbrirPainel();
+  PEND_ST.tela = 'os'; PEND_ST.itens = [t]; PEND_ST.hist = {}; PEND_ST.hist[t.id] = true; pendRenderOS();
+}
+
+/* ---------- 2) Resumo do dia ---------- */
+async function resumoDiaMontar(){
+  const hoje = todayStr(), L = ['📊 RESUMO DO DIA - ' + fmtDate(hoje), ''];
+  const g = inovGruposVenda((state.vendas || []).filter(function(v){ return v.data === hoje; }));
+  L.push('💰 Vendas: ' + g.length + ' pedido(s), ' + fmtMoney(g.reduce(function(s, x){ return s + x.total; }, 0)));
+  const A = entregaAgregar(entregaRegistros(1).filter(function(r){ return inovHojeDe(r.fim) === hoje; })), vivo = entregasAoVivo(), lentas = vivo.filter(function(e){ return e.min > META_ENTREGA_MIN; });
+  L.push('🚚 Entregas concluídas: ' + A.n + (A.n ? ' | tempo médio ' + A.media + ' min | ' + A.pctMeta + '% dentro de ' + META_ENTREGA_MIN + ' min' : ''));
+  if(vivo.length) L.push('   Em andamento agora: ' + vivo.length + (lentas.length ? ' (' + lentas.length + ' acima da meta)' : ''));
+  try{
+    const r = await pendRpc('pend_a_resumo');
+    const conc = await pendRpc('pend_a_listar', { p_filtro:'concluidas', p_pessoa:null, p_pagina:1, p_tamanho:100 });
+    const res = (conc.itens || []).filter(function(t){ return inovHojeDe(t.concluida_em) === hoje; }).length;
+    L.push('✅ O.S.: ' + res + ' resolvida(s) hoje | ' + r.aguardando + ' aguardando conferência | ' + r.atrasadas + ' atrasada(s)');
+  }catch(e){ L.push('✅ O.S.: indisponível no momento'); }
+  const abertos = pedidosEstoqueAbertos().length, dev = saldosComodato('atacadista').filter(function(x){ return x.produto === 'Vasilhame vazio' && x.saldo > 0; });
+  L.push('📦 Pedidos ao atacadista em aberto: ' + abertos);
+  L.push('♻️ Vazios devendo ao atacadista: ' + (dev.length ? dev.map(function(x){ return x.saldo + ' ' + itemComodatoLabel(x.categoria, x.item); }).join(', ') : 'nenhum'));
+  return L.join('\n');
+}
+async function resumoDiaAbrir(){
+  if(document.getElementById('resumo-dia')) return;
+  const ov = document.createElement('div'); ov.id = 'resumo-dia'; ov.className = 'pd-root pd-dlg-ov';
+  ov.innerHTML = '<div class="pd-dlg"><h2>Resumo do dia</h2><div class="pd-res" id="resumo-txt" style="white-space:pre-line;border-left-color:#15803D">Montando...</div><div class="pd-acoes" style="margin-top:12px"><button class="pd-g" data-r="zap">Enviar no WhatsApp</button><button data-r="copiar">Copiar texto</button><button data-d="fechar">Fechar</button></div></div>';
+  ov.addEventListener('click', function(e){
+    if(e.target === ov || e.target.closest('[data-d="fechar"]')){ ov.remove(); return; }
+    const b = e.target.closest('[data-r]'); if(!b) return; const txt = document.getElementById('resumo-txt').textContent;
+    if(b.dataset.r === 'zap') window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+    else if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function(){ pendToast('Resumo copiado.'); }, function(){ prompt('Copie o resumo:', txt); });
+    else prompt('Copie o resumo:', txt);
+  });
+  document.body.appendChild(ov);
+  const el = document.getElementById('resumo-txt');
+  try{ el.textContent = await resumoDiaMontar(); }catch(e){ el.textContent = 'Não consegui montar o resumo. Tente de novo.'; }
+}
+
+/* ---------- 3) Alertas sonoros e aba do navegador piscando ---------- */
+const ALERTA = { vistos:{}, aguardPrev:null, pisca:null, n:0, titulo:'', ctx:null };
+function alertaSomLigado(){ try{ return localStorage.getItem('tg_som') !== '0'; }catch(e){ return true; } }
+function alertaSomAlternar(){
+  try{ localStorage.setItem('tg_som', alertaSomLigado() ? '0' : '1'); }catch(e){}
+  atencaoHojeAtualizarDom(); pendToast(alertaSomLigado() ? 'Som dos alertas ligado.' : 'Som dos alertas desligado.');
+  if(alertaSomLigado()) alertaTocar();
+}
+function alertaTocar(){
+  if(!alertaSomLigado()) return;
+  try{
+    const C = window.AudioContext || window.webkitAudioContext; if(!C) return;
+    const ctx = ALERTA.ctx || (ALERTA.ctx = new C()); if(ctx.state === 'suspended') ctx.resume();
+    [[880, 0], [660, 0.22]].forEach(function(p){
+      const o = ctx.createOscillator(), g = ctx.createGain(), t0 = ctx.currentTime + p[1];
+      o.type = 'sine'; o.frequency.value = p[0]; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+      o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0 + 0.32);
+    });
+  }catch(e){}
+}
+function alertaVerificar(){
+  if(typeof MODO_DEMO !== 'undefined' && MODO_DEMO) return; if(!usuarioAtualEhAdmin) return;
+  const novos = [], vivo = entregasAoVivo(), lentas = vivo.filter(function(e){ return e.min > META_ENTREGA_MIN; });
+  lentas.forEach(function(e){ const k = String(e.id); if(!ALERTA.vistos[k]){ ALERTA.vistos[k] = 1; novos.push('Entrega de ' + e.cliente + ' passou de ' + META_ENTREGA_MIN + ' min (' + e.min + ' min, ' + e.etapa + ')'); } });
+  Object.keys(ALERTA.vistos).forEach(function(k){ if(!vivo.some(function(e){ return String(e.id) === k; })) delete ALERTA.vistos[k]; });
+  const ag = PEND_RESUMO ? (PEND_RESUMO.aguardando || 0) : null;
+  if(ag !== null){ if(ALERTA.aguardPrev !== null && ag > ALERTA.aguardPrev) novos.push('Nova O.S. aguardando a sua conferência'); ALERTA.aguardPrev = ag; }
+  if(novos.length){ alertaTocar(); novos.forEach(function(n){ pendToast('⚠️ ' + n, true, 8000); }); }
+  ALERTA.n = lentas.length + (ag || 0); alertaTitulo();
+}
+function alertaTitulo(){
+  if(!ALERTA.titulo) ALERTA.titulo = document.title;
+  if(ALERTA.n > 0 && document.hidden){
+    if(!ALERTA.pisca){ let alt = false; ALERTA.pisca = setInterval(function(){ alt = !alt; document.title = alt ? '⚠️ (' + ALERTA.n + ') Atenção - Tom Gás' : ALERTA.titulo; }, 1500); }
+  } else {
+    if(ALERTA.pisca){ clearInterval(ALERTA.pisca); ALERTA.pisca = null; }
+    if(ALERTA.titulo) document.title = ALERTA.titulo;
+  }
+}
+
+/* ---------- 4) Painel ao vivo das entregas (tela cheia) ---------- */
+function painelVivoDesenhar(){
+  const lista = document.getElementById('pv-lista'); if(!lista) return;
+  const vivo = entregasAoVivo(), A = entregaAgregar(entregaRegistros(1).filter(function(r){ return inovHojeDe(r.fim) === todayStr(); }));
+  const relogio = document.getElementById('pv-hora'); if(relogio) relogio.textContent = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  lista.innerHTML = vivo.length ? vivo.map(function(e){
+    const cls = e.min > META_ENTREGA_MIN ? 'pv-atraso' : (e.min >= META_ENTREGA_MIN - 5 ? 'pv-alerta' : 'pv-ok');
+    return '<div class="pv-card ' + cls + '"><div class="pv-min">' + e.min + '<small>min</small></div><div class="pv-info"><b>' + pendEsc(e.cliente) + '</b><span>' + pendEsc(entregaNomeEnt(e.entregadorId)) + ' · ' + pendEsc(e.etapa) + '</span><div class="pv-bar"><i style="width:' + Math.min(100, Math.round(e.min * 100 / META_ENTREGA_MIN)) + '%"></i></div></div></div>';
+  }).join('') : '<div class="pv-vazio">Nenhuma entrega em andamento ✓</div>';
+  const st = document.getElementById('pv-stats'); if(!st) return;
+  const k = function(r, v){ return '<div class="pv-k"><span>' + r + '</span><b>' + v + '</b></div>'; };
+  st.innerHTML = k('Em andamento', vivo.length) + k('Acima da meta', vivo.filter(function(e){ return e.min > META_ENTREGA_MIN; }).length) + k('Entregues hoje', A.n) + k('Tempo médio hoje', A.media == null ? '—' : A.media + ' min') + k('Dentro da meta', A.pctMeta == null ? '—' : A.pctMeta + '%') + k('O.S. a conferir', PEND_RESUMO ? PEND_RESUMO.aguardando : '—');
+}
+function painelVivoAbrir(){
+  if(document.getElementById('painel-vivo')) return;
+  const ov = document.createElement('div'); ov.id = 'painel-vivo'; ov.className = 'pd-root pd-dlg-ov pd-live';
+  ov.innerHTML = '<div class="pv-wrap"><div class="pv-top"><h1>🚚 Entregas ao vivo</h1><span class="pv-meta">Meta: ' + META_ENTREGA_MIN + ' min</span><span id="pv-hora" class="pv-hora"></span><span class="pv-bt"><button data-d="tela">Tela cheia</button><button data-d="fechar">Sair (Esc)</button></span></div><div class="pv-main"><div id="pv-lista" class="pv-lista"></div><div id="pv-stats" class="pv-stats"></div></div></div>';
+  ov.addEventListener('click', function(e){
+    const b = e.target.closest('[data-d]'); if(!b) return;
+    if(b.dataset.d === 'fechar'){ if(document.fullscreenElement && document.exitFullscreen){ try{ document.exitFullscreen(); }catch(x){} } ov.remove(); }
+    else if(b.dataset.d === 'tela' && ov.requestFullscreen){ try{ ov.requestFullscreen(); }catch(x){} }
+  });
+  document.body.appendChild(ov); painelVivoDesenhar();
+  const t = setInterval(function(){ if(!document.getElementById('painel-vivo')){ clearInterval(t); return; } painelVivoDesenhar(); }, 5000);
+}
+
+/* ===== Fiado x crédito em haver: o que foi pago a mais vira crédito automaticamente ===== */
+function fiadoSaldoBrutoSem(cliente, pagamento){
+  const deb = debitosDoCliente(cliente).reduce(function(s, d){ return s + d.valor; }, 0);
+  const pagos = pagamentosDoCliente(cliente).reduce(function(s, p){ return s + p.valor; }, 0);
+  return deb - (pagos - (pagamento ? (Number(pagamento.valor) || 0) : 0));
+}
+function fiadoRound(v){ return Math.round(v * 100) / 100; }
+// Registra (ou edita) um pagamento de fiado. O que passar da dívida vira crédito em haver, ligado ao pagamento.
+function fiadoRegistrarPagamento(o){
+  const cli = o.cliente;
+  let p = o.editId ? state.fiadoPagamentos.find(function(x){ return x.id === o.editId; }) : null;
+  const saldoSem = Math.max(0, fiadoSaldoBrutoSem(cli, p));
+  const excesso = fiadoRound(Math.max(0, o.valor - saldoSem)), aplicado = fiadoRound(o.valor - excesso);
+  const credAntigo = p && p.creditoId ? state.creditos.find(function(c){ return c.id === p.creditoId; }) : null;
+  if(!p && aplicado > 0.004){ p = { id:uid(), cliente:cli }; state.fiadoPagamentos.push(p); }
+  if(p && aplicado > 0.004){
+    p.valor = aplicado; p.forma_pagamento = o.forma; p.data = o.data;
+    if(excesso > 0.004) p.valorRecebido = o.valor; else delete p.valorRecebido;
+  } else if(p){ state.fiadoPagamentos = state.fiadoPagamentos.filter(function(x){ return x.id !== p.id; }); }
+  const guardado = p && aplicado > 0.004;
+  if(excesso > 0.004){
+    const obs = guardado ? 'Valor pago a mais no fiado' : 'Pagamento adiantado (sem fiado em aberto)';
+    if(credAntigo){ credAntigo.valor = excesso; credAntigo.data = o.data; credAntigo.forma_pagamento = o.forma; credAntigo.obs = obs; credAntigo.fiadoPagamentoId = guardado ? p.id : null; if(guardado) p.creditoId = credAntigo.id; }
+    else { const c = { id:uid(), cliente:cli, data:o.data, valor:excesso, forma_pagamento:o.forma, obs:obs, fiadoPagamentoId:guardado ? p.id : null }; state.creditos.push(c); if(guardado) p.creditoId = c.id; }
+  } else if(credAntigo){ state.creditos = state.creditos.filter(function(c){ return c.id !== credAntigo.id; }); if(p) delete p.creditoId; }
+  return { excesso:excesso, aplicado:aplicado };
+}
+// Pagamentos antigos que passaram da dívida e a sobra não virou crédito (como acontecia antes desta correção).
+function fiadoSobrasPendentes(){
+  const out = [];
+  clientesComFiado().forEach(function(cli){
+    const deb = debitosDoCliente(cli).reduce(function(s, d){ return s + d.valor; }, 0);
+    const pagos = pagamentosDoCliente(cli).reduce(function(s, p){ return s + p.valor; }, 0), sobra = fiadoRound(pagos - deb);
+    if(sobra > 0.004) out.push({ cliente:cli, sobra:sobra, divida:fiadoRound(deb), pago:fiadoRound(pagos) });
+  });
+  return out;
+}
+function fiadoCorrigirSobras(lista){
+  lista.forEach(function(it){
+    let falta = it.sobra;
+    pagamentosDoCliente(it.cliente).slice().sort(function(a, b){ return (b.data || '').localeCompare(a.data || '') || String(b.id).localeCompare(String(a.id)); }).forEach(function(p){
+      if(falta <= 0.004) return;
+      const red = fiadoRound(Math.min(Number(p.valor) || 0, falta)); if(red <= 0.004) return;
+      const total = p.valorRecebido != null ? p.valorRecebido : p.valor;
+      p.valorRecebido = total; p.valor = fiadoRound(p.valor - red); falta = fiadoRound(falta - red);
+      let c = p.creditoId ? state.creditos.find(function(x){ return x.id === p.creditoId; }) : null;
+      if(c) c.valor = fiadoRound(c.valor + red);
+      else { c = { id:uid(), cliente:it.cliente, data:p.data, valor:red, forma_pagamento:p.forma_pagamento, obs:'Valor pago a mais no fiado', fiadoPagamentoId:p.id }; state.creditos.push(c); p.creditoId = c.id; }
+      if(p.valor <= 0.004){ state.fiadoPagamentos = state.fiadoPagamentos.filter(function(x){ return x.id !== p.id; }); c.fiadoPagamentoId = null; c.obs = 'Pagamento adiantado (sem fiado em aberto)'; delete p.creditoId; }
+    });
+  });
+}
+async function fiadoCorrigirAgora(){
+  const lista = fiadoSobrasPendentes();
+  if(!lista.length){ pendToast('Nenhuma sobra de fiado para corrigir.'); return; }
+  const linhas = lista.map(function(i){ return '• ' + i.cliente + ': pagou ' + fmtMoney(i.pago) + ' para ' + fmtMoney(i.divida) + ' de fiado → ' + fmtMoney(i.sobra) + ' vão para o haver'; }).join('\n');
+  if(!confirm('Estes clientes pagaram a mais no fiado e a sobra não foi para o haver:\n\n' + linhas + '\n\nCorrigir agora? O pagamento passa a valer só o que quitou a dívida, e a sobra vira crédito em haver (o dinheiro recebido continua o mesmo).')) return;
+  fiadoCorrigirSobras(lista);
+  await save('fiadoPagamentos'); await save('creditos'); renderAll();
+  pendToast('Corrigido: ' + lista.map(function(i){ return fmtMoney(i.sobra) + ' para o haver de ' + i.cliente; }).join('; ') + '.', false, 7000);
+}
+// Do crédito em haver até o pagamento de fiado que gerou a sobra (para corrigir se foi lançado errado).
+function credIrParaFiado(id){
+  const c = (state.creditos || []).find(function(x){ return x.id === id; }); const p = c && (state.fiadoPagamentos || []).find(function(x){ return x.id === c.fiadoPagamentoId; });
+  if(!p){ pendToast('Não achei o pagamento de fiado desse crédito.', true); return; }
+  const m = document.getElementById('cred-modal'); if(m) m.remove();
+  currentTab = 'relatorios'; relatorioSub = 'fiado'; editFiadoPagamentoId = p.id; clienteRegistrandoPagamento = p.cliente; renderAll();
+  setTimeout(function(){ const el = document.getElementById('form-pagamento-fiado'); if(el) el.scrollIntoView({ behavior:'smooth' }); }, 50);
+  pendToast('Editando o pagamento que gerou esse crédito. Salve para confirmar.', false, 5000);
+}
+
+/* ===== Links para clientes: mensagem pronta (CTA) + link, com copiar e WhatsApp ===== */
+const LINKS_FONE = '5543996217576';
+function linksBase(){ return location.href.split('?')[0].split('#')[0]; }
+function linksPadrao(){
+  return [
+    { id:'contato', icone:'📲', nome:'Salvar contato e concorrer a brindes', link:linksBase() + '?contato=1',
+      msg:'🎁 Concorra a brindes TODO MÊS!\nSalve o Tom Gás Apucarana nos seus contatos e mande um "oi" 👋\nÉ rapidinho, toque no link:\n{link}' },
+    { id:'insta', icone:'📸', nome:'Instagram', link:'https://www.instagram.com/tomgasapucarana/',
+      msg:'📸 Já segue o Tom Gás no Instagram? Fique por dentro das novidades, promoções e sorteios!\nToque e siga a gente 👉 {link}' },
+    { id:'mapa', icone:'📍', nome:'Localização no Maps', link:'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('Av. Santa Catarina, 627 - Jardim Apucarana, Apucarana - PR'),
+      msg:'📍 Venha nos visitar! Estamos na Av. Santa Catarina, 627 - Jd. Apucarana.\nToque para abrir no mapa e traçar a rota 👉 {link}' },
+    { id:'site', icone:'🌐', nome:'Nosso site', link:'https://www.tomgasapucarana.com.br',
+      msg:'🌐 Conheça o site do Tom Gás Apucarana! Veja nossos produtos e faça seu pedido com facilidade 👉 {link}' },
+    { id:'google', icone:'⭐', nome:'Avaliação no Google', link:'https://www.google.com/maps/place//data=!4m3!3m2!1s0x94ec999337f07bc1:0xa4da94f5a6e339e6!12e1?source=g.page.m.ia._&laa=nmx-review-solicitation-ia2',
+      msg:'⭐ Sua opinião vale muito pra gente! Avalie o Tom Gás Apucarana no Google, leva menos de 1 minuto 👉 {link}\nObrigado por apostar no nosso trabalho! 💙' },
+    { id:'pesquisa', icone:'📝', nome:'Pesquisa de satisfação', link:linksBase() + '?pesquisamanual=1',
+      msg:'📝 Queremos atender cada vez melhor! Responda nossa pesquisa rápida (1 minuto) e ajude a gente a melhorar 👉 {link}' }
+  ];
+}
+function linksTodos(){
+  return linksPadrao().concat((state.linksClientes || []).map(function(c){ return { id:c.id, icone:'🔗', nome:c.nome, link:c.link, msg:c.msg || '{link}', custom:true }; }));
+}
+function linksMsgDe(it){
+  let txt = it.msg; try{ const s = localStorage.getItem('tg_links_txt_' + it.id); if(s) txt = s; }catch(e){}
+  return txt;
+}
+function linksMensagemFinal(it){ const t = linksMsgDe(it); return t.indexOf('{link}') >= 0 ? t.split('{link}').join(it.link) : t + '\n' + it.link; }
+function linksCopiar(txt, ok){
+  const falha = function(){ prompt('Copie o texto:', txt); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function(){ pendToast(ok || 'Copiado! Agora é só colar no WhatsApp.'); }, falha); else falha();
+}
+function initLinksFab(){
+  if(typeof MODO_DEMO !== 'undefined' && MODO_DEMO) return; if(!usuarioAtualEhAdmin) return;
+  if(document.getElementById('links-fab')) return;
+  const b = document.createElement('button'); b.id = 'links-fab'; b.title = 'Links para clientes'; b.textContent = '🔗'; b.onclick = linksAbrirPainel; document.body.appendChild(b);
+}
+function linksAbrirPainel(){
+  let pn = document.getElementById('links-panel');
+  if(pn){ pn.classList.toggle('open'); if(pn.classList.contains('open')) linksRender(); return; }
+  pn = document.createElement('div'); pn.id = 'links-panel'; pn.className = 'pd-root pd-panel';
+  pn.innerHTML = '<div class="pd-mh" id="links-head"><div class="pd-row"><span class="pd-grip" title="Arraste para mover">⠿</span><h2>Links para clientes</h2></div><div class="pd-row"><button class="pd-g" data-l="novo">+ Adicionar link</button><button data-l="fechar" aria-label="Fechar">✕</button></div></div><div id="links-corpo"></div>';
+  document.body.appendChild(pn); pn.classList.add('open');
+  pn.addEventListener('click', linksClick);
+  if(typeof tornarArrastavel === 'function') tornarArrastavel(pn, pn.querySelector('#links-head'));
+  linksRender();
+}
+function linksRender(){
+  const c = document.getElementById('links-corpo'); if(!c) return;
+  c.innerHTML = '<div class="pd-obs" style="margin-bottom:10px">Cada cartão tem a mensagem pronta com o link. Toque em <b>Copiar mensagem</b> e cole no WhatsApp do cliente, ou use <b>Enviar no WhatsApp</b>.</div>' +
+    linksTodos().map(function(it){
+      const editando = LINKS_UI.edit === it.id;
+      return '<div class="pd-os pd-link"><div class="pd-os-top"><span class="pd-os-num" style="font-family:inherit">' + it.icone + ' ' + pendEsc(it.nome) + '</span></div>' +
+        (editando ? '<label class="pd-lbl">Texto da mensagem (use {link} onde o link deve aparecer)</label><textarea class="pd-in" id="links-txt" style="min-height:110px">' + pendEsc(linksMsgDe(it)) + '</textarea>' +
+            '<div class="pd-acoes"><button class="pd-g" data-l="salvartxt" data-id="' + it.id + '">Salvar texto</button><button data-l="padrao" data-id="' + it.id + '">Voltar ao texto original</button><button data-l="cancedit">Cancelar</button></div>'
+          : '<div class="pd-res" style="white-space:pre-line;border-left-color:#15803D;margin:0 0 6px">' + pendEsc(linksMensagemFinal(it)) + '</div>' +
+            '<div class="pd-acoes"><button class="pd-g" data-l="copiar" data-id="' + it.id + '">📋 Copiar mensagem</button><button data-l="copiarlink" data-id="' + it.id + '">Copiar só o link</button><button data-l="zap" data-id="' + it.id + '">Enviar no WhatsApp</button><button data-l="abrir" data-id="' + it.id + '">Abrir</button><button data-l="editar" data-id="' + it.id + '">Editar texto</button>' + (it.custom ? '<button class="pd-o" data-l="excluir" data-id="' + it.id + '">Excluir</button>' : '') + '</div>') + '</div>';
+    }).join('') +
+    (LINKS_UI.novo ? '<div class="pd-card"><h2 style="font-size:15px">Novo link</h2><label class="pd-lbl">Nome</label><input class="pd-in" id="links-n-nome" maxlength="60"><label class="pd-lbl">Link</label><input class="pd-in" id="links-n-link" placeholder="https://..."><label class="pd-lbl">Mensagem (use {link} onde o link deve aparecer)</label><textarea class="pd-in" id="links-n-msg" placeholder="Ex.: Confira nossa promoção 👉 {link}"></textarea><div class="pd-acoes" style="margin-top:10px"><button class="pd-g" data-l="salvarnovo">Salvar</button><button data-l="cancnovo">Cancelar</button></div></div>' : '');
+}
+const LINKS_UI = { edit:null, novo:false };
+async function linksClick(e){
+  const b = e.target.closest('[data-l]'); if(!b) return;
+  const a = b.dataset.l, it = linksTodos().find(function(x){ return x.id === b.dataset.id; });
+  try{
+    if(a === 'fechar') document.getElementById('links-panel').classList.remove('open');
+    else if(a === 'copiar' && it) linksCopiar(linksMensagemFinal(it));
+    else if(a === 'copiarlink' && it) linksCopiar(it.link, 'Link copiado.');
+    else if(a === 'zap' && it) window.open('https://wa.me/?text=' + encodeURIComponent(linksMensagemFinal(it)), '_blank');
+    else if(a === 'abrir' && it) window.open(it.link, '_blank');
+    else if(a === 'editar'){ LINKS_UI.edit = b.dataset.id; linksRender(); }
+    else if(a === 'cancedit'){ LINKS_UI.edit = null; linksRender(); }
+    else if(a === 'salvartxt' && it){ try{ localStorage.setItem('tg_links_txt_' + it.id, document.getElementById('links-txt').value); }catch(x){} LINKS_UI.edit = null; linksRender(); pendToast('Texto salvo.'); }
+    else if(a === 'padrao' && it){ try{ localStorage.removeItem('tg_links_txt_' + it.id); }catch(x){} LINKS_UI.edit = null; linksRender(); pendToast('Texto original restaurado.'); }
+    else if(a === 'novo'){ LINKS_UI.novo = true; linksRender(); }
+    else if(a === 'cancnovo'){ LINKS_UI.novo = false; linksRender(); }
+    else if(a === 'salvarnovo'){
+      const g = function(i){ return document.getElementById(i).value.trim(); }, nome = g('links-n-nome'), link = g('links-n-link');
+      if(!nome || !/^https?:\/\//i.test(link)){ pendToast('Informe o nome e um link que comece com http:// ou https://', true); return; }
+      if(!Array.isArray(state.linksClientes)) state.linksClientes = [];
+      state.linksClientes.push({ id:uid(), nome:nome, link:link, msg:g('links-n-msg') || '{link}' });
+      await save('linksClientes'); LINKS_UI.novo = false; linksRender(); pendToast('Link salvo.');
+    }
+    else if(a === 'excluir' && it){
+      if(!confirm('Excluir o link "' + it.nome + '"?')) return;
+      state.linksClientes = (state.linksClientes || []).filter(function(x){ return x.id !== it.id; }); await save('linksClientes'); linksRender();
+    }
+  }catch(err){ pendToast('Não foi possível concluir.', true); }
+}
+
+/* ---------- página pública: salvar o contato e mandar um oi (?contato=1) ---------- */
+function contatoVcard(){
+  return ['BEGIN:VCARD', 'VERSION:3.0', 'N:;Tom Gás Apucarana;;;', 'FN:Tom Gás Apucarana', 'ORG:Tom Gás', 'TEL;TYPE=CELL,VOICE:+' + LINKS_FONE, 'URL:https://www.tomgasapucarana.com.br',
+    'ADR;TYPE=WORK:;;Av. Santa Catarina, 627;Apucarana;PR;;Brasil', 'NOTE:Gás e água em Apucarana. Mande um oi e concorra a brindes todo mês!', 'END:VCARD'].join('\r\n');
+}
+async function iniciarContatoPublico(){
+  try{ aplicarFaviconPaginaPublica(); }catch(e){}
+  let claro = false; try{ claro = window.matchMedia('(prefers-color-scheme: light)').matches; }catch(e){}
+  if(!claro) document.documentElement.setAttribute('data-theme', 'dark');
+  document.body.innerHTML = '<div class="pd-root pd-pub"><div class="pd-pub-h"><i></i>Tom Gás Apucarana</div><div class="pd-pub-in"><div class="pd-card" style="text-align:center">' +
+    '<div style="font-size:48px">🎁</div><h2 style="font-size:22px;margin:6px 0">Concorra a brindes todo mês!</h2>' +
+    '<div class="pd-obs" style="margin-bottom:14px">Salve o contato do Tom Gás no seu celular e mande um "oi" no WhatsApp. É só isso!</div>' +
+    '<button class="pd-g" data-c="salvar" style="width:100%;padding:15px;font-size:16px">📲 1. Salvar contato</button>' +
+    '<div id="contato-ok" class="pd-meta" style="margin:8px 0;min-height:18px"></div>' +
+    '<button data-c="oi" id="contato-oi" style="width:100%;padding:15px;font-size:16px">👋 2. Enviar um oi no WhatsApp</button>' +
+    '<div class="pd-meta" style="margin-top:12px">Se o contato não abrir sozinho, salve manualmente o número (43) 99621-7576.</div></div></div></div>';
+  document.body.addEventListener('click', function(e){
+    const b = e.target.closest('[data-c]'); if(!b) return;
+    if(b.dataset.c === 'salvar'){
+      const blob = new Blob([contatoVcard()], { type:'text/vcard;charset=utf-8' }), a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'Tom Gas Apucarana.vcf'; document.body.appendChild(a); a.click(); setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(x){} a.remove(); }, 2000);
+      document.getElementById('contato-ok').textContent = 'Toque em "Adicionar contato" na tela que abrir. Depois é só mandar o oi 👇';
+      document.getElementById('contato-oi').className = 'pd-g';
+    } else if(b.dataset.c === 'oi') window.open('https://wa.me/' + LINKS_FONE + '?text=' + encodeURIComponent('Oi! Salvei o contato do Tom Gás e quero concorrer aos brindes do mês 🎁'), '_blank');
   });
 }
 
@@ -22199,6 +22691,7 @@ async function init(){
   if(dicaParam){ await iniciarDicaPublica(dicaParam); return; }
   const pendParam = paramsUrl.get('pendencias');
   if(pendParam){ await iniciarPendenciasPublica(pendParam); return; }
+  if(paramsUrl.get('contato') !== null){ await iniciarContatoPublico(); return; }
   attachAuthHandlers();
   attachLogoInput();
   registerServiceWorker();
