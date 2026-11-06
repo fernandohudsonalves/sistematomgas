@@ -8167,6 +8167,7 @@ function viewVendas(){
     '<div class="hint" id="hint-divisao-pagamento" style="font-weight:700;"></div>'+
     '</div>'+
     '</div>'+
+    '<div class="form-row"><div><label>Taxa do fiado (R$)</label><input type="number" name="taxa_fiado" min="0" step="0.01" placeholder="0,00"><div class="hint" style="margin-top:4px;">Opcional. Entra como um item "Taxa do Fiado" dentro desta mesma venda, marcado no fiado do cliente.</div></div></div>'+
     '<div id="detalhes-entrega-venda" class="item-venda-row" style="display:none;margin-top:10px;">'+
     '<div class="hint" style="margin-bottom:6px;">Detalhes da entrega</div>'+
     '<div class="form-row">'+
@@ -13855,6 +13856,11 @@ function attachHandlers(){
           itens.push(itemObj);
         }
       });
+      const taxaFiadoVenda = Number(f.get('taxa_fiado'))||0;
+      if(taxaFiadoVenda>0){
+        if(!state.categoriasProdutos.includes('Taxa do Fiado')){ state.categoriasProdutos.push('Taxa do Fiado'); await save('categoriasProdutos'); }
+        itens.push({categoria:'Taxa do Fiado', produto:'Taxa do fiado', quantidade:1, valor_unit:taxaFiadoVenda, valor_total:taxaFiadoVenda, nota:'Não lança', pagamento:'Marcou/Fiado'});
+      }
       // ---- Retirada parcial: cliente pagou tudo mas leva só parte agora — separa a diferença
       // como um item "Falta retirar" à parte, dentro da mesma venda (mesmo grupoId). ----
       if(document.getElementById('chk-retirada-parcial') && document.getElementById('chk-retirada-parcial').checked){
